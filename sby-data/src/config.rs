@@ -1,17 +1,20 @@
+use std::path::PathBuf;
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::net::SocketAddr;
 use std::path::Path;
-use serde::{Serialize, Deserialize};
 
-#[derive(Debug,Serialize,Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
     pub address: SocketAddr,
+    pub database: Option<PathBuf>,
 }
 
 impl Config {
     pub fn default() -> Config {
         Config {
             address: "0.0.0.0:3000".parse().unwrap(),
+            database: None
         }
     }
 
