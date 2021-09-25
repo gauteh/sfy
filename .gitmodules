@@ -1,0 +1,3 @@
+[submodule "tools/svl"]
+	path = tools/svl
+	url = https://github.com/sparkfun/Apollo3_Uploader_SVL
