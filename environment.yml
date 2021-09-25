@@ -1,0 +1,5 @@
+name: sby
+channels:
+  - conda-forge
+dependencies:
+  - pyserial
