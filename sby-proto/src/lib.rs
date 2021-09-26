@@ -1,5 +1,7 @@
 #![no_std]
 
+mod messages;
+
 #[cfg(test)]
 mod tests {
     #[test]
