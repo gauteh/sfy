@@ -10,4 +10,17 @@
 
 * https://github.com/sparkfun/Apollo3_Uploader_SVL
 
-linker script from: https://github.com/sparkfun/Apollo3_Uploader_SVL/blob/main/0x10000.ld
+linker script/memory.x from: https://github.com/sparkfun/Apollo3_Uploader_SVL/blob/main/0x10000.ld
+
+## Resources
+
+* https://github.com/rust-embedded/cortex-m-quickstart
+
+# OS
+
+## Filesystem
+
+- FAT32+SD: https://github.com/rust-embedded-community/embedded-sdmmc-rs
+  * https://github.com/Spxg/fat32
+- Littlefs
+- [tickv](https://github.com/tock/tock/tree/master/libraries/tickv)
