@@ -17,7 +17,6 @@ struct Sby {
 
 mod config;
 mod database;
-mod messages;
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {

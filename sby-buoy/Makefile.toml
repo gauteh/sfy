@@ -1,0 +1,8 @@
+#[tasks.build]
+#command = "cargo"
+#args = ["build", "-Z", "build-std=core", "--target", "avr-atmega328p.json", "--release"]
+
+[tasks.flash]
+command = "python"
+args = ["../tools/svl/svl.py", "-f", "target/thumbv7em-none-eabi/release/sby-buoy", "/dev/ttyUSB0"]
+dependencies = ["build"]

@@ -1,11 +1,8 @@
 #![no_std]
 
-// Enable standard lib for tests.
-#[cfg(test)]
-#[macro_use]
-extern crate std;
+pub use embedded_hal as hal;
 
-mod messages;
+pub mod delay;
 
 #[cfg(test)]
 mod tests {

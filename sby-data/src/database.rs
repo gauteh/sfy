@@ -1,6 +1,7 @@
 use eyre::Result;
 use std::path::{Path, PathBuf};
 
+#[derive(Debug)]
 pub struct Database {
     path: PathBuf,
 }
@@ -17,5 +18,20 @@ impl Database {
 
     pub fn temporary() -> Result<Database> {
         unimplemented!()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn create_temporary() {
+        Database::temporary().unwrap();
+    }
+
+    #[test]
+    fn open_db() {
+        Database::open(".").unwrap();
     }
 }
