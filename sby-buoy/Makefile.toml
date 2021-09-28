@@ -1,6 +1,6 @@
-#[tasks.build]
-#command = "cargo"
-#args = ["build", "-Z", "build-std=core", "--target", "avr-atmega328p.json", "--release"]
+[tasks.build]
+command = "cargo"
+args = ["build", "--target", "thumbv7em-none-eabi", "${@}"]
 
 [tasks.flash]
 command = "python"
