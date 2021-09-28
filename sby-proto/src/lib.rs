@@ -1,9 +1,4 @@
-#![no_std]
-
-// Enable standard lib for tests.
-#[cfg(test)]
-#[macro_use]
-extern crate std;
+#![cfg_attr(not(test), no_std)]
 
 mod messages;
 
