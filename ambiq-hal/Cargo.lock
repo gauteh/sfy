@@ -23,6 +23,7 @@ dependencies = [
 [[package]]
 name = "ambiq-apollo3-pac"
 version = "0.1.0"
+source = "git+https://github.com/gauteh/ambiq-apollo3-pac.git?branch=svd-0.19#6da1e22f3aa867ad71b99d7ab07cb9da22c8e63b"
 dependencies = [
  "bare-metal",
  "cortex-m 0.6.7",

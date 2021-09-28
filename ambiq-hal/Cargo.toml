@@ -13,4 +13,5 @@ cortex-m = "0.7.3"
 path = "../ambiq-hal-sys"
 
 [dependencies.ambiq-apollo3-pac]
-path = "../../ambiq_apollo3/ambiq-apollo3-pac"
+git = "https://github.com/gauteh/ambiq-apollo3-pac.git"
+branch = "svd-0.19"
