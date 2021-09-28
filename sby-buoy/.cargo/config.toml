@@ -26,25 +26,15 @@ rustflags = [
   # uncommenting the three lines below
   "-C", "linker=arm-none-eabi-gcc",
   #"-C", "link-arg=-Wl,-T,memory.x",
-  "-C", "link-arg=-mthumb",
-  "-C", "link-arg=-mcpu=cortex-m4",
-  "-C", "link-arg=-mfpu=fpv4-sp-d16",
-  "-C", "link-arg=-mfloat-abi=hard",
   "-C", "link-arg=-Wl,-T,asb_svl_linker.ld",
   "-C", "link-arg=-nostartfiles",
-  "-C", "link-arg=-Wl,--gc-sections,--entry,Reset_Handler,-Map,sby-tmp.map",
+  "-C", "link-arg=-Wl,--gc-sections,--entry,Reset_Handler,-Map,target/sby.map",
   "-C", "link-arg=-Wl,--start-group",
-  "-C", "link-arg=-lm",
-  "-C", "link-arg=-lgcc",
   "-C", "link-arg=-Wl,--end-group",
 
-  #-lm -lc -lgcc  -Wl,--end-group",
-  #"-C", "link-arg=-Wl,--start-group -lm -lc -lgcc  -Wl,--end-group",
+  #"-C", "link-arg=-lm",
+  #"-C", "link-arg=-lgcc",
 
-#LFLAGS = -mthumb -mcpu=$(CPU) -mfpu=$(FPU) -mfloat-abi=$(FABI)
-#LFLAGS+= -nostartfiles -static
-#LFLAGS+= -Wl,--gc-sections,--entry,Reset_Handler,-Map,$(CONFIG)/$(TARGET).map
-#LFLAGS+= -Wl,--start-group -lm -lc -lgcc $(LIBS) -Wl,--end-group
 ]
 
 [build]

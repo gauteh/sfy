@@ -17,5 +17,3 @@ path = "../sby-proto"
 [dependencies.ambiq-hal-sys]
 path = "../ambiq-hal-sys"
 
-[profile.release]
-opt-level = 0
