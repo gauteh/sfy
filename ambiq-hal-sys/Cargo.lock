@@ -16,6 +16,8 @@ name = "ambiq-hal-sys"
 version = "0.1.0"
 dependencies = [
  "bindgen",
+ "cc",
+ "glob",
 ]
 
 [[package]]
@@ -78,6 +80,12 @@ dependencies = [
  "tap",
  "wyz",
 ]
+
+[[package]]
+name = "cc"
+version = "1.0.70"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d26a6ce4b6a484fa3edb70f7efa6fc430fd2b87285fe8b84304fd0936faa0dc0"
 
 [[package]]
 name = "cexpr"

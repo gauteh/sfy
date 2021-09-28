@@ -12,29 +12,47 @@ runner = "qemu-system-arm -cpu cortex-m3 -machine lm3s6965evb -nographic -semiho
 rustflags = [
   # This is needed if your flash or ram addresses are not aligned to 0x10000 in memory.x
   # See https://github.com/rust-embedded/cortex-m-quickstart/pull/95
-  "-C", "link-arg=--nmagic",
+  #"-C", "link-arg=--nmagic",
 
   # LLD (shipped with the Rust toolchain) is used as the default linker
   #"-C", "link-arg=-Tlink.x",
 
   # if you run into problems with LLD switch to the GNU linker by commenting out
   # this line
-  "-C", "linker=arm-none-eabi-ld",
+  #"-C", "linker=arm-none-eabi-ld",
 
   # if you need to link to pre-compiled C libraries provided by a C toolchain
   # use GCC as the linker by commenting out both lines above and then
   # uncommenting the three lines below
-  #"-C", "linker=arm-none-eabi-gcc",
-  #"-C", "link-arg=-Wl,-Tlink.x",
-  #"-C", "link-arg=-nostartfiles",
+  "-C", "linker=arm-none-eabi-gcc",
+  #"-C", "link-arg=-Wl,-T,memory.x",
+  "-C", "link-arg=-mthumb",
+  "-C", "link-arg=-mcpu=cortex-m4",
+  "-C", "link-arg=-mfpu=fpv4-sp-d16",
+  "-C", "link-arg=-mfloat-abi=hard",
+  "-C", "link-arg=-Wl,-T,asb_svl_linker.ld",
+  "-C", "link-arg=-nostartfiles",
+  "-C", "link-arg=-Wl,--gc-sections,--entry,Reset_Handler,-Map,sby-tmp.map",
+  "-C", "link-arg=-Wl,--start-group",
+  "-C", "link-arg=-lm",
+  "-C", "link-arg=-lgcc",
+  "-C", "link-arg=-Wl,--end-group",
+
+  #-lm -lc -lgcc  -Wl,--end-group",
+  #"-C", "link-arg=-Wl,--start-group -lm -lc -lgcc  -Wl,--end-group",
+
+#LFLAGS = -mthumb -mcpu=$(CPU) -mfpu=$(FPU) -mfloat-abi=$(FABI)
+#LFLAGS+= -nostartfiles -static
+#LFLAGS+= -Wl,--gc-sections,--entry,Reset_Handler,-Map,$(CONFIG)/$(TARGET).map
+#LFLAGS+= -Wl,--start-group -lm -lc -lgcc $(LIBS) -Wl,--end-group
 ]
 
 [build]
 # Pick ONE of these compilation targets
 # target = "thumbv6m-none-eabi"        # Cortex-M0 and Cortex-M0+
 # target = "thumbv7m-none-eabi"        # Cortex-M3
-target = "thumbv7em-none-eabi"       # Cortex-M4 and Cortex-M7 (no FPU)
-#target = "thumbv7em-none-eabihf"     # Cortex-M4F and Cortex-M7F (with FPU)
+#target = "thumbv7em-none-eabi"       # Cortex-M4 and Cortex-M7 (no FPU)
+target = "thumbv7em-none-eabihf"     # Cortex-M4F and Cortex-M7F (with FPU)
 # target = "thumbv8m.base-none-eabi"   # Cortex-M23
 # target = "thumbv8m.main-none-eabi"   # Cortex-M33 (no FPU)
 # target = "thumbv8m.main-none-eabihf" # Cortex-M33 (with FPU)

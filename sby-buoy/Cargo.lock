@@ -12,18 +12,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "ambiq-hal"
-version = "0.1.0"
-dependencies = [
- "ambiq-hal-sys",
- "embedded-hal",
-]
-
-[[package]]
 name = "ambiq-hal-sys"
 version = "0.1.0"
 dependencies = [
  "bindgen",
+ "cc",
+ "glob",
 ]
 
 [[package]]
@@ -131,6 +125,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "14c189c53d098945499cdfa7ecc63567cf3886b3332b312a5b4585d8d3a6a610"
 
 [[package]]
+name = "cc"
+version = "1.0.70"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d26a6ce4b6a484fa3edb70f7efa6fc430fd2b87285fe8b84304fd0936faa0dc0"
+
+[[package]]
 name = "cexpr"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -181,26 +181,6 @@ dependencies = [
  "bitfield",
  "embedded-hal",
  "volatile-register",
-]
-
-[[package]]
-name = "cortex-m-rt"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "069533b58e25b635fac881eb6556616bd8f83a3e0ffe2b4b9619289ed14d465e"
-dependencies = [
- "cortex-m-rt-macros",
-]
-
-[[package]]
-name = "cortex-m-rt-macros"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f0f6f3e36f203cfedbc78b357fb28730aa2c6dc1ab060ee5c2405e843988d3c7"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
@@ -482,9 +462,7 @@ checksum = "71d301d4193d031abdd79ff7e3dd721168a9572ef3fe51a1517aba235bd8f86e"
 name = "sby-buoy"
 version = "0.1.0"
 dependencies = [
- "ambiq-hal",
- "cortex-m",
- "cortex-m-rt",
+ "ambiq-hal-sys",
  "heapless",
  "panic-halt",
  "sby-proto",

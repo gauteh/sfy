@@ -6,8 +6,6 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-cortex-m = "0.7.3"
-cortex-m-rt = "0.7.0"
 heapless = { version = "0.7", features = [ "serde" ] }
 panic-halt = "0.2.0"
 serde = { version = "1", features = ["derive"], default-features = false }
@@ -16,5 +14,8 @@ serde-json-core = "0.4.0"
 [dependencies.sby-proto]
 path = "../sby-proto"
 
-[dependencies.ambiq-hal]
-path = "../ambiq-hal"
+[dependencies.ambiq-hal-sys]
+path = "../ambiq-hal-sys"
+
+[profile.release]
+opt-level = 0

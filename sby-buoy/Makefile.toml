@@ -1,11 +1,17 @@
 [tasks.build]
 command = "cargo"
-args = ["build", "--target", "thumbv7em-none-eabi", "${@}"]
+args = ["build", "--target", "thumbv7em-none-eabihf", "${@}"]
 
 [tasks.flash]
 command = "python"
-args = ["../tools/svl/svl.py", "-f", "target/thumbv7em-none-eabi/release/sby-buoy", "/dev/ttyUSB0"]
+#args = ["../tools/svl/svl.py", "-f", "target/thumbv7em-none-eabihf/release/sby-buoy", "/dev/ttyUSB0", "-v"]
+args = ["../tools/svl/svl.py", "-f", "target/sby-buoy.bin", "/dev/ttyUSB0", "-v"]
 dependencies = ["build"]
+
+#[tasks.com]
+#command = "picocom"
+#args = ["-b",
+
 
 [tasks.size]
 command = "cargo"
