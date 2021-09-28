@@ -1,8 +1,13 @@
 #![no_std]
 
-pub use embedded_hal as hal;
+pub extern crate embedded_hal as hal;
+pub extern crate ambiq_apollo3_pac as pac;
 
-// pub mod delay;
+pub mod clock;
+pub mod time;
+pub mod delay;
+
+pub use hal::prelude;
 
 #[cfg(test)]
 mod tests {

@@ -7,6 +7,10 @@ edition = "2018"
 
 [dependencies]
 embedded-hal = "0.2.6"
+cortex-m = "0.7.3"
 
 [dependencies.ambiq-hal-sys]
 path = "../ambiq-hal-sys"
+
+[dependencies.ambiq-apollo3-pac]
+path = "../../ambiq_apollo3/ambiq-apollo3-pac"

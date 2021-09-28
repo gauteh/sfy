@@ -17,3 +17,6 @@ path = "../sby-proto"
 [dependencies.ambiq-hal-sys]
 path = "../ambiq-hal-sys"
 
+
+[dependencies.ambiq-hal]
+path = "../ambiq-hal"

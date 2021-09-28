@@ -10,10 +10,12 @@ use panic_halt as _; // you can put a breakpoint on `rust_begin_unwind` to catch
 
 mod note;
 
-extern crate ambiq_hal_sys;
-
+use ambiq_hal as hal;
 use ambiq_hal_sys as halc;
+
 use halc::c_types::*;
+
+use hal::prelude::*;
 
 #[cfg(not(test))]
 #[no_mangle]
@@ -22,6 +24,11 @@ pub extern "C" fn main(_c: *mut c_void) -> i32 {
 }
 
 fn __main__() -> ! {
+    let mut peripherals = hal::pac::Peripherals::take().unwrap();
+    let core = hal::pac::CorePeripherals::take().unwrap();
+
+    let mut delay = hal::delay::Delay::new(core.SYST, &mut peripherals.CLKGEN);
+
     // Set the clock frequency.
     unsafe {
         halc::am_hal_clkgen_control(
@@ -74,7 +81,7 @@ fn __main__() -> ! {
         // }
 
         // Delay
-        unsafe { halc::am_util_delay_ms(300); }
+        delay.delay_ms(300u32);
     }
 }
 

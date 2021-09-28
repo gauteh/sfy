@@ -3,9 +3,10 @@
 use cortex_m::peripheral::syst::SystClkSource;
 use cortex_m::peripheral::SYST;
 
-use crate::clock::GenericClockController;
+use crate::clock;
 use crate::time::Hertz;
 use hal::blocking::delay::{DelayMs, DelayUs};
+use pac::CLKGEN;
 
 /// System timer (SysTick) as a delay provider
 pub struct Delay {
@@ -15,12 +16,24 @@ pub struct Delay {
 
 impl Delay {
     /// Configures the system timer (SysTick) as a delay provider
-    pub fn new(mut syst: SYST, clocks: &mut GenericClockController) -> Self {
+    pub fn new(mut syst: SYST, clkgen: &mut CLKGEN) -> Self {
         syst.set_clock_source(SystClkSource::Core);
+
+        // figure out clock frequency of system clock
+        let sysclock = match clkgen.cctrl.read().coresel().variant() {
+            pac::clkgen::cctrl::CORESEL_A::HFRC => {
+                // full frequency
+                clock::CLKGEN_FREQ_MAX_HZ
+            },
+            pac::clkgen::cctrl::CORESEL_A::HFRC_DIV2 => {
+                // half
+                Hertz(clock::CLKGEN_FREQ_MAX_HZ.0 / 2)
+            }
+        };
 
         Delay {
             syst,
-            sysclock: clocks.gclk0().into(),
+            sysclock: sysclock.into()
         }
     }
 
