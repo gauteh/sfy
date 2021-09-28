@@ -2,7 +2,7 @@
 
 pub use embedded_hal as hal;
 
-pub mod delay;
+// pub mod delay;
 
 #[cfg(test)]
 mod tests {

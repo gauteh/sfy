@@ -13,5 +13,8 @@ panic-halt = "0.2.0"
 serde = { version = "1", features = ["derive"], default-features = false }
 serde-json-core = "0.4.0"
 
-# [dependencies.sby-proto]
-#path = "../sby-proto"
+[dependencies.sby-proto]
+path = "../sby-proto"
+
+[dependencies.ambiq-hal]
+path = "../ambiq-hal"

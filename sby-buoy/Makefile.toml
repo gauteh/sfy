@@ -6,3 +6,11 @@ args = ["build", "--target", "thumbv7em-none-eabi", "${@}"]
 command = "python"
 args = ["../tools/svl/svl.py", "-f", "target/thumbv7em-none-eabi/release/sby-buoy", "/dev/ttyUSB0"]
 dependencies = ["build"]
+
+[tasks.size]
+command = "cargo"
+args = ["size", "--bin", "sby-buoy", "--release", "--", "-A"]
+
+[tasks.readobj]
+command = "cargo"
+args = ["readobj", "--bin", "sby-buoy", "--", "-h"]
