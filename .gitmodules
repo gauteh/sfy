@@ -1,6 +1,3 @@
 [submodule "tools/svl"]
 	path = tools/svl
 	url = https://github.com/sparkfun/Apollo3_Uploader_SVL
-[submodule "ambiq-hal-sys/ambiq-sparkfun-sdk"]
-	path = ambiq-hal-sys/ambiq-sparkfun-sdk
-	url = git@github.com:sparkfun/AmbiqSuiteSDK.git
