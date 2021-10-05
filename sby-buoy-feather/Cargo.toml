@@ -1,0 +1,27 @@
+[package]
+name = "sby-buoy-feather"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[profile.dev]
+panic = "abort"
+lto = true
+opt-level = "s"
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+debug = true
+lto = true
+opt-level = "s"
+
+[dependencies]
+panic-halt = "0.2.0"
+embedded-hal = "0.2.3"
+
+[dependencies.arduino-hal]
+git = "https://github.com/gauteh/avr-hal"
+branch = "feather-basic"
+features = ["feather-32u4"]

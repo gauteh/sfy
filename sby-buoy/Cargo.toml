@@ -14,9 +14,8 @@ serde-json-core = "0.4.0"
 [dependencies.sby-proto]
 path = "../sby-proto"
 
-[dependencies.ambiq-hal-sys]
-path = "../ambiq-hal-sys"
-
+# [dependencies.ambiq-hal-sys]
+# path = "../../../dev/ambiq-rs/ambiq-hal-sys"
 
 [dependencies.ambiq-hal]
-path = "../ambiq-hal"
+path = "../../../dev/ambiq-rs/ambiq-hal"
