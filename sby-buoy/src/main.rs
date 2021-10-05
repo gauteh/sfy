@@ -8,22 +8,15 @@ use panic_halt as _; // you can put a breakpoint on `rust_begin_unwind` to catch
                      // use panic_itm as _; // logs messages over ITM; requires ITM support
                      // use panic_semihosting as _; // logs messages to the host stderr; requires a debugger
 
-mod note;
 
 use ambiq_hal as hal;
-use ambiq_hal_sys as halc;
+use hal::prelude::{*, halc::c_types::*};
+use cortex_m_rt::entry;
 
-use halc::c_types::*;
+mod note;
 
-use hal::prelude::*;
-
-#[cfg(not(test))]
-#[no_mangle]
-pub extern "C" fn main(_c: *mut c_void) -> i32 {
-    __main__()
-}
-
-fn __main__() -> ! {
+#[entry]
+fn main() -> ! {
     let mut peripherals = hal::pac::Peripherals::take().unwrap();
     let core = hal::pac::CorePeripherals::take().unwrap();
 

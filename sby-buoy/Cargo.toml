@@ -10,6 +10,7 @@ heapless = { version = "0.7", features = [ "serde" ] }
 panic-halt = "0.2.0"
 serde = { version = "1", features = ["derive"], default-features = false }
 serde-json-core = "0.4.0"
+cortex-m-rt = "0.7.0"
 
 [dependencies.sby-proto]
 path = "../sby-proto"
@@ -19,3 +20,4 @@ path = "../sby-proto"
 
 [dependencies.ambiq-hal]
 path = "../../../dev/ambiq-rs/ambiq-hal"
+features = ["ambiq-sdk", "sparkfun-redboard"]

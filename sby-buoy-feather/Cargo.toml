@@ -20,8 +20,10 @@ opt-level = "s"
 [dependencies]
 panic-halt = "0.2.0"
 embedded-hal = "0.2.3"
+ufmt = "0.1.0"
 
 [dependencies.arduino-hal]
-git = "https://github.com/gauteh/avr-hal"
-branch = "feather-basic"
+# git = "https://github.com/gauteh/avr-hal"
+# branch = "feather-basic"
+path = "/home/gauteh/dev/embedded/avr-hal/arduino-hal"
 features = ["feather-32u4"]

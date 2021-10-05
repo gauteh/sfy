@@ -3,3 +3,7 @@ command = "avrdude"
 args = ["-v", "-p", "m32u4", "-cavr109", "-P", "/dev/ttyACM0", "-D", "-Uflash:w:target/avr-atmega32u4/release/sby-buoy-feather.elf:e"]
 dependencies = ["build"]
 
+[tasks.tty]
+command = "picocom"
+args = ["-b", "115200", "/dev/ttyACM0"]
+
