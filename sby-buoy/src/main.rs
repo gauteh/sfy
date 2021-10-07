@@ -13,14 +13,17 @@ use ambiq_hal as hal;
 use hal::prelude::{*, halc::c_types::*};
 use cortex_m_rt::entry;
 
-mod note;
+// mod note;
 
 #[entry]
 fn main() -> ! {
-    let mut peripherals = hal::pac::Peripherals::take().unwrap();
+    let mut dp = hal::pac::Peripherals::take().unwrap();
     let core = hal::pac::CorePeripherals::take().unwrap();
 
-    let mut delay = hal::delay::Delay::new(core.SYST, &mut peripherals.CLKGEN);
+    let pins = hal::gpio::Pins::new(dp.GPIO);
+
+    let mut delay = hal::delay::Delay::new(core.SYST, &mut dp.CLKGEN);
+    let mut serial = hal::uart::Uart0::new(dp.UART0, pins.tx0, pins.rx0);
 
     // Set the clock frequency.
     unsafe {
@@ -38,40 +41,14 @@ fn main() -> ! {
     }
 
     // Set up BSP leds
-    let led = 0u32;
-
-    // uint32_t ux, ui32GPIONumber;
-    // for (ux = 0; ux < leds; ux++) {
-    //     ui32GPIONumber = am_bsp_psLEDs[ux].ui32GPIONumber;
-    //     am_hal_gpio_pinconfig(ui32GPIONumber, g_AM_HAL_GPIO_OUTPUT);
-    //     am_devices_led_off(am_bsp_psLEDs, ux);
-    // }
-
-    unsafe {
-        let gpion = halc::am_bsp_psLEDs[0].ui32GPIONumber;
-        halc::am_hal_gpio_pinconfig(gpion, halc::g_AM_HAL_GPIO_OUTPUT);
-        halc::am_devices_led_off(halc::am_bsp_psLEDs.as_mut_ptr(), led);
-    }
-    let mut led_state = false;
+    let mut led = pins.d13.into_push_pull_output();
 
     // Blink forever
     loop {
+        ufmt::uwriteln!(&mut serial, "hello world\r").unwrap();
+
         // Toggle LEDs
-        led_state = !led_state;
-        if led_state {
-            unsafe {
-                halc::am_devices_led_off(halc::am_bsp_psLEDs.as_mut_ptr(), led);
-            }
-        } else {
-            unsafe {
-                halc::am_devices_led_on(halc::am_bsp_psLEDs.as_mut_ptr(), led);
-            }
-        }
-        // uint32_t ux;
-        // for (ux = 0; ux < leds; ux++) {
-        //     ui32GPIONumber = am_bsp_psLEDs[ux].ui32GPIONumber;
-        //     (led_state) ? am_devices_led_on(am_bsp_psLEDs, ux) : am_devices_led_off(am_bsp_psLEDs, ux);
-        // }
+        led.toggle().unwrap();
 
         // Delay
         delay.delay_ms(300u32);
