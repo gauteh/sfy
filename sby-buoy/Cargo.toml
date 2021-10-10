@@ -12,6 +12,8 @@ serde = { version = "1", features = ["derive"], default-features = false }
 serde-json-core = "0.4.0"
 cortex-m-rt = "0.7.0"
 ufmt = "0.1.0"
+nb = "1.0.0"
+defmt = "0.2.3"
 
 [dependencies.sby-proto]
 path = "../sby-proto"
@@ -22,3 +24,13 @@ path = "../sby-proto"
 [dependencies.ambiq-hal]
 path = "../../../dev/ambiq-rs/ambiq-hal"
 features = ["ambiq-sdk", "sparkfun-redboard"]
+
+[features]
+defmt-default = []
+defmt-trace = []
+defmt-debug = []
+defmt-info = []
+defmt-warn = []
+defmt-error = []
+
+default = [ "defmt-trace" ]

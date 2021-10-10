@@ -1,4 +1,4 @@
-.DEFAULT_GOAL := flash
+.DEFAULT_GOAL := build
 
 build:
 	cargo build --release
