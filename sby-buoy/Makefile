@@ -11,3 +11,6 @@ flash: objcopy
 
 com:
 	picocom -e c -b 115200 /dev/ttyUSB0
+
+defmt:
+	tail -f /dev/ttyUSB0 | defmt-print -e target/thumbv7em-none-eabihf/release/sby-buoy
