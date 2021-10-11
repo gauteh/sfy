@@ -1,35 +1,71 @@
 //! Protocol for transmitting: https://dev.blues.io/notecard/notecard-guides/serial-over-i2c-protocol/
 //! API: https://dev.blues.io/reference/notecard-api/introduction/
 //!
-//! Each
-use crate::hal;
 
+#[allow(unused_imports)]
+use defmt::{error, warn, info, debug, trace};
+use embedded_hal::blocking::i2c::{Write, Read, SevenBitAddress};
+
+mod card;
+
+#[derive(defmt::Format)]
 pub enum NoteState {
-    PreHandshake,
-    Ready,
+    Handshake,
+    Request,
+    Poll,
+    Response,
 }
 
-pub struct Note {
-    i2c: hal::i2c::I2c,
+#[derive(defmt::Format)]
+pub enum NoteError {
+    I2cWriteError,
+    I2cReadError,
+}
+
+pub struct Note<IOM: Write<SevenBitAddress> + Read<SevenBitAddress>> {
+    i2c: IOM,
     addr: u8,
     state: NoteState,
 }
 
-impl Note {
-    pub fn new(i2c: hal::i2c::I2c) -> Note {
+impl<IOM: Write<SevenBitAddress> + Read<SevenBitAddress>> Note<IOM> {
+    pub fn new(i2c: IOM) -> Note<IOM> {
         Note {
             i2c,
             addr: 0x17,
-            state: NoteState::PreHandshake,
+            state: NoteState::Handshake,
         }
     }
 
-    pub fn reset(&mut self) {
+    /// Check if notecarrier is connected and responding.
+    pub fn ping(&mut self) -> bool {
+        self.i2c.write(self.addr, &[]).is_ok()
+    }
+
+    /// Query the notecard for available bytes.
+    fn data_query(&mut self) -> Result<usize, NoteError> {
+        self.i2c.write(self.addr, &[]).map_err(|_| NoteError::I2cWriteError)?;
+
+        Ok(0)
+    }
+
+    fn handshake(&mut self) -> Result<(), NoteError> {
+        unimplemented!()
+    }
+
+    // pub fn reset(&mut self) {
+    // }
+    //
+    // pub fn time(&mut self) -> Result<
+
+    /// [card Requests](https://dev.blues.io/reference/notecard-api/card-requests/#card-location)
+    pub fn card(&mut self) -> card::Card<IOM> {
+        card::Card::from(self)
     }
 }
 
-// use serde::Deserialize;
 
+// use serde::Deserialize;
 // #[derive(Deserialize)]
 // pub struct Status {
 //     status: heapless::String<10>,

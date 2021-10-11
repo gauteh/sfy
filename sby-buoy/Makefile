@@ -13,4 +13,5 @@ com:
 	picocom -e c -b 115200 /dev/ttyUSB0
 
 defmt:
+	cat /dev/ttyUSB0 > /dev/null
 	tail -f /dev/ttyUSB0 | defmt-print -e target/thumbv7em-none-eabihf/release/sby-buoy

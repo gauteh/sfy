@@ -319,10 +319,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fe65ef062f1af5b1b189842b0bc45bd671c38e1d22c6aa22e6ada03d01026d53"
 dependencies = [
  "atomic-polyfill",
+ "defmt",
  "hash32",
  "serde",
  "spin",
  "stable_deref_trait",
+ "ufmt-write",
 ]
 
 [[package]]
@@ -550,6 +552,7 @@ dependencies = [
  "ambiq-hal",
  "cortex-m-rt",
  "defmt",
+ "embedded-hal",
  "heapless",
  "nb 1.0.0",
  "panic-halt",
