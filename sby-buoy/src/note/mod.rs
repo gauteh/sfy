@@ -152,11 +152,11 @@ impl<'a, T, IOM: Write<SevenBitAddress> + Read<SevenBitAddress>> FutureResponse<
     // pub fn poll(&mut self) -> bool {
     // }
 
-    pub fn wait_raw(mut self) -> &'a [u8] {
+    pub fn wait_raw(self) -> &'a [u8] {
         self.note.buf.as_slice()
     }
 
-    pub fn wait(mut self) -> Result<T, NoteError> {
+    pub fn wait(self) -> Result<T, NoteError> {
         // TODO: deserialize
         unimplemented!()
     }
