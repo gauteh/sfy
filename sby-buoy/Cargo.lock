@@ -422,6 +422,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "notecard"
+version = "0.1.0"
+dependencies = [
+ "defmt",
+ "embedded-hal",
+ "heapless",
+ "serde",
+ "serde-json-core",
+]
+
+[[package]]
 name = "panic-halt"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -555,6 +566,7 @@ dependencies = [
  "embedded-hal",
  "heapless",
  "nb 1.0.0",
+ "notecard",
  "panic-halt",
  "sby-proto",
  "serde",

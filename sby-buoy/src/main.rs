@@ -11,42 +11,14 @@ use panic_halt as _; // you can put a breakpoint on `rust_begin_unwind` to catch
 use ambiq_hal as hal;
 use hal::prelude::*;
 use cortex_m_rt::entry;
-// use ufmt::uwriteln;
-use core::ptr;
+
+mod defmt_uart;
+use defmt_uart::{UartLogger, LOGGER};
+
 #[allow(unused_imports)]
 use defmt::{debug, error, info, trace, warn};
-use defmt::{global_logger, Write};
 
-mod note;
-
-pub struct UartLogger {
-    uart: hal::uart::Uart0,
-}
-
-#[global_logger]
-pub struct UartGlobalLogger;
-
-unsafe impl defmt::Logger for UartGlobalLogger {
-    fn acquire() -> Option<ptr::NonNull<dyn Write>> {
-        unsafe {
-            LOGGER
-                .as_mut()
-                .map(|l| ptr::NonNull::new_unchecked(l as &mut dyn defmt::Write))
-        }
-    }
-
-    unsafe fn release(_writer: ptr::NonNull<dyn Write>) {}
-}
-
-impl defmt::Write for UartLogger {
-    fn write(&mut self, bytes: &[u8]) {
-        for b in bytes {
-            nb::block!(self.uart.write(*b)).ok();
-        }
-    }
-}
-
-static mut LOGGER: Option<UartLogger> = None;
+use notecard::Note;
 
 #[entry]
 fn main() -> ! {
@@ -77,7 +49,7 @@ fn main() -> ! {
     }
 
     let i2c = hal::i2c::I2c::new(dp.IOM4, pins.d15, pins.d14);
-    let mut note = note::Note::new(i2c);
+    let mut note = Note::new(i2c);
 
     // Set up BSP leds
     let mut led = pins.d13.into_push_pull_output();
