@@ -9,8 +9,8 @@ use panic_halt as _; // you can put a breakpoint on `rust_begin_unwind` to catch
                      // use panic_semihosting as _; // logs messages to the host stderr; requires a debugger
 
 use ambiq_hal as hal;
-use hal::prelude::*;
 use cortex_m_rt::entry;
+use hal::prelude::*;
 
 mod defmt_uart;
 use defmt_uart::{UartLogger, LOGGER};
@@ -50,36 +50,58 @@ fn main() -> ! {
 
     let i2c = hal::i2c::I2c::new(dp.IOM4, pins.d15, pins.d14);
     let mut note = Note::new(i2c);
+    note.initialize().ok();
 
     // Set up BSP leds
     let mut led = pins.d13.into_push_pull_output();
     let mut i = 0;
 
-    // Blink forever
+    defmt::info!("Waiting to start..!");
+
+    delay.delay_ms(2000u32);
+
+    defmt::info!("hello world {}!", i);
+    // info!("hello world!");
+    // uwriteln!(&mut serial, "hello world: {}\r", i).unwrap();
+    i += 1;
+
+
+    // Delay
+    delay.delay_ms(300u32);
+
+    if note.ping() {
+        warn!("noteboard found!");
+        info!("checking for data");
+        let d = note.data_query();
+        info!("remaining data: {:?}", d);
+    } else {
+        error!("noteboard not found!");
+    }
+
+    // Write something to the noteboard
+    info!("note: card.time");
+    let mut ft = note.card().time().unwrap();
+
+    // i2c.write(noteaddr, r#"{"req": "card.time"}\n"#.as_bytes());
+    info!("done: looping.");
+
     loop {
-        defmt::info!("hello world {}!", i);
-        // info!("hello world!");
-        // uwriteln!(&mut serial, "hello world: {}\r", i).unwrap();
-        i += 1;
+        delay.delay_ms(300u32);
 
         // Toggle LEDs
         led.toggle().unwrap();
 
-        // Delay
-        delay.delay_ms(300u32);
+        info!("done: waiting for response:");
 
-        if note.ping() {
-            warn!("noteboard found!");
-        } else {
-            error!("noteboard not found!");
+        let r = ft.poll();
+        match &r {
+            Ok(r) => match r {
+                Some(r) => { info!("response ready: {:?}", r); },
+                None => { debug!("response not yet ready"); },
+            },
+            Err(e) => { error!("failed to get response: {:?}", e); }
         }
-
-        // Write something to the noteboard
-
-
-        // i2c.write(noteaddr, r#"{"req": "card.time"}\n"#.as_bytes());
-
-        delay.delay_ms(300u32);
+        // drop(r);
 
         // let mut buffer = [0u8; 10];
         // i2c.read(noteaddr, &mut buffer);
