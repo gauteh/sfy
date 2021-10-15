@@ -80,32 +80,29 @@ fn main() -> ! {
 
     // Write something to the noteboard
     info!("note: card.time");
-    let mut ft = note.card().time().unwrap();
+    let ft = note.card().time().unwrap();
+    info!("done: waiting for response:");
+    let r = ft.wait();
+    match &r {
+        Ok(r) =>  { info!("response ready: {:?}", r); },
+        Err(e) => { error!("failed to get response: {:?}", e); }
+    }
 
+
+    delay.delay_ms(1000u32);
+    info!("querying status..");
+    info!("status: {:?}", note.card().status().unwrap().wait());
     // i2c.write(noteaddr, r#"{"req": "card.time"}\n"#.as_bytes());
     info!("done: looping.");
 
     loop {
-        delay.delay_ms(300u32);
+        delay.delay_ms(2000u32);
 
         // Toggle LEDs
         led.toggle().unwrap();
 
-        info!("done: waiting for response:");
 
-        let r = ft.poll();
-        match &r {
-            Ok(r) => match r {
-                Some(r) => { info!("response ready: {:?}", r); },
-                None => { debug!("response not yet ready"); },
-            },
-            Err(e) => { error!("failed to get response: {:?}", e); }
-        }
-        // drop(r);
 
-        // let mut buffer = [0u8; 10];
-        // i2c.read(noteaddr, &mut buffer);
-        // ufmt::uwriteln!(&mut serial, "note: {}", unsafe { core::str::from_utf8_unchecked(&buffer) });
     }
 }
 
