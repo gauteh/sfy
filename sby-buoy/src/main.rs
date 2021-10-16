@@ -48,68 +48,43 @@ fn main() -> ! {
         LOGGER = Some(UartLogger { uart: serial });
     }
 
+    // Initialize notecard
     let i2c = hal::i2c::I2c::new(dp.IOM4, pins.d15, pins.d14);
     let mut note = Note::new(i2c);
     note.initialize().ok();
 
-    // Set up BSP leds
     let mut led = pins.d13.into_push_pull_output();
-    let mut i = 0;
 
     defmt::info!("Waiting to start..!");
-
     delay.delay_ms(2000u32);
 
-    defmt::info!("hello world {}!", i);
-    // info!("hello world!");
-    // uwriteln!(&mut serial, "hello world: {}\r", i).unwrap();
-    i += 1;
-
+    defmt::info!("hello world!");
 
     // Delay
     delay.delay_ms(300u32);
 
     if note.ping() {
-        warn!("noteboard found!");
-        info!("checking for data");
-        let d = note.data_query();
-        info!("remaining data: {:?}", d);
+        warn!("notecard found!");
     } else {
-        error!("noteboard not found!");
+        error!("notecard not found!");
     }
-
-    // Write something to the noteboard
-    info!("note: card.time");
-    let ft = note.card().time().unwrap();
-    info!("done: waiting for response:");
-    let r = ft.wait();
-    match &r {
-        Ok(r) =>  { info!("response ready: {:?}", r); },
-        Err(e) => { error!("failed to get response: {:?}", e); }
-    }
-
 
     delay.delay_ms(1000u32);
-    info!("querying status..");
-    info!("status: {:?}", note.card().status().unwrap().wait());
-    // i2c.write(noteaddr, r#"{"req": "card.time"}\n"#.as_bytes());
     info!("done: looping.");
 
     loop {
         delay.delay_ms(2000u32);
+        info!("note: card.time");
+        info!("note: time: {:?}", note.card().time().unwrap().wait());
+
+        info!("querying status..");
+        info!("status: {:?}", note.card().status().unwrap().wait());
 
         // Toggle LEDs
         led.toggle().unwrap();
-
-
-
     }
 }
 
 #[cfg(test)]
 mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2, 1 + 1)
-    }
 }
