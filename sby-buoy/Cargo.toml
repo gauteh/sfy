@@ -18,16 +18,14 @@ embedded-hal = "0.2.6"
 
 [dependencies.notecard]
 path = "../../../dev/embedded/notecard-rs"
+features = ["defmt-debug"]
 
 [dependencies.sby-proto]
 path = "../sby-proto"
 
-# [dependencies.ambiq-hal-sys]
-# path = "../../../dev/ambiq-rs/ambiq-hal-sys"
-
 [dependencies.ambiq-hal]
 path = "../../../dev/ambiq-rs/ambiq-hal"
-features = ["ambiq-sdk", "sparkfun-redboard"]
+features = ["ambiq-sdk", "sparkfun-redboard", "defmt-debug"]
 
 [features]
 defmt-default = []
