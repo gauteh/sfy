@@ -14,7 +14,7 @@ use defmt::{debug, error, info, trace, warn};
 use ambiq_hal as hal;
 use cortex_m_rt::entry;
 use hal::prelude::*;
-use notecard::Note;
+use notecard::Notecard;
 
 mod defmt_uart;
 use defmt_uart::{UartLogger, LOGGER};
@@ -54,7 +54,7 @@ fn main() -> ! {
 
     // Initialize notecard
     let i2c = hal::i2c::I2c::new(dp.IOM4, pins.d15, pins.d14);
-    let mut note = Note::new(i2c);
+    let mut note = Notecard::new(i2c);
     note.initialize().expect("could not initialize notecard.");
 
     defmt::info!("Waiting to start..!");
@@ -86,8 +86,15 @@ fn main() -> ! {
     warn!("note: logging startup");
     note.hub().log("cain starting up!", true, true).unwrap().wait().ok();
 
+    info!("set note in periodic tracker mode");
+    debug!("mode: {:?}", note.card().location_mode(Some("periodic"), Some(60), None, None, None, None, None, None).unwrap().wait());
+    debug!("track: {:?}", note.card().location_track(true, false, true, None, None).unwrap().wait());
+
+
     warn!("note: syncing");
     note.hub().sync().unwrap().wait().ok();
+
+    let mut i = 0;
 
     loop {
         delay.delay_ms(2000u32);
@@ -99,8 +106,18 @@ fn main() -> ! {
 
         info!("querying sync status..");
         info!("status: {:?}", note.hub().sync_status().unwrap().wait());
+
         // Toggle LEDs
         led.toggle().unwrap();
+
+        if i % 10 == 0 {
+            warn!("track: {:?}", note.card().location_track(true, false, true, None, None).unwrap().wait());
+            note.hub().sync().unwrap().wait().ok();
+        }
+
+        debug!("location mode: {:?}", note.card().location_mode(Some(""), None, None, None, None, None, None, None).unwrap().wait());
+
+        i += 1;
     }
 }
 

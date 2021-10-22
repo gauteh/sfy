@@ -18,7 +18,7 @@ embedded-hal = "0.2.6"
 
 [dependencies.notecard]
 path = "../../../dev/embedded/notecard-rs"
-features = ["defmt-debug"]
+features = ["defmt-trace"]
 
 [dependencies.sby-proto]
 path = "../sby-proto"
