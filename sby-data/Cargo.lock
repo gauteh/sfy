@@ -888,6 +888,7 @@ dependencies = [
  "rustbreak",
  "sby-proto",
  "serde",
+ "tempfile",
  "tokio",
  "toml",
 ]

@@ -1,8 +1,8 @@
 #[macro_use]
 extern crate log;
-use env_logger::Env;
-use axum::{handler::get, Router};
 use argh::FromArgs;
+use axum::{handler::get, Router};
+use env_logger::Env;
 use std::path::PathBuf;
 #[macro_use]
 extern crate eyre;
@@ -25,14 +25,11 @@ async fn main() -> eyre::Result<()> {
 
     info!("sby-data server");
     let sby: Sby = argh::from_env();
-    let config = sby.config.map_or_else(|| config::Config::default(), config::Config::from_path);
+    let config = sby
+        .config
+        .map_or_else(|| config::Config::default(), config::Config::from_path);
 
-    let database = database::Database::temporary()?;
-
-    // let database = match config.database {
-    //     Some(path) => rustbreak::PathDatabase::load_from_path_or_default(path).expect("could not open db"),
-    //     None => rustbreak::MemoryDatabase::memory(std::collections::HashMap::new()).unwrap()
-    // };
+    let database = database::Database::open(config.database.expect("no database path specificed"))?;
 
     // build our application with a single route
     let app = Router::new().route("/", get(|| async { "Hello, World!" }));
