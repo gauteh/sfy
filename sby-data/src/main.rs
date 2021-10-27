@@ -1,9 +1,12 @@
 #[macro_use]
 extern crate log;
+
 use argh::FromArgs;
-use axum::{handler::get, Router};
 use env_logger::Env;
 use std::path::PathBuf;
+use std::sync::Arc;
+use warp::Filter;
+
 #[macro_use]
 extern crate eyre;
 
@@ -11,12 +14,15 @@ extern crate eyre;
 /// The Shabby Data host.
 struct Sby {
     /// configuration file.
-    #[argh(option, short = 'c')]
-    config: Option<PathBuf>,
+    #[argh(option, short = 'c', default = "PathBuf::from(\"sby-hub.toml\")")]
+    config: PathBuf,
 }
 
+mod buoys;
 mod config;
 mod database;
+
+pub type State = Arc<tokio::sync::RwLock<database::Database>>;
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
@@ -25,20 +31,18 @@ async fn main() -> eyre::Result<()> {
 
     info!("sby-data server");
     let sby: Sby = argh::from_env();
-    let config = sby
-        .config
-        .map_or_else(|| config::Config::default(), config::Config::from_path);
+    let config = config::Config::from_path(sby.config);
 
-    let database = database::Database::open(config.database.expect("no database path specificed"))?;
+    let database = config.database.expect("no database path specified");
+    let database = database::Database::open(database)?;
+    let database = Arc::new(tokio::sync::RwLock::new(database));
 
     // build our application with a single route
-    let app = Router::new().route("/", get(|| async { "Hello, World!" }));
+    // let api = warp::path!("").map(|| "hello!");
+    let api = buoys::filters(database);
 
     info!("listening on: {:?}", config.address);
-    // run it with hyper on localhost:3000
-    axum::Server::bind(&config.address)
-        .serve(app.into_make_service())
-        .await?;
+    warp::serve(api).run(config.address).await;
 
     Ok(())
 }

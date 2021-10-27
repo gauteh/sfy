@@ -40,7 +40,7 @@ mod tests {
 
     #[test]
     fn load_default_conf() {
-        let c = fs::read_to_string("sby-hub.conf").unwrap();
+        let c = fs::read_to_string("sby-hub.toml").unwrap();
         let c: Config = toml::from_str(&c).unwrap();
         println!("{:#?}", c);
     }

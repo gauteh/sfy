@@ -56,7 +56,7 @@ impl<'a> Buoy<'a> {
         &self.path
     }
 
-    pub fn append(&mut self, file: impl AsRef<Path>, data: impl AsRef<[u8]>) -> eyre::Result<()> {
+    pub async fn append(&mut self, file: impl AsRef<Path>, data: impl AsRef<[u8]>) -> eyre::Result<()> {
         let data = data.as_ref();
         let file = file.as_ref();
 
@@ -66,7 +66,7 @@ impl<'a> Buoy<'a> {
 
         ensure!(!path.exists(), "file already exists!");
 
-        fs::write(path, data)?;
+        tokio::fs::write(path, data).await?;
 
         Ok(())
     }
@@ -89,13 +89,13 @@ mod tests {
         let _b = db.buoy("test-01");
     }
 
-    #[test]
-    fn add_some_entries() {
+    #[tokio::test]
+    async fn add_some_entries() {
         let (_tmp, mut db) = Database::temporary();
         let mut b = db.buoy("buoy-01").unwrap();
 
-        b.append("entry-0", "data-0").unwrap();
-        b.append("entry-1", "data-1").unwrap();
+        b.append("entry-0", "data-0").await.unwrap();
+        b.append("entry-1", "data-1").await.unwrap();
 
         assert_eq!(
             fs::read(b.path().join("entry-0")).unwrap().as_slice(),
@@ -103,12 +103,12 @@ mod tests {
         );
     }
 
-    #[test]
-    fn add_existing_entry() {
+    #[tokio::test]
+    async fn add_existing_entry() {
         let (_tmp, mut db) = Database::temporary();
         let mut b = db.buoy("buoy-01").unwrap();
 
-        b.append("entry-0", "data-0").unwrap();
-        assert!(b.append("entry-0", "data-1").is_err());
+        b.append("entry-0", "data-0").await.unwrap();
+        assert!(b.append("entry-0", "data-1").await.is_err());
     }
 }
