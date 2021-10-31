@@ -1,5 +1,5 @@
 [package]
-name = "sby-buoy"
+name = "sfy-buoy"
 version = "0.1.0"
 edition = "2021"
 
@@ -20,8 +20,8 @@ embedded-hal = "0.2.6"
 path = "../../../../dev/embedded/notecard-rs"
 features = ["defmt-trace"]
 
-[dependencies.sby-proto]
-path = "../sby-proto"
+[dependencies.sfy-proto]
+path = "../sfy-proto"
 
 [dependencies.ambiq-hal]
 path = "../../../../dev/ambiq-rs/ambiq-hal"
@@ -36,3 +36,6 @@ defmt-warn = []
 defmt-error = []
 
 default = [ "defmt-trace" ]
+
+[profile.release]
+debug = 2

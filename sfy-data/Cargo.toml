@@ -1,5 +1,5 @@
 [package]
-name = "sby-data"
+name = "sfy-data"
 version = "0.1.0"
 edition = "2018"
 
@@ -20,5 +20,5 @@ tempfile = "3.2.0"
 warp = "0.3.1"
 bytes = "1.1.0"
 
-[dependencies.sby-proto]
-path = "../sby-proto"
+[dependencies.sfy-proto]
+path = "../sfy-proto"

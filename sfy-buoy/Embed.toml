@@ -1,0 +1,3 @@
+[default.general]
+# log_level = "DEBUG"
+chip = "AMA3B2KK-KBR"

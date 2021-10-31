@@ -26,7 +26,7 @@ rustflags = [
   # use GCC as the linker by commenting out both lines above and then
   # uncommenting the three lines below
   # "-C", "linker=arm-none-eabi-gcc",
-  #"-C", "link-arg=-Wl,-T,memory.x",
+  # "-C", "link-arg=-Wl,-T,memory.x",
   # "-C", "link-arg=-Wl,-T,asb_svl_linker.ld",
   # "-C", "link-arg=-nostartfiles",
   # "-C", "link-arg=-Wl,--gc-sections,--entry,Reset_Handler,-Map,target/sby.map",

@@ -1,4 +1,4 @@
-# sby-buoy
+# sfy-buoy (small friendly buoy)
 
 ## Dev dependencies
 
