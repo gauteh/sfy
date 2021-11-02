@@ -13,8 +13,9 @@ serde-json-core = "0.4.0"
 cortex-m-rt = "0.7.0"
 ufmt = "0.1.0"
 nb = "1.0.0"
-defmt = "0.2.3"
 embedded-hal = "0.2.6"
+defmt = "*"
+defmt-rtt = "*"
 
 [dependencies.notecard]
 path = "../../../../dev/embedded/notecard-rs"
@@ -26,6 +27,10 @@ path = "../sfy-proto"
 [dependencies.ambiq-hal]
 path = "../../../../dev/ambiq-rs/ambiq-hal"
 features = ["ambiq-sdk", "sparkfun-redboard", "defmt-debug"]
+
+# [patch.crates-io]
+# defmt = { git = "https://github.com/knurling-rs/defmt", branch = "main" }
+# defmt-rtt = { git = "https://github.com/knurling-rs/defmt", branch = "main" }
 
 [features]
 defmt-default = []

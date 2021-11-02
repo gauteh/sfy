@@ -12,11 +12,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "aligned"
+version = "0.3.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3a785a543aea40f5e4e2e93bb2655d31bc21bb391fff65697150973e383f16bb"
+dependencies = [
+ "as-slice",
+]
+
+[[package]]
 name = "ambiq-apollo3-pac"
 version = "0.1.0"
 dependencies = [
  "bare-metal 0.2.5",
- "cortex-m",
+ "cortex-m 0.7.3",
  "cortex-m-rt",
  "vcell",
 ]
@@ -27,7 +36,7 @@ version = "0.1.0"
 dependencies = [
  "ambiq-apollo3-pac",
  "ambiq-hal-sys",
- "cortex-m",
+ "cortex-m 0.7.3",
  "defmt",
  "embedded-hal",
  "nb 1.0.0",
@@ -52,6 +61,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee49baf6cb617b853aa8d93bf420db2383fab46d314482ca2803b40d5fde979b"
 dependencies = [
  "winapi",
+]
+
+[[package]]
+name = "as-slice"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "45403b49e3954a4b8428a0ac21a4b7afadccf92bfd96273f1a58cd4812496ae0"
+dependencies = [
+ "generic-array 0.12.4",
+ "generic-array 0.13.3",
+ "generic-array 0.14.4",
+ "stable_deref_trait",
 ]
 
 [[package]]
@@ -198,6 +219,19 @@ dependencies = [
 
 [[package]]
 name = "cortex-m"
+version = "0.6.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9075300b07c6a56263b9b582c214d0ff037b00d45ec9fde1cc711490c56f1bb9"
+dependencies = [
+ "aligned",
+ "bare-metal 0.2.5",
+ "bitfield",
+ "cortex-m 0.7.3",
+ "volatile-register",
+]
+
+[[package]]
+name = "cortex-m"
 version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2ac919ef424449ec8c08d515590ce15d9262c0ca5f0da5b0c901e971a3b783b3"
@@ -236,7 +270,7 @@ checksum = "673b836c1c5a73bd981805236f46dfddbe1092a6a829b22464bd40d7ceefd2f9"
 dependencies = [
  "bare-metal 1.0.0",
  "cfg-if",
- "cortex-m",
+ "cortex-m 0.7.3",
  "riscv",
 ]
 
@@ -269,6 +303,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bc621c2b4f5f5635e34021c38af2ccb0c1dae38ba11ebee25258de8bb1cee9fe"
 
 [[package]]
+name = "defmt-rtt"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a5dfca43cd6b33d2d9f4db9757101ce1044e9672cd7f412dfcc5c5f772243c3b"
+dependencies = [
+ "cortex-m 0.6.7",
+ "defmt",
+]
+
+[[package]]
 name = "embedded-hal"
 version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -296,6 +340,34 @@ name = "funty"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fed34cd105917e91daa4da6b3728c47b068749d6a62c59811f06ed2ac71d9da7"
+
+[[package]]
+name = "generic-array"
+version = "0.12.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ffdf9f34f1447443d37393cc6c2b8313aebddcd96906caf34e54c68d8e57d7bd"
+dependencies = [
+ "typenum",
+]
+
+[[package]]
+name = "generic-array"
+version = "0.13.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f797e67af32588215eaaab8327027ee8e71b9dd0b2b26996aedf20c030fce309"
+dependencies = [
+ "typenum",
+]
+
+[[package]]
+name = "generic-array"
+version = "0.14.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "501466ecc8a30d1d3b7fc9229b122b2ce8ed6e9d9223f1138d4babb253e51817"
+dependencies = [
+ "typenum",
+ "version_check",
+]
 
 [[package]]
 name = "glob"
@@ -557,33 +629,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "71d301d4193d031abdd79ff7e3dd721168a9572ef3fe51a1517aba235bd8f86e"
 
 [[package]]
-name = "sby-buoy"
-version = "0.1.0"
-dependencies = [
- "ambiq-hal",
- "cortex-m-rt",
- "defmt",
- "embedded-hal",
- "heapless",
- "nb 1.0.0",
- "notecard",
- "panic-halt",
- "sby-proto",
- "serde",
- "serde-json-core",
- "ufmt",
-]
-
-[[package]]
-name = "sby-proto"
-version = "0.1.0"
-dependencies = [
- "heapless",
- "postcard",
- "serde",
-]
-
-[[package]]
 name = "scopeguard"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -639,6 +684,34 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "sfy-buoy"
+version = "0.1.0"
+dependencies = [
+ "ambiq-hal",
+ "cortex-m-rt",
+ "defmt",
+ "defmt-rtt",
+ "embedded-hal",
+ "heapless",
+ "nb 1.0.0",
+ "notecard",
+ "panic-halt",
+ "serde",
+ "serde-json-core",
+ "sfy-proto",
+ "ufmt",
+]
+
+[[package]]
+name = "sfy-proto"
+version = "0.1.0"
+dependencies = [
+ "heapless",
+ "postcard",
+ "serde",
 ]
 
 [[package]]

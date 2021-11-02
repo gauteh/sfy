@@ -16,8 +16,9 @@ use cortex_m_rt::entry;
 use hal::prelude::*;
 use notecard::Notecard;
 
-mod defmt_uart;
-use defmt_uart::{UartLogger, LOGGER};
+// mod defmt_uart;
+// use defmt_uart::{UartLogger, LOGGER};
+use defmt_rtt as _;
 
 mod note;
 
@@ -45,12 +46,19 @@ fn main() -> ! {
     let pins = hal::gpio::Pins::new(dp.GPIO);
     let mut led = pins.d13.into_push_pull_output();
 
+    for _ in 0..1000 {
+        defmt::info!("test loop!");
+        // defmt::println!("some println!");
+        delay.delay_ms(500u32);
+        led.toggle().unwrap();
+    }
+
     let serial = hal::uart::Uart0::new(dp.UART0, pins.tx0, pins.rx0);
 
-    // Set up defmt over serial
-    unsafe {
-        LOGGER = Some(UartLogger { uart: serial });
-    }
+    // // Set up defmt over serial
+    // unsafe {
+    //     LOGGER = Some(UartLogger { uart: serial });
+    // }
 
     // Initialize notecard
     let i2c = hal::i2c::I2c::new(dp.IOM4, pins.d15, pins.d14);
