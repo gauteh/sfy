@@ -26,6 +26,10 @@ path = "../sfy-proto"
 
 [dependencies.ambiq-hal]
 path = "../../../../dev/ambiq-rs/ambiq-hal"
+features = ["sparkfun-redboard", "defmt-debug"]
+
+[target.thumbv7em-none-eabihf.dependencies.ambiq-hal]
+path = "../../../../dev/ambiq-rs/ambiq-hal"
 features = ["ambiq-sdk", "sparkfun-redboard", "defmt-debug"]
 
 # [patch.crates-io]

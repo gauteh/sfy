@@ -12,6 +12,7 @@ use panic_halt as _; // you can put a breakpoint on `rust_begin_unwind` to catch
 use defmt::{debug, error, info, trace, warn};
 
 use ambiq_hal as hal;
+
 use cortex_m_rt::entry;
 use hal::prelude::*;
 use notecard::Notecard;
@@ -22,6 +23,7 @@ use defmt_rtt as _;
 
 mod note;
 
+#[cfg(not(test))]
 #[entry]
 fn main() -> ! {
     unsafe {
@@ -130,4 +132,9 @@ fn main() -> ! {
 }
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    #[test]
+    fn it_works () {
+        assert!(true);
+    }
+}
