@@ -21,4 +21,5 @@ monitor reset
 # b main
 
 # Begin running the program
-# continue
+continue
+

@@ -4,7 +4,8 @@ weak-dep-features = true
 [target.thumbv7em-none-eabihf]
 # uncomment this to make `cargo run` execute programs on QEMU
 # runner = "qemu-system-arm -cpu cortex-m3 -machine lm3s6965evb -nographic -semihosting-config enable=on,target=native -kernel"
-runner = "gdb-multiarch -x flash.gdb"
+# runner = "gdb-multiarch -x flash.gdb"
+runner = "bash flash-test.sh"
 
 [target.'cfg(all(target_arch = "arm", target_os = "none"))']
 # uncomment ONE of these three option to make `cargo run` start a GDB session

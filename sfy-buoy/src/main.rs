@@ -21,9 +21,9 @@ use notecard::Notecard;
 // use defmt_uart::{UartLogger, LOGGER};
 use defmt_rtt as _;
 
-mod note;
+use sfy_buoy::note;
 
-#[cfg(not(test))]
+// #[cfg(not(test))]
 #[entry]
 fn main() -> ! {
     unsafe {
@@ -46,14 +46,8 @@ fn main() -> ! {
     let mut delay = hal::delay::Delay::new(core.SYST, &mut dp.CLKGEN);
 
     let pins = hal::gpio::Pins::new(dp.GPIO);
-    let mut led = pins.d13.into_push_pull_output();
+    let mut led = pins.d19.into_push_pull_output(); // d14 on redboard_artemis
 
-    for _ in 0..1000 {
-        defmt::info!("test loop!");
-        // defmt::println!("some println!");
-        delay.delay_ms(500u32);
-        led.toggle().unwrap();
-    }
 
     let serial = hal::uart::Uart0::new(dp.UART0, pins.tx0, pins.rx0);
 
@@ -61,6 +55,14 @@ fn main() -> ! {
     // unsafe {
     //     LOGGER = Some(UartLogger { uart: serial });
     // }
+    defmt::println!("hello");
+
+    for _ in 0..1000 {
+        defmt::info!("test loop!");
+        defmt::println!("some println!");
+        delay.delay_ms(500u32);
+        led.toggle().unwrap();
+    }
 
     // Initialize notecard
     let i2c = hal::i2c::I2c::new(dp.IOM4, pins.d15, pins.d14);
@@ -131,10 +133,3 @@ fn main() -> ! {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works () {
-        assert!(true);
-    }
-}
