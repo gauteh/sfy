@@ -1,0 +1,1 @@
+../defmt-rtt-gdb.py

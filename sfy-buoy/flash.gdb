@@ -20,6 +20,12 @@ monitor reset
 # monitor reset halt
 # b main
 
+# b rust_begin_unwind
+b HardFault
+
+source defmt-rtt-gdb.py
+defmt-rtt
+
 # Begin running the program
 continue
 

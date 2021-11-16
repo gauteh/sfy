@@ -9,13 +9,14 @@ use ambiq_hal as _;
 // feature)
 #[defmt_test::tests]
 mod tests {
-    use defmt::{assert, assert_eq};
+    use defmt::{info, assert, assert_eq};
 
     #[test]
     fn assert_true() {
         assert!(true)
     }
 
+    #[ignore]
     #[test]
     fn assert_eq() {
         assert_eq!(24, 42, "TODO: write actual tests")
@@ -23,6 +24,7 @@ mod tests {
 
     #[test]
     fn fail() {
+        info!("some info");
         assert!(false);
     }
 }
