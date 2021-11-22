@@ -6,7 +6,7 @@ weak-dep-features = true
 # runner = "qemu-system-arm -cpu cortex-m3 -machine lm3s6965evb -nographic -semihosting-config enable=on,target=native -kernel"
 # runner = "gdb-multiarch -x flash.gdb"
 # runner = "bash flash-test.sh"
-runner = "/home/gauteh/dev/ambiq-rs/tools/jlink-probe-run.sh"
+runner = "probe-run --chip AMA3B1KK"
 
 [target.'cfg(all(target_arch = "arm", target_os = "none"))']
 # uncomment ONE of these three option to make `cargo run` start a GDB session
