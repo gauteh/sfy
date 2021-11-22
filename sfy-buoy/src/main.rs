@@ -16,6 +16,7 @@ use ambiq_hal as hal;
 use cortex_m_rt::entry;
 use hal::prelude::*;
 use notecard::Notecard;
+use cortex_m;
 
 // mod defmt_uart;
 // use defmt_uart::{UartLogger, LOGGER};
@@ -56,6 +57,13 @@ fn main() -> ! {
     //     LOGGER = Some(UartLogger { uart: serial });
     // }
     defmt::println!("hello");
+
+    // cortex_m::asm::bkpt();
+    // panic!("asdf");
+    for _ in 0..50 {
+        delay.delay_ms(100u32);
+        led.toggle().unwrap();
+    }
 
     for _ in 0..1000 {
         defmt::info!("test loop!");
