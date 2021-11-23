@@ -1098,35 +1098,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ef703b7cb59335eae2eb93ceb664c0eb7ea6bf567079d843e09420219668e072"
 
 [[package]]
-name = "sby-data"
-version = "0.1.0"
-dependencies = [
- "argh",
- "bytes",
- "color-eyre",
- "csv",
- "env_logger",
- "eyre",
- "log",
- "rustbreak",
- "sby-proto",
- "serde",
- "tempfile",
- "tokio",
- "toml",
- "warp",
-]
-
-[[package]]
-name = "sby-proto"
-version = "0.1.0"
-dependencies = [
- "heapless",
- "postcard",
- "serde",
-]
-
-[[package]]
 name = "scoped-tls"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1193,6 +1164,35 @@ dependencies = [
  "form_urlencoded",
  "itoa",
  "ryu",
+ "serde",
+]
+
+[[package]]
+name = "sfy-data"
+version = "0.1.0"
+dependencies = [
+ "argh",
+ "bytes",
+ "color-eyre",
+ "csv",
+ "env_logger",
+ "eyre",
+ "log",
+ "rustbreak",
+ "serde",
+ "sfy-proto",
+ "tempfile",
+ "tokio",
+ "toml",
+ "warp",
+]
+
+[[package]]
+name = "sfy-proto"
+version = "0.1.0"
+dependencies = [
+ "heapless",
+ "postcard",
  "serde",
 ]
 

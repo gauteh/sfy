@@ -1,15 +1,16 @@
 [package]
 authors = ["Gaute Hope <eg@gaute.vetsj.com>"]
-name = "testsuite"
+name = "test-target"
 publish = false
 edition = "2021"
 version = "0.1.0"
 
-[lib]
+[[test]]
+name = "test"
 harness = false
 
 [[test]]
-name = "test"
+name = "gps_cellular"
 harness = false
 
 [dependencies]
