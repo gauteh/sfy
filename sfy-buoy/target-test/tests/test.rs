@@ -7,6 +7,7 @@ use ambiq_hal as _;
 
 #[defmt_test::tests]
 mod tests {
+    #[allow(unused)]
     use defmt::{info, assert, assert_eq};
 
     #[test]
