@@ -35,27 +35,4 @@ mod tests {
             "notecarrier / notecard _not_ attached and responding!"
         );
     }
-
-    #[test]
-    fn get_gps_position(note: &mut Notecarrier) {
-        let location = note.card().location().unwrap().wait().unwrap();
-        defmt::println!("location: {:?}", location);
-    }
-
-    #[test]
-    fn get_continuous_gps_position(note: &mut Notecarrier) {
-        let mode = note.card()
-            .location_mode(Some("continuous"), None, None, None, None, None, None, None)
-            .unwrap()
-            .wait()
-            .unwrap();
-
-        defmt::info!("mode: {:?}", mode);
-        assert_eq!(mode.mode, "continuous");
-
-        let location = note.card().location().unwrap().wait().unwrap();
-
-        // we might not have a positon, but the gps should be active.
-        assert!(location.status.contains("{gps-active} {gps-signal}"));
-    }
 }

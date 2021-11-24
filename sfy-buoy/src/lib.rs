@@ -7,10 +7,3 @@ use ambiq_hal as hal;
 
 pub mod note;
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works () {
-        assert!(true);
-    }
-}

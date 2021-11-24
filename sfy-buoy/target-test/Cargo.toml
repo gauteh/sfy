@@ -10,7 +10,11 @@ name = "test"
 harness = false
 
 [[test]]
-name = "gps_cellular"
+name = "gps"
+harness = false
+
+[[test]]
+name = "cellular"
 harness = false
 
 [dependencies]
