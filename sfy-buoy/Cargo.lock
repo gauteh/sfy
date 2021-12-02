@@ -866,7 +866,6 @@ dependencies = [
  "defmt",
  "defmt-rtt",
  "defmt-test",
- "panic-halt",
  "panic-probe",
  "sfy-buoy",
 ]
