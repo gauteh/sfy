@@ -2,7 +2,7 @@
 #![cfg_attr(not(test), no_main)]
 
 #[cfg(not(test))]
-use panic_probe as _;
+use panic_probe as _; // TODO: Restart board on panic.
 
 #[allow(unused_imports)]
 use defmt::{debug, error, info, trace, warn};

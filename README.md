@@ -1,8 +1,7 @@
-# The shabby drifter
+# The small friendly buoy
 
-> (SH Acronym meaning not yet determined But it is Bropably Yet)
-
-## Development & building
-
-$ git submodule update --init --recursive --depth 1
+* [sfy-buoy](sfy-buoy/) - the firmware for the buoy.
+* [sfy-data](sfy-data/) - the server scraping or receiving data from deployed
+    buoys.
+* [sfy-proto](sfy-proto/) - the shared protocol between buoy and server.
 
