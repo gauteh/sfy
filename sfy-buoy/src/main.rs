@@ -5,7 +5,7 @@
 use panic_probe as _; // TODO: Restart board on panic.
 
 #[allow(unused_imports)]
-use defmt::{debug, error, info, trace, warn};
+use defmt::{println, debug, error, info, trace, warn};
 
 use cortex_m_rt::entry;
 use defmt_rtt as _;
@@ -14,7 +14,7 @@ use ambiq_hal::{self as hal, prelude::*};
 use sfy::note::Notecarrier;
 use sfy::waves::Waves;
 
-#[entry]
+#[cfg_attr(not(test), entry)]
 fn main() -> ! {
     unsafe {
         // Set the clock frequency.
@@ -43,7 +43,7 @@ fn main() -> ! {
     let i2c = hal::i2c::I2c::new(dp.IOM2, pins.d17, pins.d18);
     let bus = shared_bus::BusManagerSimple::new(i2c);
 
-    defmt::println!("hello from sfy!");
+    println!("hello from sfy!");
 
     info!("Setting up Notecarrier..");
     let mut note = Notecarrier::new(bus.acquire_i2c());
@@ -56,6 +56,7 @@ fn main() -> ! {
     loop {
         delay.delay_ms(2000u32);
         led.toggle().unwrap();
+        info!("Iteration")
     }
 }
 

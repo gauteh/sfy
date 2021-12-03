@@ -32,9 +32,11 @@ path = "../sfy-proto"
 path = "../../../../dev/ambiq-rs/ambiq-hal"
 features = ["ambiq-sdk", "sparkfun-redboard-nano", "rt"]
 
-# [patch.crates-io]
-# defmt = { git = "https://github.com/knurling-rs/defmt", branch = "main" }
-# defmt-rtt = { git = "https://github.com/knurling-rs/defmt", branch = "main" }
+[dependencies.ahrs-fusion]
+git = "https://github.com/gauteh/ahrs-fusion"
+
+[dev-dependencies]
+embedded-hal-mock = "*"
 
 [features]
 
