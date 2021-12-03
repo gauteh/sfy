@@ -1,13 +1,13 @@
 use core::ops::{Deref, DerefMut};
+use embedded_hal::blocking::i2c::{Read, Write};
 use notecard::Notecard;
-use crate::*;
 
-pub struct Notecarrier {
-    note: Notecard<hal::i2c::Iom2>,
+pub struct Notecarrier<I2C: Read + Write> {
+    note: Notecard<I2C>,
 }
 
-impl Notecarrier {
-    pub fn new(i2c: hal::i2c::Iom2) -> Notecarrier {
+impl<I2C: Read + Write> Notecarrier<I2C> {
+    pub fn new(i2c: I2C) -> Notecarrier<I2C> {
         let mut note = Notecard::new(i2c);
         note.initialize().expect("could not initialize notecard.");
 
@@ -17,21 +17,24 @@ impl Notecarrier {
             .wait()
             .ok();
 
+        note.card().location_mode(Some("periodic"), Some(60), None, None, None, None, None, None).unwrap().wait().ok();
+        note.card().location_track(true, false, true, None, None).unwrap().wait().ok();
+
         Notecarrier {
             note
         }
     }
 }
 
-impl Deref for Notecarrier {
-    type Target = Notecard<hal::i2c::Iom2>;
+impl<I2C: Read + Write> Deref for Notecarrier<I2C> {
+    type Target = Notecard<I2C>;
 
     fn deref(&self) -> &Self::Target {
         &self.note
     }
 }
 
-impl DerefMut for Notecarrier {
+impl<I2C: Read + Write> DerefMut for Notecarrier<I2C> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.note
     }

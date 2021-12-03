@@ -7,12 +7,12 @@ use panic_probe as _; // TODO: Restart board on panic.
 #[allow(unused_imports)]
 use defmt::{debug, error, info, trace, warn};
 
-use cortex_m;
 use cortex_m_rt::entry;
 use defmt_rtt as _;
 use ambiq_hal::{self as hal, prelude::*};
 
 use sfy::note::Notecarrier;
+use sfy::waves::Waves;
 
 #[entry]
 fn main() -> ! {
@@ -40,74 +40,22 @@ fn main() -> ! {
 
     let serial = hal::uart::Uart0::new(dp.UART0, pins.tx0, pins.rx0);
 
-    defmt::println!("hello sfy!");
-
-    // Initialize notecard
     let i2c = hal::i2c::I2c::new(dp.IOM2, pins.d17, pins.d18);
-    let mut note = Notecard::new(i2c);
-    note.initialize().expect("could not initialize notecard.");
+    let bus = shared_bus::BusManagerSimple::new(i2c);
 
-    defmt::info!("Waiting to start..!");
-    delay.delay_ms(2000u32);
+    defmt::println!("hello from sfy!");
 
-    defmt::info!("hello world!");
+    info!("Setting up Notecarrier..");
+    let mut note = Notecarrier::new(bus.acquire_i2c());
 
-    // Delay
-    delay.delay_ms(300u32);
+    info!("Setting up IMU..");
+    let mut waves = Waves::new(bus.acquire_i2c());
 
-    if note.ping() {
-        warn!("notecard found!");
-    } else {
-        error!("notecard not found!");
-    }
-
-    info!("note: card.time");
-    info!("note: time: {:?}", note.card().time().unwrap().wait());
-
-    note.hub()
-        .set(Some("com.vetsj.gaute.eg:sby"), None, None, Some("cain"))
-        .unwrap()
-        .wait()
-        .ok();
-
-    delay.delay_ms(1000u32);
-    info!("done: looping.");
-
-    warn!("note: logging startup");
-    note.hub().log("cain starting up!", true, true).unwrap().wait().ok();
-
-    info!("set note in periodic tracker mode");
-    debug!("mode: {:?}", note.card().location_mode(Some("periodic"), Some(60), None, None, None, None, None, None).unwrap().wait());
-    debug!("track: {:?}", note.card().location_track(true, false, true, None, None).unwrap().wait());
-
-
-    warn!("note: syncing");
-    note.hub().sync().unwrap().wait().ok();
-
-    let mut i = 0;
+    info!("Entering main loop");
 
     loop {
         delay.delay_ms(2000u32);
-        info!("note: card.time");
-        info!("note: time: {:?}", note.card().time().unwrap().wait());
-
-        info!("querying status..");
-        info!("status: {:?}", note.card().status().unwrap().wait());
-
-        info!("querying sync status..");
-        info!("status: {:?}", note.hub().sync_status().unwrap().wait());
-
-        // Toggle LEDs
         led.toggle().unwrap();
-
-        if i % 10 == 0 {
-            warn!("track: {:?}", note.card().location_track(true, false, true, None, None).unwrap().wait());
-            note.hub().sync().unwrap().wait().ok();
-        }
-
-        debug!("location mode: {:?}", note.card().location_mode(Some(""), None, None, None, None, None, None, None).unwrap().wait());
-
-        i += 1;
     }
 }
 

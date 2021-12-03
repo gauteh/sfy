@@ -3,8 +3,6 @@
 #[allow(unused_imports)]
 use defmt::{debug, error, info, trace, warn};
 
-use ambiq_hal as hal;
-
 pub mod note;
 pub mod waves;
 

@@ -14,7 +14,7 @@ mod tests {
     use hal::prelude::*;
 
     struct State {
-        note: Notecarrier,
+        note: Notecarrier<hal::i2c::Iom2>,
         delay: hal::delay::Delay,
     }
 
@@ -69,9 +69,5 @@ mod tests {
         }
 
         panic!("sync didn't complete within timeout");
-    }
-
-    #[test]
-    fn notecard_sleep(s: &mut State) {
     }
 }
