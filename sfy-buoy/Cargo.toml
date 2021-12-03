@@ -1,8 +1,8 @@
 [package]
-name = "sfy-buoy"
+name = "sfy"
 version = "0.1.0"
 edition = "2021"
-default-run = "sfy-buoy"
+default-run = "sfy"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [workspace]
@@ -10,7 +10,6 @@ members = [ "target-test" ]
 
 [dependencies]
 heapless = { version = "0.7", features = [ "serde", "ufmt-impl", "defmt-impl" ] }
-panic-halt = "0.2.0"
 serde = { version = "1", features = ["derive"], default-features = false }
 serde-json-core = "0.4.0"
 cortex-m = "*"
@@ -30,11 +29,7 @@ path = "../sfy-proto"
 
 [dependencies.ambiq-hal]
 path = "../../../../dev/ambiq-rs/ambiq-hal"
-features = ["sparkfun-redboard-nano", "rt"]
-
-[target.thumbv7em-none-eabihf.dependencies.ambiq-hal]
-path = "../../../../dev/ambiq-rs/ambiq-hal"
-features = ["ambiq-sdk", "sparkfun-redboard-nano"]
+features = ["ambiq-sdk", "sparkfun-redboard-nano", "rt"]
 
 # [patch.crates-io]
 # defmt = { git = "https://github.com/knurling-rs/defmt", branch = "main" }

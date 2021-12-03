@@ -1,31 +1,19 @@
 #![cfg_attr(not(test), no_std)]
 #![cfg_attr(not(test), no_main)]
 
-// pick a panicking behavior
 #[cfg(not(test))]
 use panic_probe as _;
-// use panic_halt as _; // you can put a breakpoint on `rust_begin_unwind` to catch panics
-                     // use panic_abort as _; // requires nightly
-                     // use panic_itm as _; // logs messages over ITM; requires ITM support
-                     // use panic_semihosting as _; // logs messages to the host stderr; requires a debugger
 
 #[allow(unused_imports)]
 use defmt::{debug, error, info, trace, warn};
 
-use ambiq_hal as hal;
-
-use cortex_m_rt::entry;
-use hal::prelude::*;
-use notecard::Notecard;
 use cortex_m;
-
-// mod defmt_uart;
-// use defmt_uart::{UartLogger, LOGGER};
+use cortex_m_rt::entry;
 use defmt_rtt as _;
+use ambiq_hal::{self as hal, prelude::*};
 
-use sfy_buoy::note;
+use sfy::note::Notecarrier;
 
-// #[cfg(not(test))]
 #[entry]
 fn main() -> ! {
     unsafe {
@@ -50,31 +38,12 @@ fn main() -> ! {
     let pins = hal::gpio::Pins::new(dp.GPIO);
     let mut led = pins.d19.into_push_pull_output(); // d14 on redboard_artemis
 
-
     let serial = hal::uart::Uart0::new(dp.UART0, pins.tx0, pins.rx0);
 
-    // // Set up defmt over serial
-    // unsafe {
-    //     LOGGER = Some(UartLogger { uart: serial });
-    // }
-    defmt::println!("hello");
-
-    // cortex_m::asm::bkpt();
-    // panic!("asdf");
-    for _ in 0..50 {
-        delay.delay_ms(100u32);
-        led.toggle().unwrap();
-    }
-
-    for _ in 0..1000 {
-        defmt::info!("test loop!");
-        defmt::println!("some println!");
-        delay.delay_ms(500u32);
-        led.toggle().unwrap();
-    }
+    defmt::println!("hello sfy!");
 
     // Initialize notecard
-    let i2c = hal::i2c::I2c::new(dp.IOM4, pins.d15, pins.d14);
+    let i2c = hal::i2c::I2c::new(dp.IOM2, pins.d17, pins.d18);
     let mut note = Notecard::new(i2c);
     note.initialize().expect("could not initialize notecard.");
 

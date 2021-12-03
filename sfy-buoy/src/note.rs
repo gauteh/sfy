@@ -11,6 +11,12 @@ impl Notecarrier {
         let mut note = Notecard::new(i2c);
         note.initialize().expect("could not initialize notecard.");
 
+        note.hub()
+            .set(Some("com.vetsj.gaute.eg:sby"), None, None, Some("cain"))
+            .unwrap()
+            .wait()
+            .ok();
+
         Notecarrier {
             note
         }
