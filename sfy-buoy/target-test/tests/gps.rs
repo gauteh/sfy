@@ -46,6 +46,7 @@ mod tests {
         );
     }
 
+    #[cfg(never)]
     #[test]
     fn get_gps_position(s: &mut State) {
         let location = s.note.card().location().unwrap().wait().unwrap();

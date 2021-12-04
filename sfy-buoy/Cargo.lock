@@ -14,7 +14,7 @@ dependencies = [
 [[package]]
 name = "ahrs-fusion"
 version = "0.1.0"
-source = "git+https://github.com/gauteh/ahrs-fusion#7ff8cc9099b377f851b6efdde6174edc12fc11fd"
+source = "git+https://github.com/gauteh/ahrs-fusion#c328c1e12960eb66ad577f5f76c16f82436ec595"
 dependencies = [
  "bindgen",
  "cc",

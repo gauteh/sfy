@@ -9,6 +9,7 @@ pub type IMU = ();
 
 pub struct Waves {
     _imu: IMU,
+    #[allow(unused)]
     filter: NxpFusion,
 }
 

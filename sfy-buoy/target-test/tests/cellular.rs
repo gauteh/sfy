@@ -48,6 +48,11 @@ mod tests {
 
     #[test]
     fn log_and_sync(s: &mut State) {
+        let status = s.note.hub().sync_status().unwrap().wait().unwrap();
+        if status.requested.is_some() {
+            defmt::panic!("sync already in progress: {:?}", status);
+        }
+
         defmt::debug!("sending test log message to notehub..");
         s.note.hub().log("cain test starting up!", true, true).unwrap().wait().unwrap();
 
