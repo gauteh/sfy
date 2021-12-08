@@ -878,7 +878,10 @@ dependencies = [
  "defmt",
  "defmt-rtt",
  "defmt-test",
+ "heapless",
  "panic-probe",
+ "serde",
+ "serde-json-core",
  "sfy",
 ]
 

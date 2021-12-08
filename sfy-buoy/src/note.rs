@@ -1,6 +1,7 @@
 use core::ops::{Deref, DerefMut};
 use embedded_hal::blocking::i2c::{Read, Write};
-use notecard::Notecard;
+use embedded_hal::blocking::delay::DelayMs;
+use notecard::{Notecard, NoteError};
 
 pub struct Notecarrier<I2C: Read + Write> {
     note: Notecard<I2C>,
@@ -12,7 +13,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         note.initialize().expect("could not initialize notecard.");
 
         note.hub()
-            .set(Some("com.vetsj.gaute.eg:sby"), None, None, Some("cain"))
+            .set(Some("no.met.gauteh:sfy"), None, None, Some("cain"))
             .unwrap()
             .wait()
             .ok();
@@ -23,6 +24,27 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         Notecarrier {
             note
         }
+    }
+
+    pub fn sync_and_wait(&mut self, delay: &mut impl DelayMs<u32>, timeout_ms: u32) -> Result<bool, NoteError> {
+        defmt::info!("sync..");
+        self.note.hub().sync()?.wait()?;
+
+        for _ in 0..(timeout_ms / 1000) {
+            delay.delay_ms(1000u32);
+            defmt::debug!("querying sync status..");
+            let status = self.note.hub().sync_status()?.wait();
+            defmt::debug!("status: {:?}", status);
+
+            if let Ok(status) = status {
+                if status.completed.is_some() {
+                    defmt::info!("successful sync.");
+                    return Ok(true);
+                }
+            }
+        }
+
+        Ok(false)
     }
 }
 

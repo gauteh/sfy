@@ -46,9 +46,8 @@ mod tests {
         );
     }
 
-    #[cfg(never)]
     #[test]
-    fn get_gps_position(s: &mut State) {
+    fn gps_position(s: &mut State) {
         let location = s.note.card().location().unwrap().wait().unwrap();
         defmt::info!("location: {:?}", location);
 
@@ -56,7 +55,7 @@ mod tests {
     }
 
     #[test]
-    fn get_periodic_gps_position(s: &mut State) {
+    fn periodic_gps_position(s: &mut State) {
         let mode = s.note.card()
             .location_mode(Some("periodic"), Some(10), None, None, None, None, None, None)
             .unwrap()
