@@ -22,7 +22,12 @@ mod buoys;
 mod config;
 mod database;
 
-pub type State = Arc<tokio::sync::RwLock<database::Database>>;
+pub struct SfyState {
+    pub db: tokio::sync::RwLock<database::Database>,
+    pub config: config::Config,
+}
+
+pub type State = Arc<SfyState>;
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
@@ -36,11 +41,25 @@ async fn main() -> eyre::Result<()> {
     let sfy: Sfy = argh::from_env();
     let config = config::Config::from_path(sfy.config);
 
-    let database = config.database.expect("no database path specified");
+    let database = config.database.clone().expect("no database path specified");
     let database = database::Database::open(database)?;
-    let database = Arc::new(tokio::sync::RwLock::new(database));
+    let database = tokio::sync::RwLock::new(database);
 
-    let api = buoys::filters(database).with(warp::log("sfy_data::api"));
+    let state = Arc::new(SfyState {
+        db: database,
+        config: config.clone(),
+    });
+
+    let dump = warp::method()
+        .and(warp::body::bytes())
+        .map(|m, bytes: bytes::Bytes| {
+            debug!("got request {}: {:?}", m, bytes);
+            warp::reply()
+        })
+        .map(|reply| warp::reply::with_status(reply, warp::http::StatusCode::NOT_FOUND));
+
+    let api = buoys::filters(state).with(warp::log("sfy_data::api"));
+    let api = dump.or(api);
 
     info!("listening on: {:?}", config.address);
     warp::serve(api).run(config.address).await;

@@ -4,17 +4,17 @@ use std::net::SocketAddr;
 use std::path::Path;
 use std::path::PathBuf;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Config {
     pub address: SocketAddr,
     pub database: Option<PathBuf>,
-    pub buoys: Vec<Buoys>,
+    pub buoys: Vec<Buoy>,
+    pub tokens: Vec<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Buoys {
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Buoy {
     pub id: String,
-    pub token: String,
 }
 
 impl Config {
@@ -23,6 +23,7 @@ impl Config {
             address: "0.0.0.0:3000".parse().unwrap(),
             database: None,
             buoys: Vec::new(),
+            tokens: Vec::new(),
         }
     }
 

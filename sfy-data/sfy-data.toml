@@ -1,6 +1,8 @@
 address = "0.0.0.0:3000"
 database = "data/"
+tokens = [
+  "thicaige6oagh3izohvie5Piech9cu5eiweuk5eumoh4aeshooXaghefeme2aizohnohtoowaequ1Ieghuoc8aboj8owuiPai8johthaif8chie1tahgh9in"
+]
 
 [[buoys]]
-id = "2021-10-25-0000-cain"
-token = "abcdefgh"
+id = "cain"
