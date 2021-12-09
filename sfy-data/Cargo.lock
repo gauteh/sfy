@@ -1111,6 +1111,7 @@ dependencies = [
  "log",
  "rustbreak",
  "serde",
+ "serde_json",
  "sfy-proto",
  "tempfile",
  "tokio",
