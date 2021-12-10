@@ -50,16 +50,7 @@ async fn main() -> eyre::Result<()> {
         config: config.clone(),
     });
 
-    let dump = warp::method()
-        .and(warp::body::bytes())
-        .map(|m, bytes: bytes::Bytes| {
-            debug!("got request {}: {:?}", m, bytes);
-            warp::reply()
-        })
-        .map(|reply| warp::reply::with_status(reply, warp::http::StatusCode::NOT_FOUND));
-
     let api = buoys::filters(state).with(warp::log("sfy_data::api"));
-    // let api = dump.or(api);
 
     info!("listening on: {:?}", config.address);
     warp::serve(api).run(config.address).await;

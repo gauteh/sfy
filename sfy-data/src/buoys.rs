@@ -2,11 +2,11 @@
 
 use crate::State;
 use futures_util::future;
+use sanitize_filename::sanitize;
 use serde_json as json;
 use std::convert::Infallible;
 use std::sync::Arc;
 use warp::{http::StatusCode, reject, Filter, Rejection, Reply};
-use sanitize_filename::sanitize;
 
 pub fn filters(
     state: State,
@@ -42,6 +42,7 @@ struct Event {
     event: String,
     device: String,
     file: Option<String>,
+    #[allow(unused)]
     body: json::Value,
 }
 
@@ -78,6 +79,7 @@ fn parse_data(body: &[u8]) -> eyre::Result<Event> {
 #[derive(Debug)]
 pub enum AppendErrors {
     Database,
+    Internal,
 }
 
 impl reject::Reject for AppendErrors {}
@@ -94,14 +96,16 @@ async fn append(body: bytes::Bytes, state: State) -> Result<impl warp::Reply, wa
         );
 
         let mut db = state.db.write().await;
-        let mut b = db
-            .buoy(&device)
-            .map_err(|e| {
-                error!("failed to open database for device: {}: {:?}", &device, e);
-                reject::custom(AppendErrors::Database)
-            })?;
+        let mut b = db.buoy(&device).map_err(|e| {
+            error!("failed to open database for device: {}: {:?}", &device, e);
+            reject::custom(AppendErrors::Database)
+        })?;
 
-        let file = &format!("{}_{}.json", event.event, event.file.unwrap_or("__unnamed__".into()));
+        let file = &format!(
+            "{}_{}.json",
+            event.event,
+            event.file.unwrap_or("__unnamed__".into())
+        );
         let file = sanitize(&file);
         debug!("writing to: {}", file);
 
@@ -113,6 +117,31 @@ async fn append(body: bytes::Bytes, state: State) -> Result<impl warp::Reply, wa
         Ok("".into_response())
     } else {
         warn!("could not parse event, storing event in lost+found");
+
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        let mut db = state.db.write().await;
+        let mut b = db.buoy("lost+found").map_err(|e| {
+            error!("failed to open database for lost+found: {:?}", e);
+            reject::custom(AppendErrors::Database)
+        })?;
+
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_err(|_| reject::custom(AppendErrors::Internal))?;
+
+        let file = &format!(
+            "{}.json",
+            now.as_millis(),
+        );
+        let file = sanitize(&file);
+        debug!("writing to: {}", file);
+
+        b.append(&file, &body).await.map_err(|e| {
+            error!("failed to write file: {:?}", e);
+            reject::custom(AppendErrors::Database)
+        })?;
+
         Ok(StatusCode::BAD_REQUEST.into_response())
     }
 }
@@ -175,11 +204,11 @@ mod tests {
 
         assert_eq!(res.status(), 200);
 
-        let path = tmp.path().join("dev864475044203262").join("9ef2e080-f0b4-4036-8ccc-ec4206553537_sensor.db.json");
-        assert_eq!(
-            std::fs::read(path).unwrap().as_slice(),
-            &event
-        );
+        let path = tmp
+            .path()
+            .join("dev864475044203262")
+            .join("9ef2e080-f0b4-4036-8ccc-ec4206553537_sensor.db.json");
+        assert_eq!(std::fs::read(path).unwrap().as_slice(), &event);
     }
 
     #[tokio::test]
