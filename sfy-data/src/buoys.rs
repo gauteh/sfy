@@ -87,6 +87,18 @@ impl reject::Reject for AppendErrors {}
 async fn append(body: bytes::Bytes, state: State) -> Result<impl warp::Reply, warp::Rejection> {
     trace!("got message: {:#?}", body);
 
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|_| reject::custom(AppendErrors::Internal))?;
+
+    let now = if cfg!(test) {
+        0
+    } else {
+        now.as_millis()
+    };
+
+
     if let Ok(event) = parse_data(&body) {
         let device = sanitize(&event.device);
 
@@ -102,7 +114,8 @@ async fn append(body: bytes::Bytes, state: State) -> Result<impl warp::Reply, wa
         })?;
 
         let file = &format!(
-            "{}_{}.json",
+            "{}-{}_{}.json",
+            now,
             event.event,
             event.file.unwrap_or("__unnamed__".into())
         );
@@ -118,7 +131,6 @@ async fn append(body: bytes::Bytes, state: State) -> Result<impl warp::Reply, wa
     } else {
         warn!("could not parse event, storing event in lost+found");
 
-        use std::time::{SystemTime, UNIX_EPOCH};
 
         let mut db = state.db.write().await;
         let mut b = db.buoy("lost+found").map_err(|e| {
@@ -126,13 +138,9 @@ async fn append(body: bytes::Bytes, state: State) -> Result<impl warp::Reply, wa
             reject::custom(AppendErrors::Database)
         })?;
 
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map_err(|_| reject::custom(AppendErrors::Internal))?;
-
         let file = &format!(
             "{}.json",
-            now.as_millis(),
+            now,
         );
         let file = sanitize(&file);
         debug!("writing to: {}", file);
@@ -207,7 +215,7 @@ mod tests {
         let path = tmp
             .path()
             .join("dev864475044203262")
-            .join("9ef2e080-f0b4-4036-8ccc-ec4206553537_sensor.db.json");
+            .join("0-9ef2e080-f0b4-4036-8ccc-ec4206553537_sensor.db.json");
         assert_eq!(std::fs::read(path).unwrap().as_slice(), &event);
     }
 

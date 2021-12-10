@@ -50,6 +50,6 @@ mod tests {
 
     #[test]
     fn load_test_conf() {
-        let c = Config::test_config();
+        let _c = Config::test_config();
     }
 }
