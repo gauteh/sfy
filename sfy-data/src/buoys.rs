@@ -85,7 +85,7 @@ pub enum AppendErrors {
 impl reject::Reject for AppendErrors {}
 
 async fn append(body: bytes::Bytes, state: State) -> Result<impl warp::Reply, warp::Rejection> {
-    debug!("got message: {:#?}", body);
+    trace!("got message: {:#?}", body);
 
     if let Ok(event) = parse_data(&body) {
         let device = sanitize(&event.device);
