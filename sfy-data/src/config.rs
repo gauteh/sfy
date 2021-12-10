@@ -8,13 +8,7 @@ use std::path::PathBuf;
 pub struct Config {
     pub address: SocketAddr,
     pub database: Option<PathBuf>,
-    pub buoys: Vec<Buoy>,
     pub tokens: Vec<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Buoy {
-    pub id: String,
 }
 
 impl Config {
@@ -22,7 +16,6 @@ impl Config {
         Config {
             address: "0.0.0.0:3000".parse().unwrap(),
             database: None,
-            buoys: Vec::new(),
             tokens: Vec::new(),
         }
     }
@@ -32,7 +25,6 @@ impl Config {
         Config {
             address: "0.0.0.0:3000".parse().unwrap(),
             database: None,
-            buoys: vec![Buoy { id: "test-buoy".into() }],
             tokens: vec!["token1".into()],
         }
     }
