@@ -21,6 +21,7 @@ warp = "0.3.1"
 bytes = "1.1.0"
 futures-util = "0.3.18"
 serde_json = "1.0.72"
+sanitize-filename = "0.3.0"
 
 [dependencies.sfy-proto]
 path = "../sfy-proto"

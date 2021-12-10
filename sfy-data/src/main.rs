@@ -66,3 +66,15 @@ async fn main() -> eyre::Result<()> {
 
     Ok(())
 }
+
+#[cfg(test)]
+fn test_state() -> (tempfile::TempDir, State) {
+    let config = config::Config::test_config();
+    let (dir, db) = database::Database::temporary();
+    let db = tokio::sync::RwLock::new(db);
+
+    let state = SfyState { config, db };
+    let state = Arc::new(state);
+
+    (dir, state)
+}

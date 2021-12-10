@@ -27,6 +27,16 @@ impl Config {
         }
     }
 
+    #[cfg(test)]
+    pub fn test_config() -> Config {
+        Config {
+            address: "0.0.0.0:3000".parse().unwrap(),
+            database: None,
+            buoys: vec![Buoy { id: "test-buoy".into() }],
+            tokens: vec!["token1".into()],
+        }
+    }
+
     pub fn from_path<P: AsRef<Path>>(p: P) -> Config {
         let p = p.as_ref();
 
@@ -44,5 +54,10 @@ mod tests {
         let c = fs::read_to_string("sfy-data.toml").unwrap();
         let c: Config = toml::from_str(&c).unwrap();
         println!("{:#?}", c);
+    }
+
+    #[test]
+    fn load_test_conf() {
+        let c = Config::test_config();
     }
 }
