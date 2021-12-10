@@ -425,6 +425,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9a3a5bfb195931eeb336b2a7b4d761daec841b97f947d34394601737a7bba5e4"
 
 [[package]]
+name = "ism330dhcx"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "75fcaa0b4982f7752692bad00c518104600fe563e4c06a118646af25d2ff15e1"
+dependencies = [
+ "embedded-hal",
+]
+
+[[package]]
 name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -793,6 +802,7 @@ dependencies = [
  "embedded-hal",
  "embedded-hal-mock",
  "heapless",
+ "ism330dhcx",
  "nb 1.0.0",
  "notecard",
  "panic-probe",

@@ -7,7 +7,9 @@ use panic_probe as _; // TODO: Restart board on panic.
 #[allow(unused_imports)]
 use defmt::{println, debug, error, info, trace, warn};
 
+#[cfg(not(test))]
 use cortex_m_rt::entry;
+
 use defmt_rtt as _;
 use ambiq_hal::{self as hal, prelude::*};
 
@@ -37,8 +39,6 @@ fn main() -> ! {
 
     let pins = hal::gpio::Pins::new(dp.GPIO);
     let mut led = pins.d19.into_push_pull_output(); // d14 on redboard_artemis
-
-    let serial = hal::uart::Uart0::new(dp.UART0, pins.tx0, pins.rx0);
 
     let i2c = hal::i2c::I2c::new(dp.IOM2, pins.d17, pins.d18);
     let bus = shared_bus::BusManagerSimple::new(i2c);

@@ -26,6 +26,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         }
     }
 
+    /// Initiate sync and wait for it to complete (or time out).
     pub fn sync_and_wait(&mut self, delay: &mut impl DelayMs<u32>, timeout_ms: u32) -> Result<bool, NoteError> {
         defmt::info!("sync..");
         self.note.hub().sync()?.wait()?;
@@ -45,6 +46,14 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         }
 
         Ok(false)
+    }
+
+    /// Set up note templates for sensor data and other messages, this will save space and
+    /// bandwidth.
+    fn setup_templates(&mut self) -> Result<(), NoteError> {
+
+
+        Ok(())
     }
 }
 

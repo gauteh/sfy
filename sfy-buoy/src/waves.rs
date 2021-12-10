@@ -1,24 +1,93 @@
 //! Measure waves using an IMU, feed it through a Kalman filter and collect
 //! time-series or statistics.
 
-use embedded_hal::blocking::i2c::WriteRead;
 use ahrs_fusion::NxpFusion;
+use core::fmt::Debug;
+use embedded_hal::blocking::i2c::{Write, WriteRead};
+use ism330dhcx::{ctrl1xl, ctrl2g, Ism330Dhcx};
 
 /// The installed IMU.
-pub type IMU = ();
+pub type IMU = Ism330Dhcx;
 
-pub struct Waves {
-    _imu: IMU,
+pub struct Waves<I2C: WriteRead + Write> {
+    i2c: I2C,
+    imu: IMU,
     #[allow(unused)]
     filter: NxpFusion,
 }
 
-impl Waves {
-    pub fn new(_i2c: impl WriteRead) -> Waves {
-        Waves {
-            _imu: (),
-            filter: NxpFusion::new(5.)
-        }
+impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
+    pub fn new(mut i2c: I2C) -> Waves<I2C> {
+        i2c.write(0x6b, &[]).unwrap();
+
+        let imu = Ism330Dhcx::new(&mut i2c).unwrap();
+
+        let mut w = Waves {
+            i2c: i2c,
+            imu: imu,
+            filter: NxpFusion::new(5.),
+        };
+
+        w.boot_imu();
+
+        w
+    }
+
+    pub fn get_temperature(&mut self) -> Result<f32, E> {
+        self.imu.get_temperature(&mut self.i2c)
+    }
+
+    // Booting the sensor accoring to Adafruit's driver
+    fn boot_imu(&mut self) {
+        let sensor = &mut self.imu;
+        let i2c = &mut self.i2c;
+
+        // =======================================
+        // CTRL3_C
+
+        sensor.ctrl3c.set_boot(i2c, true).unwrap();
+        sensor.ctrl3c.set_bdu(i2c, true).unwrap();
+        sensor.ctrl3c.set_if_inc(i2c, true).unwrap();
+
+        // =======================================
+        // CTRL9_XL
+
+        sensor.ctrl9xl.set_den_x(i2c, true).unwrap();
+        sensor.ctrl9xl.set_den_y(i2c, true).unwrap();
+        sensor.ctrl9xl.set_den_z(i2c, true).unwrap();
+        sensor.ctrl9xl.set_device_conf(i2c, true).unwrap();
+
+        // =======================================
+        // CTRL1_XL
+
+        sensor
+            .ctrl1xl
+            .set_accelerometer_data_rate(i2c, ctrl1xl::Odr_Xl::Hz52)
+            .unwrap();
+
+        sensor
+            .ctrl1xl
+            .set_chain_full_scale(i2c, ctrl1xl::Fs_Xl::G4)
+            .unwrap();
+        sensor.ctrl1xl.set_lpf2_xl_en(i2c, true).unwrap();
+
+        // =======================================
+        // CTRL2_G
+
+        sensor
+            .ctrl2g
+            .set_gyroscope_data_rate(i2c, ctrl2g::Odr::Hz52)
+            .unwrap();
+
+        sensor
+            .ctrl2g
+            .set_chain_full_scale(i2c, ctrl2g::Fs::Dps500)
+            .unwrap();
+
+        // =======================================
+        // CTRL7_G
+
+        sensor.ctrl7g.set_g_hm_mode(i2c, true).unwrap();
     }
 }
 
@@ -39,4 +108,3 @@ mod tests {
         w.filter.update(0.1, 0.2, 0.3, 0.3, 4., 0.5, 0., 0., 0.);
     }
 }
-
