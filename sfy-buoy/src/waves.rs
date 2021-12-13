@@ -22,7 +22,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         i2c.write(0x6a, &[])?;
 
         defmt::debug!("setting up imu driver..");
-        let imu = Ism330Dhcx::new(&mut i2c)?;
+        let imu = Ism330Dhcx::new_with_address(&mut i2c, 0x6a)?;
 
         let mut w = Waves {
             i2c,
@@ -38,11 +38,12 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         Ok(w)
     }
 
+    /// Temperature in Celsius.
     pub fn get_temperature(&mut self) -> Result<f32, E> {
         self.imu.get_temperature(&mut self.i2c)
     }
 
-    // Booting the sensor accoring to Adafruit's driver
+    /// Booting the sensor accoring to Adafruit's driver
     fn boot_imu(&mut self) {
         let sensor = &mut self.imu;
         let i2c = &mut self.i2c;

@@ -47,18 +47,20 @@ fn main() -> ! {
 
     println!("hello from sfy!");
 
-    info!("Setting up Notecarrier..");
-    let mut note = Notecarrier::new(bus.acquire_i2c());
+    // info!("Setting up Notecarrier..");
+    // let mut note = Notecarrier::new(bus.acquire_i2c());
 
     info!("Setting up IMU..");
-    let mut waves = Waves::new(bus.acquire_i2c());
+    let mut waves = Waves::new(bus.acquire_i2c()).unwrap();
 
     info!("Entering main loop");
 
     loop {
         delay.delay_ms(2000u32);
         led.toggle().unwrap();
-        info!("Iteration")
+
+        let temp = waves.get_temperature().unwrap();
+        info!("Temperature: {}", temp)
     }
 }
 
