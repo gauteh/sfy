@@ -39,6 +39,9 @@ git = "https://github.com/gauteh/ahrs-fusion"
 [dev-dependencies]
 embedded-hal-mock = "*"
 
+[patch.crates-io]
+ism330dhcx = { path = "../../../../dev/embedded/imu/ism330dhcx" }
+
 [features]
 
 # cargo build/run

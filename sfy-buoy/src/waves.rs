@@ -18,16 +18,19 @@ pub struct Waves<I2C: WriteRead + Write> {
 
 impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
     pub fn new(mut i2c: I2C) -> Waves<I2C> {
-        i2c.write(0x6b, &[]).unwrap();
+        defmt::debug!("pinging imu..");
+        i2c.write(0x6a, &[]).unwrap();
 
+        defmt::debug!("setting up imu driver..");
         let imu = Ism330Dhcx::new(&mut i2c).unwrap();
 
         let mut w = Waves {
-            i2c: i2c,
-            imu: imu,
+            i2c,
+            imu,
             filter: NxpFusion::new(5.),
         };
 
+        defmt::debug!("booting imu..");
         w.boot_imu();
 
         w
@@ -62,7 +65,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
 
         sensor
             .ctrl1xl
-            .set_accelerometer_data_rate(i2c, ctrl1xl::Odr_Xl::Hz52)
+            .set_accelerometer_data_rate(i2c, ctrl1xl::Odr_Xl::Hz833)
             .unwrap();
 
         sensor
@@ -76,7 +79,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
 
         sensor
             .ctrl2g
-            .set_gyroscope_data_rate(i2c, ctrl2g::Odr::Hz52)
+            .set_gyroscope_data_rate(i2c, ctrl2g::Odr::Hz833)
             .unwrap();
 
         sensor

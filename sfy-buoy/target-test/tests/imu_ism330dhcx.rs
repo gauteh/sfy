@@ -10,6 +10,9 @@ mod tests {
     use super::*;
     #[allow(unused)]
     use defmt::{assert, assert_eq, info};
+
+    use hal::i2c::{I2c, Freq};
+
     use sfy::waves::Waves;
 
     struct State {
@@ -26,7 +29,7 @@ mod tests {
         let pins = hal::gpio::Pins::new(dp.GPIO);
 
         let delay = hal::delay::Delay::new(core.SYST, &mut dp.CLKGEN);
-        let i2c = hal::i2c::I2c::new(dp.IOM2, pins.d17, pins.d18);
+        let i2c = I2c::new(dp.IOM2, pins.d17, pins.d18, Freq::F100kHz);
 
         defmt::info!("Setting up wave sensor");
         let waves = Waves::new(i2c);
