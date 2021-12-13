@@ -17,12 +17,12 @@ pub struct Waves<I2C: WriteRead + Write> {
 }
 
 impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
-    pub fn new(mut i2c: I2C) -> Waves<I2C> {
+    pub fn new(mut i2c: I2C) -> Result<Waves<I2C>, E> {
         defmt::debug!("pinging imu..");
-        i2c.write(0x6a, &[]).unwrap();
+        i2c.write(0x6a, &[])?;
 
         defmt::debug!("setting up imu driver..");
-        let imu = Ism330Dhcx::new(&mut i2c).unwrap();
+        let imu = Ism330Dhcx::new(&mut i2c)?;
 
         let mut w = Waves {
             i2c,
@@ -33,7 +33,9 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         defmt::debug!("booting imu..");
         w.boot_imu();
 
-        w
+        // TODO: Turn off magnetometer.
+
+        Ok(w)
     }
 
     pub fn get_temperature(&mut self) -> Result<f32, E> {
@@ -91,6 +93,14 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         // CTRL7_G
 
         sensor.ctrl7g.set_g_hm_mode(i2c, true).unwrap();
+    }
+
+    pub fn enable_fifo(&mut self) -> Result<(), E> {
+        Ok(())
+    }
+
+    pub fn pull_fifo(&mut self) -> Result<(), E> {
+        Ok(())
     }
 }
 

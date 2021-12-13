@@ -32,7 +32,7 @@ mod tests {
         let i2c = I2c::new(dp.IOM2, pins.d17, pins.d18, Freq::F100kHz);
 
         defmt::info!("Setting up wave sensor");
-        let waves = Waves::new(i2c);
+        let waves = Waves::new(i2c).unwrap();
 
         State {
             waves,

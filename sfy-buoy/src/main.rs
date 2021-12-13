@@ -13,6 +13,8 @@ use cortex_m_rt::entry;
 use defmt_rtt as _;
 use ambiq_hal::{self as hal, prelude::*};
 
+use hal::i2c;
+
 use sfy::note::Notecarrier;
 use sfy::waves::Waves;
 
@@ -40,7 +42,7 @@ fn main() -> ! {
     let pins = hal::gpio::Pins::new(dp.GPIO);
     let mut led = pins.d19.into_push_pull_output(); // d14 on redboard_artemis
 
-    let i2c = hal::i2c::I2c::new(dp.IOM2, pins.d17, pins.d18);
+    let i2c = i2c::I2c::new(dp.IOM2, pins.d17, pins.d18, i2c::Freq::F400kHz);
     let bus = shared_bus::BusManagerSimple::new(i2c);
 
     println!("hello from sfy!");
