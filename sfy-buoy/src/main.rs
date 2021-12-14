@@ -61,6 +61,11 @@ fn main() -> ! {
 
         let temp = waves.get_temperature().unwrap();
         info!("Temperature: {}", temp);
+
+        waves.iter();
+        // Subsystems:
+        // - waves
+        // - cellular (note)
     }
 }
 

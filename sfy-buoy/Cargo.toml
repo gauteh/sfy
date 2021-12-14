@@ -22,6 +22,7 @@ defmt-rtt = "0.3"
 panic-probe = { version = "0.3.0", features = ["print-defmt"] }
 shared-bus = "0.2.2"
 ism330dhcx = "0.3.0"
+cmsis_dsp = { version = "0.1.0", features = [ "micromath" ] }
 
 [dependencies.notecard]
 path = "../../../../dev/embedded/notecard-rs"
