@@ -12,6 +12,7 @@ mod tests {
     use defmt::{assert, assert_eq, info};
     use sfy::note::Notecarrier;
     use hal::prelude::*;
+    use hal::i2c::{I2c, Freq};
 
     struct State {
         note: Notecarrier<hal::i2c::Iom2>,
@@ -26,7 +27,7 @@ mod tests {
         let pins = hal::gpio::Pins::new(dp.GPIO);
 
         let delay = hal::delay::Delay::new(core.SYST, &mut dp.CLKGEN);
-        let i2c = hal::i2c::I2c::new(dp.IOM2, pins.d17, pins.d18);
+        let i2c = I2c::new(dp.IOM2, pins.d17, pins.d18, Freq::F400kHz);
 
         defmt::info!("Setting up notecarrier");
         let note = Notecarrier::new(i2c);

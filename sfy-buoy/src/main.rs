@@ -60,7 +60,7 @@ fn main() -> ! {
         led.toggle().unwrap();
 
         let temp = waves.get_temperature().unwrap();
-        info!("Temperature: {}", temp)
+        info!("Temperature: {}", temp);
     }
 }
 

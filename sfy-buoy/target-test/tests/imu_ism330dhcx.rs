@@ -11,7 +11,10 @@ mod tests {
     #[allow(unused)]
     use defmt::{assert, assert_eq, info};
 
-    use hal::i2c::{I2c, Freq};
+    use hal::{
+        i2c::{Freq, I2c},
+        prelude::*,
+    };
 
     use sfy::waves::Waves;
 
@@ -34,10 +37,7 @@ mod tests {
         defmt::info!("Setting up wave sensor");
         let waves = Waves::new(i2c).unwrap();
 
-        State {
-            waves,
-            delay
-        }
+        State { waves, delay }
     }
 
     #[test]
@@ -45,5 +45,81 @@ mod tests {
         let temp = s.waves.get_temperature();
         defmt::info!("temperature: {:?}", temp);
     }
-}
 
+    #[test]
+    fn fifo_accel_gyro(s: &mut State) {
+        s.waves.disable_fifo().unwrap();
+        let samples = s.waves.imu.fifostatus.diff_fifo(&mut s.waves.i2c).unwrap();
+        defmt::debug!("samples: {}", samples);
+        assert_eq!(samples, 0);
+
+        s.waves.enable_fifo(&mut s.delay).unwrap();
+
+        defmt::debug!("wait for some samples to accumulate..");
+        s.delay.delay_ms(800u16);
+
+        let samples = s.waves.imu.fifostatus.diff_fifo(&mut s.waves.i2c).unwrap();
+        defmt::debug!("the FIFO should now be full: samples: {}", samples);
+        assert_eq!(samples, 512);
+
+        assert_eq!(s.waves.imu.fifostatus.full(&mut s.waves.i2c).unwrap(), true);
+
+        s.waves.disable_fifo().unwrap();
+        let samples = s.waves.imu.fifostatus.diff_fifo(&mut s.waves.i2c).unwrap();
+        defmt::debug!("the FIFO should now be empty: samples: {}", samples);
+        assert_eq!(samples, 0);
+        assert_eq!(
+            s.waves.imu.fifostatus.full(&mut s.waves.i2c).unwrap(),
+            false
+        );
+    }
+
+    #[test]
+    fn empty_fifo(s: &mut State) {
+        s.waves.disable_fifo().unwrap();
+        let samples = s.waves.imu.fifostatus.diff_fifo(&mut s.waves.i2c).unwrap();
+        assert_eq!(samples, 0);
+
+        s.waves.enable_fifo(&mut s.delay).unwrap();
+
+        defmt::debug!("wait for some samples..");
+        s.delay.delay_ms(300u16);
+
+        let samples = s.waves.imu.fifostatus.diff_fifo(&mut s.waves.i2c).unwrap();
+        assert!(samples > 100);
+
+        defmt::debug!("attempting to empty FIFO.. {}", samples);
+        s.waves.consume_fifo().unwrap().for_each(drop);
+
+        let samples2 = s.waves.imu.fifostatus.diff_fifo(&mut s.waves.i2c).unwrap();
+        defmt::debug!("FIFO: {}", samples2);
+        assert!(samples2 < samples);
+    }
+
+    #[test]
+    fn fifo_pull_batches(s: &mut State) {
+        s.waves.disable_fifo().unwrap();
+        let samples = s.waves.imu.fifostatus.diff_fifo(&mut s.waves.i2c).unwrap();
+        assert_eq!(samples, 0);
+
+        s.waves.enable_fifo(&mut s.delay).unwrap();
+
+        defmt::debug!("wait for some samples..");
+        s.delay.delay_ms(300u16);
+
+        let n = s.waves.imu.fifostatus.diff_fifo(&mut s.waves.i2c).unwrap();
+
+        let samples = s
+            .waves
+            .consume_fifo()
+            .unwrap()
+            .collect::<Result<heapless::Vec<_, 512>, _>>()
+            .unwrap();
+        defmt::debug!("collected {} values", samples.len());
+        assert!(samples.len() > 100);
+
+        let samples = s.waves.imu.fifostatus.diff_fifo(&mut s.waves.i2c).unwrap();
+        defmt::debug!("values in FIFO after collection: {}", samples);
+        assert!(samples < n);
+    }
+}
