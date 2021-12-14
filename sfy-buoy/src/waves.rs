@@ -8,6 +8,7 @@ use embedded_hal::blocking::{
     i2c::{Write, WriteRead},
 };
 use ism330dhcx::{ctrl1xl, ctrl2g, fifo, fifoctrl, Ism330Dhcx};
+use micromath::{Quaternion, vector::Vector3d};
 
 /// The installed IMU.
 pub type IMU = Ism330Dhcx;
@@ -16,6 +17,7 @@ pub struct Waves<I2C: WriteRead + Write> {
     pub i2c: I2C,
     pub imu: IMU,
     filter: NxpFusion,
+    pub axl: heapless::Deque<Vector3d<f32>, 1024>,
 }
 
 impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
@@ -29,7 +31,8 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         let mut w = Waves {
             i2c,
             imu,
-            filter: NxpFusion::new(5.),
+            filter: NxpFusion::new(208.),
+            axl: heapless::Deque::new(),
         };
 
         defmt::debug!("booting imu..");
@@ -146,7 +149,18 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
             };
 
             if let Some((g, a)) = ga {
+
+                // TODO: float_sigma_filter before pushing to filter.
+
                 filter.update(g[0] as f32, g[1] as f32, g[2] as f32, a[0] as f32, a[1] as f32, a[2] as f32, 0., 0., 0.);
+
+                let q = filter.quaternion();
+                let q = Quaternion::new(q[0], q[1], q[2], q[3]);
+                let axl = Vector3d { x: a[0] as f32, y: a[1] as f32, z: a[2] as f32 };
+                let axl = q.rotate(axl);
+
+                self.axl.push_back(axl).unwrap();
+                // Also store: Pitch, Yaw, Heave
             } else {
                 break // we got something else than gyro or accel
             }
@@ -166,12 +180,9 @@ mod tests {
     use super::*;
     use embedded_hal_mock::i2c::{Mock, Transaction};
 
-    // #[test]
-    // fn update_filter() {
-    //     let expectations = [];
-    //     let mut i2c = Mock::new(&expectations);
+    #[test]
+    fn rotate_quaternion() {
+        let filter = NxpFusion::new(208.);
 
-    //     let mut w = Waves::new(i2c).unwrap();
-    //     w.filter.update(0.1, 0.2, 0.3, 0.3, 4., 0.5, 0., 0., 0.);
-    // }
+    }
 }

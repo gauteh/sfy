@@ -252,8 +252,6 @@ dependencies = [
 [[package]]
 name = "cmsis_dsp"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "074f989fa8d48b1e434c2bad1ac127e916675de48bb56b9db01462a248029d24"
 dependencies = [
  "cmsis_dsp_sys_pregenerated",
  "fixed",
@@ -264,8 +262,6 @@ dependencies = [
 [[package]]
 name = "cmsis_dsp_sys_pregenerated"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c48e0714acb16e5425249cfae1629a759f8d6123b10e68c6bb5917315d0ad20a"
 dependencies = [
  "ureq",
  "zip",
@@ -618,9 +614,9 @@ checksum = "308cc39be01b73d0d18f82a0e7b2a3df85245f84af96fdddc5d202d27e47b86a"
 
 [[package]]
 name = "micromath"
-version = "1.1.1"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc4010833aea396656c2f91ee704d51a6f1329ec2ab56ffd00bfd56f7481ea94"
+checksum = "39617bc909d64b068dcffd0e3e31679195b5576d0c83fadc52690268cc2b2b55"
 
 [[package]]
 name = "minimal-lexical"
@@ -1000,6 +996,7 @@ dependencies = [
  "embedded-hal-mock",
  "heapless",
  "ism330dhcx",
+ "micromath",
  "nb 1.0.0",
  "notecard",
  "panic-probe",

@@ -23,6 +23,7 @@ panic-probe = { version = "0.3.0", features = ["print-defmt"] }
 shared-bus = "0.2.2"
 ism330dhcx = "0.3.0"
 cmsis_dsp = { version = "0.1.0", features = [ "micromath" ] }
+micromath = { version = "2", features = [ "quaternion", "vector" ] }
 
 [dependencies.notecard]
 path = "../../../../dev/embedded/notecard-rs"
@@ -42,6 +43,7 @@ embedded-hal-mock = "*"
 
 [patch.crates-io]
 ism330dhcx = { path = "../../../../dev/embedded/imu/ism330dhcx" }
+cmsis_dsp = { path = "../../../../dev/embedded/cmsis_dsp.rs" }
 
 [features]
 

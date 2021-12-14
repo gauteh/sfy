@@ -177,5 +177,7 @@ mod tests {
         let samples2 = s.waves.imu.fifostatus.diff_fifo(&mut s.waves.i2c).unwrap();
         defmt::debug!("values in FIFO after collecting: {}", samples2);
         assert!(samples2 < samples);
+
+        defmt::debug!("time series len: {}", s.waves.axl.len());
     }
 }
