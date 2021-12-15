@@ -24,6 +24,9 @@ shared-bus = "0.2.2"
 ism330dhcx = "0.3.0"
 cmsis_dsp = { version = "0.1.0", features = [ "micromath" ] }
 micromath = { version = "2", features = [ "quaternion", "vector" ] }
+lzss = { version = "0.8.2", default-features = false, features = [ "const_panic" ] }
+bytemuck = "1.7.2"
+void = { version = "1.0.2", default-features = false }
 
 [dependencies.notecard]
 path = "../../../../dev/embedded/notecard-rs"

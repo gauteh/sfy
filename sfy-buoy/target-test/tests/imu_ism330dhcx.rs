@@ -16,7 +16,7 @@ mod tests {
         prelude::*,
     };
 
-    use sfy::waves::Waves;
+    use sfy::waves::{self, Waves};
 
     struct State {
         waves: Waves<hal::i2c::Iom2>,
@@ -172,12 +172,34 @@ mod tests {
         defmt::debug!("values in FIFO before collecting: {}", samples);
 
         defmt::debug!("read and filter..");
-        s.waves.read_and_filter().unwrap();
+        for _ in 0..2 {
+            s.waves.read_and_filter().unwrap();
+        }
 
         let samples2 = s.waves.imu.fifostatus.diff_fifo(&mut s.waves.i2c).unwrap();
         defmt::debug!("values in FIFO after collecting: {}", samples2);
         assert!(samples2 < samples);
 
         defmt::debug!("time series len: {}", s.waves.axl.len());
+    }
+
+    #[test]
+    fn compress_values(s: &mut State) {
+        s.waves.enable_fifo(&mut s.delay).unwrap();
+        s.delay.delay_ms(300u16);
+        let samples = s.waves.imu.fifostatus.diff_fifo(&mut s.waves.i2c).unwrap();
+        defmt::debug!("values in FIFO before collecting: {}", samples);
+
+        s.waves.read_and_filter().unwrap();
+
+        defmt::debug!("compressing {} ({}) values", s.waves.axl.len(), s.waves.axl.len() * 4);
+
+        let mut buf = [0u8; 1024 * 4 * 3];
+
+        let b = s.waves.axl.len() * 4;
+        let n = waves::compress(&s.waves.axl, &mut buf).unwrap();
+        let ratio = b as f32 / (n as f32);
+
+        defmt::debug!("compressed from: {} to {} (ratio: {})", b, n, ratio);
     }
 }

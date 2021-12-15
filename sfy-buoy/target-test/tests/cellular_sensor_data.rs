@@ -33,7 +33,7 @@ mod tests {
         let pins = hal::gpio::Pins::new(dp.GPIO);
 
         let delay = hal::delay::Delay::new(core.SYST, &mut dp.CLKGEN);
-        let i2c = I2c::new(dp.IOM2, pins.d17, pins.d18, Freq::F400kHz);
+        let i2c = I2c::new(dp.IOM2, pins.d17, pins.d18, Freq::F100kHz);
 
         defmt::info!("Setting up notecarrier");
         let note = Notecarrier::new(i2c);

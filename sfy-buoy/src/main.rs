@@ -42,7 +42,7 @@ fn main() -> ! {
     let pins = hal::gpio::Pins::new(dp.GPIO);
     let mut led = pins.d19.into_push_pull_output(); // d14 on redboard_artemis
 
-    let i2c = i2c::I2c::new(dp.IOM2, pins.d17, pins.d18, i2c::Freq::F400kHz);
+    let i2c = i2c::I2c::new(dp.IOM2, pins.d17, pins.d18, i2c::Freq::F100kHz);
     let bus = shared_bus::BusManagerSimple::new(i2c);
 
     println!("hello from sfy!");
@@ -63,6 +63,7 @@ fn main() -> ! {
         info!("Temperature: {}", temp);
 
         let _wr = waves.read_and_filter();
+
         // Subsystems:
         // - waves
         // - cellular (note)

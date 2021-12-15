@@ -601,6 +601,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "lzss"
+version = "0.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "39e2b9a6124e5200c13bb5c5d1124bf93b451bff69b651912810039e36ca97eb"
+dependencies = [
+ "void",
+]
+
+[[package]]
 name = "matches"
 version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -987,6 +996,7 @@ version = "0.1.0"
 dependencies = [
  "ahrs-fusion",
  "ambiq-hal",
+ "bytemuck",
  "cmsis_dsp",
  "cortex-m",
  "cortex-m-rt",
@@ -996,6 +1006,7 @@ dependencies = [
  "embedded-hal-mock",
  "heapless",
  "ism330dhcx",
+ "lzss",
  "micromath",
  "nb 1.0.0",
  "notecard",
@@ -1005,6 +1016,7 @@ dependencies = [
  "sfy-proto",
  "shared-bus",
  "ufmt",
+ "void",
 ]
 
 [[package]]

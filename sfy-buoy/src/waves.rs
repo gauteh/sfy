@@ -13,11 +13,13 @@ use micromath::{Quaternion, vector::Vector3d};
 /// The installed IMU.
 pub type IMU = Ism330Dhcx;
 
+pub type VecAxl = heapless::Vec<f32, { 3 * 1024 }>;
+
 pub struct Waves<I2C: WriteRead + Write> {
     pub i2c: I2C,
     pub imu: IMU,
     filter: NxpFusion,
-    pub axl: heapless::Deque<Vector3d<f32>, 1024>,
+    pub axl: VecAxl,
 }
 
 impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
@@ -32,7 +34,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
             i2c,
             imu,
             filter: NxpFusion::new(208.),
-            axl: heapless::Deque::new(),
+            axl: heapless::Vec::new(),
         };
 
         defmt::debug!("booting imu..");
@@ -159,15 +161,33 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
                 let axl = Vector3d { x: a[0] as f32, y: a[1] as f32, z: a[2] as f32 };
                 let axl = q.rotate(axl);
 
-                self.axl.push_back(axl).unwrap();
-                // Also store: Pitch, Yaw, Heave
+                // self.axl.push(axl).unwrap();
+                self.axl.extend(axl.to_array());
+
+                // TODO: Also store: Pitch, Yaw, Heave from filter
             } else {
+                // XXX: Fix and recover!
                 break // we got something else than gyro or accel
             }
         }
-
         Ok(())
     }
+}
+
+/// Compresses the stream of f32's, the `buf` must be at least 4 times as long in `u8` as `values` is
+/// in `f32`.
+pub fn compress(values: &[f32], buf: &mut [u8]) -> Result<usize, lzss::LzssError<void::Void, lzss::SliceWriteError>> {
+    use lzss::{Lzss, SliceReader, SliceWriter};
+    type MyLzss = Lzss<10, 4, 0x20, { 1 << 10 }, { 2 << 10 }>;
+
+    let values = bytemuck::cast_slice(values);
+
+    debug_assert!(buf.len() >= values.len());
+
+    MyLzss::compress(
+        SliceReader::new(values),
+        SliceWriter::new(buf)
+    )
 }
 
 pub enum Event {
@@ -181,8 +201,19 @@ mod tests {
     use embedded_hal_mock::i2c::{Mock, Transaction};
 
     #[test]
-    fn rotate_quaternion() {
-        let filter = NxpFusion::new(208.);
+    fn take_and_compress() {
+        let mut v = VecAxl::new();
 
+        for i in 0..3072 {
+            v.push(i as f32);
+        }
+
+        let mut buf = [0u8; 1024 * 4 * 3];
+
+        let n = compress(&v, &mut buf).unwrap();
+
+        let ratio = (v.len() * 4) as f32 / (n as f32);
+
+        println!("compressed from: {} to {} (ratio: {})", v.len() * 4, n, ratio);
     }
 }
