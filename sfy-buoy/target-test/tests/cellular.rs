@@ -30,7 +30,7 @@ mod tests {
         let i2c = I2c::new(dp.IOM2, pins.d17, pins.d18, Freq::F100kHz);
 
         defmt::info!("Setting up notecarrier");
-        let note = Notecarrier::new(i2c);
+        let note = Notecarrier::new(i2c).unwrap();
 
         State {
             note,

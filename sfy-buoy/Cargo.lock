@@ -1119,6 +1119,7 @@ dependencies = [
  "defmt",
  "defmt-rtt",
  "defmt-test",
+ "half",
  "heapless",
  "ism330dhcx",
  "panic-probe",

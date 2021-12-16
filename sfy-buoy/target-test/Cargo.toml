@@ -37,6 +37,7 @@ defmt-rtt = "0.3.0"
 defmt-test = "0.3.0"
 panic-probe = { version = "0.3.0", features = ["print-defmt"] }
 ism330dhcx = "0.3.0"
+half = { version = "1.8.2", features = [ "use-intrinsics", "bytemuck" ] }
 
 [dependencies.ambiq-hal]
 path = "../../../../../dev/ambiq-rs/ambiq-hal"

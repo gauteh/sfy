@@ -36,7 +36,7 @@ mod tests {
         let i2c = I2c::new(dp.IOM2, pins.d17, pins.d18, Freq::F100kHz);
 
         defmt::info!("Setting up notecarrier");
-        let note = Notecarrier::new(i2c);
+        let note = Notecarrier::new(i2c).unwrap();
 
         State {
             note,
@@ -89,9 +89,14 @@ mod tests {
     fn send_axl_batch(s: &mut State) {
         let pck = note::AxlPacket {
             timestamp: 0,
-            data: [0f32; 1024]
+            data: (0..3072).map(|v| half::f16::from_f32(v as f32)).collect::<heapless::Vec<_, { 3 * 1024 }>>()
         };
 
+        let r = s.note.send(pck).unwrap();
+        defmt::debug!("package queued for sending: {:?}", r);
+
+        defmt::debug!("triggering sync..");
+        s.note.sync_and_wait(&mut s.delay, 60000).unwrap();
     }
 }
 
