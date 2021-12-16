@@ -54,6 +54,23 @@ mod tests {
     }
 
     #[test]
+    fn send_axl_batch(s: &mut State) {
+        let pck = note::AxlPacket {
+            timestamp: 0,
+            data: (0..3072).map(|v| half::f16::from_f32(v as f32)).collect::<heapless::Vec<_, { 3 * 1024 }>>()
+        };
+
+        assert!(pck.data.len() == sfy::waves::AXL_SZ);
+
+        let r = s.note.send(pck).unwrap();
+        defmt::debug!("package queued for sending: {:?}", r);
+
+        defmt::debug!("triggering sync..");
+        s.note.sync_and_wait(&mut s.delay, 60000).unwrap();
+    }
+
+    #[cfg(disabled)]
+    #[test]
     fn send_single_measurement(s: &mut State) {
         let m = Measurements {
             t0: 100,
@@ -66,6 +83,7 @@ mod tests {
         assert_eq!(s.note.sync_and_wait(&mut s.delay, 60000).unwrap(), true);
     }
 
+    #[cfg(disabled)]
     #[test]
     fn send_multiple_measurements(s: &mut State) {
         let m1 = Measurements {
@@ -83,20 +101,6 @@ mod tests {
         s.note.note().add(Some("sensor.db"), Some("?"), Some(m2), None, true).unwrap().wait().unwrap();
 
         assert_eq!(s.note.sync_and_wait(&mut s.delay, 60000).unwrap(), true);
-    }
-
-    #[test]
-    fn send_axl_batch(s: &mut State) {
-        let pck = note::AxlPacket {
-            timestamp: 0,
-            data: (0..3072).map(|v| half::f16::from_f32(v as f32)).collect::<heapless::Vec<_, { 3 * 1024 }>>()
-        };
-
-        let r = s.note.send(pck).unwrap();
-        defmt::debug!("package queued for sending: {:?}", r);
-
-        defmt::debug!("triggering sync..");
-        s.note.sync_and_wait(&mut s.delay, 60000).unwrap();
     }
 }
 

@@ -14,7 +14,9 @@ use half::f16;
 /// The installed IMU.
 pub type IMU = Ism330Dhcx;
 
-pub type VecAxl = heapless::Vec<f16, { 3 * 1024 }>;
+pub const SAMPLE_SZ: usize = 3;
+pub const AXL_SZ: usize = SAMPLE_SZ * 1024;
+pub type VecAxl = heapless::Vec<f16, AXL_SZ>;
 
 pub struct Waves<I2C: WriteRead + Write> {
     pub i2c: I2C,
@@ -141,8 +143,8 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         let imu = &mut self.imu;
         let filter = &mut self.filter;
 
-        let n = n.max(self.axl.capacity() as u16);
         let n = n / 2;
+        let n = n.max((AXL_SZ / SAMPLE_SZ) as u16);
 
         for _ in 0..n {
             let m1 = imu.fifo_pop(i2c)?;

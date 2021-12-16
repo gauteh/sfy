@@ -3,6 +3,7 @@ use embedded_hal::blocking::i2c::{Read, Write};
 use embedded_hal::blocking::delay::DelayMs;
 use notecard::{Notecard, NoteError};
 use half::f16;
+use crate::waves::AXL_SZ;
 
 pub struct Notecarrier<I2C: Read + Write> {
     note: Notecard<I2C>,
@@ -56,68 +57,77 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
     fn setup_templates(&mut self) -> Result<(), NoteError> {
         defmt::debug!("setting up templates..");
 
+        #[derive(serde::Serialize, Default)]
+        struct AxlPacketMetaTemplate {
+            timestamp: u32,
+            offset: u32,
+        }
+
+        let meta_template = AxlPacketMetaTemplate {
+            timestamp: 14,
+            offset: 14
+        };
+
+        defmt::debug!("setting up template for AxlPacketMeta");
+        self.note().template(Some("axl.qo"), Some(meta_template), Some(AXL_OUTN as u32))?.wait()?;
 
         Ok(())
     }
 
-    pub fn send(&mut self, pck: AxlPacket) -> Result<notecard::note::res::Add, NoteError> {
+    pub fn send(&mut self, pck: AxlPacket) -> Result<usize, NoteError> {
         defmt::debug!("sending acceleration package");
 
-        let (sz, b64) = pck.base64();
-        let b64 = &b64[..sz];
-
-        let mut payload = b64.chunks(250);
+        let b64 = pck.base64();
 
         // Send first payload with timestamp
-        let r = self.note.note().add(Some("axl.qo"), None, Some(pck), payload.next().map(|b| core::str::from_utf8(b).unwrap()), false)?.wait()?;
+        let mut offset: usize = 0;
 
-        for p in payload {
-            self.note.note().add::<AxlPacket>(Some("axl.qo"), None, None, Some(core::str::from_utf8(p).unwrap()), false)?.wait()?;
+        for p in b64.chunks(8 * 1024) {
+            let meta = AxlPacketMeta {
+                timestamp: pck.timestamp,
+                offset: offset as u32
+            };
+
+            let r = self.note.note().add(Some("axl.qo"), None, Some(meta), Some(core::str::from_utf8(p).unwrap()), false)?.wait()?;
+
+            offset += p.len();
+
+            defmt::trace!("sent data package: {} of {} (note: {:?})", offset, b64.len(), r);
         }
 
-        Ok(r)
+        Ok(offset)
     }
+}
+
+#[derive(serde::Serialize, Default)]
+pub struct AxlPacketMeta {
+    pub timestamp: u32,
+    pub offset: u32,
 }
 
 #[derive(serde::Serialize, Default)]
 pub struct AxlPacket {
     pub timestamp: u32,
 
-    /// This is added to the payload of the note.
+    /// This is moved to the payload of the note.
     #[serde(skip)]
-    pub data: heapless::Vec<f16, { 3 * 1024 }>
+    pub data: heapless::Vec<f16, { AXL_SZ }>
 }
 
-pub const AXL_OUTN: usize = {3 * 1024} * 4 * 4 / 3 + 4;
+/// Maximum length of base64 string from [f16; AXL_SZ]
+pub const AXL_OUTN: usize = { AXL_SZ * 2 } * 4 / 3 + 4;
 
-#[derive(serde::Serialize)]
-pub struct AxlPacketJson {
-    pub timestamp: u32,
-
-    /// This is added to the payload of the note.
-    #[serde(skip)]
-    pub data: heapless::String<AXL_OUTN>,
-}
 
 impl AxlPacket {
-    pub fn base64(&self) -> (usize, [u8; AXL_OUTN]) {
-        let mut buf = [0u8; AXL_OUTN];
+    pub fn base64(&self) -> heapless::Vec<u8, AXL_OUTN> {
+        let mut b64: heapless::Vec<_, AXL_OUTN> = heapless::Vec::new();
+        b64.resize_default(AXL_OUTN).unwrap();
 
         let data = bytemuck::cast_slice(&self.data);
-        let written = base64::encode_config_slice(data, base64::STANDARD, &mut buf);
+        let written = base64::encode_config_slice(data, base64::STANDARD, &mut b64);
+        b64.truncate(written);
 
-        (written, buf)
-    }
-
-    pub fn as_json(self) -> AxlPacketJson {
-        let (sz, b64) = self.base64();
-        let b64 = &b64[..sz];
-        let b64 = core::str::from_utf8(&b64).unwrap();
-
-        AxlPacketJson {
-            timestamp: self.timestamp,
-            data: heapless::String::from(b64)
-        }
+        b64
     }
 }
 
@@ -143,33 +153,10 @@ mod tests {
     fn base64_data_package() {
         let p = AxlPacket {
             timestamp: 0,
-            data: (0..3072).map(|v| f16::from_f32(v as f32)).collect::<heapless::Vec<_, { 3 * 1024 }>>()
+            data: (0..3072).map(|v| f16::from_f32(v as f32)).collect::<heapless::Vec<_, { AXL_SZ }>>()
         };
 
-        let (sz, data) = p.base64();
-        println!("base64 sz: {}", sz);
-    }
-
-    #[test]
-    fn serialize_for_notecard() {
-        let p = AxlPacket {
-            timestamp: 0,
-            data: (0..3072).map(|v| f16::from_f32(v as f32)).collect::<heapless::Vec<_, { 3 * 1024 }>>()
-        };
-        let (sz, b64) = p.base64();
-        let b64 = &b64[..sz];
-        let b64 = core::str::from_utf8(&b64).unwrap();
-    }
-
-    #[test]
-    fn data_package_json() {
-        let p = AxlPacket {
-            timestamp: 0,
-            data: (0..3072).map(|v| f16::from_f32(v as f32)).collect::<heapless::Vec<_, { 3 * 1024 }>>()
-        };
-
-        let p = p.as_json();
-        let s = serde_json_core::to_string::<_, {AXL_OUTN + 256}>(&p).unwrap();
-        println!("serialized: {}", s);
+        let b64 = p.base64();
+        println!("{}", core::str::from_utf8(&b64).unwrap());
     }
 }
