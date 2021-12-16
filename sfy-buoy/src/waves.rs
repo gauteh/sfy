@@ -8,12 +8,13 @@ use embedded_hal::blocking::{
     i2c::{Write, WriteRead},
 };
 use ism330dhcx::{ctrl1xl, ctrl2g, fifo, fifoctrl, Ism330Dhcx};
-use micromath::{Quaternion, vector::Vector3d};
+use micromath::{Quaternion, vector::{Vector, Vector3d}};
+use half::f16;
 
 /// The installed IMU.
 pub type IMU = Ism330Dhcx;
 
-pub type VecAxl = heapless::Vec<f32, { 3 * 1024 }>;
+pub type VecAxl = heapless::Vec<f16, { 3 * 1024 }>;
 
 pub struct Waves<I2C: WriteRead + Write> {
     pub i2c: I2C,
@@ -24,9 +25,6 @@ pub struct Waves<I2C: WriteRead + Write> {
 
 impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
     pub fn new(mut i2c: I2C) -> Result<Waves<I2C>, E> {
-        defmt::debug!("pinging imu..");
-        i2c.write(0x6a, &[])?;
-
         defmt::debug!("setting up imu driver..");
         let imu = Ism330Dhcx::new_with_address(&mut i2c, 0x6a)?;
 
@@ -44,6 +42,11 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         // TODO: Turn off magnetometer.
 
         Ok(w)
+    }
+
+    pub fn ping(&mut self) -> bool {
+        defmt::debug!("pinging imu..");
+        self.i2c.write(0x6a, &[]).is_ok()
     }
 
     /// Temperature in Celsius.
@@ -138,7 +141,8 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         let imu = &mut self.imu;
         let filter = &mut self.filter;
 
-        let n = n / 2 * 2;
+        let n = n.max(self.axl.capacity() as u16);
+        let n = n / 2;
 
         for _ in 0..n {
             let m1 = imu.fifo_pop(i2c)?;
@@ -151,9 +155,6 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
             };
 
             if let Some((g, a)) = ga {
-
-                // TODO: float_sigma_filter before pushing to filter.
-
                 filter.update(g[0] as f32, g[1] as f32, g[2] as f32, a[0] as f32, a[1] as f32, a[2] as f32, 0., 0., 0.);
 
                 let q = filter.quaternion();
@@ -161,22 +162,32 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
                 let axl = Vector3d { x: a[0] as f32, y: a[1] as f32, z: a[2] as f32 };
                 let axl = q.rotate(axl);
 
-                // self.axl.push(axl).unwrap();
-                self.axl.extend(axl.to_array());
+                self.axl.extend(axl.iter().map(f16::from_f32));
 
-                // TODO: Also store: Pitch, Yaw, Heave from filter
+                // XXX:
+                //
+                // Depending on experiment and duration there might be other values that should be
+                // stored. E.g. aggregated / statistical values. In case of detected breaking
+                // events we could send the event.
             } else {
                 // XXX: Fix and recover!
+                //
+                // - Reset FIFO and timestamps
+                // - Reset IMU?
                 break // we got something else than gyro or accel
             }
         }
+
+        // TODO: In case FIFO ran full it needs resetting.
+        // TODO: Set time of start for batch + current offset in FIFO where the timestamp points to.
+
         Ok(())
     }
 }
 
 /// Compresses the stream of f32's, the `buf` must be at least 4 times as long in `u8` as `values` is
 /// in `f32`.
-pub fn compress(values: &[f32], buf: &mut [u8]) -> Result<usize, lzss::LzssError<void::Void, lzss::SliceWriteError>> {
+pub fn compress(values: &[f16], buf: &mut [u8]) -> Result<usize, lzss::LzssError<void::Void, lzss::SliceWriteError>> {
     use lzss::{Lzss, SliceReader, SliceWriter};
     type MyLzss = Lzss<10, 4, 0x20, { 1 << 10 }, { 2 << 10 }>;
 
@@ -205,7 +216,7 @@ mod tests {
         let mut v = VecAxl::new();
 
         for i in 0..3072 {
-            v.push(i as f32);
+            v.push(f16::from_f32(i as f32));
         }
 
         let mut buf = [0u8; 1024 * 4 * 3];

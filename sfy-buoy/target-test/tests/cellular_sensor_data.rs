@@ -11,7 +11,7 @@ mod tests {
     #[allow(unused)]
     use defmt::{assert, assert_eq, info};
     use serde::{Deserialize, Serialize};
-    use sfy::note::Notecarrier;
+    use sfy::note::{self, Notecarrier};
     use hal::i2c::{I2c, Freq};
 
     struct State {
@@ -83,6 +83,15 @@ mod tests {
         s.note.note().add(Some("sensor.db"), Some("?"), Some(m2), None, true).unwrap().wait().unwrap();
 
         assert_eq!(s.note.sync_and_wait(&mut s.delay, 60000).unwrap(), true);
+    }
+
+    #[test]
+    fn send_axl_batch(s: &mut State) {
+        let pck = note::AxlPacket {
+            timestamp: 0,
+            data: [0f32; 1024]
+        };
+
     }
 }
 

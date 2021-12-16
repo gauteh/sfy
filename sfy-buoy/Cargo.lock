@@ -179,6 +179,20 @@ name = "bytemuck"
 version = "1.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72957246c41db82b8ef88a5486143830adeb8227ef9837740bdec67724cf2c5b"
+dependencies = [
+ "bytemuck_derive",
+]
+
+[[package]]
+name = "bytemuck_derive"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8e215f8c2f9f79cb53c8335e687ffd07d5bfcb6fe5fc80723762d0be46e7cc54"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
 
 [[package]]
 name = "byteorder"
@@ -487,6 +501,9 @@ name = "half"
 version = "1.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eabb4a44450da02c90444cf74558da904edde8fb4e9035a9a6a4e15445af0bd7"
+dependencies = [
+ "bytemuck",
+]
 
 [[package]]
 name = "hash32"
@@ -996,6 +1013,7 @@ version = "0.1.0"
 dependencies = [
  "ahrs-fusion",
  "ambiq-hal",
+ "base64",
  "bytemuck",
  "cmsis_dsp",
  "cortex-m",
@@ -1004,6 +1022,7 @@ dependencies = [
  "defmt-rtt",
  "embedded-hal",
  "embedded-hal-mock",
+ "half",
  "heapless",
  "ism330dhcx",
  "lzss",

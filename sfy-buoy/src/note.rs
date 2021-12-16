@@ -2,6 +2,7 @@ use core::ops::{Deref, DerefMut};
 use embedded_hal::blocking::i2c::{Read, Write};
 use embedded_hal::blocking::delay::DelayMs;
 use notecard::{Notecard, NoteError};
+use half::f16;
 
 pub struct Notecarrier<I2C: Read + Write> {
     note: Notecard<I2C>,
@@ -57,6 +58,41 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
     }
 }
 
+pub struct AxlPacket {
+    pub timestamp: u32,
+    pub data: heapless::Vec<f16, { 3 * 1024 }>
+}
+
+pub const AXL_OUTN: usize = {3 * 1024} * 4 * 4 / 3 + 4;
+
+#[derive(serde::Serialize)]
+pub struct AxlPacketJson {
+    pub timestamp: u32,
+    pub data: heapless::String<AXL_OUTN>,
+}
+
+impl AxlPacket {
+    pub fn base64(&self) -> (usize, [u8; AXL_OUTN]) {
+        let mut buf = [0u8; AXL_OUTN];
+
+        let data = bytemuck::cast_slice(&self.data);
+        let written = base64::encode_config_slice(data, base64::STANDARD, &mut buf);
+
+        (written, buf)
+    }
+
+    pub fn as_json(self) -> AxlPacketJson {
+        let (sz, b64) = self.base64();
+        let b64 = &b64[..sz];
+        let b64 = core::str::from_utf8(&b64).unwrap();
+
+        AxlPacketJson {
+            timestamp: self.timestamp,
+            data: heapless::String::from(b64)
+        }
+    }
+}
+
 impl<I2C: Read + Write> Deref for Notecarrier<I2C> {
     type Target = Notecard<I2C>;
 
@@ -68,5 +104,33 @@ impl<I2C: Read + Write> Deref for Notecarrier<I2C> {
 impl<I2C: Read + Write> DerefMut for Notecarrier<I2C> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.note
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn base64_data_package() {
+        let p = AxlPacket {
+            timestamp: 0,
+            data: (0..3072).map(|v| f16::from_f32(v as f32)).collect::<heapless::Vec<_, { 3 * 1024 }>>()
+        };
+
+        let (sz, data) = p.base64();
+        println!("base64 sz: {}", sz);
+    }
+
+    #[test]
+    fn data_package_json() {
+        let p = AxlPacket {
+            timestamp: 0,
+            data: (0..3072).map(|v| f16::from_f32(v as f32)).collect::<heapless::Vec<_, { 3 * 1024 }>>()
+        };
+
+        let p = p.as_json();
+        let s = serde_json_core::to_string::<_, {AXL_OUTN + 256}>(&p).unwrap();
+        println!("serialized: {}", s);
     }
 }

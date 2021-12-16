@@ -20,7 +20,6 @@ mod tests {
 
     struct State {
         waves: Waves<hal::i2c::Iom2>,
-        #[allow(unused)]
         delay: hal::delay::Delay,
     }
 
@@ -160,21 +159,25 @@ mod tests {
     #[test]
     fn read_and_filter(s: &mut State) {
         s.waves.disable_fifo().unwrap();
-        let samples = s.waves.imu.fifostatus.diff_fifo(&mut s.waves.i2c).unwrap();
+        let mut samples = s.waves.imu.fifostatus.diff_fifo(&mut s.waves.i2c).unwrap();
         assert_eq!(samples, 0);
 
         s.waves.enable_fifo(&mut s.delay).unwrap();
 
-        defmt::debug!("wait for some samples..");
-        s.delay.delay_ms(300u16);
-
-        let samples = s.waves.imu.fifostatus.diff_fifo(&mut s.waves.i2c).unwrap();
-        defmt::debug!("values in FIFO before collecting: {}", samples);
-
-        defmt::debug!("read and filter..");
         for _ in 0..2 {
+            defmt::debug!("wait for some samples..");
+            s.delay.delay_ms((1200f32 / 200f32 * 1000.) as u16);
+
+            samples = s.waves.imu.fifostatus.diff_fifo(&mut s.waves.i2c).unwrap();
+            defmt::debug!("values in FIFO before collecting: {}", samples);
+
+            defmt::debug!("read and filter..");
             s.waves.read_and_filter().unwrap();
         }
+
+        // defmt::trace!("print test data {}:", s.waves.axl.len());
+        // let vs = s.waves.axl.iter().map(|v| v.to_f32()).collect::<heapless::Vec<_, {3 * 1024}>>();
+        // defmt::trace!("{:?}", vs);
 
         let samples2 = s.waves.imu.fifostatus.diff_fifo(&mut s.waves.i2c).unwrap();
         defmt::debug!("values in FIFO after collecting: {}", samples2);
