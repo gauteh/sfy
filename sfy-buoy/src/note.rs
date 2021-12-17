@@ -10,35 +10,35 @@ pub struct Notecarrier<I2C: Read + Write> {
 }
 
 impl<I2C: Read + Write> Notecarrier<I2C> {
-    pub fn new(i2c: I2C) -> Result<Notecarrier<I2C>, NoteError> {
+    pub fn new(i2c: I2C, delay: &mut impl DelayMs<u16>) -> Result<Notecarrier<I2C>, NoteError> {
         let mut note = Notecard::new(i2c);
         note.initialize().expect("could not initialize notecard.");
 
         note.hub()
             .set(Some("no.met.gauteh:sfy"), None, None, Some("cain"))?
-            .wait()?;
+            .wait(delay)?;
 
-        note.card().location_mode(Some("continuous"), None, None, None, None, None, None, None).unwrap().wait().ok();
-        note.card().location_track(true, false, true, None, None).unwrap().wait().ok();
+        note.card().location_mode(Some("continuous"), None, None, None, None, None, None, None).unwrap().wait(delay)?;
+        note.card().location_track(true, false, true, None, None).unwrap().wait(delay)?;
 
         let mut n = Notecarrier {
             note
         };
 
-        n.setup_templates()?;
+        n.setup_templates(delay)?;
 
         Ok(n)
     }
 
     /// Initiate sync and wait for it to complete (or time out).
-    pub fn sync_and_wait(&mut self, delay: &mut impl DelayMs<u32>, timeout_ms: u32) -> Result<bool, NoteError> {
+    pub fn sync_and_wait(&mut self, delay: &mut impl DelayMs<u16>, timeout_ms: u16) -> Result<bool, NoteError> {
         defmt::info!("sync..");
-        self.note.hub().sync()?.wait()?;
+        self.note.hub().sync()?.wait(delay)?;
 
         for _ in 0..(timeout_ms / 1000) {
-            delay.delay_ms(1000u32);
+            delay.delay_ms(1000u16);
             defmt::debug!("querying sync status..");
-            let status = self.note.hub().sync_status()?.wait();
+            let status = self.note.hub().sync_status()?.wait(delay);
             defmt::debug!("status: {:?}", status);
 
             if let Ok(status) = status {
@@ -54,7 +54,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
 
     /// Set up note templates for sensor data and other messages, this will save space and
     /// bandwidth.
-    fn setup_templates(&mut self) -> Result<(), NoteError> {
+    fn setup_templates(&mut self, delay: &mut impl DelayMs<u16>) -> Result<(), NoteError> {
         defmt::debug!("setting up templates..");
 
         #[derive(serde::Serialize, Default)]
@@ -71,12 +71,12 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         };
 
         defmt::debug!("setting up template for AxlPacketMeta");
-        self.note().template(Some("axl.qo"), Some(meta_template), Some(AXL_OUTN as u32))?.wait()?;
+        self.note().template(Some("axl.qo"), Some(meta_template), Some(AXL_OUTN as u32))?.wait(delay)?;
 
         Ok(())
     }
 
-    pub fn send(&mut self, pck: AxlPacket) -> Result<usize, NoteError> {
+    pub fn send(&mut self, pck: AxlPacket, delay: &mut impl DelayMs<u16>) -> Result<usize, NoteError> {
         defmt::debug!("sending acceleration package");
 
         let b64 = pck.base64();
@@ -91,7 +91,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                 length: p.len() as u32,
             };
 
-            let r = self.note.note().add(Some("axl.qo"), None, Some(meta), Some(core::str::from_utf8(p).unwrap()), false)?.wait()?;
+            let r = self.note.note().add(Some("axl.qo"), None, Some(meta), Some(core::str::from_utf8(p).unwrap()), false)?.wait(delay)?;
 
             offset += p.len();
 

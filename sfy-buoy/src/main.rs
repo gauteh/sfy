@@ -48,7 +48,7 @@ fn main() -> ! {
     println!("hello from sfy!");
 
     info!("Setting up Notecarrier..");
-    let mut note = Notecarrier::new(bus.acquire_i2c()).unwrap();
+    let mut note = Notecarrier::new(bus.acquire_i2c(), &mut delay).unwrap();
 
     info!("Setting up IMU..");
     let mut waves = Waves::new(bus.acquire_i2c()).unwrap();
@@ -65,7 +65,7 @@ fn main() -> ! {
 
         let _wr = waves.read_and_filter().unwrap();
 
-        let gps = note.card().location().unwrap().wait().unwrap();
+        let gps = note.card().location().unwrap().wait(&mut delay).unwrap();
         info!("Location: {:?}", gps);
         // Subsystems:
         // - waves
