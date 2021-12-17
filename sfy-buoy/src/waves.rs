@@ -22,7 +22,15 @@ pub struct Waves<I2C: WriteRead + Write> {
     pub i2c: I2C,
     pub imu: IMU,
     filter: NxpFusion,
+
+    /// Buffer with values ready to be sent.
     pub axl: VecAxl,
+
+    // /// Timestamp of start of buffer.
+    // pub timestamp: u32,
+
+    // /// Offset in FIFO when timestamp was set.
+    // pub fifo_offset: u32;
 }
 
 impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
@@ -143,8 +151,11 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         let imu = &mut self.imu;
         let filter = &mut self.filter;
 
+        let fifo_full = imu.fifostatus.full(i2c)?;
+        let fifo_overrun = imu.fifostatus.overrun(i2c)?;
+        defmt::debug!("reading {} (fifo_full: {}, overrun: {}) sample pairs (buffer: {}/{})", n, fifo_full, fifo_overrun, self.axl.len(), AXL_SZ);
+
         let n = n / 2;
-        let n = n.max((AXL_SZ / SAMPLE_SZ) as u16);
 
         for _ in 0..n {
             let m1 = imu.fifo_pop(i2c)?;
@@ -153,7 +164,10 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
             let ga = match (m1, m2) {
                 (Value::Gyro(g), Value::Accel(a)) => Some((g, a)),
                 (Value::Accel(a), Value::Gyro(g)) => Some((g, a)),
-                _ => None
+                _ => {
+                    defmt::error!("Got non accel or gyro sample: {:?}, {:?}", m1, m2);
+                    None
+                }
             };
 
             if let Some((g, a)) = ga {
@@ -164,6 +178,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
                 let axl = Vector3d { x: a[0] as f32, y: a[1] as f32, z: a[2] as f32 };
                 let axl = q.rotate(axl);
 
+                // XXX: use try_extend
                 self.axl.extend(axl.iter().map(f16::from_f32));
 
                 // XXX:
@@ -179,6 +194,12 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
                 break // we got something else than gyro or accel
             }
         }
+
+        // Clear FIFO
+        let nn = imu.fifostatus.diff_fifo(i2c)?;
+        // imu.fifoctrl.mode(i2c, fifoctrl::FifoMode::Bypass)?;
+        // imu.fifoctrl.mode(i2c, fifoctrl::FifoMode::FifoMode)?;
+        defmt::debug!("cleared FIFO, fifo length before clear: {} ({} read)", nn, n*2);
 
         // TODO: In case FIFO ran full it needs resetting.
         // TODO: Set time of start for batch + current offset in FIFO where the timestamp points to.

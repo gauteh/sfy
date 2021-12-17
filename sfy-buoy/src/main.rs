@@ -47,23 +47,26 @@ fn main() -> ! {
 
     println!("hello from sfy!");
 
-    // info!("Setting up Notecarrier..");
-    // let mut note = Notecarrier::new(bus.acquire_i2c());
+    info!("Setting up Notecarrier..");
+    let mut note = Notecarrier::new(bus.acquire_i2c()).unwrap();
 
     info!("Setting up IMU..");
     let mut waves = Waves::new(bus.acquire_i2c()).unwrap();
+    waves.enable_fifo(&mut delay).unwrap();
 
     info!("Entering main loop");
 
     loop {
-        delay.delay_ms(2000u32);
+        // delay.delay_ms(2000u32);
         led.toggle().unwrap();
 
         let temp = waves.get_temperature().unwrap();
         info!("Temperature: {}", temp);
 
-        let _wr = waves.read_and_filter();
+        let _wr = waves.read_and_filter().unwrap();
 
+        let gps = note.card().location().unwrap().wait().unwrap();
+        info!("Location: {:?}", gps);
         // Subsystems:
         // - waves
         // - cellular (note)

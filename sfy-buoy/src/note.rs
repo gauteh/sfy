@@ -18,7 +18,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             .set(Some("no.met.gauteh:sfy"), None, None, Some("cain"))?
             .wait()?;
 
-        note.card().location_mode(Some("periodic"), Some(60), None, None, None, None, None, None).unwrap().wait().ok();
+        note.card().location_mode(Some("continuous"), None, None, None, None, None, None, None).unwrap().wait().ok();
         note.card().location_track(true, false, true, None, None).unwrap().wait().ok();
 
         let mut n = Notecarrier {

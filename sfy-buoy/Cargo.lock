@@ -549,6 +549,7 @@ dependencies = [
 name = "ism330dhcx"
 version = "0.3.0"
 dependencies = [
+ "defmt",
  "embedded-hal",
 ]
 
