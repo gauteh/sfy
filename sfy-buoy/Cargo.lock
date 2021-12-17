@@ -1006,6 +1006,7 @@ dependencies = [
  "ambiq-hal",
  "base64",
  "bytemuck",
+ "chrono",
  "cmsis_dsp",
  "cortex-m",
  "cortex-m-rt",

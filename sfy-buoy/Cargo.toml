@@ -29,6 +29,7 @@ void = { version = "1.0.2", default-features = false }
 base64 = { version = "0.13.0", default-features = false }
 shared-bus = "0.2.2"
 half = { version = "1.8.2", features = [ "use-intrinsics", "bytemuck" ] }
+chrono = { version = "0.4.19", default-features = false }
 
 [dependencies.notecard]
 path = "../../../../dev/embedded/notecard-rs"

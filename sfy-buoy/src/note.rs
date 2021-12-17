@@ -109,7 +109,7 @@ pub struct AxlPacketMeta {
     pub length: u32,
 }
 
-#[derive(serde::Serialize, Default)]
+#[derive(Debug, serde::Serialize, Default)]
 pub struct AxlPacket {
     pub timestamp: u32,
 
