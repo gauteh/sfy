@@ -15,7 +15,7 @@ use chrono::{NaiveDate, NaiveDateTime};
 use defmt_rtt as _;
 use hal::i2c;
 
-use sfy::note::{Notecarrier, AxlPacket};
+use sfy::note::Notecarrier;
 use sfy::waves::Waves;
 
 #[cfg_attr(not(test), entry)]
@@ -57,6 +57,7 @@ fn main() -> ! {
 
     info!("Setting up IMU..");
     let mut waves = Waves::new(bus.acquire_i2c()).unwrap();
+    waves.take_buf(rtc.now().timestamp_millis() as u32).unwrap(); // set timestamp.
     waves.enable_fifo(&mut delay).unwrap();
 
     let mut location = sfy::Location::default();
@@ -118,13 +119,7 @@ fn main() -> ! {
             waves.read_and_filter().unwrap();
 
             if waves.axl.is_full() {
-                let pck = AxlPacket {
-                    timestamp: 0, // TODO:
-                    data: waves.axl.clone(),
-                };
-
-                waves.axl.clear();
-
+                let pck = waves.take_buf(now as u32).unwrap();
                 imu.dequeue.push_back(pck).unwrap();
             }
         }

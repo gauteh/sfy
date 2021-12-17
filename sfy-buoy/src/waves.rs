@@ -10,6 +10,7 @@ use embedded_hal::blocking::{
 use ism330dhcx::{ctrl1xl, ctrl2g, fifo, fifoctrl, Ism330Dhcx};
 use micromath::{Quaternion, vector::{Vector, Vector3d}};
 use half::f16;
+use crate::note::AxlPacket;
 
 /// The installed IMU.
 pub type IMU = Ism330Dhcx;
@@ -26,11 +27,12 @@ pub struct Waves<I2C: WriteRead + Write> {
     /// Buffer with values ready to be sent.
     pub axl: VecAxl,
 
-    // /// Timestamp of start of buffer.
-    // pub timestamp: u32,
+    /// Timestamp at `fifo_offset` sample in buffer.
+    pub timestamp: u32,
 
-    // /// Offset in FIFO when timestamp was set.
-    // pub fifo_offset: u32;
+    /// Offset in FIFO _in samples_ (that is one gyro and one accel sample) when timestamp
+    /// was set.
+    pub fifo_offset: u16,
 }
 
 impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
@@ -43,6 +45,8 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
             imu,
             filter: NxpFusion::new(208.),
             axl: heapless::Vec::new(),
+            timestamp: 0,
+            fifo_offset: 0,
         };
 
         defmt::debug!("booting imu..");
@@ -140,6 +144,24 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         let n = self.imu.fifostatus.diff_fifo(&mut self.i2c)?;
         defmt::debug!("consuming {} samples from FIFO..", n);
         Ok((0..n).map(|_| self.imu.fifo_pop(&mut self.i2c)))
+    }
+
+    /// Take buf and reset timestamp.
+    pub fn take_buf(&mut self, now: u32) -> Result<AxlPacket, E> {
+        let pck = AxlPacket {
+            timestamp: self.timestamp,
+            offset: self.fifo_offset,
+            data: self.axl.clone(),
+        };
+
+        self.axl.clear();
+
+        self.timestamp = now;
+        self.fifo_offset = self.imu.fifostatus.diff_fifo(&mut self.i2c)? / 2;
+
+        defmt::debug!("cleared buffer: {}, new timestamp: {}, new offset: {}", pck.data.len(), self.timestamp, self.fifo_offset);
+
+        Ok(pck)
     }
 
     pub fn read_and_filter(&mut self) -> Result<(), E> {

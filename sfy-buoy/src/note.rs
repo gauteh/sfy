@@ -81,24 +81,20 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
 
         let b64 = pck.base64();
 
-        // Send first payload with timestamp
-        let mut offset: usize = 0;
-
-        for p in b64.chunks(8 * 1024) {
+        for (pi, p) in b64.chunks(8 * 1024).enumerate() {
             let meta = AxlPacketMeta {
                 timestamp: pck.timestamp,
-                offset: offset as u32,
+                offset: pck.offset as u32,
+                packet: pi as u32,
                 length: p.len() as u32,
             };
 
             let r = self.note.note().add(Some("axl.qo"), None, Some(meta), Some(core::str::from_utf8(p).unwrap()), false)?.wait(delay)?;
 
-            offset += p.len();
-
-            defmt::trace!("sent data package: {} of {} (note: {:?})", offset, b64.len(), r);
+            defmt::trace!("sent data package: {}, bytes: {} (note: {:?})", pi, b64.len(), r);
         }
 
-        Ok(offset)
+        Ok(b64.len())
     }
 }
 
@@ -106,12 +102,15 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
 pub struct AxlPacketMeta {
     pub timestamp: u32,
     pub offset: u32,
+    pub packet: u32,
     pub length: u32,
 }
 
 #[derive(Debug, serde::Serialize, Default)]
 pub struct AxlPacket {
+    /// Timstamp of sample at `offset`.
     pub timestamp: u32,
+    pub offset: u16,
 
     /// This is moved to the payload of the note.
     #[serde(skip)]
