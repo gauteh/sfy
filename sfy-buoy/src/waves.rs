@@ -211,14 +211,13 @@ pub enum Event {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use embedded_hal_mock::i2c::{Mock, Transaction};
 
     #[test]
     fn take_and_compress() {
         let mut v = VecAxl::new();
 
         for i in 0..3072 {
-            v.push(f16::from_f32(i as f32));
+            v.push(f16::from_f32(i as f32)).unwrap();
         }
 
         let mut buf = [0u8; 1024 * 4 * 3];

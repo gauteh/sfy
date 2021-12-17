@@ -61,11 +61,13 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         struct AxlPacketMetaTemplate {
             timestamp: u32,
             offset: u32,
+            length: u32,
         }
 
         let meta_template = AxlPacketMetaTemplate {
             timestamp: 14,
-            offset: 14
+            offset: 14,
+            length: 14
         };
 
         defmt::debug!("setting up template for AxlPacketMeta");
@@ -85,7 +87,8 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         for p in b64.chunks(8 * 1024) {
             let meta = AxlPacketMeta {
                 timestamp: pck.timestamp,
-                offset: offset as u32
+                offset: offset as u32,
+                length: p.len() as u32,
             };
 
             let r = self.note.note().add(Some("axl.qo"), None, Some(meta), Some(core::str::from_utf8(p).unwrap()), false)?.wait()?;
@@ -103,6 +106,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
 pub struct AxlPacketMeta {
     pub timestamp: u32,
     pub offset: u32,
+    pub length: u32,
 }
 
 #[derive(serde::Serialize, Default)]
@@ -122,6 +126,11 @@ impl AxlPacket {
     pub fn base64(&self) -> heapless::Vec<u8, AXL_OUTN> {
         let mut b64: heapless::Vec<_, AXL_OUTN> = heapless::Vec::new();
         b64.resize_default(AXL_OUTN).unwrap();
+
+        // Check endianness (TODO: use byteorder or impl in hidefix to swap order if compiled for
+        // big endian machine).
+        #[cfg(target_endian = "big")]
+        compile_error!("serializied samples are assumed to be in little endian, target platform is big endian and no conversion is implemented.");
 
         let data = bytemuck::cast_slice(&self.data);
         let written = base64::encode_config_slice(data, base64::STANDARD, &mut b64);
@@ -158,5 +167,26 @@ mod tests {
 
         let b64 = p.base64();
         println!("{}", core::str::from_utf8(&b64).unwrap());
+    }
+
+    #[test]
+    fn read_transmitted_data_package() {
+        use std::fs;
+
+        let sent_data = (0..3072).map(|v| f16::from_f32(v as f32)).collect::<heapless::Vec<_, { AXL_SZ }>>();
+
+        let length: usize = 8192;
+        let b64 = fs::read("tests/data/transmitted_payload.txt").unwrap();
+
+        let b64 = &b64[..length];
+
+        // this test assumes host platform is little endian
+
+        let mut buf = Vec::with_capacity(3072 * 2);
+        buf.resize(3072 * 2, 0);
+        let data_bytes = base64::decode_config_slice(b64, base64::STANDARD, &mut buf).unwrap();
+        let data_values = bytemuck::cast_slice::<_, half::f16>(&buf);
+
+        assert_eq!(sent_data, data_values);
     }
 }

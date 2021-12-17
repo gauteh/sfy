@@ -56,7 +56,7 @@ mod tests {
     #[test]
     fn send_axl_batch(s: &mut State) {
         let pck = note::AxlPacket {
-            timestamp: 0,
+            timestamp: 1000,
             data: (0..3072).map(|v| half::f16::from_f32(v as f32)).collect::<heapless::Vec<_, { 3 * 1024 }>>()
         };
 

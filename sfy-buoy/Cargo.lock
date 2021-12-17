@@ -419,16 +419,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "embedded-hal-mock"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b0c061879892486c076c52665d6e04e3ce0b2f7bba8250874b5942963d436c65"
-dependencies = [
- "embedded-hal",
- "nb 0.1.3",
-]
-
-[[package]]
 name = "embedded-time"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1021,7 +1011,6 @@ dependencies = [
  "defmt",
  "defmt-rtt",
  "embedded-hal",
- "embedded-hal-mock",
  "half",
  "heapless",
  "ism330dhcx",
