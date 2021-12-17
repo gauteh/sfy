@@ -150,6 +150,7 @@ mod tests {
             match i {
                 fifo::Value::Accel(_) => assert!(matches!(last, fifo::Value::Gyro(_))),
                 fifo::Value::Gyro(_) => assert!(matches!(last, fifo::Value::Accel(_))),
+                _ => panic!()
             };
 
             last = *i;

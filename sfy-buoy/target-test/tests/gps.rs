@@ -26,11 +26,11 @@ mod tests {
         let mut dp = hal::pac::Peripherals::take().unwrap();
         let pins = hal::gpio::Pins::new(dp.GPIO);
 
-        let delay = hal::delay::Delay::new(core.SYST, &mut dp.CLKGEN);
+        let mut delay = hal::delay::Delay::new(core.SYST, &mut dp.CLKGEN);
         let i2c = I2c::new(dp.IOM2, pins.d17, pins.d18, Freq::F100kHz);
 
         defmt::info!("Setting up notecarrier");
-        let note = Notecarrier::new(i2c).unwrap();
+        let note = Notecarrier::new(i2c, &mut delay).unwrap();
 
         State {
             note,
@@ -49,7 +49,7 @@ mod tests {
 
     #[test]
     fn gps_position(s: &mut State) {
-        let location = s.note.card().location().unwrap().wait().unwrap();
+        let location = s.note.card().location().unwrap().wait(&mut s.delay).unwrap();
         defmt::info!("location: {:?}", location);
 
         assert!(location.lon.is_some());
@@ -60,24 +60,24 @@ mod tests {
         let mode = s.note.card()
             .location_mode(Some("periodic"), Some(10), None, None, None, None, None, None)
             .unwrap()
-            .wait()
+            .wait(&mut s.delay)
             .unwrap();
 
         defmt::info!("mode: {:?}", mode);
         assert_eq!(mode.mode, "periodic");
 
-        defmt::debug!("track: {:?}", s.note.card().location_track(true, false, true, Some(1), None).unwrap().wait());
+        defmt::debug!("track: {:?}", s.note.card().location_track(true, false, true, Some(1), None).unwrap().wait(&mut s.delay));
 
         defmt::info!("retrieve current mode..");
         let mode = s.note.card()
             .location_mode(Some(""), None, None, None, None, None, None, None)
             .unwrap()
-            .wait()
+            .wait(&mut s.delay)
             .unwrap();
         defmt::info!("mode: {:?}", mode);
         assert_eq!(mode.mode, "periodic");
 
-        let location = s.note.card().location().unwrap().wait().unwrap();
+        let location = s.note.card().location().unwrap().wait(&mut s.delay).unwrap();
         defmt::info!("location: {:?}", location);
 
         // we might not have a positon, but the gps should be active.

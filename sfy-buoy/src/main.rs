@@ -45,6 +45,10 @@ fn main() -> ! {
     let i2c = i2c::I2c::new(dp.IOM2, pins.d17, pins.d18, i2c::Freq::F100kHz);
     let bus = shared_bus::BusManagerSimple::new(i2c);
 
+    // Set up RTC
+    let mut rtc = hal::rtc::Rtc::new(dp.RTC, &mut dp.CLKGEN);
+    rtc.enable();
+
     println!("hello from sfy!");
 
     info!("Setting up Notecarrier..");
@@ -67,9 +71,6 @@ fn main() -> ! {
 
         let gps = note.card().location().unwrap().wait(&mut delay).unwrap();
         info!("Location: {:?}", gps);
-        // Subsystems:
-        // - waves
-        // - cellular (note)
     }
 }
 

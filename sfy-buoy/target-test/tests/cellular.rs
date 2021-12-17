@@ -26,11 +26,11 @@ mod tests {
         let mut dp = hal::pac::Peripherals::take().unwrap();
         let pins = hal::gpio::Pins::new(dp.GPIO);
 
-        let delay = hal::delay::Delay::new(core.SYST, &mut dp.CLKGEN);
+        let mut delay = hal::delay::Delay::new(core.SYST, &mut dp.CLKGEN);
         let i2c = I2c::new(dp.IOM2, pins.d17, pins.d18, Freq::F100kHz);
 
         defmt::info!("Setting up notecarrier");
-        let note = Notecarrier::new(i2c).unwrap();
+        let note = Notecarrier::new(i2c, &mut delay).unwrap();
 
         State {
             note,
@@ -49,21 +49,21 @@ mod tests {
 
     #[test]
     fn log_and_sync(s: &mut State) {
-        let status = s.note.hub().sync_status().unwrap().wait().unwrap();
+        let status = s.note.hub().sync_status().unwrap().wait(&mut s.delay).unwrap();
         if status.requested.is_some() {
             defmt::panic!("sync already in progress: {:?}", status);
         }
 
         defmt::debug!("sending test log message to notehub..");
-        s.note.hub().log("cain test starting up!", true, true).unwrap().wait().unwrap();
+        s.note.hub().log("cain test starting up!", true, true).unwrap().wait(&mut s.delay).unwrap();
 
         defmt::debug!("initiate sync..");
-        s.note.hub().sync().unwrap().wait().unwrap();
+        s.note.hub().sync().unwrap().wait(&mut s.delay).unwrap();
 
         for _ in 0..30 {
             s.delay.delay_ms(1000u32);
             defmt::debug!("querying sync status..");
-            let status = s.note.hub().sync_status().unwrap().wait();
+            let status = s.note.hub().sync_status().unwrap().wait(&mut s.delay);
             defmt::debug!("status: {:?}", status);
 
             if let Ok(status) = status {
