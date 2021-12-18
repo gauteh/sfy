@@ -21,8 +21,6 @@ jobs:
         with:
             toolchain: nightly
             override: true
-            components: rustfmt, clippy
-            profile: minimal
 
       - name: Add rust target for thumbv7em
         run: rustup target add thumbv7em-none-eabihf
