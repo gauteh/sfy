@@ -1,16 +1,19 @@
 //! Measure waves using an IMU, feed it through a Kalman filter and collect
 //! time-series or statistics.
 
+use crate::note::AxlPacket;
 use ahrs_fusion::NxpFusion;
 use core::fmt::Debug;
 use embedded_hal::blocking::{
     delay::DelayMs,
     i2c::{Write, WriteRead},
 };
-use ism330dhcx::{ctrl1xl, ctrl2g, fifo, fifoctrl, Ism330Dhcx};
-use micromath::{Quaternion, vector::{Vector, Vector3d}};
 use half::f16;
-use crate::note::AxlPacket;
+use ism330dhcx::{ctrl1xl, ctrl2g, fifo, fifoctrl, Ism330Dhcx};
+use micromath::{
+    vector::{Vector, Vector3d},
+    Quaternion,
+};
 
 /// The installed IMU.
 pub type IMU = Ism330Dhcx;
@@ -144,7 +147,9 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
     }
 
     /// Returns iterator with all the currently available samples in the FIFO.
-    pub fn consume_fifo(&mut self) -> Result<impl ExactSizeIterator<Item = Result<fifo::Value, E>> + '_, E> {
+    pub fn consume_fifo(
+        &mut self,
+    ) -> Result<impl ExactSizeIterator<Item = Result<fifo::Value, E>> + '_, E> {
         let n = self.imu.fifostatus.diff_fifo(&mut self.i2c)?;
         defmt::debug!("consuming {} samples from FIFO..", n);
         Ok((0..n).map(|_| self.imu.fifo_pop(&mut self.i2c)))
@@ -167,7 +172,12 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         self.timestamp = now;
         self.fifo_offset = self.imu.fifostatus.diff_fifo(&mut self.i2c)? / 2;
 
-        defmt::debug!("cleared buffer: {}, new timestamp: {}, new offset: {}", pck.data.len(), self.timestamp, self.fifo_offset);
+        defmt::debug!(
+            "cleared buffer: {}, new timestamp: {}, new offset: {}",
+            pck.data.len(),
+            self.timestamp,
+            self.fifo_offset
+        );
 
         Ok(pck)
     }
@@ -183,9 +193,11 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
 
         let fifo_full = imu.fifostatus.full(i2c)?;
         let fifo_overrun = imu.fifostatus.overrun(i2c)?;
-        defmt::debug!("reading {} (fifo_full: {}, overrun: {}) sample pairs (buffer: {}/{})", n, fifo_full, fifo_overrun, self.axl.len(), AXL_SZ);
+        let fifo_overrun_latched = imu.fifostatus.overrun_latched(i2c)?;
+        defmt::debug!("reading {} (fifo_full: {}, overrun: {}, overrun_latched: {}) sample pairs (buffer: {}/{})", n, fifo_full, fifo_overrun, fifo_overrun_latched, self.axl.len(), AXL_SZ);
 
         let n = n / 2;
+        let n = n.min(((self.axl.capacity() - self.axl.len()) / 3) as u16);
 
         for _ in 0..n {
             let m1 = imu.fifo_pop(i2c)?;
@@ -201,11 +213,25 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
             };
 
             if let Some((g, a)) = ga {
-                filter.update(g[0] as f32, g[1] as f32, g[2] as f32, a[0] as f32, a[1] as f32, a[2] as f32, 0., 0., 0.);
+                filter.update(
+                    g[0] as f32,
+                    g[1] as f32,
+                    g[2] as f32,
+                    a[0] as f32,
+                    a[1] as f32,
+                    a[2] as f32,
+                    0.,
+                    0.,
+                    0.,
+                );
 
                 let q = filter.quaternion();
                 let q = Quaternion::new(q[0], q[1], q[2], q[3]);
-                let axl = Vector3d { x: a[0] as f32, y: a[1] as f32, z: a[2] as f32 };
+                let axl = Vector3d {
+                    x: a[0] as f32,
+                    y: a[1] as f32,
+                    z: a[2] as f32,
+                };
                 let axl = q.rotate(axl);
 
                 // XXX: use try_extend
@@ -221,15 +247,13 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
                 //
                 // - Reset FIFO and timestamps
                 // - Reset IMU?
-                break // we got something else than gyro or accel
+                break; // we got something else than gyro or accel
             }
         }
 
         // Clear FIFO
         let nn = imu.fifostatus.diff_fifo(i2c)?;
-        // imu.fifoctrl.mode(i2c, fifoctrl::FifoMode::Bypass)?;
-        // imu.fifoctrl.mode(i2c, fifoctrl::FifoMode::FifoMode)?;
-        defmt::debug!("cleared FIFO, fifo length before clear: {} ({} read)", nn, n*2);
+        defmt::debug!("fifo length after read: {}", nn);
 
         // TODO: In case FIFO ran full it needs resetting.
         // TODO: Set time of start for batch + current offset in FIFO where the timestamp points to.
@@ -240,7 +264,10 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
 
 /// Compresses the stream of f32's, the `buf` must be at least 4 times as long in `u8` as `values` is
 /// in `f32`.
-pub fn compress(values: &[f16], buf: &mut [u8]) -> Result<usize, lzss::LzssError<void::Void, lzss::SliceWriteError>> {
+pub fn compress(
+    values: &[f16],
+    buf: &mut [u8],
+) -> Result<usize, lzss::LzssError<void::Void, lzss::SliceWriteError>> {
     use lzss::{Lzss, SliceReader, SliceWriter};
     type MyLzss = Lzss<10, 4, 0x20, { 1 << 10 }, { 2 << 10 }>;
 
@@ -248,10 +275,7 @@ pub fn compress(values: &[f16], buf: &mut [u8]) -> Result<usize, lzss::LzssError
 
     debug_assert!(buf.len() >= values.len());
 
-    MyLzss::compress(
-        SliceReader::new(values),
-        SliceWriter::new(buf)
-    )
+    MyLzss::compress(SliceReader::new(values), SliceWriter::new(buf))
 }
 
 pub enum Event {
@@ -277,6 +301,11 @@ mod tests {
 
         let ratio = (v.len() * 4) as f32 / (n as f32);
 
-        println!("compressed from: {} to {} (ratio: {})", v.len() * 4, n, ratio);
+        println!(
+            "compressed from: {} to {} (ratio: {})",
+            v.len() * 4,
+            n,
+            ratio
+        );
     }
 }

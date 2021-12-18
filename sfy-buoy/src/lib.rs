@@ -58,6 +58,10 @@ impl Location {
                 // Try to get time and location
                 let gps = note.card().location()?.wait(delay)?;
 
+                if matches!(self.state, Trying(_)) {
+                    self.state = Trying(now);
+                }
+
                 info!("Location: {:?}", gps);
                 if let Location {
                     lat: Some(lat),
@@ -89,7 +93,7 @@ enum QueueDrain {
 }
 
 pub struct Imu {
-    pub dequeue: heapless::Deque<note::AxlPacket, 60>,
+    pub dequeue: heapless::Deque<note::AxlPacket, 10>,
     pub last_poll: i64,
     queue_state: QueueDrain,
 }
@@ -109,12 +113,11 @@ impl Imu {
         waves: &mut waves::Waves<I>,
         location: &Location,
     ) -> Result<(), E> {
-        const IMU_BUF_DIFF: i64 = 100; // ms
+        const IMU_BUF_DIFF: i64 = 1000; // ms
         let now = rtc.now().timestamp_millis();
 
         if (now - self.last_poll) > IMU_BUF_DIFF {
-            info!("Polling IMU..");
-            self.last_poll = now;
+            info!("Polling IMU.. (now: {}, last_poll: {})", now, self.last_poll);
 
             waves.read_and_filter()?;
 
@@ -122,6 +125,8 @@ impl Imu {
                 info!("waves buffer is full, pushing to queue..");
                 let pck = waves.take_buf(now as u32, location.lon, location.lat)?;
                 self.dequeue.push_back(pck).unwrap(); // TODO: fix
+            } else {
+                self.last_poll = now;
             }
         }
 
@@ -155,7 +160,7 @@ impl Imu {
                 }
 
                 if let Some(pck) = self.dequeue.pop_front() {
-                    defmt::debug!("scheduling package to be sent: {:?}", pck);
+                    defmt::debug!("scheduling package to be sent: {}, length: {}", pck.timestamp, pck.data.len());
                     note.send(pck, delay)?;
                 }
             }
