@@ -196,6 +196,9 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         let fifo_overrun_latched = imu.fifostatus.overrun_latched(i2c)?;
         defmt::debug!("reading {} (fifo_full: {}, overrun: {}, overrun_latched: {}) sample pairs (buffer: {}/{})", n, fifo_full, fifo_overrun, fifo_overrun_latched, self.axl.len(), AXL_SZ);
 
+        // XXX: If any of these flags are true we need to reset the FIFO (and return an error from
+        // this function), otherwise it will have stopped accumulating samples.
+
         let n = n / 2;
         let n = n.min(((self.axl.capacity() - self.axl.len()) / 3) as u16);
 

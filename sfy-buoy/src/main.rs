@@ -79,6 +79,19 @@ fn main() -> ! {
         // interrupt.
         imu.check_retrieve(&mut rtc, &mut waves, &location).unwrap();
 
+        // XXX: Draining the queue to the notcard is too slow! We will have to:
+        //
+        //  * move the IMU to another I2C bus and
+        //  * run it in an interrupt (RTC alarm or EXTI/DRDY).
+        //
+        //  because:
+        //
+        //  * the notecard will block the I2C even if the IMU subsystem is running in an interrupt,
+        //  * the notecard runs on 100kHz and IMU on 1mHz,
+        //  * it takes longer to transmit a data package to the notecard than it takes for the IMU
+        //    FIFO to fill up (using compressed FIFO might help, but reading the IMU would still be
+        //    slow because we're locked at 100kHz).
+
         // Drain queue (if full enough)
         imu.check_drain_queue(&mut note, &mut delay).unwrap();
 

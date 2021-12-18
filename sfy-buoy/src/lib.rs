@@ -93,7 +93,7 @@ enum QueueDrain {
 }
 
 pub struct Imu {
-    pub dequeue: heapless::Deque<note::AxlPacket, 10>,
+    pub dequeue: heapless::Deque<note::AxlPacket, 10>, // 10 is ok, 60 is too much.
     pub last_poll: i64,
     queue_state: QueueDrain,
 }
@@ -149,13 +149,13 @@ impl Imu {
         match self.queue_state {
             Waiting => {
                 if n >= DRAIN_UPPER {
-                    defmt::info!("starting to drain queue..");
+                    defmt::info!("queue length: {}, starting to drain queue..", n);
                     self.queue_state = Draining;
                 }
             },
             Draining => {
                 if n <= DRAIN_LOWER {
-                    defmt::info!("queue almost empty, stopping.");
+                    defmt::info!("queue length: {}, stopping.", n);
                     self.queue_state = Waiting;
                 }
 
