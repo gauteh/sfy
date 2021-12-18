@@ -173,6 +173,9 @@ mod tests {
     fn base64_data_package() {
         let p = AxlPacket {
             timestamp: 0,
+            lat: 0.0,
+            lon: 0.0,
+            offset: 0,
             data: (0..3072).map(|v| f16::from_f32(v as f32)).collect::<heapless::Vec<_, { AXL_SZ }>>()
         };
 
