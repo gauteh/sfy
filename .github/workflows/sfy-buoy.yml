@@ -24,14 +24,8 @@ jobs:
             components: rustfmt, clippy
             profile: minimal
 
-      - name: Install latest nightly (thumbv7em)
-        uses: actions-rs/toolchain@v1
-        with:
-            toolchain: nightly
-            override: true
-            components: rustfmt, clippy
-            profile: minimal
-            target: thumbv7em-none-eabihf
+      - name: Add rust target for thumbv7em
+        run: rustup target add thumbv7em-none-eabihf
 
       - name: Install deps
         run: |
