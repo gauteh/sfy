@@ -13,8 +13,15 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
+    container:
+      image: ubuntu:20.04
 
     steps:
+      - name: Install deps
+        run: |
+          apt-get -y update
+          apt-get -y install build-essential libssl-dev gcc-arm-none-eabi binutils-arm-none-eabi libclang-common-6.0-dev clang-6.0 libclang-dev curl git
+
       - uses: actions/checkout@v2
       - name: Install latest nightly
         uses: actions-rs/toolchain@v1
@@ -25,25 +32,16 @@ jobs:
       - name: Add rust target for thumbv7em
         run: |
           rustup default nightly
+          rustup component add rust-src llvm-tools-preview rustc-dev
           rustup target add thumbv7em-none-eabihf
-
-      - name: Install deps
-        run: |
-          sudo apt-get -y update
-          sudo apt-get -y install build-essential libssl-dev gcc-arm-none-eabi binutils-arm-none-eabi libclang-common-6.0-dev clang-6.0 libclang-dev
-
 
       - name: Build (buoy)
         working-directory: sfy-buoy/
         run: cargo build --verbose
-        env:
-          BINDGEN_EXTRA_CLANG_ARGS: "-I/usr/lib/llvm-6.0/lib/clang/6.0.0/include/"
 
       - name: Test (host-tests)
         working-directory: sfy-buoy/
         run: make host-test
-        env:
-          BINDGEN_EXTRA_CLANG_ARGS: "-I/usr/lib/llvm-6.0/lib/clang/6.0.0/include/"
 
       - name: Build (target tests)
         working-directory: sfy-buoy/target-test
