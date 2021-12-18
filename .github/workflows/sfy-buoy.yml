@@ -32,13 +32,18 @@ jobs:
           sudo apt-get -y update
           sudo apt-get -y install build-essential libssl-dev gcc-arm-none-eabi binutils-arm-none-eabi libclang-common-6.0-dev clang-6.0 libclang-dev
 
+
       - name: Build (buoy)
         working-directory: sfy-buoy/
         run: cargo build --verbose
+        env:
+          BINDGEN_EXTRA_CLANG_ARGS: "-I/usr/lib/llvm-6.0/lib/clang/6.0.0/include/"
 
       - name: Test (host-tests)
         working-directory: sfy-buoy/
         run: make host-test
+        env:
+          BINDGEN_EXTRA_CLANG_ARGS: "-I/usr/lib/llvm-6.0/lib/clang/6.0.0/include/"
 
       - name: Build (target tests)
         working-directory: sfy-buoy/target-test
