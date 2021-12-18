@@ -685,7 +685,6 @@ dependencies = [
 [[package]]
 name = "notecard"
 version = "0.1.0"
-source = "git+https://github.com/gauteh/notecard-rs#0bc5958aa59e287837d439ab7a0305ce371f4688"
 dependencies = [
  "defmt",
  "embedded-hal",

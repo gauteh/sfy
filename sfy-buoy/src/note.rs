@@ -1,9 +1,9 @@
-use core::ops::{Deref, DerefMut};
-use embedded_hal::blocking::i2c::{Read, Write};
-use embedded_hal::blocking::delay::DelayMs;
-use notecard::{Notecard, NoteError};
-use half::f16;
 use crate::waves::AXL_SZ;
+use core::ops::{Deref, DerefMut};
+use embedded_hal::blocking::delay::DelayMs;
+use embedded_hal::blocking::i2c::{Read, Write};
+use half::f16;
+use notecard::{NoteError, Notecard};
 
 pub struct Notecarrier<I2C: Read + Write> {
     note: Notecard<I2C>,
@@ -15,15 +15,31 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         note.initialize().expect("could not initialize notecard.");
 
         note.hub()
-            .set(Some("no.met.gauteh:sfy"), None, None, Some("cain"))?
+            .set(
+                Some("no.met.gauteh:sfy"),
+                None,
+                Some(notecard::hub::req::HubMode::Periodic),
+                Some("cain"),
+                Some(10), // max time between out-going sync in minutes.
+                None,
+                None,
+                None,
+                None,
+                Some(true),
+                None
+            )?
             .wait(delay)?;
 
-        note.card().location_mode(Some("continuous"), None, None, None, None, None, None, None).unwrap().wait(delay)?;
-        note.card().location_track(true, false, true, None, None).unwrap().wait(delay)?;
+        note.card()
+            .location_mode(Some("continuous"), None, None, None, None, None, None, None)
+            .unwrap()
+            .wait(delay)?;
+        note.card()
+            .location_track(true, false, true, None, None)
+            .unwrap()
+            .wait(delay)?;
 
-        let mut n = Notecarrier {
-            note
-        };
+        let mut n = Notecarrier { note };
 
         n.setup_templates(delay)?;
 
@@ -31,7 +47,11 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
     }
 
     /// Initiate sync and wait for it to complete (or time out).
-    pub fn sync_and_wait(&mut self, delay: &mut impl DelayMs<u16>, timeout_ms: u16) -> Result<bool, NoteError> {
+    pub fn sync_and_wait(
+        &mut self,
+        delay: &mut impl DelayMs<u16>,
+        timeout_ms: u16,
+    ) -> Result<bool, NoteError> {
         defmt::info!("sync..");
         self.note.hub().sync()?.wait(delay)?;
 
@@ -77,12 +97,18 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         };
 
         defmt::debug!("setting up template for AxlPacketMeta");
-        self.note().template(Some("axl.qo"), Some(meta_template), Some(AXL_OUTN as u32))?.wait(delay)?;
+        self.note()
+            .template(Some("axl.qo"), Some(meta_template), Some(AXL_OUTN as u32))?
+            .wait(delay)?;
 
         Ok(())
     }
 
-    pub fn send(&mut self, pck: AxlPacket, delay: &mut impl DelayMs<u16>) -> Result<usize, NoteError> {
+    pub fn send(
+        &mut self,
+        pck: AxlPacket,
+        delay: &mut impl DelayMs<u16>,
+    ) -> Result<usize, NoteError> {
         defmt::debug!("sending acceleration package");
 
         let b64 = pck.base64();
@@ -97,9 +123,24 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                 lat: pck.lat,
             };
 
-            let r = self.note.note().add(Some("axl.qo"), None, Some(meta), Some(core::str::from_utf8(p).unwrap()), false)?.wait(delay)?;
+            let r = self
+                .note
+                .note()
+                .add(
+                    Some("axl.qo"),
+                    None,
+                    Some(meta),
+                    Some(core::str::from_utf8(p).unwrap()),
+                    false,
+                )?
+                .wait(delay)?;
 
-            defmt::trace!("sent data package: {}, bytes: {} (note: {:?})", pi, b64.len(), r);
+            defmt::trace!(
+                "sent data package: {}, bytes: {} (note: {:?})",
+                pi,
+                b64.len(),
+                r
+            );
         }
 
         Ok(b64.len())
@@ -126,12 +167,11 @@ pub struct AxlPacket {
 
     /// This is moved to the payload of the note.
     #[serde(skip)]
-    pub data: heapless::Vec<f16, { AXL_SZ }>
+    pub data: heapless::Vec<f16, { AXL_SZ }>,
 }
 
 /// Maximum length of base64 string from [f16; AXL_SZ]
 pub const AXL_OUTN: usize = { AXL_SZ * 2 } * 4 / 3 + 4;
-
 
 impl AxlPacket {
     pub fn base64(&self) -> heapless::Vec<u8, AXL_OUTN> {
@@ -176,7 +216,9 @@ mod tests {
             lat: 0.0,
             lon: 0.0,
             offset: 0,
-            data: (0..3072).map(|v| f16::from_f32(v as f32)).collect::<heapless::Vec<_, { AXL_SZ }>>()
+            data: (0..3072)
+                .map(|v| f16::from_f32(v as f32))
+                .collect::<heapless::Vec<_, { AXL_SZ }>>(),
         };
 
         let b64 = p.base64();
@@ -187,7 +229,9 @@ mod tests {
     fn read_transmitted_data_package() {
         use std::fs;
 
-        let sent_data = (0..3072).map(|v| f16::from_f32(v as f32)).collect::<heapless::Vec<_, { AXL_SZ }>>();
+        let sent_data = (0..3072)
+            .map(|v| f16::from_f32(v as f32))
+            .collect::<heapless::Vec<_, { AXL_SZ }>>();
 
         let length: usize = 8192;
         let b64 = fs::read("tests/data/transmitted_payload.txt").unwrap();
