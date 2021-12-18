@@ -38,11 +38,40 @@ dependencies = [
 ]
 
 [[package]]
+name = "ambiq-apollo3-pac2"
+version = "0.2.0"
+source = "git+https://github.com/gauteh/ambiq-rs#f101345a2a3acb8e2db286260d262ca5dedb47a6"
+dependencies = [
+ "bare-metal 0.2.5",
+ "cortex-m",
+ "cortex-m-rt",
+ "vcell",
+]
+
+[[package]]
 name = "ambiq-hal"
 version = "0.1.1"
 dependencies = [
- "ambiq-apollo3-pac2",
- "ambiq-hal-sys",
+ "ambiq-apollo3-pac2 0.2.0",
+ "ambiq-hal-sys 0.1.0",
+ "chrono",
+ "cortex-m",
+ "cortex-m-rt",
+ "defmt",
+ "embedded-hal",
+ "embedded-time",
+ "nb 1.0.0",
+ "paste",
+ "ufmt",
+]
+
+[[package]]
+name = "ambiq-hal"
+version = "0.1.1"
+source = "git+https://github.com/gauteh/ambiq-rs#f101345a2a3acb8e2db286260d262ca5dedb47a6"
+dependencies = [
+ "ambiq-apollo3-pac2 0.2.0 (git+https://github.com/gauteh/ambiq-rs)",
+ "ambiq-hal-sys 0.1.0 (git+https://github.com/gauteh/ambiq-rs)",
  "chrono",
  "cortex-m",
  "cortex-m-rt",
@@ -57,6 +86,17 @@ dependencies = [
 [[package]]
 name = "ambiq-hal-sys"
 version = "0.1.0"
+dependencies = [
+ "bindgen",
+ "cc",
+ "fs_extra",
+ "glob",
+]
+
+[[package]]
+name = "ambiq-hal-sys"
+version = "0.1.0"
+source = "git+https://github.com/gauteh/ambiq-rs#f101345a2a3acb8e2db286260d262ca5dedb47a6"
 dependencies = [
  "bindgen",
  "cc",
@@ -680,6 +720,7 @@ dependencies = [
 [[package]]
 name = "notecard"
 version = "0.1.0"
+source = "git+https://github.com/gauteh/notecard-rs#bb9ad9734241ced528c78b7901b7ab56a903968c"
 dependencies = [
  "defmt",
  "embedded-hal",
@@ -1003,7 +1044,7 @@ name = "sfy"
 version = "0.1.0"
 dependencies = [
  "ahrs-fusion",
- "ambiq-hal",
+ "ambiq-hal 0.1.1 (git+https://github.com/gauteh/ambiq-rs)",
  "base64",
  "bytemuck",
  "chrono",
@@ -1104,7 +1145,7 @@ dependencies = [
 name = "test-target"
 version = "0.1.0"
 dependencies = [
- "ambiq-hal",
+ "ambiq-hal 0.1.1",
  "cortex-m",
  "cortex-m-rt",
  "defmt",

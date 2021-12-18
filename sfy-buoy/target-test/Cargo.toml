@@ -40,5 +40,5 @@ ism330dhcx = "0.3.0"
 half = { version = "1.8.2", features = [ "use-intrinsics", "bytemuck" ] }
 
 [dependencies.ambiq-hal]
-path = "../../../../../dev/ambiq-rs/ambiq-hal"
+git = "https://github.com/gauteh/ambiq-rs"
 features = ["sparkfun-redboard-nano", "rt"]
