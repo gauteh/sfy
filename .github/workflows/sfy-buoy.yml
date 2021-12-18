@@ -45,5 +45,5 @@ jobs:
 
       - name: Build (target tests)
         working-directory: sfy-buoy/target-test
-        run: cargo build --verbose --test
+        run: cargo build --verbose --tests
 
