@@ -30,7 +30,7 @@ jobs:
       - name: Install deps
         run: |
           sudo apt-get -y update
-          sudo apt-get -y install build-essential libssl-dev
+          sudo apt-get -y install build-essential libssl-dev gcc-arm-none-eabi
 
       - name: Build (buoy)
         working-directory: sfy-buoy/
