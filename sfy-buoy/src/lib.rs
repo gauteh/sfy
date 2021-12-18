@@ -7,9 +7,9 @@ use defmt::{debug, error, info, trace, warn};
 // we use this for defs of sinf etc.
 extern crate cmsis_dsp;
 
-use core::fmt::Debug;
 use ambiq_hal::rtc::Rtc;
 use chrono::NaiveDateTime;
+use core::fmt::Debug;
 use embedded_hal::blocking::{
     delay::DelayMs,
     i2c::{Read, Write, WriteRead},
@@ -17,8 +17,6 @@ use embedded_hal::blocking::{
 
 pub mod note;
 pub mod waves;
-
-const LOCATION_DIFF: i64 = 1 * 60_000; // ms
 
 pub enum LocationState {
     Trying(i64),
@@ -52,6 +50,7 @@ impl Location {
         use notecard::card::res::Location;
         use LocationState::*;
 
+        const LOCATION_DIFF: i64 = 1 * 60_000; // ms
         let now = rtc.now().timestamp_millis();
 
         match self.state {
@@ -84,20 +83,33 @@ impl Location {
     }
 }
 
-const IMU_BUF_DIFF: i64 = 100; // ms
+enum QueueDrain {
+    Waiting,
+    Draining,
+}
 
-#[derive(Default)]
 pub struct Imu {
     pub dequeue: heapless::Deque<note::AxlPacket, 60>,
     pub last_poll: i64,
+    queue_state: QueueDrain,
 }
 
 impl Imu {
+    pub fn new() -> Imu {
+        Imu {
+            dequeue: heapless::Deque::new(),
+            last_poll: 0,
+            queue_state: QueueDrain::Waiting,
+        }
+    }
+
     pub fn check_retrieve<E: Debug, I: Write<Error = E> + WriteRead<Error = E>>(
         &mut self,
         rtc: &mut Rtc,
         waves: &mut waves::Waves<I>,
+        location: &Location,
     ) -> Result<(), E> {
+        const IMU_BUF_DIFF: i64 = 100; // ms
         let now = rtc.now().timestamp_millis();
 
         if (now - self.last_poll) > IMU_BUF_DIFF {
@@ -107,8 +119,45 @@ impl Imu {
             waves.read_and_filter()?;
 
             if waves.axl.is_full() {
-                let pck = waves.take_buf(now as u32)?;
+                info!("waves buffer is full, pushing to queue..");
+                let pck = waves.take_buf(now as u32, location.lon, location.lat)?;
                 self.dequeue.push_back(pck).unwrap(); // TODO: fix
+            }
+        }
+
+        Ok(())
+    }
+
+    #[allow(non_snake_case)]
+    pub fn check_drain_queue<T: Write + Read>(
+        &mut self,
+        note: &mut note::Notecarrier<T>,
+        delay: &mut impl DelayMs<u16>,
+    ) -> Result<(), notecard::NoteError> {
+        use QueueDrain::*;
+
+        let DRAIN_LOWER: usize = 0;
+        let DRAIN_UPPER: usize = self.dequeue.capacity() / 3 * 2;
+
+        let n = self.dequeue.len();
+
+        match self.queue_state {
+            Waiting => {
+                if n >= DRAIN_UPPER {
+                    defmt::info!("starting to drain queue..");
+                    self.queue_state = Draining;
+                }
+            },
+            Draining => {
+                if n <= DRAIN_LOWER {
+                    defmt::info!("queue almost empty, stopping.");
+                    self.queue_state = Waiting;
+                }
+
+                if let Some(pck) = self.dequeue.pop_front() {
+                    defmt::debug!("scheduling package to be sent: {:?}", pck);
+                    note.send(pck, delay)?;
+                }
             }
         }
 

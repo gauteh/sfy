@@ -57,11 +57,11 @@ fn main() -> ! {
 
     info!("Setting up IMU..");
     let mut waves = Waves::new(bus.acquire_i2c()).unwrap();
-    waves.take_buf(rtc.now().timestamp_millis() as u32).unwrap(); // set timestamp.
+    waves.take_buf(rtc.now().timestamp_millis() as u32, 0.0, 0.0).unwrap(); // set timestamp.
 
     // Subsystem state
     let mut location = sfy::Location::new();
-    let mut imu = sfy::Imu::default();
+    let mut imu = sfy::Imu::new();
 
     info!("Enable IMU.");
     waves.enable_fifo(&mut delay).unwrap();
@@ -71,15 +71,28 @@ fn main() -> ! {
     loop {
         led.toggle().unwrap();
 
+        // Retrieve and set time and location.
         location.check_retrieve(&mut rtc, &mut delay, &mut note).unwrap();
-        imu.check_retrieve(&mut rtc, &mut waves).unwrap();
+
+        // This is the most critical part. If it turns out that the other parts sometimes
+        // take too long time we need to move this to either an RTC interrupt or DRDY
+        // interrupt.
+        imu.check_retrieve(&mut rtc, &mut waves, &location).unwrap();
+
+        // Drain queue (if full enough)
+        imu.check_drain_queue(&mut note, &mut delay).unwrap();
 
 
-        // Check if IMU queue is full
-        if imu.dequeue.is_full() { // or IN_DRAINING_QUEUE
-        }
-        // Take and queue package for notecard, but only one for each iteration untill the
-        // queue is empty.
+        // TODO:
         //
+        // * We are now running as fast as we can: if this drains too much power then put
+        // in some WFI + RTC or move IMU to other interrupt.
+        //
+        // * Set up and feed watchdog.
+        //
+        // * Handle and recover errors.
+        //
+        // * Does the notecard require more configuration to initiate sync? Maybe set up to
+        //   sync every 10 or 20 minutes, depending on how full it is.
     }
 }

@@ -62,12 +62,18 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             timestamp: u32,
             offset: u32,
             length: u32,
+            packet: u32,
+            lon: f32,
+            lat: f32,
         }
 
         let meta_template = AxlPacketMetaTemplate {
             timestamp: 14,
             offset: 14,
-            length: 14
+            length: 14,
+            packet: 12,
+            lon: 14.1,
+            lat: 14.1,
         };
 
         defmt::debug!("setting up template for AxlPacketMeta");
@@ -87,6 +93,8 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                 offset: pck.offset as u32,
                 packet: pi as u32,
                 length: p.len() as u32,
+                lon: pck.lon,
+                lat: pck.lat,
             };
 
             let r = self.note.note().add(Some("axl.qo"), None, Some(meta), Some(core::str::from_utf8(p).unwrap()), false)?.wait(delay)?;
@@ -104,6 +112,8 @@ pub struct AxlPacketMeta {
     pub offset: u32,
     pub packet: u32,
     pub length: u32,
+    pub lon: f32,
+    pub lat: f32,
 }
 
 #[derive(Debug, serde::Serialize, Default)]
@@ -111,6 +121,8 @@ pub struct AxlPacket {
     /// Timstamp of sample at `offset`.
     pub timestamp: u32,
     pub offset: u16,
+    pub lon: f32,
+    pub lat: f32,
 
     /// This is moved to the payload of the note.
     #[serde(skip)]
