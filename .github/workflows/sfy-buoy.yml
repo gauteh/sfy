@@ -23,7 +23,9 @@ jobs:
             override: true
 
       - name: Add rust target for thumbv7em
-        run: rustup target add thumbv7em-none-eabihf
+        run: |
+          rustup default nightly
+          rustup target add thumbv7em-none-eabihf
 
       - name: Install deps
         run: |
