@@ -223,7 +223,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
                     a[0] as f32,
                     a[1] as f32,
                     a[2] as f32,
-                    0.,
+                    0., // Ignore (uncalibrated) magnetometer. This does more harm than good, ref. Jeans buoy.
                     0.,
                     0.,
                 );

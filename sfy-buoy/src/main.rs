@@ -7,16 +7,22 @@ use panic_probe as _; // TODO: Restart board on panic.
 #[allow(unused_imports)]
 use defmt::{debug, error, info, println, trace, warn};
 
+use ambiq_hal::{self as hal, prelude::*};
+use chrono::NaiveDate;
 #[cfg(not(test))]
 use cortex_m_rt::entry;
-
-use ambiq_hal::{self as hal, prelude::*};
 use defmt_rtt as _;
-use hal::i2c;
-use chrono::NaiveDate;
+use hal::{i2c, pac::interrupt};
+use cortex_m;
 
 use sfy::note::Notecarrier;
 use sfy::waves::Waves;
+
+// Moved into RTC interrupt.
+pub type WavesI = Waves<i2c::Iom4>; // This will probably be Iom3.
+static mut WAVES: Option<WavesI> = None;
+
+// Maybe make a shared State protected by mutex.
 
 #[cfg_attr(not(test), entry)]
 fn main() -> ! {
@@ -57,7 +63,9 @@ fn main() -> ! {
 
     info!("Setting up IMU..");
     let mut waves = Waves::new(bus.acquire_i2c()).unwrap();
-    waves.take_buf(rtc.now().timestamp_millis() as u32, 0.0, 0.0).unwrap(); // set timestamp.
+    waves
+        .take_buf(rtc.now().timestamp_millis() as u32, 0.0, 0.0)
+        .unwrap(); // set timestamp.
 
     // Subsystem state
     let mut location = sfy::Location::new();
@@ -72,7 +80,9 @@ fn main() -> ! {
         led.toggle().unwrap();
 
         // Retrieve and set time and location.
-        location.check_retrieve(&mut rtc, &mut delay, &mut note).unwrap();
+        location
+            .check_retrieve(&mut rtc, &mut delay, &mut note)
+            .unwrap();
 
         // This is the most critical part. If it turns out that the other parts sometimes
         // take too long time we need to move this to either an RTC interrupt or DRDY
@@ -91,10 +101,12 @@ fn main() -> ! {
         //  * it takes longer to transmit a data package to the notecard than it takes for the IMU
         //    FIFO to fill up (using compressed FIFO might help, but reading the IMU would still be
         //    slow because we're locked at 100kHz).
+        //
+        //  if we do this there isn't really any reason why we can't go to WFI once all tasks are
+        //  done (for now).
 
         // Drain queue (if full enough)
         imu.check_drain_queue(&mut note, &mut delay).unwrap();
-
 
         // TODO:
         //
@@ -108,4 +120,39 @@ fn main() -> ! {
         // * Does the notecard require more configuration to initiate sync? Maybe set up to
         //   sync every 10 or 20 minutes, depending on how full it is.
     }
+}
+
+#[allow(non_snake_case)]
+#[interrupt]
+fn RTC() {
+    static mut waves: Option<WavesI> = None;
+
+    cortex_m::interrupt::free(|_| {
+        defmt::debug!("RTC interrupt");
+
+        // Clear RTC interrupt
+        unsafe {
+            (*(hal::pac::RTC::ptr()))
+                .intclr
+                .write(|w| w.alm().set_bit());
+        }
+
+        if let Some(waves) = waves {
+
+            // maybe we should work on IMU instead, we also need access to, but much less
+            // frequently than `waves`. So waves we should own, the rest we should share:
+            //
+            // * RTC
+            // * Location
+            // * Delay
+            //
+            // Send finished pacakge back to main through bbqueue or similar.
+
+        } else {
+            defmt::debug!("Taking waves.");
+            unsafe {
+                *waves = WAVES.take();
+            }
+        }
+    });
 }
