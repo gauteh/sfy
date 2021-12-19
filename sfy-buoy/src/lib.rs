@@ -92,7 +92,11 @@ impl Location {
                     free(|cs| {
                         let mut state = state.borrow(cs).borrow_mut();
                         let state: &mut _ = state.deref_mut().as_mut().unwrap();
+
                         state.rtc.set(NaiveDateTime::from_timestamp(time as i64, 0));
+                        state.lat = lat;
+                        state.lon = lon;
+
                         self.state = Retrieved(state.rtc.now().timestamp_millis());
                     });
                 } else {
