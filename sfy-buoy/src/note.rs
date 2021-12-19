@@ -257,7 +257,7 @@ mod tests {
 
         let mut buf = Vec::with_capacity(3072 * 2);
         buf.resize(3072 * 2, 0);
-        let data_bytes = base64::decode_config_slice(b64, base64::STANDARD, &mut buf).unwrap();
+        let _data_bytes = base64::decode_config_slice(b64, base64::STANDARD, &mut buf).unwrap();
         let data_values = bytemuck::cast_slice::<_, half::f16>(&buf);
 
         assert_eq!(sent_data, data_values);

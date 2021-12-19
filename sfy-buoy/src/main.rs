@@ -121,6 +121,7 @@ fn main() -> ! {
     }
 }
 
+#[cfg(not(feature = "host-tests"))]
 #[allow(non_snake_case)]
 #[interrupt]
 fn RTC() {

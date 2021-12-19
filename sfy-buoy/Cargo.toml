@@ -52,6 +52,8 @@ cmsis_dsp = { git = "https://github.com/samcrow/cmsis_dsp.rs" }
 ambiq-hal = { git = "https://github.com/gauteh/ambiq-rs" }
 
 [features]
+default = []
+host-tests = []
 
 # cargo build/run
 [profile.dev]

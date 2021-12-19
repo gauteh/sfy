@@ -10,8 +10,8 @@ extern crate cmsis_dsp;
 use ambiq_hal::rtc::Rtc;
 use chrono::NaiveDateTime;
 use core::cell::RefCell;
-use core::ops::DerefMut;
 use core::fmt::Debug;
+use core::ops::DerefMut;
 use cortex_m::interrupt::{free, Mutex};
 use embedded_hal::blocking::{
     delay::DelayMs,
@@ -112,7 +112,6 @@ impl Location {
 
 pub struct Imu<E: Debug, I: Write<Error = E> + WriteRead<Error = E>> {
     pub queue: heapless::spsc::Producer<'static, note::AxlPacket, 16>,
-    pub last_poll: i64,
     waves: waves::Waves<I>,
 }
 
@@ -123,29 +122,19 @@ impl<E: Debug, I: Write<Error = E> + WriteRead<Error = E>> Imu<E, I> {
     ) -> Imu<E, I> {
         Imu {
             queue,
-            last_poll: 0,
             waves,
         }
     }
 
     pub fn check_retrieve(&mut self, now: i64, lon: f32, lat: f32) -> Result<(), E> {
-        const IMU_BUF_DIFF: i64 = 1000; // ms
+        info!("Polling IMU.. (now: {})", now,);
 
-        if (now - self.last_poll) > IMU_BUF_DIFF {
-            info!(
-                "Polling IMU.. (now: {}, last_poll: {})",
-                now, self.last_poll
-            );
+        self.waves.read_and_filter()?;
 
-            self.waves.read_and_filter()?;
-
-            if self.waves.axl.is_full() {
-                info!("waves buffer is full, pushing to queue..");
-                let pck = self.waves.take_buf(now as u32, lon, lat)?;
-                self.queue.enqueue(pck).unwrap(); // TODO: fix
-            } else {
-                self.last_poll = now;
-            }
+        if self.waves.axl.is_full() {
+            info!("waves buffer is full, pushing to queue..");
+            let pck = self.waves.take_buf(now as u32, lon, lat)?;
+            self.queue.enqueue(pck).unwrap(); // TODO: fix
         }
 
         Ok(())

@@ -32,4 +32,4 @@ rtt:
 
 host-test:
 	$(eval TARGET = $(shell rustc -vV | sed -n 's|host: ||p'))
-	cargo test --target=$(TARGET)
+	cargo test --features host-tests --target=$(TARGET)
