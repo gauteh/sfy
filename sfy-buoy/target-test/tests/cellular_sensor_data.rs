@@ -10,9 +10,9 @@ mod tests {
     use super::*;
     #[allow(unused)]
     use defmt::{assert, assert_eq, info};
+    use hal::i2c::{Freq, I2c};
     use serde::{Deserialize, Serialize};
     use sfy::note::{self, Notecarrier};
-    use hal::i2c::{I2c, Freq};
 
     struct State {
         note: Notecarrier<hal::i2c::Iom2>,
@@ -22,7 +22,7 @@ mod tests {
     #[derive(Deserialize, Serialize, defmt::Format, Default)]
     struct Measurements {
         t0: u32,
-        v: heapless::Vec<f32, 100>
+        v: heapless::Vec<f32, 100>,
     }
 
     #[init]
@@ -38,10 +38,7 @@ mod tests {
         defmt::info!("Setting up notecarrier");
         let note = Notecarrier::new(i2c, &mut delay).unwrap();
 
-        State {
-            note,
-            delay
-        }
+        State { note, delay }
     }
 
     #[test]
@@ -60,7 +57,9 @@ mod tests {
             offset: 1,
             lon: 10.23,
             lat: 14.233,
-            data: (0..3072).map(|v| half::f16::from_f32(v as f32)).collect::<heapless::Vec<_, { 3 * 1024 }>>()
+            data: (0..3072)
+                .map(|v| half::f16::from_f32(v as f32))
+                .collect::<heapless::Vec<_, { 3 * 1024 }>>(),
         };
 
         assert!(pck.data.len() == sfy::waves::AXL_SZ);
@@ -77,11 +76,16 @@ mod tests {
     fn send_single_measurement(s: &mut State) {
         let m = Measurements {
             t0: 100,
-            v: heapless::Vec::from_slice(&[1.0, 3.0, 4.0]).unwrap()
+            v: heapless::Vec::from_slice(&[1.0, 3.0, 4.0]).unwrap(),
         };
 
         defmt::info!("adding measurements to sensor.db");
-        s.note.note().add(Some("sensor.db"), Some("?"), Some(m), None, true).unwrap().wait().unwrap();
+        s.note
+            .note()
+            .add(Some("sensor.db"), Some("?"), Some(m), None, true)
+            .unwrap()
+            .wait()
+            .unwrap();
 
         assert_eq!(s.note.sync_and_wait(&mut s.delay, 60000).unwrap(), true);
     }
@@ -91,19 +95,28 @@ mod tests {
     fn send_multiple_measurements(s: &mut State) {
         let m1 = Measurements {
             t0: 200,
-            v: heapless::Vec::from_slice(&[2.0, 6.0, 4.0]).unwrap()
+            v: heapless::Vec::from_slice(&[2.0, 6.0, 4.0]).unwrap(),
         };
 
         let m2 = Measurements {
             t0: 300,
-            v: heapless::Vec::from_slice(&[7.0, 6.0, 4.0]).unwrap()
+            v: heapless::Vec::from_slice(&[7.0, 6.0, 4.0]).unwrap(),
         };
 
         defmt::info!("adding measurements to sensor.db");
-        s.note.note().add(Some("sensor.db"), Some("?"), Some(m1), None, true).unwrap().wait().unwrap();
-        s.note.note().add(Some("sensor.db"), Some("?"), Some(m2), None, true).unwrap().wait().unwrap();
+        s.note
+            .note()
+            .add(Some("sensor.db"), Some("?"), Some(m1), None, true)
+            .unwrap()
+            .wait()
+            .unwrap();
+        s.note
+            .note()
+            .add(Some("sensor.db"), Some("?"), Some(m2), None, true)
+            .unwrap()
+            .wait()
+            .unwrap();
 
         assert_eq!(s.note.sync_and_wait(&mut s.delay, 60000).unwrap(), true);
     }
 }
-

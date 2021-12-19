@@ -150,7 +150,7 @@ mod tests {
             match i {
                 fifo::Value::Accel(_) => assert!(matches!(last, fifo::Value::Gyro(_))),
                 fifo::Value::Gyro(_) => assert!(matches!(last, fifo::Value::Accel(_))),
-                _ => panic!()
+                _ => panic!(),
             };
 
             last = *i;
@@ -196,7 +196,11 @@ mod tests {
 
         s.waves.read_and_filter().unwrap();
 
-        defmt::debug!("compressing {} ({}) values", s.waves.axl.len(), s.waves.axl.len() * 4);
+        defmt::debug!(
+            "compressing {} ({}) values",
+            s.waves.axl.len(),
+            s.waves.axl.len() * 4
+        );
 
         let mut buf = [0u8; 1024 * 4 * 3];
 

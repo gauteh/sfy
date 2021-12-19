@@ -10,8 +10,8 @@ mod tests {
     use super::*;
     #[allow(unused)]
     use defmt::{assert, assert_eq, info};
+    use hal::i2c::{Freq, I2c};
     use sfy::note::Notecarrier;
-    use hal::i2c::{I2c, Freq};
 
     struct State {
         note: Notecarrier<hal::i2c::Iom2>,
@@ -32,10 +32,7 @@ mod tests {
         defmt::info!("Setting up notecarrier");
         let note = Notecarrier::new(i2c, &mut delay).unwrap();
 
-        State {
-            note,
-            delay
-        }
+        State { note, delay }
     }
 
     #[test]
@@ -49,7 +46,13 @@ mod tests {
 
     #[test]
     fn gps_position(s: &mut State) {
-        let location = s.note.card().location().unwrap().wait(&mut s.delay).unwrap();
+        let location = s
+            .note
+            .card()
+            .location()
+            .unwrap()
+            .wait(&mut s.delay)
+            .unwrap();
         defmt::info!("location: {:?}", location);
 
         assert!(location.lon.is_some());
@@ -57,8 +60,19 @@ mod tests {
 
     #[test]
     fn periodic_gps_position(s: &mut State) {
-        let mode = s.note.card()
-            .location_mode(Some("periodic"), Some(10), None, None, None, None, None, None)
+        let mode = s
+            .note
+            .card()
+            .location_mode(
+                Some("periodic"),
+                Some(10),
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+            )
             .unwrap()
             .wait(&mut s.delay)
             .unwrap();
@@ -66,10 +80,19 @@ mod tests {
         defmt::info!("mode: {:?}", mode);
         assert_eq!(mode.mode, "periodic");
 
-        defmt::debug!("track: {:?}", s.note.card().location_track(true, false, true, Some(1), None).unwrap().wait(&mut s.delay));
+        defmt::debug!(
+            "track: {:?}",
+            s.note
+                .card()
+                .location_track(true, false, true, Some(1), None)
+                .unwrap()
+                .wait(&mut s.delay)
+        );
 
         defmt::info!("retrieve current mode..");
-        let mode = s.note.card()
+        let mode = s
+            .note
+            .card()
             .location_mode(Some(""), None, None, None, None, None, None, None)
             .unwrap()
             .wait(&mut s.delay)
@@ -77,7 +100,13 @@ mod tests {
         defmt::info!("mode: {:?}", mode);
         assert_eq!(mode.mode, "periodic");
 
-        let location = s.note.card().location().unwrap().wait(&mut s.delay).unwrap();
+        let location = s
+            .note
+            .card()
+            .location()
+            .unwrap()
+            .wait(&mut s.delay)
+            .unwrap();
         defmt::info!("location: {:?}", location);
 
         // we might not have a positon, but the gps should be active.

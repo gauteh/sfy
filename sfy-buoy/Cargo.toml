@@ -27,7 +27,7 @@ lzss = { version = "0.8.2", default-features = false, features = [ "const_panic"
 bytemuck = "1.7.2"
 void = { version = "1.0.2", default-features = false }
 base64 = { version = "0.13.0", default-features = false }
-shared-bus = "0.2.2"
+shared-bus = { version = "0.2.2", features = [ "cortex-m" ] }
 half = { version = "1.8.2", features = [ "use-intrinsics", "bytemuck" ] }
 chrono = { version = "0.4.19", default-features = false }
 

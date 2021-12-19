@@ -125,10 +125,10 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         self.imu.fifoctrl.mode(i2c, fifoctrl::FifoMode::Bypass)?;
         self.imu
             .fifoctrl
-            .set_accelerometer_batch_data_rate(i2c, fifoctrl::BdrXl::Hz208)?;
+            .set_accelerometer_batch_data_rate(i2c, fifoctrl::BdrXl::Hz26)?;
         self.imu
             .fifoctrl
-            .set_gyroscope_batch_data_rate(i2c, fifoctrl::BdrGy::Hz208)?;
+            .set_gyroscope_batch_data_rate(i2c, fifoctrl::BdrGy::Hz26)?;
 
         // Wait for FIFO to be cleared.
         delay.delay_ms(10);

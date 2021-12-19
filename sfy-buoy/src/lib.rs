@@ -9,7 +9,10 @@ extern crate cmsis_dsp;
 
 use ambiq_hal::rtc::Rtc;
 use chrono::NaiveDateTime;
+use core::cell::RefCell;
+use core::ops::DerefMut;
 use core::fmt::Debug;
+use cortex_m::interrupt::{free, Mutex};
 use embedded_hal::blocking::{
     delay::DelayMs,
     i2c::{Read, Write, WriteRead},
@@ -18,11 +21,19 @@ use embedded_hal::blocking::{
 pub mod note;
 pub mod waves;
 
+pub struct SharedState {
+    pub rtc: Rtc,
+    pub lon: f32,
+    pub lat: f32,
+}
+
+#[derive(Clone)]
 pub enum LocationState {
     Trying(i64),
     Retrieved(i64),
 }
 
+#[derive(Clone)]
 pub struct Location {
     pub lat: f32,
     pub lon: f32,
@@ -43,7 +54,7 @@ impl Location {
 
     pub fn check_retrieve<T: Read + Write>(
         &mut self,
-        rtc: &mut Rtc,
+        state: &Mutex<RefCell<Option<SharedState>>>,
         delay: &mut impl DelayMs<u16>,
         note: &mut note::Notecarrier<T>,
     ) -> Result<(), notecard::NoteError> {
@@ -51,16 +62,18 @@ impl Location {
         use LocationState::*;
 
         const LOCATION_DIFF: i64 = 1 * 60_000; // ms
-        let now = rtc.now().timestamp_millis();
+
+        let now = free(|cs| {
+            let state = state.borrow(cs).borrow();
+            let state = state.as_ref().unwrap();
+
+            state.rtc.now().timestamp_millis()
+        });
+        defmt::trace!("now: {}", now);
 
         match self.state {
             Retrieved(t) | Trying(t) if (now - t) > LOCATION_DIFF => {
-                // Try to get time and location
                 let gps = note.card().location()?.wait(delay)?;
-
-                if matches!(self.state, Trying(_)) {
-                    self.state = Trying(now);
-                }
 
                 info!("Location: {:?}", gps);
                 if let Location {
@@ -75,9 +88,15 @@ impl Location {
                     self.lat = lat;
                     self.lon = lon;
                     self.time = time;
-                    self.state = Retrieved(time as i64);
 
-                    rtc.set(NaiveDateTime::from_timestamp(time as i64, 0));
+                    free(|cs| {
+                        let mut state = state.borrow(cs).borrow_mut();
+                        let state: &mut _ = state.deref_mut().as_mut().unwrap();
+                        state.rtc.set(NaiveDateTime::from_timestamp(time as i64, 0));
+                        self.state = Retrieved(state.rtc.now().timestamp_millis());
+                    });
+                } else {
+                    self.state = Trying(now);
                 }
             }
             _ => (),
@@ -87,82 +106,41 @@ impl Location {
     }
 }
 
-enum QueueDrain {
-    Waiting,
-    Draining,
-}
-
-pub struct Imu {
-    pub dequeue: heapless::Deque<note::AxlPacket, 10>, // 10 is ok, 60 is too much.
+pub struct Imu<E: Debug, I: Write<Error = E> + WriteRead<Error = E>> {
+    pub queue: heapless::spsc::Producer<'static, note::AxlPacket, 16>,
     pub last_poll: i64,
-    queue_state: QueueDrain,
+    waves: waves::Waves<I>,
 }
 
-impl Imu {
-    pub fn new() -> Imu {
+impl<E: Debug, I: Write<Error = E> + WriteRead<Error = E>> Imu<E, I> {
+    pub fn new(
+        waves: waves::Waves<I>,
+        queue: heapless::spsc::Producer<'static, note::AxlPacket, 16>,
+    ) -> Imu<E, I> {
         Imu {
-            dequeue: heapless::Deque::new(),
+            queue,
             last_poll: 0,
-            queue_state: QueueDrain::Waiting,
+            waves,
         }
     }
 
-    pub fn check_retrieve<E: Debug, I: Write<Error = E> + WriteRead<Error = E>>(
-        &mut self,
-        rtc: &mut Rtc,
-        waves: &mut waves::Waves<I>,
-        location: &Location,
-    ) -> Result<(), E> {
+    pub fn check_retrieve(&mut self, now: i64, lon: f32, lat: f32) -> Result<(), E> {
         const IMU_BUF_DIFF: i64 = 1000; // ms
-        let now = rtc.now().timestamp_millis();
 
         if (now - self.last_poll) > IMU_BUF_DIFF {
-            info!("Polling IMU.. (now: {}, last_poll: {})", now, self.last_poll);
+            info!(
+                "Polling IMU.. (now: {}, last_poll: {})",
+                now, self.last_poll
+            );
 
-            waves.read_and_filter()?;
+            self.waves.read_and_filter()?;
 
-            if waves.axl.is_full() {
+            if self.waves.axl.is_full() {
                 info!("waves buffer is full, pushing to queue..");
-                let pck = waves.take_buf(now as u32, location.lon, location.lat)?;
-                self.dequeue.push_back(pck).unwrap(); // TODO: fix
+                let pck = self.waves.take_buf(now as u32, lon, lat)?;
+                self.queue.enqueue(pck).unwrap(); // TODO: fix
             } else {
                 self.last_poll = now;
-            }
-        }
-
-        Ok(())
-    }
-
-    #[allow(non_snake_case)]
-    pub fn check_drain_queue<T: Write + Read>(
-        &mut self,
-        note: &mut note::Notecarrier<T>,
-        delay: &mut impl DelayMs<u16>,
-    ) -> Result<(), notecard::NoteError> {
-        use QueueDrain::*;
-
-        let DRAIN_LOWER: usize = 0;
-        let DRAIN_UPPER: usize = self.dequeue.capacity() / 3 * 2;
-
-        let n = self.dequeue.len();
-
-        match self.queue_state {
-            Waiting => {
-                if n >= DRAIN_UPPER {
-                    defmt::info!("queue length: {}, starting to drain queue..", n);
-                    self.queue_state = Draining;
-                }
-            },
-            Draining => {
-                if n <= DRAIN_LOWER {
-                    defmt::info!("queue length: {}, stopping.", n);
-                    self.queue_state = Waiting;
-                }
-
-                if let Some(pck) = self.dequeue.pop_front() {
-                    defmt::debug!("scheduling package to be sent: {}, length: {}", pck.timestamp, pck.data.len());
-                    note.send(pck, delay)?;
-                }
             }
         }
 

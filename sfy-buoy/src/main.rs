@@ -9,23 +9,37 @@ use defmt::{debug, error, info, println, trace, warn};
 
 use ambiq_hal::{self as hal, prelude::*};
 use chrono::NaiveDate;
+use core::cell::RefCell;
+use cortex_m::{
+    asm,
+    interrupt::{free, Mutex},
+};
 #[cfg(not(test))]
 use cortex_m_rt::entry;
 use defmt_rtt as _;
 use hal::{i2c, pac::interrupt};
-use cortex_m;
 
 use sfy::note::Notecarrier;
 use sfy::waves::Waves;
+use sfy::{Imu, Location, SharedState};
 
-// Moved into RTC interrupt.
-pub type WavesI = Waves<i2c::Iom4>; // This will probably be Iom3.
-static mut WAVES: Option<WavesI> = None;
+/// This queue is filled up by the IMU in an interrupt with ready batches of time series. It is
+/// consumed by the main thread and drained to the notecard / cellular.
+static mut IMUQ: heapless::spsc::Queue<sfy::note::AxlPacket, 16> = heapless::spsc::Queue::new();
 
-// Maybe make a shared State protected by mutex.
+/// This static is only used to transfer ownership of the IMU subsystem to the interrupt handler.
+type I = shared_bus::I2cProxy<'static, shared_bus::CortexMMutex<hal::i2c::Iom2>>;
+type E = <I as embedded_hal::blocking::i2c::Write>::Error;
+static mut IMU: Option<sfy::Imu<E, I>> = None;
+
+/// The STATE contains the Real-Time-Clock which needs to be shared, as well as up-to-date
+/// longitude and latitude.
+static STATE: Mutex<RefCell<Option<SharedState>>> = Mutex::new(RefCell::new(None));
 
 #[cfg_attr(not(test), entry)]
 fn main() -> ! {
+    println!("hello from sfy!");
+
     unsafe {
         // Set the clock frequency.
         halc::am_hal_clkgen_control(
@@ -49,14 +63,17 @@ fn main() -> ! {
     let mut led = pins.d19.into_push_pull_output(); // d14 on redboard_artemis
 
     let i2c = i2c::I2c::new(dp.IOM2, pins.d17, pins.d18, i2c::Freq::F100kHz);
-    let bus = shared_bus::BusManagerSimple::new(i2c);
+    // let bus = shared_bus::BusManagerSimple::new(i2c);
+    let bus: &'static _ = shared_bus::new_cortexm!(hal::i2c::Iom2 = i2c).unwrap();
 
     // Set up RTC
     let mut rtc = hal::rtc::Rtc::new(dp.RTC, &mut dp.CLKGEN);
     rtc.set(NaiveDate::from_ymd(1970, 1, 1).and_hms(0, 0, 0)); // Now timestamps will be positive.
     rtc.enable();
+    rtc.set_alarm_repeat(hal::rtc::AlarmRepeat::SEC);
+    rtc.enable_alarm();
 
-    println!("hello from sfy!");
+    let mut location = Location::new();
 
     info!("Setting up Notecarrier..");
     let mut note = Notecarrier::new(bus.acquire_i2c(), &mut delay).unwrap();
@@ -67,92 +84,76 @@ fn main() -> ! {
         .take_buf(rtc.now().timestamp_millis() as u32, 0.0, 0.0)
         .unwrap(); // set timestamp.
 
-    // Subsystem state
-    let mut location = sfy::Location::new();
-    let mut imu = sfy::Imu::new();
-
     info!("Enable IMU.");
     waves.enable_fifo(&mut delay).unwrap();
 
-    info!("Entering main loop");
+    let imu = sfy::Imu::new(waves, unsafe { IMUQ.split().0 });
+    let mut imu_queue = unsafe { IMUQ.split().1 };
 
+    unsafe { IMU = Some(imu) };
+
+    free(|cs| {
+        STATE.borrow(cs).replace(Some(SharedState {
+            rtc,
+            lon: 0.0,
+            lat: 0.0,
+        }));
+    });
+
+    defmt::info!("Enable interrupts");
+    unsafe {
+        cortex_m::interrupt::enable();
+    }
+
+    info!("Entering main loop");
     loop {
+        defmt::debug!("iteration..");
         led.toggle().unwrap();
 
-        // Retrieve and set time and location.
-        location
-            .check_retrieve(&mut rtc, &mut delay, &mut note)
-            .unwrap();
+        location.check_retrieve(&STATE, &mut delay, &mut note).unwrap();
+        note.drain_queue(&mut imu_queue, &mut delay).unwrap();
 
-        // This is the most critical part. If it turns out that the other parts sometimes
-        // take too long time we need to move this to either an RTC interrupt or DRDY
-        // interrupt.
-        imu.check_retrieve(&mut rtc, &mut waves, &location).unwrap();
-
-        // XXX: Draining the queue to the notcard is too slow! We will have to:
-        //
-        //  * move the IMU to another I2C bus and
-        //  * run it in an interrupt (RTC alarm or EXTI/DRDY).
-        //
-        //  because:
-        //
-        //  * the notecard will block the I2C even if the IMU subsystem is running in an interrupt,
-        //  * the notecard runs on 100kHz and IMU on 1mHz,
-        //  * it takes longer to transmit a data package to the notecard than it takes for the IMU
-        //    FIFO to fill up (using compressed FIFO might help, but reading the IMU would still be
-        //    slow because we're locked at 100kHz).
-        //
-        //  if we do this there isn't really any reason why we can't go to WFI once all tasks are
-        //  done (for now).
-
-        // Drain queue (if full enough)
-        imu.check_drain_queue(&mut note, &mut delay).unwrap();
+        asm::wfi();
 
         // TODO:
-        //
-        // * We are now running as fast as we can: if this drains too much power then put
-        // in some WFI + RTC or move IMU to other interrupt.
-        //
         // * Set up and feed watchdog.
-        //
         // * Handle and recover errors.
-        //
-        // * Does the notecard require more configuration to initiate sync? Maybe set up to
-        //   sync every 10 or 20 minutes, depending on how full it is.
     }
 }
 
 #[allow(non_snake_case)]
 #[interrupt]
 fn RTC() {
-    static mut waves: Option<WavesI> = None;
+    #[allow(non_upper_case_globals)]
+    static mut imu: Option<Imu<E, I>> = None;
 
-    cortex_m::interrupt::free(|_| {
-        defmt::debug!("RTC interrupt");
+    defmt::debug!("RTC interrupt");
 
-        // Clear RTC interrupt
+    // Clear RTC interrupt
+    unsafe {
+        (*(hal::pac::RTC::ptr()))
+            .intclr
+            .write(|w| w.alm().set_bit());
+    }
+
+    if let Some(imu) = imu {
+        let (now, lon, lat) = free(|cs| {
+            let state = STATE.borrow(cs).borrow();
+            let state = state.as_ref().unwrap();
+
+            let now = state.rtc.now().timestamp_millis();
+            let lon = state.lon;
+            let lat = state.lat;
+
+            (now, lon, lat)
+        });
+
+        // XXX: This is the most time-critical part of the program.
+        imu.check_retrieve(now, lon, lat).unwrap();
+    } else {
+        defmt::debug!("RTC: taking imu.");
         unsafe {
-            (*(hal::pac::RTC::ptr()))
-                .intclr
-                .write(|w| w.alm().set_bit());
+            imu.replace(IMU.take().unwrap());
         }
-
-        if let Some(waves) = waves {
-
-            // maybe we should work on IMU instead, we also need access to, but much less
-            // frequently than `waves`. So waves we should own, the rest we should share:
-            //
-            // * RTC
-            // * Location
-            // * Delay
-            //
-            // Send finished pacakge back to main through bbqueue or similar.
-
-        } else {
-            defmt::debug!("Taking waves.");
-            unsafe {
-                *waves = WAVES.take();
-            }
-        }
-    });
+    }
 }

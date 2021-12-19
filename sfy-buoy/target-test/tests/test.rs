@@ -1,14 +1,14 @@
 #![no_std]
 #![no_main]
 
-use panic_probe as _; // memory layout + panic handler
-use defmt_rtt as _;
 use ambiq_hal as _;
+use defmt_rtt as _;
+use panic_probe as _; // memory layout + panic handler
 
 #[defmt_test::tests]
 mod tests {
     #[allow(unused)]
-    use defmt::{info, assert, assert_eq};
+    use defmt::{assert, assert_eq, info};
 
     #[test]
     fn assert_true() {

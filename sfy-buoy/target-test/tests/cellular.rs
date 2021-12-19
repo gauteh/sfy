@@ -10,9 +10,9 @@ mod tests {
     use super::*;
     #[allow(unused)]
     use defmt::{assert, assert_eq, info};
-    use sfy::note::Notecarrier;
+    use hal::i2c::{Freq, I2c};
     use hal::prelude::*;
-    use hal::i2c::{I2c, Freq};
+    use sfy::note::Notecarrier;
 
     struct State {
         note: Notecarrier<hal::i2c::Iom2>,
@@ -32,10 +32,7 @@ mod tests {
         defmt::info!("Setting up notecarrier");
         let note = Notecarrier::new(i2c, &mut delay).unwrap();
 
-        State {
-            note,
-            delay
-        }
+        State { note, delay }
     }
 
     #[test]
@@ -49,13 +46,24 @@ mod tests {
 
     #[test]
     fn log_and_sync(s: &mut State) {
-        let status = s.note.hub().sync_status().unwrap().wait(&mut s.delay).unwrap();
+        let status = s
+            .note
+            .hub()
+            .sync_status()
+            .unwrap()
+            .wait(&mut s.delay)
+            .unwrap();
         if status.requested.is_some() {
             defmt::panic!("sync already in progress: {:?}", status);
         }
 
         defmt::debug!("sending test log message to notehub..");
-        s.note.hub().log("cain test starting up!", true, true).unwrap().wait(&mut s.delay).unwrap();
+        s.note
+            .hub()
+            .log("cain test starting up!", true, true)
+            .unwrap()
+            .wait(&mut s.delay)
+            .unwrap();
 
         defmt::debug!("initiate sync..");
         s.note.hub().sync().unwrap().wait(&mut s.delay).unwrap();

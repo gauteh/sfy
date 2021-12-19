@@ -26,7 +26,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                 None,
                 None,
                 Some(true),
-                None
+                None,
             )?
             .wait(delay)?;
 
@@ -144,6 +144,21 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         }
 
         Ok(b64.len())
+    }
+
+    /// Send all available packages to the notecard.
+    pub fn drain_queue(
+        &mut self,
+        queue: &mut heapless::spsc::Consumer<'static, AxlPacket, 16>,
+        delay: &mut impl DelayMs<u16>,
+    ) -> Result<usize, NoteError> {
+        let mut sz = 0;
+
+        while let Some(pck) = queue.dequeue() {
+            sz += self.send(pck, delay)?;
+        }
+
+        Ok(sz)
     }
 }
 
