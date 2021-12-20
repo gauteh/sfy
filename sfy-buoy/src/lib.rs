@@ -127,12 +127,12 @@ impl<E: Debug, I: Write<Error = E> + WriteRead<Error = E>> Imu<E, I> {
     }
 
     pub fn check_retrieve(&mut self, now: i64, lon: f32, lat: f32) -> Result<(), E> {
-        info!("Polling IMU.. (now: {})", now,);
+        trace!("Polling IMU.. (now: {})", now,);
 
         self.waves.read_and_filter()?;
 
         if self.waves.axl.is_full() {
-            info!("waves buffer is full, pushing to queue..");
+            trace!("waves buffer is full, pushing to queue..");
             let pck = self.waves.take_buf(now as u32, lon, lat)?;
             self.queue.enqueue(pck).unwrap(); // TODO: fix
         }

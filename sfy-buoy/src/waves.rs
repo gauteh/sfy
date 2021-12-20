@@ -125,10 +125,10 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         self.imu.fifoctrl.mode(i2c, fifoctrl::FifoMode::Bypass)?;
         self.imu
             .fifoctrl
-            .set_accelerometer_batch_data_rate(i2c, fifoctrl::BdrXl::Hz26)?;
+            .set_accelerometer_batch_data_rate(i2c, fifoctrl::BdrXl::Hz208)?;
         self.imu
             .fifoctrl
-            .set_gyroscope_batch_data_rate(i2c, fifoctrl::BdrGy::Hz26)?;
+            .set_gyroscope_batch_data_rate(i2c, fifoctrl::BdrGy::Hz208)?;
 
         // Wait for FIFO to be cleared.
         delay.delay_ms(10);
@@ -194,10 +194,13 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         let fifo_full = imu.fifostatus.full(i2c)?;
         let fifo_overrun = imu.fifostatus.overrun(i2c)?;
         let fifo_overrun_latched = imu.fifostatus.overrun_latched(i2c)?;
-        defmt::debug!("reading {} (fifo_full: {}, overrun: {}, overrun_latched: {}) sample pairs (buffer: {}/{})", n, fifo_full, fifo_overrun, fifo_overrun_latched, self.axl.len(), AXL_SZ);
+        defmt::trace!("reading {} (fifo_full: {}, overrun: {}, overrun_latched: {}) sample pairs (buffer: {}/{})", n, fifo_full, fifo_overrun, fifo_overrun_latched, self.axl.len(), AXL_SZ);
 
         // XXX: If any of these flags are true we need to reset the FIFO (and return an error from
         // this function), otherwise it will have stopped accumulating samples.
+        if fifo_full || fifo_overrun || fifo_overrun_latched {
+            defmt::error!("IMU fifo overrun: fifo sz: {}, (fifo_full: {}, overrun: {}, overrun_latched: {}) sample pairs (buffer: {}/{})", n, fifo_full, fifo_overrun, fifo_overrun_latched, self.axl.len(), AXL_SZ);
+        }
 
         let n = n / 2;
         let n = n.min(((self.axl.capacity() - self.axl.len()) / 3) as u16);
@@ -256,7 +259,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
 
         // Clear FIFO
         let nn = imu.fifostatus.diff_fifo(i2c)?;
-        defmt::debug!("fifo length after read: {}", nn);
+        defmt::trace!("fifo length after read: {}", nn);
 
         // TODO: In case FIFO ran full it needs resetting.
         // TODO: Set time of start for batch + current offset in FIFO where the timestamp points to.

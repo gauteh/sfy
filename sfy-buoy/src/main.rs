@@ -28,7 +28,7 @@ use sfy::{Imu, Location, SharedState};
 static mut IMUQ: heapless::spsc::Queue<sfy::note::AxlPacket, 16> = heapless::spsc::Queue::new();
 
 /// This static is only used to transfer ownership of the IMU subsystem to the interrupt handler.
-type I = shared_bus::I2cProxy<'static, shared_bus::CortexMMutex<hal::i2c::Iom2>>;
+type I = hal::i2c::Iom3;
 type E = <I as embedded_hal::blocking::i2c::Write>::Error;
 static mut IMU: Option<sfy::Imu<E, I>> = None;
 
@@ -62,24 +62,23 @@ fn main() -> ! {
     let pins = hal::gpio::Pins::new(dp.GPIO);
     let mut led = pins.d19.into_push_pull_output(); // d14 on redboard_artemis
 
-    let i2c = i2c::I2c::new(dp.IOM2, pins.d17, pins.d18, i2c::Freq::F100kHz);
-    // let bus = shared_bus::BusManagerSimple::new(i2c);
-    let bus: &'static _ = shared_bus::new_cortexm!(hal::i2c::Iom2 = i2c).unwrap();
+    let i2c2 = i2c::I2c::new(dp.IOM2, pins.d17, pins.d18, i2c::Freq::F100kHz);
+    let i2c3 = i2c::I2c::new(dp.IOM3, pins.d6, pins.d7, i2c::Freq::F1mHz);
 
     // Set up RTC
     let mut rtc = hal::rtc::Rtc::new(dp.RTC, &mut dp.CLKGEN);
     rtc.set(NaiveDate::from_ymd(1970, 1, 1).and_hms(0, 0, 0)); // Now timestamps will be positive.
     rtc.enable();
-    rtc.set_alarm_repeat(hal::rtc::AlarmRepeat::SEC);
+    rtc.set_alarm_repeat(hal::rtc::AlarmRepeat::CentiSecond);
     rtc.enable_alarm();
 
     let mut location = Location::new();
 
     info!("Setting up Notecarrier..");
-    let mut note = Notecarrier::new(bus.acquire_i2c(), &mut delay).unwrap();
+    let mut note = Notecarrier::new(i2c2, &mut delay).unwrap();
 
     info!("Setting up IMU..");
-    let mut waves = Waves::new(bus.acquire_i2c()).unwrap();
+    let mut waves = Waves::new(i2c3).unwrap();
     waves
         .take_buf(rtc.now().timestamp_millis() as u32, 0.0, 0.0)
         .unwrap(); // set timestamp.
@@ -113,7 +112,8 @@ fn main() -> ! {
         location.check_retrieve(&STATE, &mut delay, &mut note).unwrap();
         note.drain_queue(&mut imu_queue, &mut delay).unwrap();
 
-        asm::wfi();
+
+        delay.delay_ms(1000u16);
 
         // TODO:
         // * Set up and feed watchdog.
@@ -127,8 +127,6 @@ fn main() -> ! {
 fn RTC() {
     #[allow(non_upper_case_globals)]
     static mut imu: Option<Imu<E, I>> = None;
-
-    defmt::debug!("RTC interrupt");
 
     // Clear RTC interrupt
     unsafe {
@@ -152,7 +150,6 @@ fn RTC() {
         // XXX: This is the most time-critical part of the program.
         imu.check_retrieve(now, lon, lat).unwrap();
     } else {
-        defmt::debug!("RTC: taking imu.");
         unsafe {
             imu.replace(IMU.take().unwrap());
         }

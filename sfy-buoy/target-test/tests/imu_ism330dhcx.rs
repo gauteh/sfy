@@ -19,7 +19,7 @@ mod tests {
     use sfy::waves::{self, Waves};
 
     struct State {
-        waves: Waves<hal::i2c::Iom2>,
+        waves: Waves<hal::i2c::Iom3>,
         delay: hal::delay::Delay,
     }
 
@@ -31,7 +31,8 @@ mod tests {
         let pins = hal::gpio::Pins::new(dp.GPIO);
 
         let delay = hal::delay::Delay::new(core.SYST, &mut dp.CLKGEN);
-        let i2c = I2c::new(dp.IOM2, pins.d17, pins.d18, Freq::F100kHz);
+        // let i2c = I2c::new(dp.IOM2, pins.d17, pins.d18, Freq::F100kHz);
+        let i2c = I2c::new(dp.IOM3, pins.d6, pins.d7, Freq::F1mHz);
 
         defmt::info!("Setting up wave sensor");
         let waves = Waves::new(i2c).unwrap();
