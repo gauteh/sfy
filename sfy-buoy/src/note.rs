@@ -43,8 +43,8 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         let mut n = Notecarrier { note };
 
         n.setup_templates(delay)?;
-        // defmt::info!("initializing initial sync..");
-        // n.sync_and_wait(delay, 30000)?;
+        defmt::info!("initializing initial sync..");
+        n.note.hub().sync()?.wait(delay)?;
 
         Ok(n)
     }
