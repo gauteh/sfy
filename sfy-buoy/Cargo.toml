@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2021"
 default-run = "sfy"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [workspace]
 members = [ "target-test" ]
 
@@ -33,9 +32,6 @@ chrono = { version = "0.4.19", default-features = false }
 
 [dependencies.notecard]
 git = "https://github.com/gauteh/notecard-rs"
-
-[dependencies.sfy-proto]
-path = "../sfy-proto"
 
 [dependencies.ambiq-hal]
 version = "0.1"
