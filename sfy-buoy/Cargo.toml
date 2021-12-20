@@ -49,7 +49,7 @@ git = "https://github.com/gauteh/ahrs-fusion"
 [patch.crates-io]
 ism330dhcx = { git = "https://github.com/gauteh/ism330dhcx", branch = "fifo" }
 cmsis_dsp = { git = "https://github.com/samcrow/cmsis_dsp.rs" }
-# ambiq-hal = { git = "https://github.com/gauteh/ambiq-rs" }
+ambiq-hal = { git = "https://github.com/gauteh/ambiq-rs" }
 
 [features]
 default = []
