@@ -39,9 +39,12 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             .unwrap()
             .wait(delay)?;
 
+
         let mut n = Notecarrier { note };
 
         n.setup_templates(delay)?;
+        // defmt::info!("initializing initial sync..");
+        // n.sync_and_wait(delay, 30000)?;
 
         Ok(n)
     }
@@ -135,7 +138,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                 )?
                 .wait(delay)?;
 
-            defmt::trace!(
+            defmt::debug!(
                 "sent data package: {}, bytes: {} (note: {:?})",
                 pi,
                 b64.len(),
@@ -159,6 +162,27 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         }
 
         Ok(sz)
+    }
+
+    /// Check if notecard is filling up, and initiate sync in that case.
+    pub fn check_and_sync(
+        &mut self,
+        delay: &mut impl DelayMs<u16>
+    ) -> Result<(), NoteError> {
+        delay.delay_ms(10);
+        let status = self.note.card().status()?.wait(delay)?;
+
+        if status.storage > 50 {
+            delay.delay_ms(10);
+            let sync_status = self.note.hub().sync_status()?.wait(delay)?;
+
+            if sync_status.requested.is_none() {
+                defmt::warn!("notecard is more than 50% full, initiating sync.");
+                self.note.hub().sync()?.wait(delay)?;
+            }
+        }
+
+        Ok(())
     }
 }
 

@@ -111,9 +111,11 @@ fn main() -> ! {
 
         location.check_retrieve(&STATE, &mut delay, &mut note).unwrap();
         note.drain_queue(&mut imu_queue, &mut delay).unwrap();
+        note.check_and_sync(&mut delay).unwrap();
 
 
         delay.delay_ms(1000u16);
+        // asm::wfi(); // doesn't work very well with RTT
 
         // TODO:
         // * Set up and feed watchdog.
