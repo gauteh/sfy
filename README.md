@@ -6,4 +6,5 @@
 * [sfy-buoy](sfy-buoy/) - the firmware for the buoy.
 * [sfy-data](sfy-data/) - the server scraping or receiving data from deployed
     buoys.
+* [hardware](hardware/Hardware.md) - hardware and dimensions.
 
