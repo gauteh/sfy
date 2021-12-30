@@ -36,8 +36,8 @@ class Axl:
     length: int
     offset: int
     timestamp: int
-    longitude: float
-    latitude: float
+    lon: float
+    lat: float
 
     x: np.ndarray
     y: np.ndarray
@@ -55,10 +55,10 @@ class Axl:
         del data['payload']
 
         data['length'] = data['body']['length']
-        data['offset'] = data['body']['offset']
+        data['offset'] = data['body'].get('offset', 0)
         data['timestamp'] = data['body']['timestamp']
-        data['longitude'] = data['body'].get('longitude')
-        data['latitude'] = data['body'].get('latitude')
+        data['lon'] = data['body'].get('lon')
+        data['lat'] = data['body'].get('lat')
         del data['body']
 
         # decode x, y, z
