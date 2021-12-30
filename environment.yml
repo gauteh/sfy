@@ -1,5 +1,9 @@
-name: sby
+name: sfy
 channels:
   - conda-forge
 dependencies:
   - pyserial
+  - numpy
+  - scipy
+  - mdct
+  - matplotlib
