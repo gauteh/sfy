@@ -15,6 +15,69 @@ use micromath::{
     Quaternion,
 };
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Freq {
+    Hz26,
+    Hz104,
+    Hz208,
+}
+
+impl Freq {
+    pub fn value(&self) -> f32 {
+        use Freq::*;
+
+        match self {
+            Hz26 => 26.,
+            Hz104 => 104.,
+            Hz208 => 208.,
+        }
+    }
+
+    pub fn gyro_odr(&self) -> ctrl2g::Odr {
+        use ctrl2g::Odr;
+        use Freq::*;
+
+        match self {
+            Hz26 => Odr::Hz26,
+            Hz104 => Odr::Hz104,
+            Hz208 => Odr::Hz208,
+        }
+    }
+
+    pub fn accel_odr(&self) -> ctrl1xl::Odr_Xl {
+        use ctrl1xl::Odr_Xl as Odr;
+        use Freq::*;
+
+        match self {
+            Hz26 => Odr::Hz26,
+            Hz104 => Odr::Hz104,
+            Hz208 => Odr::Hz208,
+        }
+    }
+
+    pub fn accel_bdr(&self) -> fifoctrl::BdrXl {
+        use fifoctrl::BdrXl as Odr;
+        use Freq::*;
+
+        match self {
+            Hz26 => Odr::Hz26,
+            Hz104 => Odr::Hz104,
+            Hz208 => Odr::Hz208,
+        }
+    }
+
+    pub fn gyro_bdr(&self) -> fifoctrl::BdrGy {
+        use fifoctrl::BdrGy as Odr;
+        use Freq::*;
+
+        match self {
+            Hz26 => Odr::Hz26,
+            Hz104 => Odr::Hz104,
+            Hz208 => Odr::Hz208,
+        }
+    }
+}
+
 /// The installed IMU.
 pub type IMU = Ism330Dhcx;
 
@@ -25,6 +88,7 @@ pub type VecAxl = heapless::Vec<f16, AXL_SZ>;
 pub struct Waves<I2C: WriteRead + Write> {
     pub i2c: I2C,
     pub imu: IMU,
+    pub freq: Freq,
     filter: NxpFusion,
 
     /// Buffer with values ready to be sent.
@@ -44,11 +108,13 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
     pub fn new(mut i2c: I2C) -> Result<Waves<I2C>, E> {
         defmt::debug!("setting up imu driver..");
         let imu = Ism330Dhcx::new_with_address(&mut i2c, 0x6a)?;
+        let freq = Freq::Hz208;
 
         let mut w = Waves {
             i2c,
             imu,
-            filter: NxpFusion::new(208.),
+            freq,
+            filter: NxpFusion::new(freq.value()),
             axl: heapless::Vec::new(),
             timestamp: 0,
             lon: 0.0,
@@ -94,7 +160,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         // CTRL1_XL
         sensor
             .ctrl1xl
-            .set_accelerometer_data_rate(i2c, ctrl1xl::Odr_Xl::Hz208)?;
+            .set_accelerometer_data_rate(i2c, self.freq.accel_odr())?;
 
         sensor
             .ctrl1xl
@@ -104,7 +170,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         // CTRL2_G
         sensor
             .ctrl2g
-            .set_gyroscope_data_rate(i2c, ctrl2g::Odr::Hz208)?;
+            .set_gyroscope_data_rate(i2c, self.freq.gyro_odr())?;
 
         sensor
             .ctrl2g
@@ -125,10 +191,10 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         self.imu.fifoctrl.mode(i2c, fifoctrl::FifoMode::Bypass)?;
         self.imu
             .fifoctrl
-            .set_accelerometer_batch_data_rate(i2c, fifoctrl::BdrXl::Hz208)?;
+            .set_accelerometer_batch_data_rate(i2c, self.freq.accel_bdr())?;
         self.imu
             .fifoctrl
-            .set_gyroscope_batch_data_rate(i2c, fifoctrl::BdrGy::Hz208)?;
+            .set_gyroscope_batch_data_rate(i2c, self.freq.gyro_bdr())?;
 
         // Wait for FIFO to be cleared.
         delay.delay_ms(10);

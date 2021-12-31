@@ -47,7 +47,7 @@ dependencies = [
 
 [[package]]
 name = "ambiq-hal"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "ambiq-apollo3-pac2",
  "ambiq-hal-sys",
@@ -1055,7 +1055,7 @@ dependencies = [
  "bytemuck",
  "chrono",
  "cmsis_dsp",
- "cortex-m 0.7.3",
+ "cortex-m 0.6.7",
  "cortex-m-rt",
  "defmt",
  "defmt-rtt",
