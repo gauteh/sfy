@@ -4,31 +4,24 @@ import scipy as sc, scipy.fft
 from sfy import axl
 import pytest
 
-# @pytest.fixture
-# def signal():
-#     d = open(
-#         'tests/data/dev864475044203262/1639855192872-3a0c5fc2-e79f-48d1-91e9-e104ac937644_axl.qo.json'
-#     ).read()
-#     a = axl.Axl.parse(d)
-#     s = np.empty((1024*3,), np.float16)
+@pytest.fixture
+def signal():
+    d = open(
+        'tests/data/dev864475044203262/1639855192872-3a0c5fc2-e79f-48d1-91e9-e104ac937644_axl.qo.json'
+    ).read()
+    a = axl.Axl.parse(d)
+
+    # s = np.empty((1024*3,), np.float16)
+
     # s[0::3] = a.x
     # s[1::3] = a.y
     # s[2::3] = a.z
+
     # s[:1024] = a.x
     # s[1024:2*1024] = a.y
     # s[2*1024:3*1024] = a.z
 
-    # return a.x
-
-@pytest.fixture
-def signal():
-    d = open('../imu-compression/microSWIFT_fused.csv')
-    d = [[float(e) for e in l.split(',')] for l in d.readlines()]
-    d = np.array(d).astype(np.float16)
-
-    print(d)
-
-    return d[:,2]
+    return a.x
 
 def test_compress_deflate(signal):
     import zlib
