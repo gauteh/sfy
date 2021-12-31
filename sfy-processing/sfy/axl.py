@@ -4,7 +4,9 @@ import numpy as np
 import base64
 import sys
 import logging
+
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class Axl:
@@ -67,12 +69,12 @@ class Axl:
         payload = np.frombuffer(payload, dtype=np.float16)
 
         if sys.byteorder == 'big':
-            logger.warning('host is big-endian, swapping bytes: this is not well-tested.')
-            payload.byteswap(inplace = True)
+            logger.warning(
+                'host is big-endian, swapping bytes: this is not well-tested.')
+            payload.byteswap(inplace=True)
 
         x = payload[0::3]
         y = payload[1::3]
         z = payload[2::3]
 
         return Axl(**data, x=x, y=y, z=z)
-
