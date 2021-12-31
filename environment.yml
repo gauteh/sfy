@@ -5,5 +5,4 @@ dependencies:
   - pyserial
   - numpy
   - scipy
-  - mdct
   - matplotlib
