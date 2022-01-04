@@ -12,7 +12,7 @@ pub struct Notecarrier<I2C: Read + Write> {
 impl<I2C: Read + Write> Notecarrier<I2C> {
     pub fn new(i2c: I2C, delay: &mut impl DelayMs<u16>) -> Result<Notecarrier<I2C>, NoteError> {
         let mut note = Notecard::new(i2c);
-        note.initialize().expect("could not initialize notecard.");
+        note.initialize()?;
 
         note.hub()
             .set(
@@ -31,12 +31,10 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             .wait(delay)?;
 
         note.card()
-            .location_mode(Some("continuous"), None, None, None, None, None, None, None)
-            .unwrap()
+            .location_mode(Some("continuous"), None, None, None, None, None, None, None)?
             .wait(delay)?;
         note.card()
-            .location_track(true, false, true, None, None)
-            .unwrap()
+            .location_track(true, false, true, None, None)?
             .wait(delay)?;
 
 
@@ -85,6 +83,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             timestamp: u32,
             offset: u32,
             length: u32,
+            freq: f32,
             packet: u32,
             lon: f32,
             lat: f32,
@@ -94,6 +93,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             timestamp: 14,
             offset: 14,
             length: 14,
+            freq: 14.1,
             packet: 12,
             lon: 14.1,
             lat: 14.1,
@@ -122,6 +122,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                 offset: pck.offset as u32,
                 packet: pi as u32,
                 length: p.len() as u32,
+                freq: pck.freq,
                 lon: pck.lon,
                 lat: pck.lat,
             };
@@ -203,6 +204,7 @@ pub struct AxlPacketMeta {
     pub offset: u32,
     pub packet: u32,
     pub length: u32,
+    pub freq: f32,
     pub lon: f32,
     pub lat: f32,
 }
@@ -214,6 +216,7 @@ pub struct AxlPacket {
     pub offset: u16,
     pub lon: f32,
     pub lat: f32,
+    pub freq: f32,
 
     /// This is moved to the payload of the note.
     #[serde(skip)]
@@ -265,6 +268,7 @@ mod tests {
             timestamp: 0,
             lat: 0.0,
             lon: 0.0,
+            freq: 100.0,
             offset: 0,
             data: (0..3072)
                 .map(|v| f16::from_f32(v as f32))

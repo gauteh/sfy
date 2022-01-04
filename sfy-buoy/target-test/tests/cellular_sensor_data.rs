@@ -55,6 +55,7 @@ mod tests {
         let pck = note::AxlPacket {
             timestamp: 1000,
             offset: 1,
+            freq: 100.,
             lon: 10.23,
             lat: 14.233,
             data: (0..3072)

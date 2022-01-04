@@ -40,6 +40,7 @@ class Axl:
     timestamp: int
     lon: float
     lat: float
+    freq: float
 
     x: np.ndarray
     y: np.ndarray
@@ -61,6 +62,7 @@ class Axl:
         data['timestamp'] = data['body']['timestamp']
         data['lon'] = data['body'].get('lon')
         data['lat'] = data['body'].get('lat')
+        data['freq'] = data['body'].get('freq', 208.)
         del data['body']
 
         # decode x, y, z

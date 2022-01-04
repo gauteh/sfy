@@ -108,7 +108,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
     pub fn new(mut i2c: I2C) -> Result<Waves<I2C>, E> {
         defmt::debug!("setting up imu driver..");
         let imu = Ism330Dhcx::new_with_address(&mut i2c, 0x6a)?;
-        let freq = Freq::Hz208;
+        let freq = Freq::Hz104;
 
         let mut w = Waves {
             i2c,
@@ -229,6 +229,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
             data: self.axl.clone(),
             lon: self.lon,
             lat: self.lat,
+            freq: self.freq.value(),
         };
 
         self.axl.clear();
@@ -266,6 +267,9 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         // this function), otherwise it will have stopped accumulating samples.
         if fifo_full || fifo_overrun || fifo_overrun_latched {
             defmt::error!("IMU fifo overrun: fifo sz: {}, (fifo_full: {}, overrun: {}, overrun_latched: {}) sample pairs (buffer: {}/{})", n, fifo_full, fifo_overrun, fifo_overrun_latched, self.axl.len(), AXL_SZ);
+
+            panic!("FIFO overrun.");
+            // return Err(E::default());
         }
 
         let n = n / 2;
@@ -328,7 +332,6 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         defmt::trace!("fifo length after read: {}", nn);
 
         // TODO: In case FIFO ran full it needs resetting.
-        // TODO: Set time of start for batch + current offset in FIFO where the timestamp points to.
 
         Ok(())
     }
