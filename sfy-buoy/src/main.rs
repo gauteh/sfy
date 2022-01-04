@@ -104,15 +104,22 @@ fn main() -> ! {
         cortex_m::interrupt::enable();
     }
 
+    note.hub()
+        .log("SFY started up, entering main loop.", false, false)
+        .unwrap()
+        .wait(&mut delay)
+        .unwrap();
+
     info!("Entering main loop");
     loop {
         defmt::debug!("iteration..");
         led.toggle().unwrap();
 
-        location.check_retrieve(&STATE, &mut delay, &mut note).unwrap();
+        location
+            .check_retrieve(&STATE, &mut delay, &mut note)
+            .unwrap();
         note.drain_queue(&mut imu_queue, &mut delay).unwrap();
         note.check_and_sync(&mut delay).unwrap();
-
 
         delay.delay_ms(1000u16);
         // asm::wfi(); // doesn't work very well with RTT

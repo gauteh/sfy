@@ -5,6 +5,9 @@ use embedded_hal::blocking::i2c::{Read, Write};
 use half::f16;
 use notecard::{NoteError, Notecard};
 
+/// Initialize sync when storage use is above this percentage.
+pub const NOTECARD_STORAGE_INIT_SYNC: u32 = 50;
+
 pub struct Notecarrier<I2C: Read + Write> {
     note: Notecard<I2C>,
 }
@@ -182,16 +185,16 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
     ) -> Result<(), NoteError> {
         let status = self.note.card().status()?.wait(delay)?;
 
-        if status.storage > 30 {
+        if status.storage > NOTECARD_STORAGE_INIT_SYNC as usize {
             delay.delay_ms(10);
             let sync_status = self.note.hub().sync_status()?.wait(delay)?;
 
             if sync_status.requested.is_none() {
-                defmt::warn!("notecard is more than 30% full, initiating sync.");
+                defmt::warn!("notecard is more than {}% full, initiating sync.", NOTECARD_STORAGE_INIT_SYNC);
                 self.note.hub().sync()?.wait(delay)?;
                 delay.delay_ms(10);
             }
-            defmt::info!("notecard is filling up: sync status: {:?}", sync_status);
+            defmt::info!("notecard is filling up ({}%): sync status: {:?}", status.storage, sync_status);
         }
 
         Ok(())
