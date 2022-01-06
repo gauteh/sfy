@@ -79,7 +79,7 @@ fn main() -> ! {
     info!("Setting up IMU..");
     let mut waves = Waves::new(i2c3).unwrap();
     waves
-        .take_buf(rtc.now().timestamp_millis() as u32, 0.0, 0.0)
+        .take_buf(rtc.now().timestamp_millis(), 0.0, 0.0)
         .unwrap(); // set timestamp.
 
     info!("Enable IMU.");

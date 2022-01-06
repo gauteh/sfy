@@ -37,7 +37,7 @@ class Axl:
     ## Payload and body
     length: int
     offset: int
-    timestamp: int
+    timestamp: int # milliseconds, i64
     lon: float
     lat: float
     freq: float

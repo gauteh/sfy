@@ -95,7 +95,7 @@ pub struct Waves<I2C: WriteRead + Write> {
     pub axl: VecAxl,
 
     /// Timestamp at `fifo_offset` sample in buffer.
-    pub timestamp: u32,
+    pub timestamp: i64,
     pub lon: f32,
     pub lat: f32,
 
@@ -108,7 +108,8 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
     pub fn new(mut i2c: I2C) -> Result<Waves<I2C>, E> {
         defmt::debug!("setting up imu driver..");
         let imu = Ism330Dhcx::new_with_address(&mut i2c, 0x6a)?;
-        let freq = Freq::Hz104;
+        let freq = Freq::Hz26;
+        defmt::debug!("imu frequency: {}", freq.value());
 
         let mut w = Waves {
             i2c,
@@ -222,7 +223,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
     }
 
     /// Take buf and reset timestamp.
-    pub fn take_buf(&mut self, now: u32, lon: f32, lat: f32) -> Result<AxlPacket, E> {
+    pub fn take_buf(&mut self, now: i64, lon: f32, lat: f32) -> Result<AxlPacket, E> {
         let pck = AxlPacket {
             timestamp: self.timestamp,
             offset: self.fifo_offset,

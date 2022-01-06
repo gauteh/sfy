@@ -140,7 +140,7 @@ impl<E: Debug, I: Write<Error = E> + WriteRead<Error = E>> Imu<E, I> {
 
         if self.waves.axl.is_full() {
             trace!("waves buffer is full, pushing to queue..");
-            let pck = self.waves.take_buf(now as u32, lon, lat)?;
+            let pck = self.waves.take_buf(now, lon, lat)?;
             match self.queue.enqueue(pck) {
                 Ok(_) => (),
                 Err(pck) => error!("queue is full, discarding data: {}", pck.data.len()),
