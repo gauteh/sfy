@@ -73,7 +73,7 @@ impl Location {
         delay: &mut impl DelayMs<u16>,
         note: &mut note::Notecarrier<T>,
     ) -> Result<(), notecard::NoteError> {
-        use notecard::card::res::Location;
+        use notecard::card::res::{Location, Time};
         use LocationState::*;
 
         const LOCATION_DIFF: i64 = 1 * 60_000; // ms
@@ -84,14 +84,19 @@ impl Location {
         match self.state {
             Retrieved(t) | Trying(t) if (now - t) > LOCATION_DIFF => {
                 let gps = note.card().location()?.wait(delay)?;
+                let tm = note.card().time()?.wait(delay)?;
 
-                info!("Location: {:?}", gps);
-                if let Location {
-                    lat: Some(lat),
-                    lon: Some(lon),
-                    time: Some(time),
-                    ..
-                } = gps
+                info!("Location: {:?}, Time: {:?}", gps, tm);
+                if let (
+                    Location {
+                        lat: Some(lat),
+                        lon: Some(lon),
+                        ..
+                    },
+                    Time {
+                        time: Some(time), ..
+                    },
+                ) = (gps, tm)
                 {
                     info!("got time and location, setting RTC.");
 

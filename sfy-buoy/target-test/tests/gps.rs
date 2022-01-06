@@ -12,6 +12,7 @@ mod tests {
     use defmt::{assert, assert_eq, info};
     use hal::i2c::{Freq, I2c};
     use sfy::note::Notecarrier;
+    use chrono::{NaiveDateTime, NaiveDate};
 
     struct State {
         note: Notecarrier<hal::i2c::Iom2>,
@@ -62,11 +63,46 @@ mod tests {
     }
 
     #[test]
-    fn set_rtc_from_gps(s: &mut State) {
-        let now = s.rtc.now().timestamp_millis();
-        defmt::info!("now: {}", now);
+    fn set_rtc(s: &mut State) {
+        s.rtc.enable();
+        let before = s.rtc.now().timestamp_millis();
+        defmt::info!("now: {}", before);
 
-        rtc.set(NaiveDate::from_ymd(1970, 1, 1).and_hms(0, 0, 0)); // Now timestamps will be positive.
+        let d = NaiveDate::from_ymd(2020, 1, 1).and_hms(0, 0, 0);
+        s.rtc.set(d);
+        let now = s.rtc.now().timestamp_millis();
+        defmt::info!("after change: {}", now);
+        assert_ne!(before, now);
+        assert_eq!(d.timestamp(), s.rtc.now().timestamp());
+    }
+
+    #[test]
+    fn set_rtc_from_gps(s: &mut State) {
+        s.rtc.enable();
+        let before = s.rtc.now().timestamp_millis();
+        defmt::info!("now: {}", before);
+
+        let tm = s
+            .note
+            .card()
+            .time()
+            .unwrap()
+            .wait(&mut s.delay)
+            .unwrap();
+        defmt::info!("time: {:?}", tm);
+
+        if let Some(time) = tm.time {
+            let d = NaiveDateTime::from_timestamp(time as i64, 0);
+            assert_eq!(d.timestamp(), time as i64);
+
+            s.rtc.set(d);
+            let now = s.rtc.now().timestamp_millis();
+
+            defmt::info!("after change: {}", now);
+            assert_eq!(time as i64, s.rtc.now().timestamp());
+        } else {
+            defmt::error!("no time from gps, test skipped.");
+        }
     }
 
     #[test]

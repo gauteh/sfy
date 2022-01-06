@@ -38,6 +38,7 @@ defmt-test = "0.3.0"
 panic-probe = { version = "0.3.0", features = ["print-defmt"] }
 ism330dhcx = "0.3.0"
 half = { version = "1.8.2", features = [ "use-intrinsics", "bytemuck" ] }
+chrono = { version = "0.4.19", default-features = false }
 
 [dependencies.ambiq-hal]
 version = "0.1"

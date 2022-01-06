@@ -1143,6 +1143,7 @@ name = "test-target"
 version = "0.1.0"
 dependencies = [
  "ambiq-hal",
+ "chrono",
  "cortex-m 0.7.3",
  "cortex-m-rt",
  "defmt",
