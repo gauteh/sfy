@@ -156,7 +156,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
     /// Send all available packages to the notecard.
     pub fn drain_queue(
         &mut self,
-        queue: &mut heapless::spsc::Consumer<'static, AxlPacket, 16>,
+        queue: &mut heapless::spsc::Consumer<'static, AxlPacket, 32>,
         delay: &mut impl DelayMs<u16>,
     ) -> Result<usize, NoteError> {
         let status = self.note.card().status()?.wait(delay)?;

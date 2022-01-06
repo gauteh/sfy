@@ -126,14 +126,14 @@ impl Location {
 }
 
 pub struct Imu<E: Debug, I: Write<Error = E> + WriteRead<Error = E>> {
-    pub queue: heapless::spsc::Producer<'static, note::AxlPacket, 16>,
+    pub queue: heapless::spsc::Producer<'static, note::AxlPacket, 32>,
     waves: waves::Waves<I>,
 }
 
 impl<E: Debug, I: Write<Error = E> + WriteRead<Error = E>> Imu<E, I> {
     pub fn new(
         waves: waves::Waves<I>,
-        queue: heapless::spsc::Producer<'static, note::AxlPacket, 16>,
+        queue: heapless::spsc::Producer<'static, note::AxlPacket, 32>,
     ) -> Imu<E, I> {
         Imu { queue, waves }
     }
