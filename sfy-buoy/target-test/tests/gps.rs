@@ -17,6 +17,7 @@ mod tests {
         note: Notecarrier<hal::i2c::Iom2>,
         #[allow(unused)]
         delay: hal::delay::Delay,
+        rtc: hal::rtc::Rtc,
     }
 
     #[init]
@@ -26,13 +27,15 @@ mod tests {
         let mut dp = hal::pac::Peripherals::take().unwrap();
         let pins = hal::gpio::Pins::new(dp.GPIO);
 
+        let rtc = hal::rtc::Rtc::new(dp.RTC, &mut dp.CLKGEN);
+
         let mut delay = hal::delay::Delay::new(core.SYST, &mut dp.CLKGEN);
         let i2c = I2c::new(dp.IOM2, pins.d17, pins.d18, Freq::F100kHz);
 
         defmt::info!("Setting up notecarrier");
         let note = Notecarrier::new(i2c, &mut delay).unwrap();
 
-        State { note, delay }
+        State { note, delay, rtc }
     }
 
     #[test]
@@ -56,6 +59,14 @@ mod tests {
         defmt::info!("location: {:?}", location);
 
         assert!(location.lon.is_some());
+    }
+
+    #[test]
+    fn set_rtc_from_gps(s: &mut State) {
+        let now = s.rtc.now().timestamp_millis();
+        defmt::info!("now: {}", now);
+
+        rtc.set(NaiveDate::from_ymd(1970, 1, 1).and_hms(0, 0, 0)); // Now timestamps will be positive.
     }
 
     #[test]
