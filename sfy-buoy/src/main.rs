@@ -14,14 +14,13 @@ use cortex_m::{
     asm,
     interrupt::{free, Mutex},
 };
-#[cfg(not(test))]
 use cortex_m_rt::entry;
 use defmt_rtt as _;
 use hal::{i2c, pac::interrupt};
 
 use sfy::note::Notecarrier;
 use sfy::waves::Waves;
-use sfy::{Imu, Location, SharedState};
+use sfy::{Imu, Location, SharedState, State};
 
 /// This queue is filled up by the IMU in an interrupt with ready batches of time series. It is
 /// consumed by the main thread and drained to the notecard / cellular.
@@ -111,18 +110,25 @@ fn main() -> ! {
         .unwrap();
 
     info!("Entering main loop");
+    let mut last: i64 = 0;
+
     loop {
-        defmt::debug!("iteration..");
-        led.toggle().unwrap();
+        let now = STATE.now().timestamp_millis();
 
-        location
-            .check_retrieve(&STATE, &mut delay, &mut note)
-            .unwrap();
-        note.drain_queue(&mut imu_queue, &mut delay).unwrap();
-        note.check_and_sync(&mut delay).unwrap();
+        if (now - last) > 1000 {
+            defmt::debug!("iteration, now: {}..", now);
+            led.toggle().unwrap();
+            location
+                .check_retrieve(&STATE, &mut delay, &mut note)
+                .unwrap();
+            note.drain_queue(&mut imu_queue, &mut delay).unwrap();
+            note.check_and_sync(&mut delay).unwrap();
+            last = now;
+        }
 
+        defmt::flush();
         delay.delay_ms(1000u16);
-        // asm::wfi(); // doesn't work very well with RTT
+        // asm::wfi(); // doesn't work very well with RTT + probe
 
         // TODO:
         // * Set up and feed watchdog.
@@ -162,5 +168,5 @@ fn RTC() {
         unsafe {
             imu.replace(IMU.take().unwrap());
         }
-    }
+   }
 }

@@ -27,6 +27,21 @@ pub struct SharedState {
     pub lat: f32,
 }
 
+pub trait State {
+    fn now(&self) -> NaiveDateTime;
+}
+
+impl State for Mutex<RefCell<Option<SharedState>>> {
+    fn now(&self) -> NaiveDateTime {
+        free(|cs| {
+            let state = self.borrow(cs).borrow();
+            let state = state.as_ref().unwrap();
+
+            state.rtc.now()
+        })
+    }
+}
+
 #[derive(Clone)]
 pub enum LocationState {
     Trying(i64),
@@ -63,12 +78,7 @@ impl Location {
 
         const LOCATION_DIFF: i64 = 1 * 60_000; // ms
 
-        let now = free(|cs| {
-            let state = state.borrow(cs).borrow();
-            let state = state.as_ref().unwrap();
-
-            state.rtc.now().timestamp_millis()
-        });
+        let now = state.now().timestamp_millis();
         defmt::trace!("now: {}", now);
 
         match self.state {
@@ -120,10 +130,7 @@ impl<E: Debug, I: Write<Error = E> + WriteRead<Error = E>> Imu<E, I> {
         waves: waves::Waves<I>,
         queue: heapless::spsc::Producer<'static, note::AxlPacket, 16>,
     ) -> Imu<E, I> {
-        Imu {
-            queue,
-            waves,
-        }
+        Imu { queue, waves }
     }
 
     pub fn check_retrieve(&mut self, now: i64, lon: f32, lat: f32) -> Result<(), E> {
@@ -134,7 +141,10 @@ impl<E: Debug, I: Write<Error = E> + WriteRead<Error = E>> Imu<E, I> {
         if self.waves.axl.is_full() {
             trace!("waves buffer is full, pushing to queue..");
             let pck = self.waves.take_buf(now as u32, lon, lat)?;
-            self.queue.enqueue(pck).unwrap(); // TODO: fix
+            match self.queue.enqueue(pck) {
+                Ok(_) => (),
+                Err(pck) => error!("queue is full, discarding data: {}", pck.data.len()),
+            };
         }
 
         Ok(())
