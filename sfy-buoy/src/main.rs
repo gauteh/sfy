@@ -13,6 +13,7 @@ use defmt::{debug, error, info, println, trace, warn};
 use ambiq_hal::{self as hal, prelude::*};
 use chrono::NaiveDate;
 use core::cell::RefCell;
+#[allow(unused_imports)]
 use cortex_m::{
     asm,
     interrupt::{free, Mutex},
@@ -171,13 +172,16 @@ fn main() -> ! {
             last = now;
         }
 
+        #[cfg(not(deploy))]
         delay.delay_ms(1000u16);
+
+        #[cfg(deploy)]
+        asm::wfi(); // doesn't work very well with RTT + probe
+
         // defmt::flush();
-        // asm::wfi(); // doesn't work very well with RTT + probe
 
         // TODO:
         // * Set up and feed watchdog.
-        // * Handle and recover errors.
     }
 }
 
