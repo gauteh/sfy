@@ -162,8 +162,8 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         let status = self.note.card().status()?.wait(delay)?;
 
         if status.storage > 75 {
-            // wait untill notecard has synced.
-            defmt::warn!("notecard is more than 75% full, not adding more notes untill sync is done: queue sz: {}", queue.len());
+            // wait until notecard has synced.
+            defmt::warn!("notecard is more than 75% full, not adding more notes until sync is done: queue sz: {}", queue.len());
             return Ok(0usize);
         }
 

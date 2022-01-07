@@ -73,6 +73,9 @@ fn main() -> ! {
 
     let mut location = Location::new();
 
+    info!("Giving subsystems a couple of seconds to boot..");
+    delay.delay_ms(3_000u32);
+
     info!("Setting up Notecarrier..");
     let mut note = Notecarrier::new(i2c2, &mut delay).unwrap();
 
@@ -110,7 +113,10 @@ fn main() -> ! {
         .unwrap();
 
     info!("Entering main loop");
+    const GOOD_TRIES: u32 = 5;
+
     let mut last: i64 = 0;
+    let mut good_tries: u32 = 5;
 
     loop {
         let now = STATE.now().timestamp_millis();
@@ -118,16 +124,52 @@ fn main() -> ! {
         if (now - last) > 1000 {
             defmt::debug!("iteration, now: {}..", now);
             led.toggle().unwrap();
-            location
-                .check_retrieve(&STATE, &mut delay, &mut note)
-                .unwrap();
-            note.drain_queue(&mut imu_queue, &mut delay).unwrap();
-            note.check_and_sync(&mut delay).unwrap();
+            match (
+                location.check_retrieve(&STATE, &mut delay, &mut note),
+                note.drain_queue(&mut imu_queue, &mut delay),
+                note.check_and_sync(&mut delay),
+            ) {
+                (Ok(_), Ok(_), Ok(_)) => good_tries = GOOD_TRIES,
+                _ => {
+                    error!(
+                        "Fatal error occured during main loop. Tries left: {}",
+                        good_tries
+                    );
+                    if good_tries == 0 {
+                        error!("No more tries left, attempting to reboot devices and restart.");
+
+                        warn!("Trying to send log message..");
+                        note.hub()
+                            .log("Error occured in main loop: restarting.", false, false)
+                            .and_then(|f| f.wait(&mut delay))
+                            .ok();
+
+                        warn!("Trying to restart notecard..");
+                        note.card()
+                            .restart()
+                            .and_then(|f| f.wait(&mut delay))
+                            .and_then(|r| {
+                                info!("Notecard succesfully restarted.");
+                                Ok(r)
+                            })
+                            .or_else(|e| {
+                                error!("Could not restart notecard.");
+                                Err(e)
+                            }).ok();
+
+                        warn!("Resetting in 3 seconds..");
+                        delay.delay_ms(3_000u32);
+                        cortex_m::peripheral::SCB::sys_reset();
+                    } else {
+                        good_tries -= 1;
+                    }
+                }
+            };
             last = now;
         }
 
-        defmt::flush();
         delay.delay_ms(1000u16);
+        // defmt::flush();
         // asm::wfi(); // doesn't work very well with RTT + probe
 
         // TODO:
@@ -168,5 +210,5 @@ fn RTC() {
         unsafe {
             imu.replace(IMU.take().unwrap());
         }
-   }
+    }
 }
