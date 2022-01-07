@@ -6,7 +6,12 @@
 $ cargo build --release --features deploy
 ```
 
-the `deploy` feature sets the panic-handler to reset the device.
+the `deploy` feature sets the panic-handler to reset the device. You can deploy
+using the USB bootloader:
+
+```sh
+$ make deploy
+```
 
 
 ## Dependencies when building and flashing using the sparkfun bootloader

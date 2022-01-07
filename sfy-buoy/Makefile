@@ -9,6 +9,11 @@ objcopy: build
 flash: objcopy
 	python3 ../tools/svl/svl.py -f target/sby-buoy.bin /dev/ttyUSB0 -v
 
+deploy:
+	cargo build --release --features deploy
+	cargo objcopy --release --features deploy -- -O binary target/sby-buoy.bin
+	python3 ../tools/svl/svl.py -f target/sby-buoy.bin /dev/ttyUSB0 -v
+
 com:
 	picocom -e c -b 115200 /dev/ttyUSB0
 
