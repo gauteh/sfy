@@ -1,8 +1,11 @@
 #![cfg_attr(not(test), no_std)]
 #![cfg_attr(not(test), no_main)]
 
-#[cfg(not(test))]
+#[cfg(all(not(test), not(deploy)))]
 use panic_probe as _; // TODO: Restart board on panic.
+
+#[cfg(deploy)]
+use panic_reset as _;
 
 #[allow(unused_imports)]
 use defmt::{debug, error, info, println, trace, warn};

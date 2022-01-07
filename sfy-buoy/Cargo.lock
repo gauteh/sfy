@@ -832,6 +832,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "panic-reset"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "acee8535a38487c5c70d61ee87284710452cb3b265304463f20a0c5327a4a8a5"
+dependencies = [
+ "cortex-m 0.6.7",
+]
+
+[[package]]
 name = "paste"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1055,7 +1064,7 @@ dependencies = [
  "bytemuck",
  "chrono",
  "cmsis_dsp",
- "cortex-m 0.6.7",
+ "cortex-m 0.7.3",
  "cortex-m-rt",
  "defmt",
  "defmt-rtt",
@@ -1068,6 +1077,7 @@ dependencies = [
  "nb 1.0.0",
  "notecard",
  "panic-probe",
+ "panic-reset",
  "serde",
  "serde-json-core",
  "shared-bus",

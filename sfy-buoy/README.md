@@ -1,5 +1,14 @@
 # sfy-buoy (small friendly buoy)
 
+## Building for deployment
+
+```sh
+$ cargo build --release --features deploy
+```
+
+the `deploy` feature sets the panic-handler to reset the device.
+
+
 ## Dependencies when building and flashing using the sparkfun bootloader
 
 * apt install binutils-arm-none-eabi
