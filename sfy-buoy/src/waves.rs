@@ -324,7 +324,8 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
                 //
                 // - Reset FIFO and timestamps
                 // - Reset IMU?
-                break; // we got something else than gyro or accel
+                panic!("Un-handled IMU FIFO error");
+                // break; // we got something else than gyro or accel
             }
         }
 
