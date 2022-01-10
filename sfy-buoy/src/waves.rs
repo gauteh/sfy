@@ -1,7 +1,7 @@
 //! Measure waves using an IMU, feed it through a Kalman filter and collect
 //! time-series or statistics.
 
-use crate::note::AxlPacket;
+use crate::{fir, note::AxlPacket};
 use ahrs_fusion::NxpFusion;
 use core::fmt::Debug;
 use embedded_hal::blocking::{
@@ -11,7 +11,7 @@ use embedded_hal::blocking::{
 use half::f16;
 use ism330dhcx::{ctrl1xl, ctrl2g, fifo, fifoctrl, Ism330Dhcx};
 use micromath::{
-    vector::{Vector, Vector3d},
+    vector::Vector3d,
     Quaternion,
 };
 
@@ -95,6 +95,9 @@ pub struct Waves<I2C: WriteRead + Write> {
     pub i2c: I2C,
     pub imu: IMU,
     pub freq: Freq,
+    pub output_freq: f32,
+
+    fir: [fir::Decimator; SAMPLE_SZ],
     filter: NxpFusion,
 
     /// Buffer with values ready to be sent.
@@ -115,14 +118,24 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         defmt::debug!("setting up imu driver..");
         let imu = Ism330Dhcx::new_with_address(&mut i2c, 0x6a)?;
 
-        let freq = Freq::Hz26;
+        let freq = Freq::Hz833;
+        let output_freq = fir::OUT_FREQ;
 
         defmt::debug!("imu frequency: {}", freq.value());
+        defmt::debug!("output frequency: {}", output_freq);
+
+        let fir = [
+            fir::FIR::new().into_decimator(),
+            fir::FIR::new().into_decimator(),
+            fir::FIR::new().into_decimator(),
+        ];
 
         let mut w = Waves {
             i2c,
             imu,
             freq,
+            output_freq,
+            fir,
             filter: NxpFusion::new(freq.value()),
             axl: heapless::Vec::new(),
             timestamp: 0,
@@ -282,9 +295,12 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         }
 
         let n = n / 2;
-        let n = n.min(((self.axl.capacity() - self.axl.len()) / 3) as u16);
 
         for _ in 0..n {
+            if (self.axl.capacity() - self.axl.len()) < 3 {
+                break;
+            }
+
             let m1 = imu.fifo_pop(i2c)?;
             let m2 = imu.fifo_pop(i2c)?;
 
@@ -319,8 +335,21 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
                 };
                 let axl = q.rotate(axl);
 
+                match (
+                    self.fir[0].decimate(axl.x),
+                    self.fir[1].decimate(axl.y),
+                    self.fir[2].decimate(axl.z),
+                ) {
+                    (Some(x), Some(y), Some(z)) => {
+                        self.axl.push(f16::from_f32(x)).unwrap();
+                        self.axl.push(f16::from_f32(y)).unwrap();
+                        self.axl.push(f16::from_f32(z)).unwrap();
+                    },
+                    _ => {} // No filter output.
+                }
+
                 // XXX: use try_extend
-                self.axl.extend(axl.iter().map(f16::from_f32));
+                // self.axl.extend(axl.iter().map(f16::from_f32));
 
                 // XXX:
                 //

@@ -1,12 +1,25 @@
 use heapless::Deque;
 
+/// Filter order, length or number of taps.
 const NTAP: usize = 128;
+
+/// Filter coefficients. Generated with Pythons `scipy.signal.firwin(...)`.
 const COEFFS: [f32; NTAP] = include!("firwin.coeff");
-#[allow(dead_code)]
-const FREQ: f32 = 833.0;
-#[allow(dead_code)]
-const CUTOFF: f32 = 25.0;
-const DECIMATE: u16 = 25;
+
+/// Sample rate.
+pub const FREQ: f32 = 833.0;
+
+/// Cut-off frequency of filter.
+pub const CUTOFF: f32 = 25.0;
+
+/// Maximum decimation given `CUTOFF` and sample rate (`FREQ`).
+pub const DECIMATE: u8 = (FREQ / CUTOFF / 2.) as u8;
+
+/// Output frequency after decimation.
+pub const OUT_FREQ: f32 = FREQ / DECIMATE as f32;
+
+/// The delay (in seconds) introduced by the filter: half the length of the filter.
+pub const DELAY: f32 = (NTAP / 2) as f32 / FREQ;
 
 /// A running FIR filter with pre-computed coefficients.
 pub struct FIR {
@@ -34,7 +47,7 @@ impl FIR {
     }
 
     fn value(&self) -> f32 {
-        // Convolute filter with samples.
+        // Convolve filter with samples.
         self.samples
             .iter()
             .zip(&COEFFS)
@@ -50,7 +63,7 @@ impl FIR {
 /// every M'th sample.
 pub struct Decimator {
     fir: FIR,
-    m: u16,
+    m: u8,
 }
 
 impl Decimator {
@@ -135,13 +148,16 @@ mod tests {
             .map(|t| 2. * (2. * t * 2. * std::f32::consts::PI).sin())
             .collect::<Vec<_>>();
 
+        println!("decimate: {}", DECIMATE);
+        println!("out_freq: {}", OUT_FREQ);
+
         let sf = s
             .iter()
             .map(|s| f.filter(*s))
-            .step_by(25)
+            .step_by(DECIMATE as usize)
             .collect::<Vec<_>>();
         let df = s.iter().filter_map(|s| d.decimate(*s)).collect::<Vec<_>>();
         assert_eq!(sf, df);
-        assert_eq!(df.len(), 4096 / 25 + 1);
+        assert_eq!(df.len(), 4096 / DECIMATE as usize);
     }
 }
