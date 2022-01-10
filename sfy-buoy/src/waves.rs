@@ -20,6 +20,7 @@ pub enum Freq {
     Hz26,
     Hz104,
     Hz208,
+    Hz833,
 }
 
 impl Freq {
@@ -30,6 +31,7 @@ impl Freq {
             Hz26 => 26.,
             Hz104 => 104.,
             Hz208 => 208.,
+            Hz833 => 833.,
         }
     }
 
@@ -41,6 +43,7 @@ impl Freq {
             Hz26 => Odr::Hz26,
             Hz104 => Odr::Hz104,
             Hz208 => Odr::Hz208,
+            Hz833 => Odr::Hz833,
         }
     }
 
@@ -52,6 +55,7 @@ impl Freq {
             Hz26 => Odr::Hz26,
             Hz104 => Odr::Hz104,
             Hz208 => Odr::Hz208,
+            Hz833 => Odr::Hz833,
         }
     }
 
@@ -63,6 +67,7 @@ impl Freq {
             Hz26 => Odr::Hz26,
             Hz104 => Odr::Hz104,
             Hz208 => Odr::Hz208,
+            Hz833 => Odr::Hz833,
         }
     }
 
@@ -74,6 +79,7 @@ impl Freq {
             Hz26 => Odr::Hz26,
             Hz104 => Odr::Hz104,
             Hz208 => Odr::Hz208,
+            Hz833 => Odr::Hz833,
         }
     }
 }
@@ -108,7 +114,9 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
     pub fn new(mut i2c: I2C) -> Result<Waves<I2C>, E> {
         defmt::debug!("setting up imu driver..");
         let imu = Ism330Dhcx::new_with_address(&mut i2c, 0x6a)?;
+
         let freq = Freq::Hz26;
+
         defmt::debug!("imu frequency: {}", freq.value());
 
         let mut w = Waves {
