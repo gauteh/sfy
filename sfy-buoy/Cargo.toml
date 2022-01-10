@@ -20,7 +20,7 @@ defmt = "0.3"
 defmt-rtt = "0.3"
 panic-probe = { version = "0.3.0", features = ["print-defmt"] }
 panic-reset = { version = "0.1.0", optional = true }
-ism330dhcx = "0.3.0"
+ism330dhcx = "0.4.0"
 cmsis_dsp = { version = "0.1.0", features = [ "micromath" ] }
 micromath = { version = "2", features = [ "quaternion", "vector" ] }
 lzss = { version = "0.8.2", default-features = false, features = [ "const_panic" ] }
@@ -44,7 +44,7 @@ git = "https://github.com/gauteh/ahrs-fusion"
 [dev-dependencies]
 
 [patch.crates-io]
-ism330dhcx = { git = "https://github.com/gauteh/ism330dhcx", branch = "fifo" }
+# ism330dhcx = { git = "https://github.com/gauteh/ism330dhcx", branch = "fifo" }
 cmsis_dsp = { git = "https://github.com/samcrow/cmsis_dsp.rs" }
 ambiq-hal = { git = "https://github.com/gauteh/ambiq-rs" }
 
