@@ -20,6 +20,7 @@ use embedded_hal::blocking::{
 
 pub mod note;
 pub mod waves;
+pub mod fir;
 
 pub struct SharedState {
     pub rtc: Rtc,
