@@ -159,7 +159,8 @@ fn main() -> ! {
                             .or_else(|e| {
                                 error!("Could not restart notecard.");
                                 Err(e)
-                            }).ok();
+                            })
+                            .ok();
 
                         warn!("Resetting in 3 seconds..");
                         delay.delay_ms(3_000u32);
