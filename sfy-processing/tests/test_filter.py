@@ -14,10 +14,10 @@ def test_fir():
     print(fir.shape)
 
     zf = np.convolve(a.z, fir, mode = 'same')
-    plt.plot(a.z, label = 'orig')
-    plt.plot(zf, label = 'filterd')
-    plt.legend()
-    plt.show()
+    # plt.plot(a.z, label = 'orig')
+    # plt.plot(zf, label = 'filterd')
+    # plt.legend()
+    # plt.show()
 
 def test_5hz_fir():
     fs = 833.
@@ -44,10 +44,10 @@ def test_5hz_fir():
         o = np.sum(win * fir)
         sf.append(o)
 
-    plt.plot(s, label = 'orig')
-    plt.plot(zf, label = 'filterd (conv)')
-    plt.plot(sf, label = 'filterd (running)')
-    plt.legend()
-    plt.show()
+    # plt.plot(s, label = 'orig')
+    # plt.plot(zf, label = 'filterd (conv)')
+    # plt.plot(sf, label = 'filterd (running)')
+    # plt.legend()
+    # plt.show()
 
 
