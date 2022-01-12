@@ -345,7 +345,8 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
                         self.axl.push(f16::from_f32(y)).unwrap();
                         self.axl.push(f16::from_f32(z)).unwrap();
                     },
-                    _ => {} // No filter output.
+                    (None, None, None) => {}, // No filter output.
+                    _ => { unreachable!() }
                 }
 
                 // XXX: use try_extend

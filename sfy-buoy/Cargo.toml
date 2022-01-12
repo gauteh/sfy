@@ -35,7 +35,7 @@ chrono = { version = "0.4.19", default-features = false }
 git = "https://github.com/gauteh/notecard-rs"
 
 [dependencies.ambiq-hal]
-version = "0.1"
+version = "0.2"
 features = ["ambiq-sdk", "sparkfun-redboard-nano", "rt"]
 
 [dependencies.ahrs-fusion]

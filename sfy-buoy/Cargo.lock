@@ -38,8 +38,6 @@ dependencies = [
 [[package]]
 name = "ambiq-apollo3-pac2"
 version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4a0e21a826b4a1cf0cf64ab50b68eda845b9cba700cd56689cafa3d378cc59c7"
 dependencies = [
  "bare-metal 0.2.5",
  "cortex-m 0.7.4",
@@ -49,9 +47,7 @@ dependencies = [
 
 [[package]]
 name = "ambiq-hal"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59f9793b6b9c193c3de71921f3797b12de12aca1d73b4e5193fc6b79073ccfbd"
+version = "0.2.0"
 dependencies = [
  "ambiq-apollo3-pac2",
  "ambiq-hal-sys",
@@ -69,8 +65,6 @@ dependencies = [
 [[package]]
 name = "ambiq-hal-sys"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a57974cfc7984f17f1ba8cc76006d19f23505d9eb7707435af55f1b9ec6ebc6a"
 dependencies = [
  "bindgen",
  "cc",
@@ -1071,7 +1065,7 @@ dependencies = [
  "bytemuck",
  "chrono",
  "cmsis_dsp",
- "cortex-m 0.6.7",
+ "cortex-m 0.7.4",
  "cortex-m-rt",
  "defmt",
  "defmt-rtt",
@@ -1485,11 +1479,3 @@ dependencies = [
  "flate2",
  "thiserror",
 ]
-
-[[patch.unused]]
-name = "ambiq-hal"
-version = "0.2.0"
-
-[[patch.unused]]
-name = "ambiq-hal"
-version = "0.2.0"
