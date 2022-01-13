@@ -23,9 +23,7 @@ panic-reset = { version = "0.1.0", optional = true }
 ism330dhcx = "0.4.0"
 cmsis_dsp = { version = "0.1.0", features = [ "micromath" ] }
 micromath = { version = "2", features = [ "quaternion", "vector" ] }
-lzss = { version = "0.8.2", default-features = false, features = [ "const_panic" ] }
 bytemuck = "1.7.2"
-void = { version = "1.0.2", default-features = false }
 base64 = { version = "0.13.0", default-features = false }
 shared-bus = { version = "0.2.2", features = [ "cortex-m" ] }
 half = { version = "1.8.2", features = [ "use-intrinsics", "bytemuck" ] }

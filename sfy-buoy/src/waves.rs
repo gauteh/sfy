@@ -377,50 +377,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
     }
 }
 
-/// Compresses the stream of f32's, the `buf` must be at least 4 times as long in `u8` as `values` is
-/// in `f32`.
-pub fn compress(
-    values: &[f16],
-    buf: &mut [u8],
-) -> Result<usize, lzss::LzssError<void::Void, lzss::SliceWriteError>> {
-    use lzss::{Lzss, SliceReader, SliceWriter};
-    type MyLzss = Lzss<10, 4, 0x20, { 1 << 10 }, { 2 << 10 }>;
-
-    let values = bytemuck::cast_slice(values);
-
-    debug_assert!(buf.len() >= values.len());
-
-    MyLzss::compress(SliceReader::new(values), SliceWriter::new(buf))
-}
-
-pub enum Event {
-    FifoAlmostFull,
-    TimeSeriesReady,
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn take_and_compress() {
-        let mut v = VecAxl::new();
-
-        for i in 0..3072 {
-            v.push(f16::from_f32(i as f32)).unwrap();
-        }
-
-        let mut buf = [0u8; 1024 * 4 * 3];
-
-        let n = compress(&v, &mut buf).unwrap();
-
-        let ratio = (v.len() * 4) as f32 / (n as f32);
-
-        println!(
-            "compressed from: {} to {} (ratio: {})",
-            v.len() * 4,
-            n,
-            ratio
-        );
-    }
 }

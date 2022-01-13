@@ -674,15 +674,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "lzss"
-version = "0.8.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "39e2b9a6124e5200c13bb5c5d1124bf93b451bff69b651912810039e36ca97eb"
-dependencies = [
- "void",
-]
-
-[[package]]
 name = "matches"
 version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1073,7 +1064,6 @@ dependencies = [
  "half",
  "heapless",
  "ism330dhcx",
- "lzss",
  "micromath",
  "nb 1.0.0",
  "notecard",
@@ -1083,7 +1073,6 @@ dependencies = [
  "serde-json-core",
  "shared-bus",
  "ufmt",
- "void",
 ]
 
 [[package]]
