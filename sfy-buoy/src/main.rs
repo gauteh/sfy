@@ -20,6 +20,10 @@ use cortex_m::{
 };
 use cortex_m_rt::entry;
 use defmt_rtt as _;
+use embedded_hal::blocking::{
+    delay::DelayMs,
+    i2c::{Read, Write},
+};
 use hal::{i2c, pac::interrupt};
 
 use sfy::note::Notecarrier;
@@ -139,32 +143,10 @@ fn main() -> ! {
                         "Fatal error occured during main loop. Tries left: {}",
                         good_tries
                     );
+
                     if good_tries == 0 {
-                        error!("No more tries left, attempting to reboot devices and restart.");
-
-                        warn!("Trying to send log message..");
-                        note.hub()
-                            .log("Error occured in main loop: restarting.", false, false)
-                            .and_then(|f| f.wait(&mut delay))
-                            .ok();
-
-                        warn!("Trying to restart notecard..");
-                        note.card()
-                            .restart()
-                            .and_then(|f| f.wait(&mut delay))
-                            .and_then(|r| {
-                                info!("Notecard succesfully restarted.");
-                                Ok(r)
-                            })
-                            .or_else(|e| {
-                                error!("Could not restart notecard.");
-                                Err(e)
-                            })
-                            .ok();
-
-                        warn!("Resetting in 3 seconds..");
-                        delay.delay_ms(3_000u32);
-                        cortex_m::peripheral::SCB::sys_reset();
+                        error!("No more tries left, attempting to reset devices and restart.");
+                        reset(&mut note, &mut delay);
                     } else {
                         good_tries -= 1;
                     }
@@ -184,6 +166,34 @@ fn main() -> ! {
         // TODO:
         // * Set up and feed watchdog.
     }
+}
+
+fn reset<I: Read + Write>(note: &mut Notecarrier<I>, delay: &mut impl DelayMs<u16>) {
+    warn!("Resetting device!");
+
+    warn!("Trying to send log message..");
+    note.hub()
+        .log("Error occured in main loop: restarting.", false, false)
+        .and_then(|f| f.wait(delay))
+        .ok();
+
+    warn!("Trying to restart notecard..");
+    note.card()
+        .restart()
+        .and_then(|f| f.wait(delay))
+        .and_then(|r| {
+            info!("Notecard succesfully restarted.");
+            Ok(r)
+        })
+        .or_else(|e| {
+            error!("Could not restart notecard.");
+            Err(e)
+        })
+        .ok();
+
+    warn!("Resetting in 3 seconds..");
+    delay.delay_ms(3_000u16);
+    cortex_m::peripheral::SCB::sys_reset();
 }
 
 #[cfg(not(feature = "host-tests"))]
