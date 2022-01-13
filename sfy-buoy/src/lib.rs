@@ -1,5 +1,9 @@
+#![feature(test)]
 #![feature(derive_default_enum)]
 #![cfg_attr(not(test), no_std)]
+
+#[cfg(test)]
+extern crate test;
 
 #[allow(unused_imports)]
 use defmt::{debug, error, info, trace, warn};

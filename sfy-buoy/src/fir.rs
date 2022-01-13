@@ -86,6 +86,7 @@ impl Decimator {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use test::Bencher;
 
     #[test]
     fn setup_filter() {
@@ -159,5 +160,43 @@ mod tests {
         let df = s.iter().filter_map(|s| d.decimate(*s)).collect::<Vec<_>>();
         assert_eq!(sf, df);
         assert_eq!(df.len(), 4096 / DECIMATE as usize);
+    }
+
+    #[bench]
+    fn decimate_cycle(b: &mut Bencher) {
+        let mut d = FIR::new().into_decimator();
+        let fs = 833.;
+        let dt = 1. / fs;
+
+        let t = (0..4096).map(|i| i as f32 * dt).collect::<Vec<_>>();
+        let s = t
+            .iter()
+            .map(|t| 2. * (2. * t * 2. * std::f32::consts::PI).sin())
+            .collect::<Vec<_>>();
+
+        let mut is = s.iter().cycle();
+
+        b.iter(|| {
+            test::black_box(d.decimate(*is.next().unwrap()));
+        });
+    }
+
+    #[bench]
+    fn fir_cycle(b: &mut Bencher) {
+        let mut f = FIR::new();
+        let fs = 833.;
+        let dt = 1. / fs;
+
+        let t = (0..4096).map(|i| i as f32 * dt).collect::<Vec<_>>();
+        let s = t
+            .iter()
+            .map(|t| 2. * (2. * t * 2. * std::f32::consts::PI).sin())
+            .collect::<Vec<_>>();
+
+        let mut is = s.iter().cycle();
+
+        b.iter(|| {
+            test::black_box(f.filter(*is.next().unwrap()));
+        });
     }
 }
