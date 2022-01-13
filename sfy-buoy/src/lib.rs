@@ -22,11 +22,14 @@ use embedded_hal::blocking::{
     i2c::{Read, Write, WriteRead},
 };
 
+pub mod axl;
 pub mod note;
 pub mod waves;
 pub mod fir;
-#[cfg(feature = "sd")]
+#[cfg(feature = "storage")]
 pub mod storage;
+
+use axl::AxlPacket;
 
 pub struct SharedState {
     pub rtc: Rtc,
@@ -133,14 +136,14 @@ impl Location {
 }
 
 pub struct Imu<E: Debug, I: Write<Error = E> + WriteRead<Error = E>> {
-    pub queue: heapless::spsc::Producer<'static, note::AxlPacket, 32>,
+    pub queue: heapless::spsc::Producer<'static, AxlPacket, 32>,
     waves: waves::Waves<I>,
 }
 
 impl<E: Debug, I: Write<Error = E> + WriteRead<Error = E>> Imu<E, I> {
     pub fn new(
         waves: waves::Waves<I>,
-        queue: heapless::spsc::Producer<'static, note::AxlPacket, 32>,
+        queue: heapless::spsc::Producer<'static, AxlPacket, 32>,
     ) -> Imu<E, I> {
         Imu { queue, waves }
     }

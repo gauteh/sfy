@@ -32,7 +32,7 @@ use sfy::{Imu, Location, SharedState, State};
 
 /// This queue is filled up by the IMU in an interrupt with ready batches of time series. It is
 /// consumed by the main thread and drained to the notecard / cellular.
-static mut IMUQ: heapless::spsc::Queue<sfy::note::AxlPacket, 32> = heapless::spsc::Queue::new();
+static mut IMUQ: heapless::spsc::Queue<sfy::axl::AxlPacket, 32> = heapless::spsc::Queue::new();
 
 /// This static is only used to transfer ownership of the IMU subsystem to the interrupt handler.
 type I = hal::i2c::Iom3;

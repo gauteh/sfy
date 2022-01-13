@@ -148,6 +148,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd"
 
 [[package]]
+name = "bincode"
+version = "2.0.0-beta.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "817259376ced58f50df7685cf1096352d8c5a50a761cde102f07c2188a1d9209"
+
+[[package]]
 name = "bindgen"
 version = "0.59.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -451,6 +457,15 @@ checksum = "e36cfb62ff156596c892272f3015ef952fe1525e85261fa3a7f327bd6b384ab9"
 dependencies = [
  "nb 0.1.3",
  "void",
+]
+
+[[package]]
+name = "embedded-sdmmc"
+version = "0.3.0"
+dependencies = [
+ "byteorder",
+ "defmt",
+ "embedded-hal",
 ]
 
 [[package]]
@@ -1053,6 +1068,7 @@ dependencies = [
  "ahrs-fusion",
  "ambiq-hal",
  "base64",
+ "bincode",
  "bytemuck",
  "chrono",
  "cmsis_dsp",
@@ -1061,6 +1077,7 @@ dependencies = [
  "defmt",
  "defmt-rtt",
  "embedded-hal",
+ "embedded-sdmmc",
  "half",
  "heapless",
  "ism330dhcx",

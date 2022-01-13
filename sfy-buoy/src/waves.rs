@@ -1,7 +1,7 @@
 //! Measure waves using an IMU, feed it through a Kalman filter and collect
 //! time-series or statistics.
 
-use crate::{fir, note::AxlPacket};
+use crate::{fir, axl::{AxlPacket, AXL_SZ, SAMPLE_SZ}};
 use ahrs_fusion::NxpFusion;
 use core::fmt::Debug;
 use embedded_hal::blocking::{
@@ -86,9 +86,6 @@ impl Freq {
 
 /// The installed IMU.
 pub type IMU = Ism330Dhcx;
-
-pub const SAMPLE_SZ: usize = 3;
-pub const AXL_SZ: usize = SAMPLE_SZ * 1024;
 pub type VecAxl = heapless::Vec<f16, AXL_SZ>;
 
 pub struct Waves<I2C: WriteRead + Write> {
