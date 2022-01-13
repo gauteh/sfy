@@ -152,6 +152,18 @@ name = "bincode"
 version = "2.0.0-beta.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "817259376ced58f50df7685cf1096352d8c5a50a761cde102f07c2188a1d9209"
+dependencies = [
+ "bincode_derive",
+]
+
+[[package]]
+name = "bincode_derive"
+version = "2.0.0-beta.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d0128c7e95efd1e373fc07093fdd7893a326ec8213856d0eb6f26c59946a941a"
+dependencies = [
+ "virtue",
+]
 
 [[package]]
 name = "bindgen"
@@ -462,6 +474,7 @@ dependencies = [
 [[package]]
 name = "embedded-sdmmc"
 version = "0.3.0"
+source = "git+https://github.com/gauteh/embedded-sdmmc-rs?branch=defmt#371f1cae00828d00666be1f4e625147277c16d47"
 dependencies = [
  "byteorder",
  "defmt",
@@ -1333,6 +1346,12 @@ name = "version_check"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
+
+[[package]]
+name = "virtue"
+version = "0.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f0e85ed1066abcc0ea331cce3ce83cccf30ae9900529ca46f353b22ca79b56b8"
 
 [[package]]
 name = "void"

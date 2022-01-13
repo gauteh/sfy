@@ -12,7 +12,7 @@ mod tests {
     use defmt::{assert, assert_eq, info};
     use hal::i2c::{Freq, I2c};
     use serde::{Deserialize, Serialize};
-    use sfy::note::{self, Notecarrier};
+    use sfy::note::Notecarrier;
 
     struct State {
         note: Notecarrier<hal::i2c::Iom2>,
@@ -52,7 +52,7 @@ mod tests {
 
     #[test]
     fn send_axl_batch(s: &mut State) {
-        let pck = note::AxlPacket {
+        let pck = sfy::axl::AxlPacket {
             timestamp: 1000,
             offset: 1,
             freq: 100.,
@@ -63,7 +63,7 @@ mod tests {
                 .collect::<heapless::Vec<_, { 3 * 1024 }>>(),
         };
 
-        assert!(pck.data.len() == sfy::waves::AXL_SZ);
+        assert!(pck.data.len() == sfy::axl::AXL_SZ);
 
         let r = s.note.send(pck, &mut s.delay).unwrap();
         defmt::debug!("package queued for sending: {:?}", r);

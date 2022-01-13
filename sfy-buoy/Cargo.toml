@@ -28,7 +28,7 @@ base64 = { version = "0.13.0", default-features = false }
 shared-bus = { version = "0.2.2", features = [ "cortex-m" ] }
 half = { version = "1.8.2", features = [ "use-intrinsics", "bytemuck" ] }
 chrono = { version = "0.4.19", default-features = false }
-bincode = { version = "2.0.0-beta.0", default-features = false, optional = true }
+bincode = { version = "2.0.0-beta.0", default-features = false, features = ["derive"], optional = true }
 embedded-sdmmc = { version = "0.3.0", default-features = false, features = ["defmt-log"], optional = true }
 
 [dependencies.notecard]
@@ -47,7 +47,7 @@ git = "https://github.com/gauteh/ahrs-fusion"
 # ism330dhcx = { git = "https://github.com/gauteh/ism330dhcx", branch = "fifo" }
 cmsis_dsp = { git = "https://github.com/samcrow/cmsis_dsp.rs" }
 ambiq-hal = { git = "https://github.com/gauteh/ambiq-rs" }
-embedded-sdmmc = { path = "../../../../dev/embedded/embedded-sdmmc-rs" }
+embedded-sdmmc = { git = "https://github.com/gauteh/embedded-sdmmc-rs", branch = "defmt" }
 
 [features]
 default = []

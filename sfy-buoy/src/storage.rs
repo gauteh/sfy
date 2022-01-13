@@ -10,7 +10,7 @@
 //! notecarrier can communicate to the storage what has already been sent. This can probably go
 //! through `main` to avoid too much interdependency.
 
-use embedded_sdmmc::SdMmcSpi;
+use embedded_sdmmc::{SdMmcSpi, TimeSource, Timestamp};
 
 use crate::axl::AxlPacket;
 
@@ -20,12 +20,15 @@ pub enum StorageErr {
 
 pub struct Storage {
     // sd: SdMmcSpi,
-
     /// Last written ID.
     current_id: u32,
 }
 
 impl Storage {
+    // pub fn open() -> Storage {
+    //     // Get last id (or create file with 0, or scan)
+    // }
+
     /// Takes IMU queue and stores items.
     pub fn drain_queue(&mut self) -> Result<(), ()> {
         todo!()
@@ -35,7 +38,23 @@ impl Storage {
         self.current_id
     }
 
+    // Deserialize and return AxlPacket.
     pub fn get(&self, id: u32) -> Result<AxlPacket, StorageErr> {
         unimplemented!()
+    }
+}
+
+struct NullClock;
+
+impl TimeSource for NullClock {
+    fn get_timestamp(&self) -> Timestamp {
+        Timestamp {
+            year_since_1970: 0,
+            zero_indexed_month: 0,
+            zero_indexed_day: 0,
+            hours: 0,
+            minutes: 0,
+            seconds: 0,
+        }
     }
 }
