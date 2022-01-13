@@ -57,6 +57,9 @@ impl<'a> Buoy<'a> {
     }
 
     pub async fn append(&mut self, file: impl AsRef<Path>, data: impl AsRef<[u8]>) -> eyre::Result<()> {
+        use tempfile::NamedTempFile;
+        use tokio::fs;
+
         let data = data.as_ref();
         let file = file.as_ref();
 
@@ -66,7 +69,9 @@ impl<'a> Buoy<'a> {
 
         ensure!(!path.exists(), "file already exists!");
 
-        tokio::fs::write(path, data).await?;
+        let tmp = NamedTempFile::new()?;
+        fs::write(tmp.path(), data).await?;
+        fs::rename(tmp.path(), path).await?;
 
         Ok(())
     }
