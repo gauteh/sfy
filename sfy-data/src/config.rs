@@ -9,6 +9,7 @@ pub struct Config {
     pub address: SocketAddr,
     pub database: Option<PathBuf>,
     pub tokens: Vec<String>,
+    pub read_tokens: Vec<String>,
 }
 
 impl Config {
@@ -17,6 +18,7 @@ impl Config {
             address: "0.0.0.0:3000".parse().unwrap(),
             database: None,
             tokens: Vec::new(),
+            read_tokens: Vec::new(),
         }
     }
 
@@ -26,6 +28,7 @@ impl Config {
             address: "0.0.0.0:3000".parse().unwrap(),
             database: None,
             tokens: vec!["token1".into()],
+            read_tokens: vec!["r-token1".into()],
         }
     }
 

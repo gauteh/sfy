@@ -6,9 +6,15 @@ use sanitize_filename::sanitize;
 use serde_json as json;
 use std::convert::Infallible;
 use std::sync::Arc;
-use warp::{http::StatusCode, reject, Filter, Rejection, Reply};
+use warp::{http::Response, http::StatusCode, reject, Filter, Rejection, Reply};
 
 pub fn filters(
+    state: State,
+) -> impl warp::Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    append(state.clone()).or(list(state.clone())).or(entries(state.clone())).or(entry(state.clone()))
+}
+
+pub fn append(
     state: State,
 ) -> impl warp::Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     let state = state.clone();
@@ -19,7 +25,43 @@ pub fn filters(
         .and(warp::body::content_length_limit(50 * 1024 * 1024))
         .and(warp::body::bytes())
         .and(with_state(state.clone()))
-        .and_then(append)
+        .and_then(handlers::append)
+}
+
+pub fn list(
+    state: State,
+) -> impl warp::Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    let state = state.clone();
+
+    warp::path!("buoys")
+        .and(warp::get())
+        .and(check_read_token(state.clone()))
+        .and(with_state(state.clone()))
+        .and_then(handlers::list)
+}
+
+pub fn entries(
+    state: State,
+) -> impl warp::Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    let state = state.clone();
+
+    warp::path!("buoys" / String)
+        .and(warp::get())
+        .and(check_read_token(state.clone()))
+        .and(with_state(state.clone()))
+        .and_then(handlers::entries)
+}
+
+pub fn entry(
+    state: State,
+) -> impl warp::Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    let state = state.clone();
+
+    warp::path!("buoys" / String / String)
+        .and(warp::get())
+        .and(check_read_token(state.clone()))
+        .and(with_state(state.clone()))
+        .and_then(handlers::entry)
 }
 
 fn with_state(state: State) -> impl Filter<Extract = (State,), Error = Infallible> + Clone {
@@ -30,6 +72,19 @@ fn check_token(state: State) -> impl Filter<Extract = (), Error = Rejection> + C
     warp::header::<String>("SFY_AUTH_TOKEN")
         .and_then(move |v: String| {
             if state.config.tokens.contains(&v) {
+                future::ok(())
+            } else {
+                warn!("rejected token: {}", v);
+                future::err(reject::not_found())
+            }
+        })
+        .untuple_one()
+}
+
+fn check_read_token(state: State) -> impl Filter<Extract = (), Error = Rejection> + Clone {
+    warp::header::<String>("SFY_AUTH_TOKEN")
+        .and_then(move |v: String| {
+            if state.config.read_tokens.contains(&v) {
                 future::ok(())
             } else {
                 warn!("rejected token: {}", v);
@@ -85,73 +140,121 @@ pub enum AppendErrors {
 
 impl reject::Reject for AppendErrors {}
 
-async fn append(body: bytes::Bytes, state: State) -> Result<impl warp::Reply, warp::Rejection> {
-    trace!("got message: {:#?}", body);
+impl Into<AppendErrors> for eyre::ErrReport {
+    fn into(self: eyre::ErrReport) -> AppendErrors {
+        AppendErrors::Internal
+    }
+}
 
-    use std::time::{SystemTime, UNIX_EPOCH};
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_err(|_| reject::custom(AppendErrors::Internal))?;
+pub mod handlers {
+    use super::*;
 
-    let now = if cfg!(test) {
-        0
-    } else {
-        now.as_millis()
-    };
+    pub async fn list(state: State) -> Result<impl warp::Reply, warp::Rejection> {
+        let buoys = state
+            .db
+            .read()
+            .await
+            .buoys()
+            .await
+            .map_err(|_| reject::custom(AppendErrors::Internal))?;
+        Ok(warp::reply::json(&buoys))
+    }
 
+    pub async fn entries(buoy: String, state: State) -> Result<impl warp::Reply, warp::Rejection> {
+        let buoy = sanitize(buoy);
 
-    if let Ok(event) = parse_data(&body) {
-        let device = sanitize(&event.device);
+        let entries = state
+            .db
+            .write()
+            .await
+            .buoy(&buoy)
+            .map_err(|_| reject::custom(AppendErrors::Internal))?
+            .entries().await
+            .map_err(|_| reject::custom(AppendErrors::Internal))?;
+        Ok(warp::reply::json(&entries))
+    }
 
-        info!(
-            "event: {} from {}({}) to file: {:?}",
-            event.event, event.device, device, event.file
-        );
+    pub async fn entry(buoy: String, entry: String, state: State) -> Result<impl warp::Reply, warp::Rejection> {
+        let buoy = sanitize(buoy);
+        let entry = sanitize(entry);
 
-        let mut db = state.db.write().await;
-        let mut b = db.buoy(&device).map_err(|e| {
-            error!("failed to open database for device: {}: {:?}", &device, e);
-            reject::custom(AppendErrors::Database)
-        })?;
+        let entry = state
+            .db
+            .write()
+            .await
+            .buoy(&buoy)
+            .map_err(|_| reject::custom(AppendErrors::Internal))?
+            .get(entry).await
+            .map_err(|_| reject::custom(AppendErrors::Internal))?;
 
-        let file = &format!(
-            "{}-{}_{}.json",
-            now,
-            event.event,
-            event.file.unwrap_or("__unnamed__".into())
-        );
-        let file = sanitize(&file);
-        debug!("writing to: {}", file);
+        Ok(Response::builder()
+            .status(200)
+            .header("Content-Type", "application/json")
+            .body(entry))
+    }
 
-        b.append(&file, &body).await.map_err(|e| {
-            error!("failed to write file: {:?}", e);
-            reject::custom(AppendErrors::Database)
-        })?;
+    pub async fn append(
+        body: bytes::Bytes,
+        state: State,
+    ) -> Result<impl warp::Reply, warp::Rejection> {
+        trace!("got message: {:#?}", body);
 
-        Ok("".into_response())
-    } else {
-        warn!("could not parse event, storing event in lost+found");
+        use std::time::{SystemTime, UNIX_EPOCH};
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_err(|_| reject::custom(AppendErrors::Internal))?;
 
+        let now = if cfg!(test) { 0 } else { now.as_millis() };
 
-        let mut db = state.db.write().await;
-        let mut b = db.buoy("lost+found").map_err(|e| {
-            error!("failed to open database for lost+found: {:?}", e);
-            reject::custom(AppendErrors::Database)
-        })?;
+        if let Ok(event) = parse_data(&body) {
+            let device = sanitize(&event.device);
 
-        let file = &format!(
-            "{}.json",
-            now,
-        );
-        let file = sanitize(&file);
-        debug!("writing to: {}", file);
+            info!(
+                "event: {} from {}({}) to file: {:?}",
+                event.event, event.device, device, event.file
+            );
 
-        b.append(&file, &body).await.map_err(|e| {
-            error!("failed to write file: {:?}", e);
-            reject::custom(AppendErrors::Database)
-        })?;
+            let mut db = state.db.write().await;
+            let mut b = db.buoy(&device).map_err(|e| {
+                error!("failed to open database for device: {}: {:?}", &device, e);
+                reject::custom(AppendErrors::Database)
+            })?;
 
-        Ok(StatusCode::BAD_REQUEST.into_response())
+            let file = &format!(
+                "{}-{}_{}.json",
+                now,
+                event.event,
+                event.file.unwrap_or("__unnamed__".into())
+            );
+            let file = sanitize(&file);
+            debug!("writing to: {}", file);
+
+            b.append(&file, &body).await.map_err(|e| {
+                error!("failed to write file: {:?}", e);
+                reject::custom(AppendErrors::Database)
+            })?;
+
+            Ok("".into_response())
+        } else {
+            warn!("could not parse event, storing event in lost+found");
+
+            let mut db = state.db.write().await;
+            let mut b = db.buoy("lost+found").map_err(|e| {
+                error!("failed to open database for lost+found: {:?}", e);
+                reject::custom(AppendErrors::Database)
+            })?;
+
+            let file = &format!("{}.json", now,);
+            let file = sanitize(&file);
+            debug!("writing to: {}", file);
+
+            b.append(&file, &body).await.map_err(|e| {
+                error!("failed to write file: {:?}", e);
+                reject::custom(AppendErrors::Database)
+            })?;
+
+            Ok(StatusCode::BAD_REQUEST.into_response())
+        }
     }
 }
 
@@ -240,5 +343,118 @@ mod tests {
             .await;
 
         assert_eq!(res.status(), 400);
+    }
+
+    #[tokio::test]
+    async fn list_buoys() {
+        let (_tmp, state) = crate::test_state();
+        let event = std::fs::read("tests/events/sensor.db_01.json").unwrap();
+
+        let f = filters(state);
+
+        let res = warp::test::request()
+            .path("/buoy")
+            .method("POST")
+            .header("SFY_AUTH_TOKEN", "token1")
+            .body(&event)
+            .reply(&f)
+            .await;
+
+        assert_eq!(res.status(), 200);
+
+        // Missing token
+        let res = warp::test::request()
+            .path("/buoys")
+            .method("GET")
+            .reply(&f)
+            .await;
+
+        assert_eq!(res.status(), 400);
+
+        let res = warp::test::request()
+            .path("/buoys")
+            .method("GET")
+            .header("SFY_AUTH_TOKEN", "r-token1")
+            .reply(&f)
+            .await;
+
+        assert_eq!(res.status(), 200);
+        assert_eq!(res.body(), "[\"dev864475044203262\"]");
+    }
+
+    #[tokio::test]
+    async fn list_entries() {
+        let (_tmp, state) = crate::test_state();
+        let event = std::fs::read("tests/events/sensor.db_01.json").unwrap();
+
+        let f = filters(state);
+
+        let res = warp::test::request()
+            .path("/buoy")
+            .method("POST")
+            .header("SFY_AUTH_TOKEN", "token1")
+            .body(&event)
+            .reply(&f)
+            .await;
+
+        assert_eq!(res.status(), 200);
+
+        // Missing token
+        let res = warp::test::request()
+            .path("/buoys/dev864475044203262")
+            .method("GET")
+            .reply(&f)
+            .await;
+
+        assert_eq!(res.status(), 400);
+
+        let res = warp::test::request()
+            .path("/buoys/dev864475044203262")
+            .method("GET")
+            .header("SFY_AUTH_TOKEN", "r-token1")
+            .reply(&f)
+            .await;
+
+        assert_eq!(res.headers().get("Content-Type").unwrap().to_str().unwrap(), "application/json");
+        assert_eq!(res.status(), 200);
+        assert_eq!(res.body(), "[\"0-9ef2e080-f0b4-4036-8ccc-ec4206553537_sensor.db.json\"]");
+    }
+
+    #[tokio::test]
+    async fn get_entry() {
+        let (_tmp, state) = crate::test_state();
+        let event = std::fs::read("tests/events/sensor.db_01.json").unwrap();
+
+        let f = filters(state);
+
+        let res = warp::test::request()
+            .path("/buoy")
+            .method("POST")
+            .header("SFY_AUTH_TOKEN", "token1")
+            .body(&event)
+            .reply(&f)
+            .await;
+
+        assert_eq!(res.status(), 200);
+
+        // Missing token
+        let res = warp::test::request()
+            .path("/buoys/dev864475044203262/0-9ef2e080-f0b4-4036-8ccc-ec4206553537_sensor.db.json")
+            .method("GET")
+            .reply(&f)
+            .await;
+
+        assert_eq!(res.status(), 400);
+
+        let res = warp::test::request()
+            .path("/buoys/dev864475044203262/0-9ef2e080-f0b4-4036-8ccc-ec4206553537_sensor.db.json")
+            .method("GET")
+            .header("SFY_AUTH_TOKEN", "r-token1")
+            .reply(&f)
+            .await;
+
+        assert_eq!(res.status(), 200);
+        assert_eq!(res.headers().get("Content-Type").unwrap().to_str().unwrap(), "application/json");
+        assert_eq!(res.body(), &event);
     }
 }
