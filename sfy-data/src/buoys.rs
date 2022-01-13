@@ -14,6 +14,7 @@ pub fn filters(
     let state = state.clone();
 
     warp::path!("buoy")
+        .and(warp::post())
         .and(check_token(state.clone()))
         .and(warp::body::content_length_limit(50 * 1024 * 1024))
         .and(warp::body::bytes())
@@ -175,12 +176,14 @@ mod tests {
         let f = check_token(state);
 
         assert!(warp::test::request()
+            .method("POST")
             .header("SFY_AUTH_TOKEN", "wrong-token")
             .filter(&f)
             .await
             .is_err());
 
         assert!(warp::test::request()
+            .method("POST")
             .header("SFY_AUTH_TOKEN", "token1")
             .filter(&f)
             .await
@@ -196,6 +199,7 @@ mod tests {
 
         let res = warp::test::request()
             .path("/buoy")
+            .method("POST")
             .header("SFY_AUTH_TOKEN", "wrong-token")
             .body(&event)
             .reply(&f)
@@ -205,6 +209,7 @@ mod tests {
 
         let res = warp::test::request()
             .path("/buoy")
+            .method("POST")
             .header("SFY_AUTH_TOKEN", "token1")
             .body(&event)
             .reply(&f)
@@ -228,6 +233,7 @@ mod tests {
 
         let res = warp::test::request()
             .path("/buoy")
+            .method("POST")
             .header("SFY_AUTH_TOKEN", "token1")
             .body(&event)
             .reply(&f)
