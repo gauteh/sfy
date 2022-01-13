@@ -25,6 +25,8 @@ use embedded_hal::blocking::{
 pub mod note;
 pub mod waves;
 pub mod fir;
+#[cfg(feature = "sd")]
+pub mod storage;
 
 pub struct SharedState {
     pub rtc: Rtc,

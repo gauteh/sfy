@@ -48,6 +48,7 @@ ambiq-hal = { git = "https://github.com/gauteh/ambiq-rs" }
 
 [features]
 default = []
+sd = []
 host-tests = []
 deploy = [ "panic-reset" ]
 
