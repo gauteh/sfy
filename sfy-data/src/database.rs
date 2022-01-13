@@ -18,6 +18,7 @@ impl Database {
         Ok(Database { path })
     }
 
+    /// Open buoy for writing.
     pub fn buoy<'db>(&'db mut self, dev: &str) -> eyre::Result<Buoy<'db>> {
         let path = self.path.join(dev);
 
@@ -31,6 +32,22 @@ impl Database {
             path,
             _db: &PhantomData,
         })
+    }
+
+    /// Get list of buoys.
+    pub async fn buoys(&self) -> eyre::Result<Vec<String>> {
+        use tokio::fs;
+
+        let mut entries = fs::read_dir(&self.path).await?;
+        let mut buoys = Vec::new();
+
+        while let Some(entry) = entries.next_entry().await? {
+            if entry.file_type().await?.is_dir() {
+                buoys.push(entry.file_name().to_string_lossy().to_string());
+            }
+        }
+
+        Ok(buoys)
     }
 
     #[cfg(test)]
@@ -75,6 +92,28 @@ impl<'a> Buoy<'a> {
 
         Ok(())
     }
+
+    pub async fn entries(&self) -> Result<Vec<String>> {
+        use tokio::fs;
+
+        let mut files = fs::read_dir(&self.path).await?;
+        let mut entries = Vec::new();
+
+        while let Some(file) = files.next_entry().await? {
+            if file.file_type().await?.is_file() {
+                entries.push(file.file_name().to_string_lossy().to_string());
+            }
+        }
+
+        Ok(entries)
+    }
+
+    pub async fn get(&self, file: impl AsRef<Path>) -> Result<Vec<u8>> {
+        use tokio::fs;
+
+        let path = self.path.join(file);
+        Ok(fs::read(path).await?)
+    }
 }
 
 #[cfg(test)]
@@ -115,5 +154,33 @@ mod tests {
 
         b.append("entry-0", "data-0").await.unwrap();
         assert!(b.append("entry-0", "data-1").await.is_err());
+    }
+
+    #[tokio::test]
+    async fn list_buoys() {
+        let (_tmp, mut db) = Database::temporary();
+        db.buoy("buoy-01").unwrap();
+        db.buoy("buoy-02").unwrap();
+
+        assert_eq!(db.buoys().await.unwrap(), ["buoy-01", "buoy-02"]);
+    }
+
+    #[tokio::test]
+    async fn list_entries() {
+        let (_tmp, mut db) = Database::temporary();
+        let mut b = db.buoy("buoy-01").unwrap();
+        b.append("entry-0", "data-0").await.unwrap();
+        b.append("entry-1", "data-1").await.unwrap();
+
+        assert_eq!(db.buoy("buoy-01").unwrap().entries().await.unwrap(), ["entry-1", "entry-0"]);
+    }
+
+    #[tokio::test]
+    async fn append_get() {
+        let (_tmp, mut db) = Database::temporary();
+        let mut b = db.buoy("buoy-01").unwrap();
+        b.append("entry-0", "data-0").await.unwrap();
+
+        assert_eq!(b.get("entry-0").await.unwrap(), b"data-0");
     }
 }
