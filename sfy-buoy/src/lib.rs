@@ -153,7 +153,7 @@ impl<E: Debug, I: Write<Error = E> + WriteRead<Error = E>> Imu<E, I> {
 
         self.waves.read_and_filter()?;
 
-        if self.waves.axl.is_full() {
+        if self.waves.is_full() {
             trace!("waves buffer is full, pushing to queue..");
             let pck = self.waves.take_buf(now, lon, lat)?;
             match self.queue.enqueue(pck) {
