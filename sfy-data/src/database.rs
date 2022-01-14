@@ -2,6 +2,7 @@ use eyre::Result;
 use std::fs;
 use std::marker::PhantomData;
 use std::path::{Path, PathBuf};
+use tempfile::NamedTempFile;
 
 #[derive(Debug)]
 pub struct Database {
@@ -73,8 +74,18 @@ impl<'a> Buoy<'a> {
         &self.path
     }
 
+    pub fn tempfile(&mut self) -> eyre::Result<NamedTempFile> {
+        let tmpdir = self.path.join("tmp");
+
+        if !tmpdir.exists() {
+            info!("creating temp dir in: {:?}", &self.path);
+            fs::create_dir_all(&tmpdir)?;
+        }
+
+        Ok(NamedTempFile::new_in(tmpdir)?)
+    }
+
     pub async fn append(&mut self, file: impl AsRef<Path>, data: impl AsRef<[u8]>) -> eyre::Result<()> {
-        use tempfile::NamedTempFile;
         use tokio::fs;
 
         let data = data.as_ref();
@@ -86,9 +97,9 @@ impl<'a> Buoy<'a> {
 
         ensure!(!path.exists(), "file already exists!");
 
-        let tmp = NamedTempFile::new()?;
+        let tmp = self.tempfile()?;
         fs::write(tmp.path(), data).await?;
-        fs::rename(tmp.path(), path).await?;
+        tmp.persist(path)?;
 
         Ok(())
     }
