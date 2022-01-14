@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+		"baseUrl": "./src",
+    "paths": {
+      "*": ["*"]
+    },
+    "module": "esnext",
+    "target": "esnext",
+		"allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+		"moduleResolution": "node",
+		"lib": ["es2017", "dom"],
+		"types": [
+			"inferno",
+      "jest"
+		],
+    "sourceMap": true,
+    "inlineSources": true,
+    "jsx": "preserve",
+    "importHelpers": true,
+		"skipLibCheck": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "noEmit": true
+  }
+}

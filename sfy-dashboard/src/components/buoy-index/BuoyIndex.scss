@@ -1,0 +1,39 @@
+.ti {
+    width: 100%;
+}
+
+.ti-subject {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: calc(100% - 100px - 150px - 150px) !important;
+}
+
+.ti-date {
+    max-width: 100px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.ti-authors {
+    max-width: 150px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.ti-tags {
+    white-space: nowrap;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.clusterize-scroll {
+    max-height: 100vh !important;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+
