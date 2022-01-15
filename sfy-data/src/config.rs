@@ -10,6 +10,7 @@ pub struct Config {
     pub database: Option<PathBuf>,
     pub tokens: Vec<String>,
     pub read_tokens: Vec<String>,
+    pub files: Option<PathBuf>,
 }
 
 impl Config {
@@ -19,6 +20,7 @@ impl Config {
             database: None,
             tokens: Vec::new(),
             read_tokens: Vec::new(),
+            files: None,
         }
     }
 
@@ -29,6 +31,7 @@ impl Config {
             database: None,
             tokens: vec!["token1".into()],
             read_tokens: vec!["r-token1".into()],
+            files: None,
         }
     }
 
