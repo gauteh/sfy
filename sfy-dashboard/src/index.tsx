@@ -26,7 +26,7 @@ class Dashboard extends Component<any, any> {
   public render() {
     return (
     <div class="container">
-      <h1> SFY </h1>
+      <h1>sfy</h1>
       <BuoyIndex />
     </div>
     );

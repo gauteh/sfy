@@ -45,6 +45,13 @@ module.exports = {
 				test: /\.(js|jsx|tsx|ts)$/,   // All ts and tsx files will be process by
 				loader: 'babel-loader',			// first babel-loader, then ts-loader
 				exclude: /node_modules/				// ignore node_modules
+			},
+			{
+				test: /\.(jpe?g|png|gif|svg)$/i,
+				loader: 'file-loader',
+				options: {
+					name: '/public/icons/[name].[ext]'
+				}
 			}
 		]
 	},

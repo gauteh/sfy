@@ -1,15 +1,14 @@
-import {Component, createRef, VNode} from 'inferno';
+import {Component} from 'inferno';
 
 import moment from 'moment';
 import cx from 'classnames';
 
-import {finalize, tap} from 'rxjs/operators';
+import {of} from 'rxjs';
+import {finalize, tap, mergeMap, switchMap, map} from 'rxjs/operators';
 import {Buoy} from 'models';
 import * as hub from 'hub';
 
-import {findDOMNode} from 'inferno-extras';
-import {renderToString} from 'inferno-server';
-import ClusterizeJS from 'clusterize.js';
+import {BuoyMap} from './BuoyMap';
 
 import './BuoyIndex.scss';
 
@@ -32,14 +31,27 @@ export class BuoyIndex
     super(props, context);
   }
 
-  public loadBuoys = () => {
-    console.log('loading..');
-    this.state.buoys.length = 0;
-    this.setState({buoys: []});
+  componentDidMount() {
+    this.loadBuoys();
   }
 
-  public Row(props) {
-    const buoy = props.buoy;
+  public loadBuoys = () => {
+    console.log('loading buoys..');
+    this.state.buoys.length = 0;
+    this.setState({buoys: []});
+
+    hub.get_buoys(hub.API_CONF).pipe(
+      mergeMap(buoys => buoys),
+      switchMap(b => hub.get_buoy(hub.API_CONF, b)),
+    ).subscribe(b => {
+      console.log("adding buoy", b);
+      this.state.buoys.push(b);
+      this.setState({buoys: this.state.buoys});
+    }
+    );
+  }
+
+  public Row(buoy) {
 
     const formatDate = (date: number): JSX.Element => {
       return (<span>{moment(new Date(date * 1000)).fromNow()}</span>);
@@ -49,7 +61,7 @@ export class BuoyIndex
       <tr id={"t" + buoy.dev}
         key={buoy.dev}>
         <td class="ti-dev">
-          {buoy.dev}
+          buoy: {buoy.dev}
         </td>
         <td class="ti-authors">
         </td>
@@ -71,9 +83,11 @@ export class BuoyIndex
   public render() {
     return (
       <div class="container-fluid">
-        <h2>Index</h2>
+        <BuoyMap buoys={this.state.buoys} />
+
         <table class="ti table table-dark table-borderless table-sm">
           <tbody>
+            {this.state.buoys.map(this.Row)}
           </tbody>
         </table>
       </div>

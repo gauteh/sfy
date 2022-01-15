@@ -11,8 +11,7 @@
 		"moduleResolution": "node",
 		"lib": ["es2017", "dom"],
 		"types": [
-			"inferno",
-      "jest"
+			"inferno", "jest", "node",
 		],
     "sourceMap": true,
     "inlineSources": true,
