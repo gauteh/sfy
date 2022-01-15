@@ -5,6 +5,9 @@ import {Buoy} from 'models';
 
 import './BuoyIndex.scss';
 import 'leaflet/dist/leaflet.css';
+import 'leaflet/dist/images/marker-icon-2x.png';
+import 'leaflet/dist/images/marker-shadow.png';
+import 'leaflet/dist/images/marker-shadow.png';
 
 const MAPBOX_TOKEN: string = 'pk.eyJ1IjoiZ2F1dGVoIiwiYSI6ImNreWZ2MWd4NjBxNnoyb3M4eWRqNjlmMGMifQ.m-5Q9BBf2yQxp1fGStxYRg';
 
