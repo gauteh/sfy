@@ -36,15 +36,23 @@ export class BuoyIndex
   }
 
   public loadBuoys = () => {
-    console.log('loading buoys..');
     this.state.buoys.length = 0;
     this.setState({buoys: []});
 
     hub.get_buoys(hub.API_CONF).pipe(
       mergeMap(buoys => buoys),
       switchMap(b => hub.get_buoy(hub.API_CONF, b)),
+      switchMap(b => {
+        let last = b.files.reverse().find((fname) => fname.endsWith("axl.qo.json"));
+
+        return hub.get_file(hub.API_CONF, b.dev, last).pipe(
+          map(f => {
+            b.setPackage(f);
+            return b;
+          })
+        );
+      })
     ).subscribe(b => {
-      console.log("adding buoy", b);
       this.state.buoys.push(b);
       this.setState({buoys: this.state.buoys});
     }
@@ -52,44 +60,51 @@ export class BuoyIndex
   }
 
   public Row(buoy) {
-
     const formatDate = (date: number): JSX.Element => {
-      return (<span>{moment(new Date(date * 1000)).fromNow()}</span>);
+      return (<span>{moment(new Date(date)).fromNow()} - {moment(date).format("YYYY-MM-DD hh:mm:ss")} UTC</span>);
     };
 
     return (
       <tr id={"t" + buoy.dev}
         key={buoy.dev}>
-        <td class="ti-dev">
-          buoy: {buoy.dev}
+        <td>
+          {buoy.dev}
         </td>
-        <td class="ti-authors">
+        <td>
+          { buoy.any_lat().toFixed(5) }
+        </td>
+        <td>
+          { buoy.any_lon().toFixed(5) }
+        </td>
+        <td>
+          { buoy.latitude != undefined ? '🛰' : '📡' }
+        </td>
+        <td>
+          {formatDate(buoy.lastContact())}
         </td>
       </tr>
     );
   }
 
-  public Rows(props) {
-    const buoys = props.buoys;
-
-    return (
-      buoys.map((buoy) =>
-        this.Row({
-          thread: buoy
-        }))
-    );
-  }
-
   public render() {
     return (
-      <div class="container-fluid">
+      <div>
         <BuoyMap buoys={this.state.buoys} />
 
-        <table class="ti table table-dark table-borderless table-sm">
-          <tbody>
-            {this.state.buoys.map(this.Row)}
-          </tbody>
-        </table>
+        <div class="container-fluid">
+          <table class="ti table table-dark table-striped">
+            <thead>
+              <th scope="col">Device</th>
+              <th scope="col">Latitude</th>
+              <th scope="col">Longitude</th>
+              <th scope="col">Position</th>
+              <th scope="col">Last contact</th>
+            </thead>
+            <tbody>
+              {this.state.buoys.map(this.Row)}
+            </tbody>
+          </table>
+        </div>
       </div>
     );
   }

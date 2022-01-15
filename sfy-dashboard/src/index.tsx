@@ -1,9 +1,7 @@
-import { Component, render, createRef, VNode } from 'inferno';
-import { cloneVNode } from 'inferno-clone-vnode';
-import * as mousetrap from 'mousetrap';
-import { BuoyIndex } from './components/buoy-index/BuoyIndex';
+import {Component, render, createRef, VNode} from 'inferno';
+import {BuoyIndex} from './components/buoy-index/BuoyIndex';
 
-import 'bootstrap/dist/css/bootstrap.css';
+import 'bootstrap/scss/bootstrap.scss';
 import './main.css';
 
 const container = document.getElementById('app');
@@ -25,10 +23,9 @@ class Dashboard extends Component<any, any> {
 
   public render() {
     return (
-    <div class="container">
-      <h1>sfy</h1>
-      <BuoyIndex />
-    </div>
+      <div id="main-container" class="container-fluid">
+        <BuoyIndex />
+      </div>
     );
   }
 }

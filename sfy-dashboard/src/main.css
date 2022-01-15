@@ -1,8 +1,12 @@
 body {
-    font-size: 13px;
 }
 
 .hidden {
     display: none;
+}
+
+#main-container {
+    padding-left: 0px !important;
+    padding-right: 0px !important;
 }
 

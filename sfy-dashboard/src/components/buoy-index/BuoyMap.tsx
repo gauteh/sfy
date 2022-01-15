@@ -43,7 +43,7 @@ export class BuoyMap
 
   public render() {
     return (
-      <div id="map">
+      <div id="map" class="container-fluid">
       </div>
     );
   }
