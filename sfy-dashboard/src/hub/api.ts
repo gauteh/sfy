@@ -19,3 +19,9 @@ export class ApiConf {
     }
   }
 }
+
+const SFY_SERVER='http://157.249.74.12:3000'
+const SFY_READ_TOKEN='wipeout'
+
+export const API_CONF: ApiConf = new ApiConf(SFY_SERVER, SFY_READ_TOKEN);
+
