@@ -50,7 +50,9 @@ async fn main() -> eyre::Result<()> {
         config: config.clone(),
     });
 
-    let api = buoys::filters(state).with(warp::log("sfy_data::api"));
+    let cors = warp::cors().allow_any_origin().allow_header("SFY_AUTH_TOKEN");
+
+    let api = buoys::filters(state).with(cors).with(warp::log("sfy_data::api"));
 
     info!("listening on: {:?}", config.address);
     warp::serve(api).run(config.address).await;
