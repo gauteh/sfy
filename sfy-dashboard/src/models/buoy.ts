@@ -7,7 +7,10 @@ export class Buoy {
   public latitude: number;
   public longitude: number;
 
-  public package: Axl | null;
+  public tower_lat: number;
+  public tower_lon: number;
+
+  public package: any;
 
   constructor(dev: string, files: string[]) {
     this.dev = dev;
@@ -28,7 +31,7 @@ export class Buoy {
     }
   }
 
-  public setPackage(p: Axl): Axl {
+  public setPackage(p: any) {
     this.package = p;
 
     this.latitude = p.body.longitude;
@@ -45,11 +48,4 @@ export class Buoy {
   public any_lon(): number {
     return this.longitude != undefined ? this.longitude : this.tower_lon;
   }
-}
-
-export class Axl {
-  public body: {
-    latitude: number,
-    longitude: number
-  };
 }

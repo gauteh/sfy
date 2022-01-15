@@ -41,6 +41,13 @@ export class BuoyMap
     }).addTo(this.map);
   }
 
+  componentDidUpdate(props) {
+    for (const buoy of props.buoys) {
+      console.log(props);
+      let marker = L.marker([buoy.any_lat(), buoy.any_lon()]).addTo(this.map);
+    }
+  }
+
   public render() {
     return (
       <div id="map" class="container-fluid">
