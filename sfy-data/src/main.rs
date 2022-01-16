@@ -52,19 +52,24 @@ async fn main() -> eyre::Result<()> {
 
     info!("listening on: {:?}", config.address);
 
-    let cors = warp::cors().allow_any_origin().allow_header("SFY_AUTH_TOKEN");
-
+    let cors = warp::cors()
+        .allow_any_origin()
+        .allow_headers(["SFY_AUTH_TOKEN", "sfy_auth_token"]);
 
     if let Some(dir) = config.files {
         info!("serving files in directory: {:?}", dir);
         let api = warp::path("sfy").and(warp::fs::dir(dir));
-        let api = api.or(buoys::filters(state)).with(cors).with(warp::log("sfy_data::api"));
+        let api = api
+            .or(buoys::filters(state))
+            .with(cors)
+            .with(warp::log("sfy_data::api"));
         warp::serve(api).run(config.address).await;
     } else {
-        let api = buoys::filters(state).with(cors).with(warp::log("sfy_data::api"));
+        let api = buoys::filters(state)
+            .with(cors)
+            .with(warp::log("sfy_data::api"));
         warp::serve(api).run(config.address).await;
     };
-
 
     Ok(())
 }
