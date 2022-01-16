@@ -1,5 +1,6 @@
 import {Component, render, createRef, VNode} from 'inferno';
 import {BuoyIndex} from './components/buoy-index/BuoyIndex';
+import {Login} from './components/login';
 
 import 'bootstrap/scss/bootstrap.scss';
 import './main.css';
@@ -7,24 +8,26 @@ import './main.css';
 const container = document.getElementById('app');
 
 interface State {
-  active: number;
-  buffers: VNode[];
+  token: string;
 }
 
 class Dashboard extends Component<any, any> {
   public state = {
-    loggedin: 0,
-    token: ""
+    token: null
   };
 
   constructor(props, context) {
     super(props, context);
   }
 
+  setToken = (token: string) => {
+    this.setState({token: token});
+  };
+
   public render() {
     return (
       <div id="main-container" class="container-fluid">
-        <BuoyIndex />
+        { (this.state.token == null) ? (<Login cbToken={ this.setToken }/>) : (<BuoyIndex />) }
       </div>
     );
   }
