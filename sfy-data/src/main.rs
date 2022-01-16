@@ -5,7 +5,7 @@ use argh::FromArgs;
 use env_logger::Env;
 use std::path::PathBuf;
 use std::sync::Arc;
-use warp::Filter;
+use warp::{http::Method, Filter};
 
 #[macro_use]
 extern crate eyre;
@@ -54,7 +54,8 @@ async fn main() -> eyre::Result<()> {
 
     let cors = warp::cors()
         .allow_any_origin()
-        .allow_headers(["SFY_AUTH_TOKEN", "sfy_auth_token"]);
+        .allow_methods(&[Method::GET, Method::POST])
+        .allow_headers(["SFY_AUTH_TOKEN"]);
 
     if let Some(dir) = config.files {
         info!("serving files in directory: {:?}", dir);
