@@ -8,4 +8,4 @@ read_tokens = [
   "fourier"
 ]
 
-# static = "path/to/static/files"
+# files = "tests"
