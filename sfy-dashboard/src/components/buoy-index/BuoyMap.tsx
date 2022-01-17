@@ -31,7 +31,7 @@ export class BuoyMap
 
   componentDidMount() {
     console.log("loading leaflet..");
-    this.map = L.map('map').fitWorld().setZoom(1);
+    this.map = L.map('map').setView([60.11304848114283, 2.3882482939071434], 5);
 
     L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={access_token}', {
       maxZoom: 18,

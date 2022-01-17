@@ -4,7 +4,7 @@ import moment from 'moment';
 import cx from 'classnames';
 
 import {of} from 'rxjs';
-import {finalize, tap, mergeMap, switchMap, map} from 'rxjs/operators';
+import {finalize, tap, concatMap, mergeMap, switchMap, map} from 'rxjs/operators';
 import {Buoy} from 'models';
 import * as hub from 'hub';
 
@@ -41,8 +41,9 @@ export class BuoyIndex
 
     hub.get_buoys(hub.API_CONF).pipe(
       mergeMap(buoys => buoys),
-      switchMap(b => hub.get_buoy(hub.API_CONF, b)),
-      switchMap(b => {
+      concatMap(b => hub.get_buoy(hub.API_CONF, b)),
+      concatMap(b => {
+        console.log("getting files for: " + b.dev);
         let last = b.files.reverse().find((fname) => fname.endsWith("axl.qo.json"));
 
         return hub.get_file(hub.API_CONF, b.dev, last).pipe(

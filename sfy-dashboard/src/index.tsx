@@ -43,9 +43,9 @@ class Dashboard extends Component<any, any> {
           { (this.state.token === undefined) ? (<Login cbToken={ this.setToken }/>) : (<BuoyIndex />) }
         </div>
 
-        <footer class={cx ('footer', 'mt-auto', 'py-2', 'bg-primary', { 'd-none' : this.state.token === undefined })}>
-          <div class="container">
-            <span class="text-muted"><button type="button" class="btn btn-outline-light btn-sm" onClick={this.clearToken} >✕ Log out</button></span>
+        <footer class={cx ('footer', 'mt-auto', 'py-1', 'bg-light', { 'd-none' : this.state.token === undefined })}>
+          <div class="container-fluid">
+            <span class="text-muted"><button type="button" class="btn btn-outline-dark btn-sm" onClick={this.clearToken} >✕ Log out</button></span>
           </div>
         </footer>
       </div>
