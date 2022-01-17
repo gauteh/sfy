@@ -92,13 +92,13 @@ export class BuoyIndex
       <div>
         <BuoyMap buoys={this.state.buoys} />
 
-        <div class="container-fluid">
+        <div class="container-fluid no-margin">
           <table class="ti table table-dark table-striped">
             <thead>
               <th scope="col">Device</th>
-              <th scope="col">Latitude</th>
-              <th scope="col">Longitude</th>
-              <th scope="col">Position</th>
+              <th scope="col">Latitude (°N)</th>
+              <th scope="col">Longitude (°E)</th>
+              <th scope="col">Source</th>
               <th scope="col">Last contact</th>
             </thead>
             <tbody>

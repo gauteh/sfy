@@ -23,7 +23,7 @@ export class BuoyMap
 {
 
   public state = {};
-  map = {}; l
+  map = {};
 
   constructor(props: Props, context) {
     super(props, context);
@@ -48,6 +48,7 @@ export class BuoyMap
     for (const buoy of props.buoys) {
       console.log(props);
       let marker = L.marker([buoy.any_lat(), buoy.any_lon()]).addTo(this.map);
+      marker.bindTooltip(buoy.dev);
     }
   }
 

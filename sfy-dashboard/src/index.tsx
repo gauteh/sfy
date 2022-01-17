@@ -44,8 +44,9 @@ class Dashboard extends Component<any, any> {
         </div>
 
         <footer class={cx ('footer', 'mt-auto', 'py-1', 'bg-light', { 'd-none' : this.state.token === undefined })}>
-          <div class="container-fluid">
-            <span class="text-muted"><button type="button" class="btn btn-outline-dark btn-sm" onClick={this.clearToken} >✕ Log out</button></span>
+          <div class="container-fluid d-flex flex-row px-2">
+            <button type="button" class="btn btn-outline-dark btn-sm" onClick={this.clearToken} >✕ Log out</button>
+            <button type="button" class="btn btn-link"><a href="https://github.com/gauteh/sfy">github.com/gauteh/sfy</a></button>
           </div>
         </footer>
       </div>

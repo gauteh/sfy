@@ -10,3 +10,12 @@ body {
     padding-right: 0px !important;
 }
 
+.no-margin {
+    padding-left: 0px !important;
+    padding-right: 0px !important;
+}
+
+th {
+    padding-left: 8px;
+}
+
