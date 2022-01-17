@@ -111,7 +111,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         defmt::debug!("setting up imu driver..");
         let imu = Ism330Dhcx::new_with_address(&mut i2c, 0x6a)?;
 
-        let freq = Freq::Hz833;
+        let freq = Freq::Hz208;
         let output_freq = fir::OUT_FREQ;
 
         defmt::debug!("imu frequency: {}", freq.value());
@@ -206,6 +206,11 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         // Wait for FIFO to be cleared.
         delay.delay_ms(10);
 
+        // clear status bits.
+        self.imu.fifostatus.full(i2c)?;
+        self.imu.fifostatus.overrun(i2c)?;
+        self.imu.fifostatus.overrun_latched(i2c)?; // XXX: only necessary on this one.
+
         // Start FIFO. The FIFO will fill up and stop if it is not emptied fast enough.
         self.imu.fifoctrl.mode(i2c, fifoctrl::FifoMode::FifoMode)?;
 
@@ -265,7 +270,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         // XXX: If any of these flags are true we need to reset the FIFO (and return an error from
         // this function), otherwise it will have stopped accumulating samples.
         if fifo_full || fifo_overrun || fifo_overrun_latched {
-            defmt::error!("IMU fifo overrun: fifo sz: {}, (fifo_full: {}, overrun: {}, overrun_latched: {}) sample pairs (buffer: {}/{})", n, fifo_full, fifo_overrun, fifo_overrun_latched, self.buf.len(), self.buf.capacity());
+            defmt::error!("IMU fifo overrun: fifo sz: {}, (fifo_full: {}, overrun: {}, overrun_latched: {}) (buffer: {}/{})", n, fifo_full, fifo_overrun, fifo_overrun_latched, self.buf.len(), self.buf.capacity());
 
             panic!("FIFO overrun.");
             // return Err(E::default());
@@ -275,6 +280,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
 
         for _ in 0..n {
             if self.buf.is_full() {
+                defmt::debug!("axl buf is full, waiting to be cleared..");
                 break;
             }
 

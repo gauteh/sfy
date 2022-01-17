@@ -87,6 +87,13 @@ fn main() -> ! {
     info!("Setting up Notecarrier..");
     let mut note = Notecarrier::new(i2c2, &mut delay).unwrap();
 
+    defmt::info!("Send startup-message over cellular.");
+    note.hub()
+        .log("SFY started up, entering main loop.", false, false)
+        .unwrap()
+        .wait(&mut delay)
+        .unwrap();
+
     info!("Setting up IMU..");
     let mut waves = Waves::new(i2c3).unwrap();
     waves
@@ -114,12 +121,6 @@ fn main() -> ! {
         cortex_m::interrupt::enable();
     }
 
-    note.hub()
-        .log("SFY started up, entering main loop.", false, false)
-        .unwrap()
-        .wait(&mut delay)
-        .unwrap();
-
     info!("Entering main loop");
     const GOOD_TRIES: u32 = 5;
 
@@ -138,9 +139,12 @@ fn main() -> ! {
                 note.check_and_sync(&mut delay),
             ) {
                 (Ok(_), Ok(_), Ok(_)) => good_tries = GOOD_TRIES,
-                _ => {
+                (l, dq, cs) => {
                     error!(
-                        "Fatal error occured during main loop. Tries left: {}",
+                        "Fatal error occured during main loop: location: {:?}, note/drain_queue: {:?}, note/check_and_sync: {:?}. Tries left: {}",
+                        l,
+                        dq,
+                        cs,
                         good_tries
                     );
 

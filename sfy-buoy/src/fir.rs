@@ -7,7 +7,7 @@ const NTAP: usize = 128;
 const COEFFS: [f32; NTAP] = include!("firwin.coeff");
 
 /// Sample rate.
-pub const FREQ: f32 = 833.0;
+pub const FREQ: f32 = 208.0;
 
 /// Cut-off frequency of filter.
 pub const CUTOFF: f32 = 25.0;
