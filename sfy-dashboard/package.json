@@ -31,6 +31,7 @@
     "clusterize.js": "^0.18.1",
     "file-loader": "^6.2.0",
     "inferno": "^7",
+    "js-cookie": "^3.0.1",
     "leaflet": "^1.7.1",
     "moment": "^2.27.0",
     "mousetrap": "^1.6.5",

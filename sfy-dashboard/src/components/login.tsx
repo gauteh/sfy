@@ -20,7 +20,7 @@ export class Login extends Component<Props, any> {
   };
 
   on_click = (_event) => {
-    let input = document.getElementById('token-input');
+    let input = document.getElementById('token-input') as HTMLInputElement;
     let token = input.value;
     input.value = "";
 
@@ -35,7 +35,7 @@ export class Login extends Component<Props, any> {
             <h5 class="card-title">Input token</h5>
             <div class="input-group mb-3">
               <span class="input-group-text" id="basic-addon1">🔑</span>
-              <input autofocus id="token-input" type="text" class="form-control" placeholder="Token" aria-label="Token" aria-describedby="basic-addon1" onkeyup={this.on_keyup}/>
+              <input autoFocus id="token-input" type="text" class="form-control" placeholder="Token" aria-label="Token" aria-describedby="basic-addon1" onkeyup={this.on_keyup}/>
             </div>
             <a href="#" class="btn btn-primary" onclick={ this.on_click }>Go</a>
           </div>
