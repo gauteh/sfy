@@ -168,7 +168,7 @@ mod tests {
 
         for _ in 0..2 {
             defmt::debug!("wait for some samples..");
-            s.delay.delay_ms((1200f32 / 200f32 * 1000.) as u16);
+            s.delay.delay_ms(200u16);
 
             samples = s.waves.imu.fifostatus.diff_fifo(&mut s.waves.i2c).unwrap();
             defmt::debug!("values in FIFO before collecting: {}", samples);
@@ -177,14 +177,6 @@ mod tests {
             s.waves.read_and_filter().unwrap();
         }
 
-        // defmt::trace!("print test data {}:", s.waves.axl.len());
-        // let vs = s.waves.axl.iter().map(|v| v.to_f32()).collect::<heapless::Vec<_, {3 * 1024}>>();
-        // defmt::trace!("{:?}", vs);
-
-        let samples2 = s.waves.imu.fifostatus.diff_fifo(&mut s.waves.i2c).unwrap();
-        defmt::debug!("values in FIFO after collecting: {}", samples2);
-        assert!(samples2 < samples);
-
-        defmt::debug!("time series len: {}", s.waves.axl.len());
+        defmt::debug!("time series len: {}", s.waves.len());
     }
 }

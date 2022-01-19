@@ -224,6 +224,15 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
             .mode(&mut self.i2c, fifoctrl::FifoMode::Bypass)
     }
 
+    /// Returns iterator with all the currently available samples in the FIFO.
+    pub fn consume_fifo(
+        &mut self,
+    ) -> Result<impl ExactSizeIterator<Item = Result<fifo::Value, E>> + '_, E> {
+        let n = self.imu.fifostatus.diff_fifo(&mut self.i2c)?;
+        defmt::debug!("consuming {} samples from FIFO..", n);
+        Ok((0..n).map(|_| self.imu.fifo_pop(&mut self.i2c)))
+    }
+
     /// Take buf and reset timestamp.
     pub fn take_buf(&mut self, now: i64, lon: f32, lat: f32) -> Result<AxlPacket, E> {
         let pck = AxlPacket {
@@ -252,6 +261,10 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
 
     pub fn is_full(&self) -> bool {
         self.buf.is_full()
+    }
+
+    pub fn len(&self) -> usize {
+        self.buf.len()
     }
 
     pub fn read_and_filter(&mut self) -> Result<(), E> {
