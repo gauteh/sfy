@@ -7,3 +7,6 @@
 | Adafruit ISM330DHCX + LIS3MDL  | [adafruit](https://www.adafruit.com/product/4569) | [github](https://github.com/adafruit/Adafruit-ISM330DHCX-LIS3MDL-FeatherWing-PCB) | [pdf](dimensions/ism330dhcx.pdf) |
 | Pololu 3.3V Step-Up/Step-Down Voltage Regulator | [pololu](https://www.pololu.com/product/2122/specs) | N/A | 0.45″ × 0.65″ × 0.1″ |
 
+## Adafruit ISM330DHCX + LIS3MDL
+
+* SDA and SCL pins are swapped. QWIIC connector is correct.
