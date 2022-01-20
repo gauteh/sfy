@@ -46,15 +46,20 @@ export class BuoyIndex
         console.log("getting files for: " + b.dev);
         let last = b.files.reverse().find((fname) => fname.endsWith("axl.qo.json"));
 
-        return hub.get_file(hub.API_CONF, b.dev, last).pipe(
-          map(f => {
-            b.setPackage(f);
-            return b;
-          })
-        );
+        if (last !== undefined) {
+          return hub.get_file(hub.API_CONF, b.dev, last).pipe(
+            map(f => {
+              b.setPackage(f);
+              return b;
+            })
+          );
+        } else {
+          return of(b);
+        }
       })
     ).subscribe(b => {
       this.state.buoys.push(b);
+      this.state.buoys.sort((a, b) => a.lastContact().getUTCMilliseconds() - b.lastContact().getUTCMilliseconds());
       this.setState({buoys: this.state.buoys});
     }
     );
@@ -72,13 +77,13 @@ export class BuoyIndex
           {buoy.dev}
         </td>
         <td>
-          { buoy.any_lat().toFixed(5) }
+          {buoy.any_lat().toFixed(5)}
         </td>
         <td>
-          { buoy.any_lon().toFixed(5) }
+          {buoy.any_lon().toFixed(5)}
         </td>
         <td>
-          { buoy.latitude != undefined ? '🛰' : '📡' }
+          {buoy.latitude != undefined ? '🛰' : '📡'}
         </td>
         <td>
           {formatDate(buoy.lastContact())}
