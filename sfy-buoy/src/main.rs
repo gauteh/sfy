@@ -2,7 +2,7 @@
 #![cfg_attr(not(test), no_main)]
 
 #[cfg(all(not(test), not(deploy)))]
-use panic_probe as _; // TODO: Restart board on panic.
+use panic_probe as _;
 
 #[cfg(deploy)]
 use panic_reset as _;
@@ -180,6 +180,9 @@ fn main() -> ! {
 
 fn reset<I: Read + Write>(note: &mut Notecarrier<I>, delay: &mut impl DelayMs<u16>) {
     warn!("Resetting device!");
+
+    debug!("notecard: consuming any remaining response.");
+    unsafe { note.consume_response().ok() };
 
     warn!("Trying to send log message..");
     note.hub()
