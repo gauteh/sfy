@@ -24,6 +24,7 @@ use embedded_hal::blocking::{
     delay::DelayMs,
     i2c::{Read, Write},
 };
+use git_version::git_version;
 use hal::{i2c, pac::interrupt};
 
 use sfy::note::Notecarrier;
@@ -45,7 +46,7 @@ static STATE: Mutex<RefCell<Option<SharedState>>> = Mutex::new(RefCell::new(None
 
 #[cfg_attr(not(test), entry)]
 fn main() -> ! {
-    println!("hello from sfy!");
+    println!("hello from sfy (v{})!", git_version!());
 
     unsafe {
         // Set the clock frequency.
@@ -88,8 +89,13 @@ fn main() -> ! {
     let mut note = Notecarrier::new(i2c2, &mut delay).unwrap();
 
     defmt::info!("Send startup-message over cellular.");
+
+    let mut w = heapless::String::<100>::new();
+    w.push_str("SFY (v").unwrap();
+    w.push_str(git_version!()).unwrap();
+    w.push_str(") started up.").unwrap();
     note.hub()
-        .log("SFY started up, entering main loop.", false, false)
+        .log(w.as_str(), false, false)
         .unwrap()
         .wait(&mut delay)
         .unwrap();
