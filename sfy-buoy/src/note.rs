@@ -14,7 +14,7 @@ pub struct Notecarrier<I2C: Read + Write> {
 impl<I2C: Read + Write> Notecarrier<I2C> {
     pub fn new(i2c: I2C, delay: &mut impl DelayMs<u16>) -> Result<Notecarrier<I2C>, NoteError> {
         let mut note = Notecard::new(i2c);
-        note.initialize()?;
+        note.initialize(delay)?;
 
         note.hub()
             .set(

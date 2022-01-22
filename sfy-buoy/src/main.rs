@@ -182,7 +182,7 @@ fn reset<I: Read + Write>(note: &mut Notecarrier<I>, delay: &mut impl DelayMs<u1
     warn!("Resetting device!");
 
     debug!("notecard: consuming any remaining response.");
-    unsafe { note.consume_response().ok() };
+    unsafe { note.consume_response(delay).ok() };
 
     warn!("Trying to send log message..");
     note.hub()
