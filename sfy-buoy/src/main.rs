@@ -178,7 +178,7 @@ fn main() -> ! {
     }
 }
 
-fn reset<I: Read + Write>(note: &mut Notecarrier<I>, delay: &mut impl DelayMs<u16>) {
+fn reset<I: Read + Write>(note: &mut Notecarrier<I>, delay: &mut impl DelayMs<u16>) -> ! {
     warn!("Resetting device!");
 
     debug!("notecard: consuming any remaining response.");
@@ -206,7 +206,8 @@ fn reset<I: Read + Write>(note: &mut Notecarrier<I>, delay: &mut impl DelayMs<u1
 
     warn!("Resetting in 3 seconds..");
     delay.delay_ms(3_000u16);
-    cortex_m::peripheral::SCB::sys_reset();
+
+    cortex_m::peripheral::SCB::sys_reset()
 }
 
 #[cfg(not(feature = "host-tests"))]

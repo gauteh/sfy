@@ -171,6 +171,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         let mut sz = 0;
 
         while let Some(pck) = queue.dequeue() {
+            delay.delay_ms(50);
             sz += self.send(pck, delay)?;
         }
 

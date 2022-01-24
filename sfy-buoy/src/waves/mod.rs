@@ -241,7 +241,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
             data: self.buf.take_buf(),
             lon: self.lon,
             lat: self.lat,
-            freq: self.freq.value(),
+            freq: self.output_freq,
         };
 
         self.lon = lon;
