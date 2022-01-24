@@ -1,0 +1,76 @@
+(kicad_sch (version 20211123) (generator eeschema)
+
+  (uuid e63e39d7-6ac0-4ffd-8aa3-1841a4541b55)
+
+  (paper "A4")
+
+  (title_block
+    (title "sfy")
+    (rev "v1")
+    (company "met.no")
+    (comment 1 "Gaute Hope / gauteh@met.no")
+  )
+
+  (lib_symbols
+    (symbol "artemis:artemis-nano" (in_bom yes) (on_board yes)
+      (property "Reference" "IC" (id 0) (at 0 1.27 0)
+        (effects (font (size 1.27 1.27)))
+      )
+      (property "Value" "artemis-nano" (id 1) (at 0 -1.27 0)
+        (effects (font (size 1.27 1.27)))
+      )
+      (property "Footprint" "" (id 2) (at 0 0 0)
+        (effects (font (size 1.27 1.27)) hide)
+      )
+      (property "Datasheet" "" (id 3) (at 0 0 0)
+        (effects (font (size 1.27 1.27)) hide)
+      )
+      (symbol "artemis-nano_0_1"
+        (rectangle (start -11.43 -2.54) (end 10.16 -36.83)
+          (stroke (width 0) (type default) (color 0 0 0 0))
+          (fill (type none))
+        )
+      )
+      (symbol "artemis-nano_1_1"
+        (pin power_in line (at 10.16 -5.08 0) (length 2.54)
+          (name "3V3" (effects (font (size 1.27 1.27))))
+          (number "" (effects (font (size 1.27 1.27))))
+        )
+        (pin power_in line (at 10.16 -7.62 0) (length 2.54)
+          (name "GND" (effects (font (size 1.27 1.27))))
+          (number "" (effects (font (size 1.27 1.27))))
+        )
+      )
+    )
+  )
+
+
+  (symbol (lib_id "artemis:artemis-nano") (at 104.14 76.2 0) (unit 1)
+    (in_bom yes) (on_board yes)
+    (uuid aba5aa97-f259-4380-a69f-5f275f948157)
+    (property "Reference" "IC?" (id 0) (at 115.57 94.6149 0)
+      (effects (font (size 1.27 1.27)) (justify left))
+    )
+    (property "Value" "artemis-nano" (id 1) (at 115.57 97.1549 0)
+      (effects (font (size 1.27 1.27)) (justify left))
+    )
+    (property "Footprint" "" (id 2) (at 104.14 76.2 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (property "Datasheet" "" (id 3) (at 104.14 76.2 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (pin "" (uuid d16f97b2-8045-44fd-aa33-19f929adaafd))
+    (pin "" (uuid d16f97b2-8045-44fd-aa33-19f929adaafd))
+  )
+
+  (sheet_instances
+    (path "/" (page "1"))
+  )
+
+  (symbol_instances
+    (path "/aba5aa97-f259-4380-a69f-5f275f948157"
+      (reference "IC?") (unit 1) (value "artemis-nano") (footprint "")
+    )
+  )
+)
