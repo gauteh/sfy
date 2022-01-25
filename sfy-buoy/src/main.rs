@@ -216,6 +216,7 @@ fn reset<I: Read + Write>(note: &mut Notecarrier<I>, delay: &mut impl DelayMs<u1
 fn RTC() {
     #[allow(non_upper_case_globals)]
     static mut imu: Option<Imu<E, I>> = None;
+    static mut GOOD_TRIES: u16 = 5;
 
     // Clear RTC interrupt
     unsafe {
@@ -236,8 +237,24 @@ fn RTC() {
             (now, lon, lat)
         });
 
-        // XXX: This is the most time-critical part of the program. PANIC, i2c NAK
-        imu.check_retrieve(now, lon, lat).unwrap();
+        // XXX: This is the most time-critical part of the program.
+        //
+        // It seems that the IMU I2C communication sometimes fails with a NAK, causing a module
+        // reset, which again might cause a HardFault.
+        match imu.check_retrieve(now, lon, lat) {
+            Ok(_) => { *GOOD_TRIES = 5; },
+            Err(e) => {
+                error!("IMU ISR failed: {:?}", e);
+
+                if *GOOD_TRIES == 0 {
+                    error!("IMU has failed repatedly, resetting system.");
+                    cortex_m::peripheral::SCB::sys_reset();
+                }
+
+                *GOOD_TRIES -= 1;
+            }
+        }
+
     } else {
         unsafe {
             imu.replace(IMU.take().unwrap());
