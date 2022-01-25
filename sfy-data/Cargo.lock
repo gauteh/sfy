@@ -1415,13 +1415,13 @@ name = "ambiq-hal"
 version = "0.2.0"
 
 [[patch.unused]]
-name = "ahrs-fusion"
-version = "0.1.0"
-
-[[patch.unused]]
 name = "notecard"
 version = "0.1.0"
 
 [[patch.unused]]
 name = "ambiq-hal"
 version = "0.2.0"
+
+[[patch.unused]]
+name = "ahrs-fusion"
+version = "0.1.0"

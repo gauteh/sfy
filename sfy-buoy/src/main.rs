@@ -18,7 +18,7 @@ use cortex_m::{
     asm,
     interrupt::{free, Mutex},
 };
-use cortex_m_rt::entry;
+use cortex_m_rt::{entry, exception, ExceptionFrame};
 use defmt_rtt as _;
 use embedded_hal::blocking::{
     delay::DelayMs,
@@ -236,7 +236,7 @@ fn RTC() {
             (now, lon, lat)
         });
 
-        // XXX: This is the most time-critical part of the program.
+        // XXX: This is the most time-critical part of the program. PANIC, i2c NAK
         imu.check_retrieve(now, lon, lat).unwrap();
     } else {
         unsafe {
@@ -244,3 +244,14 @@ fn RTC() {
         }
     }
 }
+
+#[cfg(not(feature = "host-tests"))]
+#[allow(non_snake_case)]
+#[exception]
+unsafe fn HardFault(ef: &ExceptionFrame) -> ! {
+    error!("hard fault exception: {:#?}", defmt::Debug2Format(ef));
+
+    warn!("resetting system..");
+    cortex_m::peripheral::SCB::sys_reset()
+}
+
