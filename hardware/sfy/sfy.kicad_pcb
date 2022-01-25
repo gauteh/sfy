@@ -78,4 +78,11 @@
 
   (gr_circle (center 149.86 91.44) (end 172.72 124.46) (layer "Edge.Cuts") (width 0.1) (fill none) (tstamp 311665d9-0fab-4325-8b46-f3638bf521df))
 
+  (segment (start 175.26 81.28) (end 170.18 76.2) (width 0.2) (layer "F.Cu") (net 0) (tstamp 069bdd9d-f380-4c58-987e-4887748031e8))
+  (segment (start 175.26 86.36) (end 175.26 81.28) (width 0.2) (layer "F.Cu") (net 0) (tstamp 4caa68da-1d74-422f-8bbe-3c28c9ea4b69))
+  (segment (start 167.64 78.74) (end 167.64 88.9) (width 0.2) (layer "F.Cu") (net 0) (tstamp 4cc8f330-0552-463d-8506-7fc2c95c4de2))
+  (segment (start 170.18 76.2) (end 167.64 78.74) (width 0.2) (layer "F.Cu") (net 0) (tstamp 7a89709d-a8cb-4a64-a3a3-ed263fad27d0))
+  (via (at 175.26 86.36) (size 0.8) (drill 0.4) (layers "F.Cu" "B.Cu") (free) (net 0) (tstamp 3b8985d9-c9ce-4e5c-9b0f-dabde5c52713))
+  (via (at 167.64 88.9) (size 0.8) (drill 0.4) (layers "F.Cu" "B.Cu") (free) (net 0) (tstamp 8e99653b-c67d-4ba5-a650-293257580275))
+
 )

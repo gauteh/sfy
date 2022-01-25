@@ -330,9 +330,7 @@
   },
   "libraries": {
     "pinned_footprint_libs": [],
-    "pinned_symbol_libs": [
-      "artemis"
-    ]
+    "pinned_symbol_libs": []
   },
   "meta": {
     "filename": "sfy.kicad_pro",
