@@ -48,6 +48,8 @@ impl Database {
             }
         }
 
+        buoys.sort();
+
         Ok(buoys)
     }
 
@@ -116,6 +118,8 @@ impl<'a> Buoy<'a> {
             }
         }
 
+        entries.sort();
+
         Ok(entries)
     }
 
@@ -183,7 +187,7 @@ mod tests {
         b.append("entry-0", "data-0").await.unwrap();
         b.append("entry-1", "data-1").await.unwrap();
 
-        assert_eq!(db.buoy("buoy-01").unwrap().entries().await.unwrap(), ["entry-1", "entry-0"]);
+        assert_eq!(db.buoy("buoy-01").unwrap().entries().await.unwrap(), ["entry-0", "entry-1"]);
     }
 
     #[tokio::test]
