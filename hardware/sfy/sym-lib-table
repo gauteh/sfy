@@ -1,4 +1,6 @@
 (sym_lib_table
   (lib (name "artemis")(type "KiCad")(uri "${KIPRJMOD}/redboard-nano/artemis.kicad_sym")(options "")(descr ""))
   (lib (name "ism330dhcx")(type "KiCad")(uri "${KIPRJMOD}/redboard-nano/ism330dhcx.kicad_sym")(options "")(descr ""))
+  (lib (name "pololu")(type "KiCad")(uri "${KIPRJMOD}/redboard-nano/pololu.kicad_sym")(options "")(descr ""))
+  (lib (name "notecard")(type "KiCad")(uri "${KIPRJMOD}/redboard-nano/notecard.kicad_sym")(options "")(descr ""))
 )
