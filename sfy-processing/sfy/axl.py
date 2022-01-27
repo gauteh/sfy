@@ -4,6 +4,8 @@ import numpy as np
 import base64
 import sys
 import logging
+import pytz
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +19,6 @@ class Axl:
     session: str
     product: str
     req: str
-    when: int
     file: str
     updates: int
 
@@ -45,6 +46,45 @@ class Axl:
     x: np.ndarray
     y: np.ndarray
     z: np.ndarray
+
+    when: int = None
+
+    where_olc: float = None
+    where_lat: float = None
+    where_lon: float = None
+    where_location: str = None
+    where_country: str = None
+    where_timezone: str = None
+
+    @property
+    def start(self):
+        """
+        UTC Datetime of start of samples. Taking `offset` into account.
+        """
+        return datetime.fromtimestamp(self.timestamp / 1000. - (self.offset / self.freq), pytz.utc)
+
+    @property
+    def received_dt(self):
+        return datetime.fromtimestamp(self.received, pytz.utc)
+
+    @property
+    def duration(self):
+        """
+        Duration in seconds.
+        """
+        return len(self.x) / self.freq
+
+
+    @property
+    def mseconds(self):
+        """
+        Time vector in milliseconds (UTC).
+        """
+        t = np.arange(0, len(self.x)) / self.freq
+        return self.timestamp + t
+
+    def __repr__(self):
+        return f"[Axl received={self.received} t={self.start} -> {'%.2f' % self.duration}s sz={len(self.x)}x3 @ f={self.freq}Hz, lon={self.lon}E lat={self.lat}N]"
 
     @staticmethod
     def parse(d) -> 'Axl':
@@ -80,3 +120,9 @@ class Axl:
         z = payload[2::3]
 
         return Axl(**data, x=x, y=y, z=z)
+
+    @staticmethod
+    def from_file(path) -> 'Axl':
+        with open(path, 'r') as fd:
+            return Axl.parse(fd.read())
+
