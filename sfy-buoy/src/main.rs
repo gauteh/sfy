@@ -96,9 +96,8 @@ fn main() -> ! {
     w.push_str(") started up.").unwrap();
     note.hub()
         .log(w.as_str(), false, false)
-        .unwrap()
-        .wait(&mut delay)
-        .unwrap();
+        .and_then(|r| r.wait(&mut delay))
+        .ok(); // this will fail if more than 100 notes is added.
 
     info!("Setting up IMU..");
     let mut waves = Waves::new(i2c3).unwrap();

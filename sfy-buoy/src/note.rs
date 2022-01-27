@@ -16,6 +16,8 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         let mut note = Notecard::new(i2c);
         note.initialize(delay)?;
 
+        delay.delay_ms(50);
+
         note.hub()
             .set(
                 Some("no.met.gauteh:sfy"),
@@ -32,9 +34,14 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             )?
             .wait(delay)?;
 
+        delay.delay_ms(50);
+
         note.card()
             .location_mode(Some("continuous"), None, None, None, None, None, None, None)?
             .wait(delay)?;
+
+        delay.delay_ms(50);
+
         note.card()
             .location_track(true, false, true, None, None)?
             .wait(delay)?;
@@ -42,7 +49,12 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
 
         let mut n = Notecarrier { note };
 
+        delay.delay_ms(50);
+
         n.setup_templates(delay)?;
+
+        delay.delay_ms(50);
+
         defmt::info!("initializing initial sync..");
         n.note.hub().sync()?.wait(delay)?;
 
