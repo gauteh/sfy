@@ -1,10 +1,10 @@
 .DEFAULT_GOAL := build
 
 build:
-	DEFMT_LOG=warn,sfy=debug cargo build --release
+	cargo build --release
 
 objcopy: build
-	DEFMT_LOG=warn,sfy=debug cargo objcopy --release -- -O binary target/sby-buoy.bin
+	cargo objcopy --release -- -O binary target/sby-buoy.bin
 
 flash: objcopy
 	python3 ../tools/svl/svl.py -f target/sby-buoy.bin /dev/ttyUSB0 -v

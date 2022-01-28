@@ -29,7 +29,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                 None,
                 None,
                 None,
-                Some(true),
+                Some(false),
                 None,
             )?
             .wait(delay)?;
@@ -196,10 +196,13 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         delay: &mut impl DelayMs<u16>
     ) -> Result<(), NoteError> {
         let status = self.note.card().status()?.wait(delay)?;
+        delay.delay_ms(50);
+        let sync_status = self.note.hub().sync_status()?.wait(delay)?;
+
+        defmt::trace!("card.status: {}", status);
+        defmt::trace!("hub.sync_status: {}", sync_status);
 
         if status.storage > NOTECARD_STORAGE_INIT_SYNC as usize {
-            delay.delay_ms(10);
-            let sync_status = self.note.hub().sync_status()?.wait(delay)?;
 
             if sync_status.requested.is_none() {
                 defmt::warn!("notecard is more than {}% full, initiating sync.", NOTECARD_STORAGE_INIT_SYNC);

@@ -88,12 +88,14 @@ fn main() -> ! {
     info!("Setting up Notecarrier..");
     let mut note = Notecarrier::new(i2c2, &mut delay).unwrap();
 
-    defmt::info!("Send startup-message over cellular.");
+    info!("Send startup-message over cellular.");
 
     let mut w = heapless::String::<100>::new();
     w.push_str("SFY (v").unwrap();
     w.push_str(git_version!()).unwrap();
     w.push_str(") started up.").unwrap();
+    info!("{}", w);
+
     note.hub()
         .log(w.as_str(), false, false)
         .and_then(|r| r.wait(&mut delay))
