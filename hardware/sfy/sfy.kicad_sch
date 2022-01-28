@@ -2618,6 +2618,10 @@
     )
   )
 
+  (text "Notecarrier demands up \nto 2A @ 3.3V bursts." (at 107.95 119.38 0)
+    (effects (font (size 1.27 1.27)) (justify left bottom))
+    (uuid 01b914b7-fcf5-40fe-ac2e-194b7ec6a7cf)
+  )
   (text "Input range: 2.7V - 11.8V" (at 16.51 86.36 0)
     (effects (font (size 1.27 1.27)) (justify left bottom))
     (uuid 1481e9bc-4884-48df-a646-07a51acd9f84)
