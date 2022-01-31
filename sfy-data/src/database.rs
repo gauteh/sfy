@@ -89,6 +89,7 @@ impl<'a> Buoy<'a> {
 
     pub async fn append(&mut self, file: impl AsRef<Path>, data: impl AsRef<[u8]>) -> eyre::Result<()> {
         use tokio::fs;
+        use std::os::unix::fs::PermissionsExt;
 
         let data = data.as_ref();
         let file = file.as_ref();
@@ -99,8 +100,9 @@ impl<'a> Buoy<'a> {
 
         ensure!(!path.exists(), "file already exists!");
 
-        let tmp = self.tempfile()?;
+        let mut tmp = self.tempfile()?;
         fs::write(tmp.path(), data).await?;
+        tmp.as_file_mut().set_permissions(std::fs::Permissions::from_mode(0o644))?;
         tmp.persist(path)?;
 
         Ok(())
