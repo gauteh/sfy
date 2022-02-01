@@ -83,7 +83,7 @@ fn main() -> ! {
     let mut location = Location::new();
 
     info!("Giving subsystems a couple of seconds to boot..");
-    delay.delay_ms(3_000u32);
+    delay.delay_ms(5_000u32);
 
     info!("Setting up Notecarrier..");
     let mut note = Notecarrier::new(i2c2, &mut delay).unwrap();
@@ -180,6 +180,8 @@ fn main() -> ! {
 }
 
 fn reset<I: Read + Write>(note: &mut Notecarrier<I>, delay: &mut impl DelayMs<u16>) -> ! {
+    cortex_m::interrupt::disable();
+
     warn!("Resetting device!");
 
     debug!("notecard: consuming any remaining response.");
