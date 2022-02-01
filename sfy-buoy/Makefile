@@ -10,8 +10,7 @@ flash: objcopy
 	python3 ../tools/svl/svl.py -f target/sby-buoy.bin /dev/ttyUSB0 -v
 
 deploy:
-	DEFMT_LOG=warn,sfy=debug cargo build --release --features deploy
-	DEFMT_LOG=warn,sfy=debug cargo objcopy --release --features deploy -- -O binary target/sby-buoy.bin
+	DEFMT_LOG=warn,sfy=debug,sfy::note=trace cargo objcopy --features deploy -- -O binary target/sby-buoy.bin
 	python3 ../tools/svl/svl.py -f target/sby-buoy.bin /dev/ttyUSB0 -v
 
 com:
