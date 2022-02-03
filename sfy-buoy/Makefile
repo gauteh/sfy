@@ -27,7 +27,7 @@ gdb-flash:
 	gdb-multiarch --command=flash.gdb target/thumbv7em-none-eabihf/release/sfy
 
 gdb-debug:
-	gdb-multiarch --command=debug.gdb target/thumbv7em-none-eabihf/release/sfy
+	gdb-multiarch --command=debug.gdb target/thumbv7em-none-eabihf/debug/sfy
 
 defmt-rtt:
 	# stdbuf -i0 -e0 -o0 JLinkRTTClient < /dev/null | stdbuf -i0 -e0 -o0 tail -f -n +23 | defmt-print -e target/thumbv7em-none-eabihf/debug/sfy-buoy

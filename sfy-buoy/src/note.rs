@@ -109,8 +109,8 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             length: 14,
             freq: 14.1,
             packet: 12,
-            lon: 14.1,
-            lat: 14.1,
+            lon: 18.1,
+            lat: 18.1,
         };
 
         defmt::debug!("setting up template for AxlPacketMeta");
@@ -223,8 +223,8 @@ pub struct AxlPacketMeta {
     pub packet: u32,
     pub length: u32,
     pub freq: f32,
-    pub lon: f32,
-    pub lat: f32,
+    pub lon: f64,
+    pub lat: f64,
 }
 
 

@@ -10,8 +10,8 @@ pub struct AxlPacket {
     /// Timstamp of sample at `offset`.
     pub timestamp: i64,
     pub offset: u16,
-    pub lon: f32,
-    pub lat: f32,
+    pub lon: f64,
+    pub lat: f64,
     pub freq: f32,
 
     /// This is moved to the payload of the note.

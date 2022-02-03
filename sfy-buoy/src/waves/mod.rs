@@ -98,8 +98,8 @@ pub struct Waves<I2C: WriteRead + Write> {
 
     /// Timestamp at `fifo_offset` sample in buffer.
     pub timestamp: i64,
-    pub lon: f32,
-    pub lat: f32,
+    pub lon: f64,
+    pub lat: f64,
 
     /// Offset in FIFO _in samples_ (that is one gyro and one accel sample) when timestamp
     /// was set.
@@ -234,7 +234,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
     }
 
     /// Take buf and reset timestamp.
-    pub fn take_buf(&mut self, now: i64, lon: f32, lat: f32) -> Result<AxlPacket, E> {
+    pub fn take_buf(&mut self, now: i64, lon: f64, lat: f64) -> Result<AxlPacket, E> {
         let pck = AxlPacket {
             timestamp: self.timestamp,
             offset: self.fifo_offset,

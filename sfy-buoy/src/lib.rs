@@ -33,8 +33,8 @@ use axl::AxlPacket;
 
 pub struct SharedState {
     pub rtc: Rtc,
-    pub lon: f32,
-    pub lat: f32,
+    pub lon: f64,
+    pub lat: f64,
 }
 
 pub trait State {
@@ -60,8 +60,8 @@ pub enum LocationState {
 
 #[derive(Clone)]
 pub struct Location {
-    pub lat: f32,
-    pub lon: f32,
+    pub lat: f64,
+    pub lon: f64,
     pub time: u32,
 
     pub state: LocationState,
@@ -148,7 +148,7 @@ impl<E: Debug, I: Write<Error = E> + WriteRead<Error = E>> Imu<E, I> {
         Imu { queue, waves }
     }
 
-    pub fn check_retrieve(&mut self, now: i64, lon: f32, lat: f32) -> Result<(), E> {
+    pub fn check_retrieve(&mut self, now: i64, lon: f64, lat: f64) -> Result<(), E> {
         trace!("Polling IMU.. (now: {})", now,);
 
         self.waves.read_and_filter()?;
