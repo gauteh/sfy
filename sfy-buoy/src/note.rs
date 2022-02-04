@@ -198,9 +198,13 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         let status = self.note.card().status()?.wait(delay)?;
         delay.delay_ms(50);
         let sync_status = self.note.hub().sync_status()?.wait(delay)?;
+        delay.delay_ms(50);
+        let wireless = self.note.card().wireless()?.wait(delay)?;
+        delay.delay_ms(50);
 
         defmt::trace!("card.status: {}", status);
         defmt::trace!("hub.sync_status: {}", sync_status);
+        defmt::trace!("card.wireless: {}", wireless);
 
         if status.storage > NOTECARD_STORAGE_INIT_SYNC as usize {
 
