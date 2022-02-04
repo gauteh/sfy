@@ -21,7 +21,7 @@ pub struct AxlPacket {
 impl AxlPacket {
     pub fn base64(&self) -> heapless::Vec<u8, AXL_OUTN> {
         let mut b64: heapless::Vec<_, AXL_OUTN> = heapless::Vec::new();
-        b64.resize_default(AXL_OUTN).unwrap();
+        defmt::unwrap!(b64.resize_default(AXL_OUTN));
 
         // Check endianness (TODO: use byteorder or impl in hidefix to swap order if compiled for
         // big endian machine).

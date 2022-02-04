@@ -63,8 +63,8 @@ fn main() -> ! {
         halc::am_bsp_low_power_init();
     }
 
-    let mut dp = hal::pac::Peripherals::take().unwrap();
-    let core = hal::pac::CorePeripherals::take().unwrap();
+    let mut dp = defmt::unwrap!(hal::pac::Peripherals::take());
+    let core = defmt::unwrap!(hal::pac::CorePeripherals::take());
     let mut delay = hal::delay::Delay::new(core.SYST, &mut dp.CLKGEN);
 
     let pins = hal::gpio::Pins::new(dp.GPIO);
@@ -86,14 +86,14 @@ fn main() -> ! {
     delay.delay_ms(5_000u32);
 
     info!("Setting up Notecarrier..");
-    let mut note = Notecarrier::new(i2c2, &mut delay).unwrap();
+    let mut note = defmt::unwrap!(Notecarrier::new(i2c2, &mut delay));
 
     info!("Send startup-message over cellular.");
 
     let mut w = heapless::String::<100>::new();
-    w.push_str("SFY (v").unwrap();
-    w.push_str(git_version!()).unwrap();
-    w.push_str(") started up.").unwrap();
+    defmt::unwrap!(w.push_str("SFY (v"));
+    defmt::unwrap!(w.push_str(git_version!()));
+    defmt::unwrap!(w.push_str(") started up."));
     info!("{}", w);
 
     note.hub()
@@ -102,13 +102,11 @@ fn main() -> ! {
         .ok(); // this will fail if more than 100 notes is added.
 
     info!("Setting up IMU..");
-    let mut waves = Waves::new(i2c3).unwrap();
-    waves
-        .take_buf(rtc.now().timestamp_millis(), 0.0, 0.0)
-        .unwrap(); // set timestamp.
+    let mut waves = defmt::unwrap!(Waves::new(i2c3));
+    defmt::unwrap!(waves.take_buf(rtc.now().timestamp_millis(), 0.0, 0.0)); // set timestamp.
 
     info!("Enable IMU.");
-    waves.enable_fifo(&mut delay).unwrap();
+    defmt::unwrap!(waves.enable_fifo(&mut delay));
 
     let imu = sfy::Imu::new(waves, unsafe { IMUQ.split().0 });
     let mut imu_queue = unsafe { IMUQ.split().1 };
@@ -132,14 +130,14 @@ fn main() -> ! {
     const GOOD_TRIES: u32 = 5;
 
     let mut last: i64 = 0;
-    let mut good_tries: u32 = 5;
+    let mut good_tries: u32 = GOOD_TRIES;
 
     loop {
         let now = STATE.now().timestamp_millis();
 
         if (now - last) > 1000 {
             defmt::debug!("iteration, now: {}..", now);
-            led.toggle().unwrap();
+            defmt::unwrap!(led.toggle());
             match (
                 location.check_retrieve(&STATE, &mut delay, &mut note),
                 note.drain_queue(&mut imu_queue, &mut delay),
@@ -231,7 +229,7 @@ fn RTC() {
     if let Some(imu) = imu {
         let (now, lon, lat) = free(|cs| {
             let state = STATE.borrow(cs).borrow();
-            let state = state.as_ref().unwrap();
+            let state = defmt::unwrap!(state.as_ref());
 
             let now = state.rtc.now().timestamp_millis();
             let lon = state.lon;
@@ -245,7 +243,9 @@ fn RTC() {
         // It seems that the IMU I2C communication sometimes fails with a NAK, causing a module
         // reset, which again might cause a HardFault.
         match imu.check_retrieve(now, lon, lat) {
-            Ok(_) => { *GOOD_TRIES = 5; },
+            Ok(_) => {
+                *GOOD_TRIES = 5;
+            }
             Err(e) => {
                 error!("IMU ISR failed: {:?}", e);
 
@@ -257,10 +257,9 @@ fn RTC() {
                 *GOOD_TRIES -= 1;
             }
         }
-
     } else {
         unsafe {
-            imu.replace(IMU.take().unwrap());
+            imu.replace(defmt::unwrap!(IMU.take()));
         }
     }
 }
@@ -274,4 +273,3 @@ unsafe fn HardFault(ef: &ExceptionFrame) -> ! {
     warn!("resetting system..");
     cortex_m::peripheral::SCB::sys_reset()
 }
-

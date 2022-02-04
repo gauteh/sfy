@@ -103,13 +103,13 @@ impl ImuBuf {
             self.fir[2].decimate(axl.z),
         ) {
             (Some(x), Some(y), Some(z)) => {
-                self.axl.push(f16::from_f32(x)).unwrap();
-                self.axl.push(f16::from_f32(y)).unwrap();
-                self.axl.push(f16::from_f32(z)).unwrap();
+                defmt::unwrap!(self.axl.push(f16::from_f32(x)));
+                defmt::unwrap!(self.axl.push(f16::from_f32(y)));
+                defmt::unwrap!(self.axl.push(f16::from_f32(z)));
             }
             (None, None, None) => {} // No filter output.
             _ => {
-                unreachable!()
+                defmt::unreachable!()
             }
         };
 

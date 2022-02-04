@@ -310,7 +310,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
             };
 
             if let Some((g, a)) = ga {
-                self.buf.sample(g, a).unwrap();
+                defmt::unwrap(self.buf.sample(g, a));
             } else {
                 // XXX: Fix and recover!
                 //

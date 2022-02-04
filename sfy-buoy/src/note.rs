@@ -148,7 +148,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                     Some("axl.qo"),
                     None,
                     Some(meta),
-                    Some(core::str::from_utf8(p).unwrap()),
+                    Some(defmt::unwrap!(core::str::from_utf8(p))),
                     false,
                 )?
                 .wait(delay)?;
@@ -199,8 +199,12 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         delay.delay_ms(50);
         let sync_status = self.note.hub().sync_status()?.wait(delay)?;
         delay.delay_ms(50);
-        let wireless = self.note.card().wireless()?.wait(delay)?;
-        delay.delay_ms(50);
+
+        #[cfg(debug_assertions)]
+        {
+            let wireless = self.note.card().wireless().and_then(|r| r.wait(delay));
+            delay.delay_ms(50);
+        }
 
         defmt::trace!("card.status: {}", status);
         defmt::trace!("hub.sync_status: {}", sync_status);
