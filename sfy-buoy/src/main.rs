@@ -46,7 +46,7 @@ static STATE: Mutex<RefCell<Option<SharedState>>> = Mutex::new(RefCell::new(None
 
 #[cfg_attr(not(test), entry)]
 fn main() -> ! {
-    println!("hello from sfy (v{})!", git_version!());
+    println!("hello from sfy (v{}) (sn: {})!", git_version!(), sfy::note::BUOYSN);
 
     unsafe {
         // Set the clock frequency.
@@ -93,6 +93,8 @@ fn main() -> ! {
     let mut w = heapless::String::<100>::new();
     defmt::unwrap!(w.push_str("SFY (v"));
     defmt::unwrap!(w.push_str(git_version!()));
+    defmt::unwrap!(w.push_str(") (sn: "));
+    defmt::unwrap!(w.push_str(sfy::note::BUOYSN));
     defmt::unwrap!(w.push_str(") started up."));
     info!("{}", w);
 

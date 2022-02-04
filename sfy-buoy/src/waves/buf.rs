@@ -12,7 +12,7 @@ use crate::{
 
 pub type VecAxl = heapless::Vec<f16, AXL_SZ>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, defmt::Format)]
 pub enum Error {
     BufFull,
 }
@@ -103,9 +103,9 @@ impl ImuBuf {
             self.fir[2].decimate(axl.z),
         ) {
             (Some(x), Some(y), Some(z)) => {
-                defmt::unwrap!(self.axl.push(f16::from_f32(x)));
-                defmt::unwrap!(self.axl.push(f16::from_f32(y)));
-                defmt::unwrap!(self.axl.push(f16::from_f32(z)));
+                self.axl.push(f16::from_f32(x)).unwrap();
+                self.axl.push(f16::from_f32(y)).unwrap();
+                self.axl.push(f16::from_f32(z)).unwrap();
             }
             (None, None, None) => {} // No filter output.
             _ => {

@@ -1,5 +1,7 @@
 #![feature(test)]
 #![feature(derive_default_enum)]
+#![feature(inline_const)]
+#![feature(const_option_ext)]
 #![cfg_attr(not(test), no_std)]
 
 #[cfg(test)]

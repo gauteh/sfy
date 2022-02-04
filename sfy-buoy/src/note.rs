@@ -4,6 +4,8 @@ use embedded_hal::blocking::delay::DelayMs;
 use embedded_hal::blocking::i2c::{Read, Write};
 use notecard::{NoteError, Notecard};
 
+pub const BUOYSN: &'static str = const { option_env!("BUOYSN").unwrap_or("cain") };
+
 /// Initialize sync when storage use is above this percentage.
 pub const NOTECARD_STORAGE_INIT_SYNC: u32 = 50;
 
@@ -23,7 +25,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                 Some("no.met.gauteh:sfy"),
                 None,
                 Some(notecard::hub::req::HubMode::Periodic),
-                Some("cain"),
+                Some(&BUOYSN),
                 Some(10), // max time between out-going sync in minutes.
                 None,
                 None,
@@ -45,7 +47,6 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         note.card()
             .location_track(true, false, true, None, None)?
             .wait(delay)?;
-
 
         let mut n = Notecarrier { note };
 
@@ -148,7 +149,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                     Some("axl.qo"),
                     None,
                     Some(meta),
-                    Some(defmt::unwrap!(core::str::from_utf8(p))),
+                    Some(core::str::from_utf8(p).unwrap()),
                     false,
                 )?
                 .wait(delay)?;
@@ -191,33 +192,36 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
     }
 
     /// Check if notecard is filling up, and initiate sync in that case.
-    pub fn check_and_sync(
-        &mut self,
-        delay: &mut impl DelayMs<u16>
-    ) -> Result<(), NoteError> {
+    pub fn check_and_sync(&mut self, delay: &mut impl DelayMs<u16>) -> Result<(), NoteError> {
         let status = self.note.card().status()?.wait(delay)?;
+        defmt::trace!("card.status: {}", status);
         delay.delay_ms(50);
+
         let sync_status = self.note.hub().sync_status()?.wait(delay)?;
+        defmt::trace!("hub.sync_status: {}", sync_status);
         delay.delay_ms(50);
 
         #[cfg(debug_assertions)]
         {
             let wireless = self.note.card().wireless().and_then(|r| r.wait(delay));
+            defmt::trace!("card.wireless: {}", wireless);
             delay.delay_ms(50);
         }
 
-        defmt::trace!("card.status: {}", status);
-        defmt::trace!("hub.sync_status: {}", sync_status);
-        defmt::trace!("card.wireless: {}", wireless);
-
         if status.storage > NOTECARD_STORAGE_INIT_SYNC as usize {
-
             if sync_status.requested.is_none() {
-                defmt::warn!("notecard is more than {}% full, initiating sync.", NOTECARD_STORAGE_INIT_SYNC);
+                defmt::warn!(
+                    "notecard is more than {}% full, initiating sync.",
+                    NOTECARD_STORAGE_INIT_SYNC
+                );
                 self.note.hub().sync()?.wait(delay)?;
                 delay.delay_ms(10);
             }
-            defmt::info!("notecard is filling up ({}%): sync status: {:?}", status.storage, sync_status);
+            defmt::info!(
+                "notecard is filling up ({}%): sync status: {:?}",
+                status.storage,
+                sync_status
+            );
         }
 
         Ok(())
@@ -234,7 +238,6 @@ pub struct AxlPacketMeta {
     pub lon: f64,
     pub lat: f64,
 }
-
 
 impl<I2C: Read + Write> Deref for Notecarrier<I2C> {
     type Target = Notecard<I2C>;
@@ -253,8 +256,8 @@ impl<I2C: Read + Write> DerefMut for Notecarrier<I2C> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use half::f16;
     use crate::axl::AXL_SZ;
+    use half::f16;
 
     #[test]
     fn read_transmitted_data_package() {
