@@ -165,6 +165,21 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         Ok(b64.len())
     }
 
+    /// Send log messages
+    pub fn drain_log(
+        &mut self,
+        queue: &heapless::mpmc::Q16<heapless::String<24>>,
+        delay: &mut impl DelayMs<u16>,
+    ) -> Result<(), NoteError> {
+        while let Some(msg) = queue.dequeue() {
+            defmt::info!("logging message: {}", msg);
+            self.note.hub().log(msg.as_str(), false, false)?.wait(delay)?;
+            delay.delay_ms(10);
+        }
+
+        Ok(())
+    }
+
     /// Send all available packages to the notecard.
     pub fn drain_queue(
         &mut self,

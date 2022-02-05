@@ -26,10 +26,15 @@ use embedded_hal::blocking::{
 };
 use git_version::git_version;
 use hal::{i2c, pac::interrupt};
+use heapless::mpmc::Q16;
 
 use sfy::note::Notecarrier;
 use sfy::waves::Waves;
 use sfy::{Imu, Location, SharedState, State};
+
+/// Log message queue for messages to be sent back over notecard.
+static LOGQ: Q16<heapless::String<24>> = Q16::new();
+
 
 /// This queue is filled up by the IMU in an interrupt with ready batches of time series. It is
 /// consumed by the main thread and drained to the notecard / cellular.
@@ -98,6 +103,8 @@ fn main() -> ! {
     defmt::unwrap!(w.push_str(") started up."));
     info!("{}", w);
 
+    LOGQ.enqueue(heapless::String::from("SFY startup")).ok();
+
     note.hub()
         .log(w.as_str(), false, false)
         .and_then(|r| r.wait(&mut delay))
@@ -142,14 +149,16 @@ fn main() -> ! {
             defmt::unwrap!(led.toggle());
             match (
                 location.check_retrieve(&STATE, &mut delay, &mut note),
+                note.drain_log(&LOGQ, &mut delay),
                 note.drain_queue(&mut imu_queue, &mut delay),
                 note.check_and_sync(&mut delay),
             ) {
-                (Ok(_), Ok(_), Ok(_)) => good_tries = GOOD_TRIES,
-                (l, dq, cs) => {
+                (Ok(_), Ok(_), Ok(_), Ok(_)) => good_tries = GOOD_TRIES,
+                (l, lq, dq, cs) => {
                     error!(
-                        "Fatal error occured during main loop: location: {:?}, note/drain_queue: {:?}, note/check_and_sync: {:?}. Tries left: {}",
+                        "Fatal error occured during main loop: location: {:?}, note/log_queue: {:?}, note/drain_queue: {:?}, note/check_and_sync: {:?}. Tries left: {}",
                         l,
+                        lq,
                         dq,
                         cs,
                         good_tries
@@ -186,6 +195,9 @@ fn reset<I: Read + Write>(note: &mut Notecarrier<I>, delay: &mut impl DelayMs<u1
 
     debug!("notecard: consuming any remaining response.");
     unsafe { note.consume_response(delay).ok() };
+
+    info!("Trying to send any remaining log messages..");
+    note.drain_log(&LOGQ, delay).ok();
 
     warn!("Trying to send log message..");
     note.hub()
@@ -255,6 +267,7 @@ fn RTC() {
                 }
                 Err(e) => {
                     error!("IMU ISR failed: {:?}", e);
+                    LOGQ.enqueue(heapless::String::from("IMU ISR failed")).ok();
 
                     if *GOOD_TRIES == 0 {
                         error!("IMU has failed repatedly, resetting system.");
