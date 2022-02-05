@@ -220,6 +220,10 @@ fn RTC() {
     #[allow(non_upper_case_globals)]
     static mut imu: Option<Imu<E, I>> = None;
     static mut GOOD_TRIES: u16 = 5;
+    static mut LAST: i64 = 0;
+
+    // FIFO size of IMU is 512 samples (uncompressed), sample rate at IMU is 208 Hz. So we
+    // need to empty FIFO at atleast (512 / 208) Hz = 2.46 Hz or every 404 ms.
 
     // Clear RTC interrupt
     unsafe {
@@ -244,20 +248,24 @@ fn RTC() {
         //
         // It seems that the IMU I2C communication sometimes fails with a NAK, causing a module
         // reset, which again might cause a HardFault.
-        match imu.check_retrieve(now, lon, lat) {
-            Ok(_) => {
-                *GOOD_TRIES = 5;
-            }
-            Err(e) => {
-                error!("IMU ISR failed: {:?}", e);
-
-                if *GOOD_TRIES == 0 {
-                    error!("IMU has failed repatedly, resetting system.");
-                    cortex_m::peripheral::SCB::sys_reset();
+        if (now - *LAST) > 50 {
+            match imu.check_retrieve(now, lon, lat) {
+                Ok(_) => {
+                    *GOOD_TRIES = 5;
                 }
+                Err(e) => {
+                    error!("IMU ISR failed: {:?}", e);
 
-                *GOOD_TRIES -= 1;
+                    if *GOOD_TRIES == 0 {
+                        error!("IMU has failed repatedly, resetting system.");
+                        cortex_m::peripheral::SCB::sys_reset();
+                    }
+
+                    *GOOD_TRIES -= 1;
+                }
             }
+
+            *LAST = now;
         }
     } else {
         unsafe {
