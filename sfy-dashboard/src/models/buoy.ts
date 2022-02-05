@@ -2,6 +2,7 @@ import * as hub from 'hub';
 
 export class Buoy {
   public dev: string = '';
+  public sn: string = '';
   public files: string[];
 
   public latitude: number;
@@ -14,8 +15,9 @@ export class Buoy {
 
   constructor(dev: string, files: string[]) {
     this.dev = dev;
+    this.files = files;
 
-    this.files = files.sort((a, b) => {
+    this.files.sort((a, b) => {
       let a1 = parseInt(a.split('-')[0]);
       let b1 = parseInt(b.split('-')[0]);
 
@@ -33,6 +35,8 @@ export class Buoy {
 
   public setPackage(p: any) {
     this.package = p;
+
+    this.sn = p.sn;
 
     this.latitude = p.body.longitude;
     this.longitude = p.body.longitude;

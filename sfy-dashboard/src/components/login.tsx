@@ -30,7 +30,7 @@ export class Login extends Component<Props, any> {
   public render() {
     return (
       <div class="container d-flex justify-content-center">
-        <div class="card bg-dark" style="width: 18rem;">
+        <div class="card bg-dark text-light" style="width: 18rem;">
           <div class="card-body">
             <h5 class="card-title">Input token</h5>
             <div class="input-group mb-3">

@@ -43,8 +43,8 @@ export class BuoyIndex
       mergeMap(buoys => buoys),
       concatMap(b => hub.get_buoy(hub.API_CONF, b)),
       concatMap(b => {
-        console.log("getting files for: " + b.dev);
         let last = b.files.reverse().find((fname) => fname.endsWith("axl.qo.json"));
+        console.log("getting files for: " + b.dev + ", last: " + last);
 
         if (last !== undefined) {
           return hub.get_file(hub.API_CONF, b.dev, last).pipe(
@@ -59,7 +59,7 @@ export class BuoyIndex
       })
     ).subscribe(b => {
       this.state.buoys.push(b);
-      this.state.buoys.sort((a, b) => a.lastContact().getUTCMilliseconds() - b.lastContact().getUTCMilliseconds());
+      this.state.buoys.sort((a, b) => b.lastContact().getTime() - a.lastContact().getTime());
       this.setState({buoys: this.state.buoys});
     }
     );
@@ -67,14 +67,14 @@ export class BuoyIndex
 
   public Row(buoy) {
     const formatDate = (date: number): JSX.Element => {
-      return (<span>{moment(new Date(date)).fromNow()} - {moment(date).format("YYYY-MM-DD hh:mm:ss")} UTC</span>);
+      return (<span> - </span>);
     };
 
     return (
       <tr id={"t" + buoy.dev}
         key={buoy.dev}>
         <td>
-          {buoy.dev}
+          <span title={buoy.dev}>{buoy.sn}</span>
         </td>
         <td>
           {buoy.any_lat().toFixed(5)}
@@ -83,10 +83,12 @@ export class BuoyIndex
           {buoy.any_lon().toFixed(5)}
         </td>
         <td>
-          {buoy.latitude != undefined ? '🛰' : '📡'}
+          {buoy.latitude !== undefined ? '🛰' : '📡'}
         </td>
         <td>
-          {formatDate(buoy.lastContact())}
+          <span title={moment(buoy.lastContact()).utc().format("YYYY-MM-DD hh:mm:ss") + " UTC"}>
+            {moment(new Date(buoy.lastContact())).fromNow()}
+          </span>
         </td>
       </tr>
     );
@@ -98,7 +100,7 @@ export class BuoyIndex
         <BuoyMap buoys={this.state.buoys} />
 
         <div class="container-fluid no-margin">
-          <table class="ti table table-dark table-striped">
+          <table class="ti table table-striped">
             <thead>
               <th scope="col">Device</th>
               <th scope="col">Latitude (°N)</th>
