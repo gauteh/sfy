@@ -1,10 +1,10 @@
 #![cfg_attr(not(test), no_std)]
 #![cfg_attr(not(test), no_main)]
 
-#[cfg(all(not(test), not(deploy)))]
+#[cfg(all(not(test), not(feature = "deploy")))]
 use panic_probe as _;
 
-#[cfg(deploy)]
+#[cfg(feature = "deploy")]
 use panic_reset as _;
 
 #[allow(unused_imports)]
@@ -166,10 +166,10 @@ fn main() -> ! {
             last = now;
         }
 
-        #[cfg(not(deploy))]
+        #[cfg(not(feature = "deploy"))]
         delay.delay_ms(1000u16);
 
-        #[cfg(deploy)]
+        #[cfg(feature = "deploy")]
         asm::wfi(); // doesn't work very well with RTT + probe
 
         // defmt::flush();
