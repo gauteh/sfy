@@ -144,21 +144,21 @@ fn main() -> ! {
     loop {
         let now = STATE.now().timestamp_millis();
 
+        note.drain_log(&LOGQ, &mut delay).ok();
+
         if (now - last) > 1000 {
             defmt::debug!("iteration, now: {}..", now);
             defmt::unwrap!(led.toggle());
             match (
                 location.check_retrieve(&STATE, &mut delay, &mut note),
-                note.drain_log(&LOGQ, &mut delay),
                 note.drain_queue(&mut imu_queue, &mut delay),
                 note.check_and_sync(&mut delay),
             ) {
-                (Ok(_), Ok(_), Ok(_), Ok(_)) => good_tries = GOOD_TRIES,
-                (l, lq, dq, cs) => {
+                (Ok(_), Ok(_), Ok(_)) => good_tries = GOOD_TRIES,
+                (l, dq, cs) => {
                     error!(
-                        "Fatal error occured during main loop: location: {:?}, note/log_queue: {:?}, note/drain_queue: {:?}, note/check_and_sync: {:?}. Tries left: {}",
+                        "Fatal error occured during main loop: location: {:?}, note/drain_queue: {:?}, note/check_and_sync: {:?}. Tries left: {}",
                         l,
-                        lq,
                         dq,
                         cs,
                         good_tries
@@ -260,7 +260,7 @@ fn RTC() {
         //
         // It seems that the IMU I2C communication sometimes fails with a NAK, causing a module
         // reset, which again might cause a HardFault.
-        if (now - *LAST) > 50 {
+        if (now - *LAST) > 10 {
             match imu.check_retrieve(now, lon, lat) {
                 Ok(_) => {
                     *GOOD_TRIES = 5;
