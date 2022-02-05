@@ -137,12 +137,12 @@ impl Location {
     }
 }
 
-pub struct Imu<E: Debug, I: Write<Error = E> + WriteRead<Error = E>> {
+pub struct Imu<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> {
     pub queue: heapless::spsc::Producer<'static, AxlPacket, 32>,
     waves: waves::Waves<I>,
 }
 
-impl<E: Debug, I: Write<Error = E> + WriteRead<Error = E>> Imu<E, I> {
+impl<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> Imu<E, I> {
     pub fn new(
         waves: waves::Waves<I>,
         queue: heapless::spsc::Producer<'static, AxlPacket, 32>,
@@ -150,7 +150,7 @@ impl<E: Debug, I: Write<Error = E> + WriteRead<Error = E>> Imu<E, I> {
         Imu { queue, waves }
     }
 
-    pub fn check_retrieve(&mut self, now: i64, lon: f64, lat: f64) -> Result<(), E> {
+    pub fn check_retrieve(&mut self, now: i64, lon: f64, lat: f64) -> Result<(), waves::ImuError<E>> {
         trace!("Polling IMU.. (now: {})", now,);
 
         self.waves.read_and_filter()?;

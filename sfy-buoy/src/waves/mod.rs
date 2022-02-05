@@ -106,6 +106,18 @@ pub struct Waves<I2C: WriteRead + Write> {
     pub fifo_offset: u16,
 }
 
+#[derive(Debug, defmt::Format)]
+pub enum ImuError<E: Debug> {
+    I2C(E),
+    FIFO
+}
+
+impl<E: Debug> From<E> for ImuError<E> {
+    fn from(e: E) -> ImuError<E> {
+        ImuError::I2C(e)
+    }
+}
+
 impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
     pub fn new(mut i2c: I2C) -> Result<Waves<I2C>, E> {
         defmt::debug!("setting up imu driver..");
@@ -267,7 +279,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         self.buf.len()
     }
 
-    pub fn read_and_filter(&mut self) -> Result<(), E> {
+    pub fn read_and_filter(&mut self) -> Result<(), ImuError<E>> {
         use fifo::Value;
 
         let n = self.imu.fifostatus.diff_fifo(&mut self.i2c)?;
@@ -285,8 +297,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         if fifo_full || fifo_overrun || fifo_overrun_latched {
             defmt::error!("IMU fifo overrun: fifo sz: {}, (fifo_full: {}, overrun: {}, overrun_latched: {}) (buffer: {}/{})", n, fifo_full, fifo_overrun, fifo_overrun_latched, self.buf.len(), self.buf.capacity());
 
-            panic!("FIFO overrun.");
-            // return Err(E::default());
+            return Err(ImuError::FIFO);
         }
 
         let n = n / 2;
@@ -312,20 +323,13 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
             if let Some((g, a)) = ga {
                 defmt::unwrap!(self.buf.sample(g, a));
             } else {
-                // XXX: Fix and recover!
-                //
-                // - Reset FIFO and timestamps
-                // - Reset IMU?
-                panic!("Un-handled IMU FIFO error");
-                // break; // we got something else than gyro or accel
+                defmt::error!("Un-handled IMU FIFO error");
+                return Err(ImuError::FIFO);
             }
         }
 
-        // Clear FIFO
         let nn = imu.fifostatus.diff_fifo(i2c)?;
         defmt::trace!("fifo length after read: {}", nn);
-
-        // TODO: In case FIFO ran full it needs resetting.
 
         Ok(())
     }
