@@ -1,11 +1,12 @@
-#![cfg_attr(not(test), no_std)]
-#![cfg_attr(not(test), no_main)]
+#![feature(result_option_inspect)]
+#![cfg_attr(not(feature = "host-tests"), no_std)]
+#![cfg_attr(not(feature = "host-tests"), no_main)]
 
 #[cfg(all(not(test), not(feature = "deploy")))]
 use panic_probe as _;
 
-#[cfg(feature = "deploy")]
-use panic_reset as _;
+// #[cfg(feature = "deploy")]
+// use panic_reset as _;
 
 #[allow(unused_imports)]
 use defmt::{debug, error, info, println, trace, warn};
@@ -13,6 +14,7 @@ use defmt::{debug, error, info, println, trace, warn};
 use ambiq_hal::{self as hal, prelude::*};
 use chrono::NaiveDate;
 use core::cell::RefCell;
+use core::panic::PanicInfo;
 #[allow(unused_imports)]
 use cortex_m::{
     asm,
@@ -26,15 +28,11 @@ use embedded_hal::blocking::{
 };
 use git_version::git_version;
 use hal::{i2c, pac::interrupt};
-use heapless::mpmc::Q16;
 
+use sfy::log::log;
 use sfy::note::Notecarrier;
 use sfy::waves::Waves;
 use sfy::{Imu, Location, SharedState, State};
-
-/// Log message queue for messages to be sent back over notecard.
-static LOGQ: Q16<heapless::String<24>> = Q16::new();
-
 
 /// This queue is filled up by the IMU in an interrupt with ready batches of time series. It is
 /// consumed by the main thread and drained to the notecard / cellular.
@@ -51,7 +49,11 @@ static STATE: Mutex<RefCell<Option<SharedState>>> = Mutex::new(RefCell::new(None
 
 #[cfg_attr(not(test), entry)]
 fn main() -> ! {
-    println!("hello from sfy (v{}) (sn: {})!", git_version!(), sfy::note::BUOYSN);
+    println!(
+        "hello from sfy (v{}) (sn: {})!",
+        git_version!(),
+        sfy::note::BUOYSN
+    );
 
     unsafe {
         // Set the clock frequency.
@@ -103,12 +105,16 @@ fn main() -> ! {
     defmt::unwrap!(w.push_str(") started up."));
     info!("{}", w);
 
-    LOGQ.enqueue(heapless::String::from("SFY startup")).ok();
+    log("SFY startup");
 
     note.hub()
         .log(w.as_str(), false, false)
         .and_then(|r| r.wait(&mut delay))
         .ok(); // this will fail if more than 100 notes is added.
+
+    free(|_| unsafe {
+        sfy::log::NOTE = Some(&mut note as *mut _);
+    });
 
     info!("Setting up IMU..");
     let mut waves = defmt::unwrap!(Waves::new(i2c3));
@@ -120,9 +126,9 @@ fn main() -> ! {
     let imu = sfy::Imu::new(waves, unsafe { IMUQ.split().0 });
     let mut imu_queue = unsafe { IMUQ.split().1 };
 
-    unsafe { IMU = Some(imu) };
-
     free(|cs| {
+        unsafe { IMU = Some(imu) };
+
         STATE.borrow(cs).replace(Some(SharedState {
             rtc,
             lon: 0.0,
@@ -144,7 +150,7 @@ fn main() -> ! {
     loop {
         let now = STATE.now().timestamp_millis();
 
-        note.drain_log(&LOGQ, &mut delay).ok();
+        sfy::log::drain_log(&mut note, &mut delay).ok();
 
         if (now - last) > 1000 {
             defmt::debug!("iteration, now: {}..", now);
@@ -197,7 +203,7 @@ fn reset<I: Read + Write>(note: &mut Notecarrier<I>, delay: &mut impl DelayMs<u1
     unsafe { note.consume_response(delay).ok() };
 
     info!("Trying to send any remaining log messages..");
-    note.drain_log(&LOGQ, delay).ok();
+    sfy::log::drain_log(note, delay).ok();
 
     warn!("Trying to send log message..");
     note.hub()
@@ -265,11 +271,11 @@ fn RTC() {
             }
             Err(e) => {
                 error!("IMU ISR failed: {:?}", e);
-                LOGQ.enqueue(heapless::String::from("IMU ISR failed")).ok();
+                log("IMU ISR failed");
 
                 if *GOOD_TRIES == 0 {
-                    error!("IMU has failed repatedly, resetting system.");
-                    cortex_m::peripheral::SCB::sys_reset();
+                    panic!("IMU has failed repeatedly: {:?}, resetting system.", e);
+                    // cortex_m::peripheral::SCB::sys_reset();
                 }
 
                 *GOOD_TRIES -= 1;
@@ -288,6 +294,29 @@ fn RTC() {
 unsafe fn HardFault(ef: &ExceptionFrame) -> ! {
     error!("hard fault exception: {:#?}", defmt::Debug2Format(ef));
 
+    log("hard fault exception.");
+    sfy::log::panic_drain_log();
+
     warn!("resetting system..");
     cortex_m::peripheral::SCB::sys_reset()
+}
+
+#[cfg(not(feature = "host-tests"))]
+#[inline(never)]
+#[panic_handler]
+fn panic(info: &PanicInfo) -> ! {
+    use core::fmt::Write;
+
+    defmt::error!("panic: {}", defmt::Debug2Format(info));
+    log("panic reset.");
+    let mut msg = heapless::String::<256>::new();
+    write!(&mut msg, "panic: {}", info)
+        .inspect_err(|e| defmt::error!("failed to format panic: {:?}", defmt::Debug2Format(e)))
+        .ok();
+    log(&msg);
+
+    unsafe { sfy::log::panic_drain_log() };
+
+    defmt::error!("panic logged, resetting..");
+    cortex_m::peripheral::SCB::sys_reset();
 }

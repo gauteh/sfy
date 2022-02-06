@@ -2,7 +2,8 @@
 #![feature(derive_default_enum)]
 #![feature(inline_const)]
 #![feature(const_option_ext)]
-#![cfg_attr(not(test), no_std)]
+#![feature(result_option_inspect)]
+#![cfg_attr(not(feature = "host-tests"), no_std)]
 
 #[cfg(test)]
 extern crate test;
@@ -24,6 +25,7 @@ use embedded_hal::blocking::{
     i2c::{Read, Write, WriteRead},
 };
 
+pub mod log;
 pub mod axl;
 pub mod note;
 pub mod waves;
