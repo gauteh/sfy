@@ -1,5 +1,5 @@
 use ambiq_hal as hal;
-use hal::i2c;
+use hal::{i2c, delay::FlashDelay};
 use heapless::{mpmc::Q16, String};
 use embedded_hal::blocking::{
     delay::DelayMs,
@@ -7,7 +7,6 @@ use embedded_hal::blocking::{
 };
 use cortex_m::interrupt::free;
 use notecard::NoteError;
-use asm_delay::{AsmDelay, bitrate::*};
 
 use crate::note::Notecarrier;
 
@@ -36,7 +35,7 @@ pub unsafe fn panic_drain_log() {
         if let Some(note) = NOTE {
             defmt::info!("NOTE is set, consuming response and sending log..");
             let note: &mut Notecarrier<i2c::Iom2> = &mut *note;
-            let mut delay = AsmDelay::new(48u32.mhz());
+            let mut delay = FlashDelay::new();
 
             unsafe { note.consume_response(&mut delay).ok() };
             delay.delay_ms(50u16);
