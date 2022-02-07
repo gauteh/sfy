@@ -321,7 +321,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
             };
 
             if let Some((g, a)) = ga {
-                defmt::unwrap!(self.buf.sample(g, a));
+                self.buf.sample(g, a).unwrap();
             } else {
                 defmt::error!("Un-handled IMU FIFO error");
                 return Err(ImuError::FIFO);

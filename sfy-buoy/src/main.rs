@@ -5,9 +5,6 @@
 #[cfg(all(not(test), not(feature = "deploy")))]
 use panic_probe as _;
 
-// #[cfg(feature = "deploy")]
-// use panic_reset as _;
-
 #[allow(unused_imports)]
 use defmt::{debug, error, info, println, trace, warn};
 
@@ -70,8 +67,8 @@ fn main() -> ! {
         halc::am_bsp_low_power_init();
     }
 
-    let mut dp = defmt::unwrap!(hal::pac::Peripherals::take());
-    let core = defmt::unwrap!(hal::pac::CorePeripherals::take());
+    let mut dp = hal::pac::Peripherals::take().unwrap();
+    let core = hal::pac::CorePeripherals::take().unwrap();
     let mut delay = hal::delay::Delay::new(core.SYST, &mut dp.CLKGEN);
 
     let pins = hal::gpio::Pins::new(dp.GPIO);
@@ -93,16 +90,16 @@ fn main() -> ! {
     delay.delay_ms(5_000u32);
 
     info!("Setting up Notecarrier..");
-    let mut note = defmt::unwrap!(Notecarrier::new(i2c2, &mut delay));
+    let mut note = Notecarrier::new(i2c2, &mut delay).unwrap();
 
     info!("Send startup-message over cellular.");
 
     let mut w = heapless::String::<100>::new();
-    defmt::unwrap!(w.push_str("SFY (v"));
-    defmt::unwrap!(w.push_str(git_version!()));
-    defmt::unwrap!(w.push_str(") (sn: "));
-    defmt::unwrap!(w.push_str(sfy::note::BUOYSN));
-    defmt::unwrap!(w.push_str(") started up."));
+    w.push_str("SFY (v").unwrap();
+    w.push_str(git_version!()).unwrap();
+    w.push_str(") (sn: ").unwrap();
+    w.push_str(sfy::note::BUOYSN).unwrap();
+    w.push_str(") started up.").unwrap();
     info!("{}", w);
 
     log("SFY startup");
@@ -117,11 +114,11 @@ fn main() -> ! {
     });
 
     info!("Setting up IMU..");
-    let mut waves = defmt::unwrap!(Waves::new(i2c3));
-    defmt::unwrap!(waves.take_buf(rtc.now().timestamp_millis(), 0.0, 0.0)); // set timestamp.
+    let mut waves = Waves::new(i2c3).unwrap();
+    waves.take_buf(rtc.now().timestamp_millis(), 0.0, 0.0).unwrap(); // set timestamp.
 
     info!("Enable IMU.");
-    defmt::unwrap!(waves.enable_fifo(&mut delay));
+    waves.enable_fifo(&mut delay).unwrap();
 
     let imu = sfy::Imu::new(waves, unsafe { IMUQ.split().0 });
     let mut imu_queue = unsafe { IMUQ.split().1 };
@@ -154,7 +151,7 @@ fn main() -> ! {
 
         if (now - last) > 1000 {
             defmt::debug!("iteration, now: {}..", now);
-            defmt::unwrap!(led.toggle());
+            led.toggle().unwrap();
             match (
                 location.check_retrieve(&STATE, &mut delay, &mut note),
                 note.drain_queue(&mut imu_queue, &mut delay),
@@ -252,7 +249,7 @@ fn RTC() {
     if let Some(imu) = imu {
         let (now, lon, lat) = free(|cs| {
             let state = STATE.borrow(cs).borrow();
-            let state = defmt::unwrap!(state.as_ref());
+            let state = state.as_ref().unwrap();
 
             let now = state.rtc.now().timestamp_millis();
             let lon = state.lon;
@@ -283,7 +280,7 @@ fn RTC() {
         }
     } else {
         unsafe {
-            imu.replace(defmt::unwrap!(IMU.take()));
+            imu.replace(IMU.take().unwrap());
         }
     }
 }

@@ -43,7 +43,7 @@ impl FIR {
 
     fn put(&mut self, v: f32) {
         self.samples.pop_front();
-        defmt::unwrap!(self.samples.push_back(v));
+        self.samples.push_back(v).unwrap();
     }
 
     fn value(&self) -> f32 {

@@ -109,7 +109,7 @@ impl ImuBuf {
             }
             (None, None, None) => {} // No filter output.
             _ => {
-                defmt::unreachable!()
+                unreachable!()
             }
         };
 

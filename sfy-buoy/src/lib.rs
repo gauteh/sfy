@@ -49,7 +49,7 @@ impl State for Mutex<RefCell<Option<SharedState>>> {
     fn now(&self) -> NaiveDateTime {
         free(|cs| {
             let state = self.borrow(cs).borrow();
-            let state = defmt::unwrap!(state.as_ref());
+            let state = state.as_ref().unwrap();
 
             state.rtc.now()
         })
@@ -120,7 +120,7 @@ impl Location {
 
                     free(|cs| {
                         let mut state = state.borrow(cs).borrow_mut();
-                        let state: &mut _ = defmt::unwrap!(state.deref_mut().as_mut());
+                        let state: &mut _ = state.deref_mut().as_mut().unwrap();
 
                         state.rtc.set(NaiveDateTime::from_timestamp(time as i64, 0));
                         state.lat = lat;
