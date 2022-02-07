@@ -2,8 +2,8 @@
 #![cfg_attr(not(feature = "host-tests"), no_std)]
 #![cfg_attr(not(feature = "host-tests"), no_main)]
 
-#[cfg(all(not(test), not(feature = "deploy")))]
-use panic_probe as _;
+// #[cfg(all(not(test), not(feature = "deploy")))]
+// use panic_probe as _;
 
 #[allow(unused_imports)]
 use defmt::{debug, error, info, println, trace, warn};
