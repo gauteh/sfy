@@ -874,15 +874,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "panic-reset"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6cf1ff2a5b1a478dd94572aa43476b6630e72071cbd016985003ad3903a3a4f5"
-dependencies = [
- "cortex-m 0.7.4",
-]
-
-[[package]]
 name = "paste"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1121,7 +1112,6 @@ dependencies = [
  "nb 1.0.0",
  "notecard",
  "panic-probe",
- "panic-reset",
  "serde",
  "serde-json-core",
  "shared-bus",

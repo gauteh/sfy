@@ -12,6 +12,7 @@ use ambiq_hal::{self as hal, prelude::*};
 use chrono::NaiveDate;
 use core::cell::RefCell;
 use core::panic::PanicInfo;
+use core::fmt::Write as _;
 #[allow(unused_imports)]
 use cortex_m::{
     asm,
@@ -268,11 +269,15 @@ fn RTC() {
             }
             Err(e) => {
                 error!("IMU ISR failed: {:?}", e);
-                log("IMU ISR failed");
+
+                let mut msg = heapless::String::<256>::new();
+                write!(&mut msg, "IMU failure: {:?}", e)
+                    .inspect_err(|e| defmt::error!("failed to format IMU failure: {:?}", defmt::Debug2Format(e)))
+                    .ok();
+                log(&msg);
 
                 if *GOOD_TRIES == 0 {
                     panic!("IMU has failed repeatedly: {:?}, resetting system.", e);
-                    // cortex_m::peripheral::SCB::sys_reset();
                 }
 
                 *GOOD_TRIES -= 1;
@@ -302,8 +307,6 @@ unsafe fn HardFault(ef: &ExceptionFrame) -> ! {
 #[inline(never)]
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-    use core::fmt::Write;
-
     defmt::error!("panic: {}", defmt::Debug2Format(info));
     log("panic reset.");
     let mut msg = heapless::String::<256>::new();

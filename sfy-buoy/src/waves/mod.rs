@@ -109,7 +109,14 @@ pub struct Waves<I2C: WriteRead + Write> {
 #[derive(Debug, defmt::Format)]
 pub enum ImuError<E: Debug> {
     I2C(E),
-    FIFO
+    FifoOverrun {
+        fifo_full: bool,
+        overrun: bool,
+        latched: bool,
+        samples: u16,
+        buffer: usize,
+    },
+    FifoBadSequence(fifo::Value, fifo::Value)
 }
 
 impl<E: Debug> From<E> for ImuError<E> {
@@ -297,7 +304,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         if fifo_full || fifo_overrun || fifo_overrun_latched {
             defmt::error!("IMU fifo overrun: fifo sz: {}, (fifo_full: {}, overrun: {}, overrun_latched: {}) (buffer: {}/{})", n, fifo_full, fifo_overrun, fifo_overrun_latched, self.buf.len(), self.buf.capacity());
 
-            return Err(ImuError::FIFO);
+            return Err(ImuError::FifoOverrun { fifo_full, overrun: fifo_overrun, latched: fifo_overrun_latched, samples: n, buffer: self.buf.len() });
         }
 
         let n = n / 2;
@@ -314,17 +321,14 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
             let ga = match (m1, m2) {
                 (Value::Gyro(g), Value::Accel(a)) => Some((g, a)),
                 (Value::Accel(a), Value::Gyro(g)) => Some((g, a)),
-                _ => {
-                    defmt::error!("Got non accel or gyro sample: {:?}, {:?}", m1, m2);
-                    None
-                }
+                _ => { None }
             };
 
             if let Some((g, a)) = ga {
                 self.buf.sample(g, a).unwrap();
             } else {
-                defmt::error!("Un-handled IMU FIFO error");
-                return Err(ImuError::FIFO);
+                defmt::error!("Bad sequence of samples in FIFO: {:?}, {:?}", m1, m2);
+                return Err(ImuError::FifoBadSequence(m1, m2));
             }
         }
 
