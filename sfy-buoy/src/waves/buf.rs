@@ -51,6 +51,15 @@ impl ImuBuf {
         b
     }
 
+    pub fn reset(&mut self) {
+        self.axl.clear();
+        self.filter.reset();
+
+        for f in &mut self.fir {
+            f.reset();
+        }
+    }
+
     /// Free capacity in buf of full sample (`SAMPLE_SZ`).
     #[allow(dead_code)]
     pub fn free(&self) -> usize {

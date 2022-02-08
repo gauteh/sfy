@@ -14,7 +14,7 @@ use defmt::{debug, error, info, trace, warn};
 // we use this for defs of sinf etc.
 extern crate cmsis_dsp;
 
-use ambiq_hal::rtc::Rtc;
+use ambiq_hal::{rtc::Rtc, delay::FlashDelay};
 use chrono::NaiveDateTime;
 use core::cell::RefCell;
 use core::fmt::Debug;
@@ -165,6 +165,14 @@ impl<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> Imu<E
                 Err(pck) => error!("queue is full, discarding data: {}", pck.data.len()),
             };
         }
+
+        Ok(())
+    }
+
+    pub fn reset(&mut self, now: i64, lon: f64, lat: f64) -> Result<(), waves::ImuError<E>> {
+        self.waves.reset()?;
+        self.waves.take_buf(now, lon, lat)?; // buf is empty, this sets time and offset.
+        self.waves.enable_fifo(&mut FlashDelay)?;
 
         Ok(())
     }

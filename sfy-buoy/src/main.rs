@@ -268,13 +268,17 @@ fn RTC() {
                 *GOOD_TRIES = 5;
             }
             Err(e) => {
-                error!("IMU ISR failed: {:?}", e);
+                error!("IMU ISR failed: {:?}, resetting IMU..", e);
+
+                let r = imu.reset(now, lon, lat);
+                warn!("IMU reset: {:?}", r);
 
                 let mut msg = heapless::String::<256>::new();
-                write!(&mut msg, "IMU failure: {:?}", e)
+                write!(&mut msg, "IMU failure: {:?}, reset: {:?}", e, r)
                     .inspect_err(|e| defmt::error!("failed to format IMU failure: {:?}", defmt::Debug2Format(e)))
                     .ok();
                 log(&msg);
+
 
                 if *GOOD_TRIES == 0 {
                     panic!("IMU has failed repeatedly: {:?}, resetting system.", e);

@@ -54,6 +54,11 @@ impl FIR {
             .fold(0.0, |a, (s, c)| a + (s * c))
     }
 
+    pub fn reset(&mut self) {
+        self.samples.clear();
+        while let Ok(_) = self.samples.push_back(0.0) {}
+    }
+
     pub fn into_decimator(self) -> Decimator {
         Decimator { fir: self, m: 0 }
     }
@@ -80,6 +85,11 @@ impl Decimator {
             self.m += 1;
             None
         }
+    }
+
+    pub fn reset(&mut self) {
+        self.m = 0;
+        self.fir.reset();
     }
 }
 
@@ -110,6 +120,20 @@ mod tests {
             let o = f.filter(0.0);
             assert_eq!(o, 0.0);
         }
+    }
+
+    #[test]
+    fn reset() {
+        let mut f = FIR::new();
+
+        for _ in 0..256 {
+            let o = f.filter(1.0);
+            assert_ne!(o, 0.0);
+        }
+
+        f.reset();
+        let o = f.filter(0.0);
+        assert_eq!(o, 0.0);
     }
 
     #[test]

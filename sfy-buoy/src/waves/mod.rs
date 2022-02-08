@@ -162,6 +162,24 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         self.i2c.write(0x6a, &[]).is_ok()
     }
 
+    /// Attempt to reset and re-boot IMU.
+    pub fn reset(&mut self) -> Result<(), E> {
+        defmt::warn!("Attempting to reset IMU and filters.");
+        self.disable_fifo()?;
+        self.imu = Ism330Dhcx::new_with_address(&mut self.i2c, 0x6a)?;
+
+        self.buf.reset();
+
+        // first batch is going to be off in timing.
+        self.timestamp = 0;
+        self.fifo_offset = 0;
+
+        defmt::debug!("booting imu..");
+        self.boot_imu()?;
+
+        Ok(())
+    }
+
     /// Temperature in Celsius.
     pub fn get_temperature(&mut self) -> Result<f32, E> {
         self.imu.get_temperature(&mut self.i2c)
