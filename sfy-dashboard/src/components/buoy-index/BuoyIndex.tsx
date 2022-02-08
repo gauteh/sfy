@@ -77,10 +77,10 @@ export class BuoyIndex
           <span title={buoy.dev}>{buoy.sn}</span>
         </td>
         <td>
-          {buoy.any_lat().toFixed(5)}
+          {buoy.any_lat().toFixed(9)}
         </td>
         <td>
-          {buoy.any_lon().toFixed(5)}
+          {buoy.any_lon().toFixed(9)}
         </td>
         <td>
           {buoy.latitude !== undefined ? '🛰' : '📡'}
