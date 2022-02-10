@@ -49,6 +49,7 @@ class Axl:
 
     when: int = None
 
+    where_when: int = None
     where_olc: float = None
     where_lat: float = None
     where_lon: float = None
