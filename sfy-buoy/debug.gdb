@@ -27,5 +27,5 @@ source defmt-rtt-gdb.py
 defmt-rtt
 
 # Begin running the program
-# continue
+continue
 

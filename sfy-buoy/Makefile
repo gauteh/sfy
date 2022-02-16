@@ -21,7 +21,7 @@ defmt:
 	tail -f /dev/ttyUSB0 | defmt-print -e target/thumbv7em-none-eabihf/release/sfy-buoy
 
 gdb-server:
-	JLinkGDBServer -select USB -device AMA3B1KK-KBR -endian little -if SWD -noir -noLocalhostOnly
+	JLinkGDBServer -select USB -device AMA3B1KK-KBR -endian little -if SWD -noir -noLocalhostOnly -nohalt
 
 gdb-flash:
 	gdb-multiarch --command=flash.gdb target/thumbv7em-none-eabihf/release/sfy
