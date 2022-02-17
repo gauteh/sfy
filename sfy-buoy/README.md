@@ -3,7 +3,7 @@
 ## Building for deployment
 
 ```sh
-$ cargo build --release --features deploy
+$ BUOYSN=WAVEBUGXX DEFMT_LOG=debug cargo build --release --features deploy
 ```
 
 the `deploy` feature sets the panic-handler to reset the device. You can deploy
@@ -16,7 +16,9 @@ $ make deploy
 
 ## Dependencies when building and flashing using the sparkfun bootloader
 
+* apt install gcc-arm-none-eabi
 * apt install binutils-arm-none-eabi
+* libclang-common-6.0-dev clang-6.0 libclang-dev
 * cargo install cargo-binutils
 * rustup component add llvm-tools-preview
 
