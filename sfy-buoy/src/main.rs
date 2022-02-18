@@ -11,8 +11,8 @@ use defmt::{debug, error, info, println, trace, warn};
 use ambiq_hal::{self as hal, prelude::*};
 use chrono::NaiveDate;
 use core::cell::RefCell;
-use core::panic::PanicInfo;
 use core::fmt::Write as _;
+use core::panic::PanicInfo;
 #[allow(unused_imports)]
 use cortex_m::{
     asm,
@@ -116,7 +116,9 @@ fn main() -> ! {
 
     info!("Setting up IMU..");
     let mut waves = Waves::new(i2c3).unwrap();
-    waves.take_buf(rtc.now().timestamp_millis(), 0.0, 0.0).unwrap(); // set timestamp.
+    waves
+        .take_buf(rtc.now().timestamp_millis(), 0.0, 0.0)
+        .unwrap(); // set timestamp.
 
     info!("Enable IMU.");
     waves.enable_fifo(&mut delay).unwrap();
@@ -168,6 +170,17 @@ fn main() -> ! {
                         good_tries
                     );
 
+                    let mut msg = heapless::String::<512>::new();
+                    write!(&mut msg, "Fatal error in main loop: location: {:?}, note/drain_queue: {:?}, note/check_and_sync: {:?}. Tries left: {}", l, dq, cs, good_tries)
+                        .inspect_err(|e| defmt::error!("failed to format error: {:?}", defmt::Debug2Format(e)))
+                        .ok();
+
+                    warn!("Trying to send log message..");
+                    note.hub()
+                        .log(&msg, false, false)
+                        .and_then(|f| f.wait(&mut delay))
+                        .ok();
+
                     if good_tries == 0 {
                         error!("No more tries left, attempting to reset devices and restart.");
                         reset(&mut note, &mut delay);
@@ -202,12 +215,6 @@ fn reset<I: Read + Write>(note: &mut Notecarrier<I>, delay: &mut impl DelayMs<u1
 
     info!("Trying to send any remaining log messages..");
     sfy::log::drain_log(note, delay).ok();
-
-    warn!("Trying to send log message..");
-    note.hub()
-        .log("Error occured in main loop: restarting.", false, false)
-        .and_then(|f| f.wait(delay))
-        .ok();
 
     warn!("Trying to restart notecard..");
     note.card()
@@ -275,10 +282,11 @@ fn RTC() {
 
                 let mut msg = heapless::String::<256>::new();
                 write!(&mut msg, "IMU failure: {:?}, reset: {:?}", e, r)
-                    .inspect_err(|e| defmt::error!("failed to format IMU failure: {:?}", defmt::Debug2Format(e)))
+                    .inspect_err(|e| {
+                        defmt::error!("failed to format IMU failure: {:?}", defmt::Debug2Format(e))
+                    })
                     .ok();
                 log(&msg);
-
 
                 if *GOOD_TRIES == 0 {
                     panic!("IMU has failed repeatedly: {:?}, resetting system.", e);
