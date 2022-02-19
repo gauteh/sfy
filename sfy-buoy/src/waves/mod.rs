@@ -164,8 +164,18 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
 
     /// Attempt to reset and re-boot IMU.
     pub fn reset(&mut self) -> Result<(), E> {
+        use ambiq_hal::delay::FlashDelay;
+
+        let mut delay = FlashDelay::new();
+
         defmt::warn!("Attempting to reset IMU and filters.");
         self.disable_fifo()?;
+        delay.delay_ms(1000u32);
+
+        // Reboot IMU
+        self.imu.ctrl3c.sw_reset(&mut self.i2c)?;
+        delay.delay_ms(1000u32);
+
         self.imu = Ism330Dhcx::new_with_address(&mut self.i2c, 0x6a)?;
 
         self.buf.reset();
@@ -258,7 +268,14 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
     pub fn disable_fifo(&mut self) -> Result<(), E> {
         self.imu
             .fifoctrl
-            .mode(&mut self.i2c, fifoctrl::FifoMode::Bypass)
+            .mode(&mut self.i2c, fifoctrl::FifoMode::Bypass)?;
+
+        // Read FIFO status register to clear.
+        let _fifo_full = self.imu.fifostatus.full(&mut self.i2c)?;
+        let _fifo_overrun = self.imu.fifostatus.overrun(&mut self.i2c)?;
+        let _fifo_overrun_latched = self.imu.fifostatus.overrun_latched(&mut self.i2c)?;
+
+        Ok(())
     }
 
     /// Returns iterator with all the currently available samples in the FIFO.
