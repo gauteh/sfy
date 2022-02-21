@@ -170,6 +170,8 @@ fn main() -> ! {
                         good_tries
                     );
 
+                    // TODO: Try to reset notecard driver. Otherwise might be in WrongState.
+
                     let mut msg = heapless::String::<512>::new();
                     write!(&mut msg, "Fatal error in main loop: location: {:?}, note/drain_queue: {:?}, note/check_and_sync: {:?}. Tries left: {}", l, dq, cs, good_tries)
                         .inspect_err(|e| defmt::error!("failed to format error: {:?}", defmt::Debug2Format(e)))

@@ -22,7 +22,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
 
         note.hub()
             .set(
-                Some("no.met.gauteh:sfy"),
+                Some(env!("BUOYPR", "Specify notehub project")),
                 None,
                 Some(notecard::hub::req::HubMode::Periodic),
                 Some(&BUOYSN),
