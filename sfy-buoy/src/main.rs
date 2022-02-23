@@ -170,7 +170,10 @@ fn main() -> ! {
                         good_tries
                     );
 
-                    // TODO: Try to reset notecard driver. Otherwise might be in WrongState.
+                    // Notecard might be in WrongState.
+                    delay.delay_ms(100u16);
+                    unsafe { note.reset(&mut delay).ok() };
+                    delay.delay_ms(100u16);
 
                     let mut msg = heapless::String::<512>::new();
                     write!(&mut msg, "Fatal error in main loop: location: {:?}, note/drain_queue: {:?}, note/check_and_sync: {:?}. Tries left: {}", l, dq, cs, good_tries)
@@ -213,7 +216,7 @@ fn reset<I: Read + Write>(note: &mut Notecarrier<I>, delay: &mut impl DelayMs<u1
     warn!("Resetting device!");
 
     debug!("notecard: consuming any remaining response.");
-    unsafe { note.consume_response(delay).ok() };
+    unsafe { note.reset(delay).ok() };
 
     info!("Trying to send any remaining log messages..");
     sfy::log::drain_log(note, delay).ok();

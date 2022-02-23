@@ -37,7 +37,7 @@ pub unsafe fn panic_drain_log() {
             let note: &mut Notecarrier<i2c::Iom2> = &mut *note;
             let mut delay = FlashDelay::new();
 
-            unsafe { note.consume_response(&mut delay).ok() };
+            unsafe { note.reset(&mut delay).ok() };
             delay.delay_ms(50u16);
 
             drain_log(note, &mut delay).inspect_err(|e| defmt::error!("failed to drain log to notecard: {:?}", e)).ok();
