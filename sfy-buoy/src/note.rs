@@ -39,13 +39,22 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         delay.delay_ms(50);
 
         note.card()
-            .location_mode(Some("continuous"), None, None, None, None, None, None, None)?
+            .location_mode(
+                Some("periodic"),
+                Some(60),
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+            )?
             .wait(delay)?;
 
         delay.delay_ms(50);
 
         note.card()
-            .location_track(true, false, true, None, None)?
+            .location_track(true, true, false, Some(1), None)?
             .wait(delay)?;
 
         let mut n = Notecarrier { note };
@@ -173,7 +182,10 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
     ) -> Result<(), NoteError> {
         while let Some(msg) = queue.dequeue() {
             defmt::info!("logging message: {}", msg);
-            self.note.hub().log(msg.as_str(), false, false)?.wait(delay)?;
+            self.note
+                .hub()
+                .log(msg.as_str(), false, false)?
+                .wait(delay)?;
             delay.delay_ms(10);
         }
 
