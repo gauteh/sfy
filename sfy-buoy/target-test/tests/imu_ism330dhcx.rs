@@ -20,6 +20,7 @@ mod tests {
 
     struct State {
         waves: Waves<hal::i2c::Iom3>,
+        // waves: Waves<hal::i2c::Iom2>,
         delay: hal::delay::Delay,
     }
 

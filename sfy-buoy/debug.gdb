@@ -21,7 +21,7 @@ set backtrace limit 32
 # b main
 
 # b rust_begin_unwind
-b HardFault
+# b HardFault
 
 source defmt-rtt-gdb.py
 defmt-rtt
