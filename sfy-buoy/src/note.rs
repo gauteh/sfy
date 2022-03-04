@@ -26,7 +26,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                 None,
                 Some(notecard::hub::req::HubMode::Periodic),
                 Some(&BUOYSN),
-                Some(10), // max time between out-going sync in minutes.
+                Some(20), // max time between out-going sync in minutes.
                 None,
                 None,
                 None,
