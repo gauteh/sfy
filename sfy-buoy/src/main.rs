@@ -30,20 +30,12 @@ use hal::{i2c, pac::interrupt};
 use sfy::log::log;
 use sfy::note::Notecarrier;
 use sfy::waves::Waves;
-use sfy::{Imu, Location, SharedState, State};
+use sfy::{Imu, Location, SharedState, State, STATE, IMUQ};
 
-/// This queue is filled up by the IMU in an interrupt with ready batches of time series. It is
-/// consumed by the main thread and drained to the notecard / cellular.
-static mut IMUQ: heapless::spsc::Queue<sfy::axl::AxlPacket, 32> = heapless::spsc::Queue::new();
-
-/// This static is only used to transfer ownership of the IMU subsystem to the interrupt handler.
+/// This static is used to transfer ownership of the IMU subsystem to the interrupt handler.
 type I = hal::i2c::Iom3;
 type E = <I as embedded_hal::blocking::i2c::Write>::Error;
 static mut IMU: Option<sfy::Imu<E, I>> = None;
-
-/// The STATE contains the Real-Time-Clock which needs to be shared, as well as up-to-date
-/// longitude and latitude.
-static STATE: Mutex<RefCell<Option<SharedState>>> = Mutex::new(RefCell::new(None));
 
 #[cfg_attr(not(test), entry)]
 fn main() -> ! {

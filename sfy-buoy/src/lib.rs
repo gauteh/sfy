@@ -35,6 +35,14 @@ pub mod storage;
 
 use axl::AxlPacket;
 
+/// This queue is filled up by the IMU in an interrupt with ready batches of time series. It is
+/// consumed by the main thread and drained to the notecard / cellular.
+pub static mut IMUQ: heapless::spsc::Queue<AxlPacket, 32> = heapless::spsc::Queue::new();
+
+/// The STATE contains the Real-Time-Clock which needs to be shared, as well as up-to-date
+/// longitude and latitude.
+pub static STATE: Mutex<RefCell<Option<SharedState>>> = Mutex::new(RefCell::new(None));
+
 pub struct SharedState {
     pub rtc: Rtc,
     pub lon: f64,
@@ -177,3 +185,4 @@ impl<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> Imu<E
         Ok(())
     }
 }
+
