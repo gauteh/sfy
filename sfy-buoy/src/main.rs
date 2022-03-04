@@ -10,7 +10,6 @@ use defmt::{debug, error, info, println, trace, warn};
 
 use ambiq_hal::{self as hal, prelude::*};
 use chrono::NaiveDate;
-use core::cell::RefCell;
 use core::fmt::Write as _;
 use core::panic::PanicInfo;
 #[allow(unused_imports)]
