@@ -189,12 +189,22 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         queue: &mut heapless::spsc::Consumer<'static, AxlPacket, 32>,
         delay: &mut impl DelayMs<u16>,
     ) -> Result<usize, NoteError> {
+        if queue.len() == 0 {
+            return Ok(0);
+        }
+
+        let sync_status = self.note.hub().sync_status(delay)?.wait(delay)?;
+        if sync_status.requested.is_some() {
+            defmt::warn!("notecard is syncing, not sending any data-packages until done: queue sz: {}", queue.len());
+            return Ok(0);
+        }
+
         let status = self.note.card().status(delay)?.wait(delay)?;
 
         if status.storage > 75 {
             // wait until notecard has synced.
             defmt::warn!("notecard is more than 75% full, not adding more notes until sync is done: queue sz: {}", queue.len());
-            return Ok(0usize);
+            return Ok(0);
         }
 
         let mut sz = 0;
