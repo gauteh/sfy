@@ -50,7 +50,7 @@ ambiq-hal = { git = "https://github.com/gauteh/ambiq-rs" }
 embedded-sdmmc = { git = "https://github.com/gauteh/embedded-sdmmc-rs", branch = "defmt" }
 
 [features]
-default = [ ]
+default = [ "deploy" ]
 storage = [ "bincode", "embedded-sdmmc" ]
 host-tests = []
 deploy = [ ]

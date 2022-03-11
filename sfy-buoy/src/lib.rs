@@ -105,8 +105,8 @@ impl Location {
 
         match self.state {
             Retrieved(t) | Trying(t) if (now - t) > LOCATION_DIFF => {
-                let gps = note.card().location()?.wait(delay)?;
-                let tm = note.card().time()?.wait(delay);
+                let gps = note.card().location(delay)?.wait(delay)?;
+                let tm = note.card().time(delay)?.wait(delay);
 
                 info!("Location: {:?}, Time: {:?}", gps, tm);
                 if let (

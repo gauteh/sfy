@@ -18,10 +18,9 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         let mut note = Notecard::new(i2c);
         note.initialize(delay)?;
 
-        delay.delay_ms(50);
-
         note.hub()
             .set(
+                delay,
                 Some(env!("BUOYPR", "Specify notehub project")),
                 None,
                 Some(notecard::hub::req::HubMode::Periodic),
@@ -36,10 +35,9 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             )?
             .wait(delay)?;
 
-        delay.delay_ms(50);
-
         note.card()
             .location_mode(
+                delay,
                 Some("periodic"),
                 Some(60),
                 None,
@@ -51,22 +49,15 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             )?
             .wait(delay)?;
 
-        delay.delay_ms(50);
-
         note.card()
-            .location_track(true, true, false, Some(1), None)?
+            .location_track(delay, true, true, false, Some(1), None)?
             .wait(delay)?;
 
         let mut n = Notecarrier { note };
-
-        delay.delay_ms(50);
-
         n.setup_templates(delay)?;
 
-        delay.delay_ms(50);
-
         defmt::info!("initializing initial sync..");
-        n.note.hub().sync()?.wait(delay)?;
+        n.note.hub().sync(delay, true)?.wait(delay)?;
 
         Ok(n)
     }
@@ -78,12 +69,12 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         timeout_ms: u16,
     ) -> Result<bool, NoteError> {
         defmt::info!("sync..");
-        self.note.hub().sync()?.wait(delay)?;
+        self.note.hub().sync(delay, true)?.wait(delay)?;
 
         for _ in 0..(timeout_ms / 1000) {
             delay.delay_ms(1000u16);
             defmt::debug!("querying sync status..");
-            let status = self.note.hub().sync_status()?.wait(delay);
+            let status = self.note.hub().sync_status(delay)?.wait(delay);
             defmt::debug!("status: {:?}", status);
 
             if let Ok(status) = status {
@@ -125,7 +116,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
 
         defmt::debug!("setting up template for AxlPacketMeta");
         self.note()
-            .template(Some("axl.qo"), Some(meta_template), Some(AXL_OUTN as u32))?
+            .template(delay, Some("axl.qo"), Some(meta_template), Some(AXL_OUTN as u32))?
             .wait(delay)?;
 
         Ok(())
@@ -155,6 +146,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                 .note
                 .note()
                 .add(
+                    delay,
                     Some("axl.qo"),
                     None,
                     Some(meta),
@@ -184,9 +176,8 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             defmt::info!("logging message: {}", msg);
             self.note
                 .hub()
-                .log(msg.as_str(), false, false)?
+                .log(delay, msg.as_str(), false, false)?
                 .wait(delay)?;
-            delay.delay_ms(10);
         }
 
         Ok(())
@@ -198,7 +189,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         queue: &mut heapless::spsc::Consumer<'static, AxlPacket, 32>,
         delay: &mut impl DelayMs<u16>,
     ) -> Result<usize, NoteError> {
-        let status = self.note.card().status()?.wait(delay)?;
+        let status = self.note.card().status(delay)?.wait(delay)?;
 
         if status.storage > 75 {
             // wait until notecard has synced.
@@ -206,12 +197,9 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             return Ok(0usize);
         }
 
-        delay.delay_ms(10);
-
         let mut sz = 0;
 
         while let Some(pck) = queue.dequeue() {
-            delay.delay_ms(50);
             sz += self.send(pck, delay)?;
         }
 
@@ -220,19 +208,16 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
 
     /// Check if notecard is filling up, and initiate sync in that case.
     pub fn check_and_sync(&mut self, delay: &mut impl DelayMs<u16>) -> Result<(), NoteError> {
-        let status = self.note.card().status()?.wait(delay)?;
+        let status = self.note.card().status(delay)?.wait(delay)?;
         defmt::trace!("card.status: {}", status);
-        delay.delay_ms(50);
 
-        let sync_status = self.note.hub().sync_status()?.wait(delay)?;
+        let sync_status = self.note.hub().sync_status(delay)?.wait(delay)?;
         defmt::trace!("hub.sync_status: {}", sync_status);
-        delay.delay_ms(50);
 
         #[cfg(debug_assertions)]
         {
-            let wireless = self.note.card().wireless().and_then(|r| r.wait(delay));
+            let wireless = self.note.card().wireless(delay).and_then(|r| r.wait(delay));
             defmt::trace!("card.wireless: {}", wireless);
-            delay.delay_ms(50);
         }
 
         if status.storage > NOTECARD_STORAGE_INIT_SYNC as usize {
@@ -241,8 +226,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                     "notecard is more than {}% full, initiating sync.",
                     NOTECARD_STORAGE_INIT_SYNC
                 );
-                self.note.hub().sync()?.wait(delay)?;
-                delay.delay_ms(10);
+                self.note.hub().sync(delay, true)?.wait(delay)?;
             }
             defmt::info!(
                 "notecard is filling up ({}%): sync status: {:?}",

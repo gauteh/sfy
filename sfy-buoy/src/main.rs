@@ -97,7 +97,7 @@ fn main() -> ! {
     log("SFY startup");
 
     note.hub()
-        .log(w.as_str(), false, false)
+        .log(&mut delay, w.as_str(), false, false)
         .and_then(|r| r.wait(&mut delay))
         .ok(); // this will fail if more than 100 notes is added.
 
@@ -143,7 +143,7 @@ fn main() -> ! {
 
         sfy::log::drain_log(&mut note, &mut delay).ok();
 
-        if (now - last) > 1000 {
+        if (now - last) > 5000 {
             defmt::debug!("iteration, now: {}..", now);
             led.toggle().unwrap();
             match (
@@ -173,7 +173,7 @@ fn main() -> ! {
 
                     warn!("Trying to send log message..");
                     note.hub()
-                        .log(&msg, false, false)
+                        .log(&mut delay, &msg, false, false)
                         .and_then(|f| f.wait(&mut delay))
                         .ok();
 
@@ -214,7 +214,7 @@ fn reset<I: Read + Write>(note: &mut Notecarrier<I>, delay: &mut impl DelayMs<u1
 
     warn!("Trying to restart notecard..");
     note.card()
-        .restart()
+        .restart(delay)
         .and_then(|f| f.wait(delay))
         .and_then(|r| {
             info!("Notecard succesfully restarted.");
