@@ -57,7 +57,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         n.setup_templates(delay)?;
 
         defmt::info!("initializing initial sync..");
-        n.note.hub().sync(delay, true)?.wait(delay)?;
+        n.note.hub().sync(delay, false)?.wait(delay)?;
 
         Ok(n)
     }
@@ -226,7 +226,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                     "notecard is more than {}% full, initiating sync.",
                     NOTECARD_STORAGE_INIT_SYNC
                 );
-                self.note.hub().sync(delay, true)?.wait(delay)?;
+                self.note.hub().sync(delay, false)?.wait(delay)?;
             }
             defmt::info!(
                 "notecard is filling up ({}%): sync status: {:?}",
