@@ -94,13 +94,13 @@ fn main() -> ! {
     w.push_str(") started up.").unwrap();
     info!("{}", w);
 
-    log("SFY startup");
-
     note.hub()
         .log(&mut delay, w.as_str(), false, false)
         .and_then(|r| r.wait(&mut delay))
         .ok(); // this will fail if more than 100 notes is added.
 
+    // Set reference to NOTE for logging on panic and hard resets.
+    // TODO: Should maybe `pin_mut!` this to prevent it being moved on the stack.
     free(|_| unsafe {
         sfy::log::NOTE = Some(&mut note as *mut _);
     });
@@ -117,6 +117,8 @@ fn main() -> ! {
     let imu = sfy::Imu::new(waves, unsafe { IMUQ.split().0 });
     let mut imu_queue = unsafe { IMUQ.split().1 };
 
+    // Move state into globally available variables. And IMU into temporary variable for
+    // moving it into the `RTC` interrupt routine, before we enable interrupts.
     free(|cs| {
         unsafe { IMU = Some(imu) };
 
@@ -141,10 +143,11 @@ fn main() -> ! {
     loop {
         let now = STATE.now().timestamp_millis();
 
-        sfy::log::drain_log(&mut note, &mut delay).ok();
-
         if (now - last) > 5000 {
             defmt::debug!("iteration, now: {}..", now);
+
+            sfy::log::drain_log(&mut note, &mut delay).ok();
+
             led.toggle().unwrap();
             match (
                 location.check_retrieve(&STATE, &mut delay, &mut note),
