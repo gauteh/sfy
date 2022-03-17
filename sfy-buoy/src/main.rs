@@ -174,6 +174,9 @@ fn main() -> ! {
                         .inspect_err(|e| defmt::error!("failed to format error: {:?}", defmt::Debug2Format(e)))
                         .ok();
 
+                    debug!("notecard: consuming any remaining response.");
+                    unsafe { note.reset(&mut delay).ok() };
+
                     warn!("Trying to send log message..");
                     note.hub()
                         .log(&mut delay, &msg, false, false)

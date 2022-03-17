@@ -124,7 +124,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
 
     pub fn send(
         &mut self,
-        pck: AxlPacket,
+        pck: &AxlPacket,
         delay: &mut impl DelayMs<u16>,
     ) -> Result<usize, NoteError> {
         defmt::debug!("sending acceleration package");
@@ -189,7 +189,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         queue: &mut heapless::spsc::Consumer<'static, AxlPacket, 32>,
         delay: &mut impl DelayMs<u16>,
     ) -> Result<usize, NoteError> {
-        if queue.len() == 0 {
+        if !queue.ready() {
             return Ok(0);
         }
 
@@ -209,8 +209,9 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
 
         let mut sz = 0;
 
-        while let Some(pck) = queue.dequeue() {
+        while let Some(pck) = queue.peek() {
             sz += self.send(pck, delay)?;
+            queue.dequeue();
         }
 
         Ok(sz)
