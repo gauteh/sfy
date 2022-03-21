@@ -58,6 +58,13 @@ class Axl:
     where_timezone: str = None
 
     @property
+    def dt(self) -> float:
+        """
+        Sample rate
+        """
+        return 1. / self.freq
+
+    @property
     def start(self):
         """
         UTC Datetime of start of samples. Taking `offset` into account.
@@ -65,7 +72,7 @@ class Axl:
         return datetime.fromtimestamp(self.timestamp / 1000. - (self.offset / self.freq), pytz.utc)
 
     @property
-    def received_dt(self):
+    def received_datetime(self):
         return datetime.fromtimestamp(self.received, pytz.utc)
 
     @property
