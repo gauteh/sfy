@@ -33,3 +33,25 @@ def test_synthetic_linear():
     np.testing.assert_array_equal(sx, a.x)
     np.testing.assert_array_equal(sy, a.y)
     np.testing.assert_array_equal(sz, a.z)
+
+def test_parse_save_parse(tmpdir):
+    d = open(
+        'tests/data/dev864475044203262/1639855192872-3a0c5fc2-e79f-48d1-91e9-e104ac937644_axl.qo.json'
+    ).read()
+    a = axl.Axl.parse(d)
+
+    pth = tmpdir / "test.json"
+    a.save(pth)
+
+    a2 = axl.Axl.from_file(pth)
+    assert a == a2
+
+def test_parse_json_parse(tmpdir):
+    d = open(
+        'tests/data/dev864475044203262/1639855192872-3a0c5fc2-e79f-48d1-91e9-e104ac937644_axl.qo.json'
+    ).read()
+    a = axl.Axl.parse(d)
+
+    a2 = axl.Axl.parse(a.json())
+
+    assert a == a2

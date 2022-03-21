@@ -3,9 +3,10 @@ import requests
 
 from .axl import Axl
 
+
 class Hub:
-    endpoint = None
-    key = None
+    endpoint: str
+    key: str
 
     def __init__(self, endpoint, key):
         """
@@ -25,7 +26,7 @@ class Hub:
     def __request__(self, path):
         url = urljoin(self.endpoint, path)
 
-        r = requests.get(url, headers={ 'SFY_AUTH_TOKEN' : self.key })
+        r = requests.get(url, headers={'SFY_AUTH_TOKEN': self.key})
         r.raise_for_status()
 
         return r
@@ -41,6 +42,7 @@ class Hub:
 
     def buoy(self, dev):
         return next(filter(lambda b: dev in b.dev, self.buoys()))
+
 
 class Buoy:
     hub: Hub
@@ -61,7 +63,3 @@ class Buoy:
 
     def package(self, pck):
         return Axl.parse(self.hub.__request__(f'{self.dev}/{pck}').text)
-
-
-
-
