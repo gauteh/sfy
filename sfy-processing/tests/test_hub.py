@@ -5,18 +5,10 @@ from datetime import datetime, date, time, timezone
 from sfy import hub
 
 @pytest.fixture
-def sfy():
-    from urllib.parse import urljoin
-
-    API = os.getenv('SFY_SERVER')
-    KEY = os.getenv('SFY_READ_TOKEN')
-
-    if API is None or KEY is None:
-        raise Exception("No API and KEY")
-
-    API = urljoin(API, 'buoys')
-    return hub.Hub(urljoin(API, 'buoys'), KEY)
-
+def sfy(tmpdir):
+    h = hub.Hub.from_env()
+    h.cache = tmpdir
+    return h
 
 def test_list_buoys(sfy):
     print(sfy.buoys())

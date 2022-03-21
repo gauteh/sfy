@@ -1,3 +1,5 @@
+import os
+from pathlib import Path
 from urllib.parse import urljoin
 import requests
 from datetime import datetime
@@ -9,8 +11,9 @@ from .axl import Axl
 class Hub:
     endpoint: str
     key: str
+    cache: Path
 
-    def __init__(self, endpoint, key):
+    def __init__(self, endpoint, key, cache):
         """
         Set up a Hub client.
 
@@ -24,6 +27,21 @@ class Hub:
             self.endpoint += '/'
 
         self.key = key
+        self.cache = Path(cache)
+
+    @staticmethod
+    def from_env():
+        from urllib.parse import urljoin
+
+        API = os.getenv('SFY_SERVER')
+        KEY = os.getenv('SFY_READ_TOKEN')
+        CACHE = os.getenv('SFY_DATA_CACHE')
+
+        if API is None or KEY is None or CACHE is None:
+            raise Exception("No API, KEY or CACHE")
+
+        API = urljoin(API, 'buoys')
+        return Hub(urljoin(API, 'buoys'), KEY, CACHE)
 
     def __request__(self, path):
         url = urljoin(self.endpoint, path)
@@ -86,4 +104,15 @@ class Buoy:
         return list(pcks)
 
     def package(self, pck):
-        return Axl.parse(self.hub.__request__(f'{self.dev}/{pck}').text)
+        dev_path = self.hub.cache / self.dev
+        os.makedirs(dev_path, exist_ok=True)
+
+        pckf: Path = dev_path / pck
+        if not pckf.exists():
+            try:
+                with open(pckf, 'w') as fd:
+                    fd.write(self.hub.__request__(f'{self.dev}/{pck}').text)
+            except:
+                os.remove(pckf)
+
+        return Axl.from_file(pckf)

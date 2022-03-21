@@ -8,3 +8,6 @@ dependencies:
   - matplotlib
   - pytz
   - requests
+  - click
+  - tabulate
+  - tqdm
