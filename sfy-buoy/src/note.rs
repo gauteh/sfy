@@ -116,7 +116,12 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
 
         defmt::debug!("setting up template for AxlPacketMeta");
         self.note()
-            .template(delay, Some("axl.qo"), Some(meta_template), Some(AXL_OUTN as u32))?
+            .template(
+                delay,
+                Some("axl.qo"),
+                Some(meta_template),
+                Some(AXL_OUTN as u32),
+            )?
             .wait(delay)?;
 
         Ok(())
@@ -195,7 +200,10 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
 
         let sync_status = self.note.hub().sync_status(delay)?.wait(delay)?;
         if sync_status.requested.is_some() {
-            defmt::warn!("notecard is syncing, not sending any data-packages until done: queue sz: {}", queue.len());
+            defmt::warn!(
+                "notecard is syncing, not sending any data-packages until done: queue sz: {}",
+                queue.len()
+            );
             return Ok(0);
         }
 
@@ -210,7 +218,9 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         let mut sz = 0;
 
         while let Some(pck) = queue.peek() {
-            sz += self.send(pck, delay)?;
+            sz += self.send(pck, delay).inspect_err(|e| {
+                defmt::error!("Error while sending package to notecard: {:?}", e)
+            })?;
             queue.dequeue();
         }
 

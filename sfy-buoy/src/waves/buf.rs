@@ -1,9 +1,6 @@
-use half::f16;
 use ahrs_fusion::NxpFusion;
-use micromath::{
-    vector::Vector3d,
-    Quaternion,
-};
+use half::f16;
+use micromath::{vector::Vector3d, Quaternion};
 
 use crate::{
     axl::{AXL_SZ, SAMPLE_SZ},
@@ -139,7 +136,9 @@ mod tests {
         }
 
         assert_eq!(buf.axl.len(), SAMPLE_SZ * 1024 / fir::DECIMATE as usize);
-        assert_eq!(buf.free(), (AXL_SZ / SAMPLE_SZ) - (1024 / fir::DECIMATE as usize));
+        assert_eq!(
+            buf.free(),
+            (AXL_SZ / SAMPLE_SZ) - (1024 / fir::DECIMATE as usize)
+        );
     }
 }
-

@@ -29,7 +29,7 @@ use hal::{i2c, pac::interrupt};
 use sfy::log::log;
 use sfy::note::Notecarrier;
 use sfy::waves::Waves;
-use sfy::{Imu, Location, SharedState, State, STATE, IMUQ};
+use sfy::{Imu, Location, SharedState, State, IMUQ, STATE};
 
 /// This static is used to transfer ownership of the IMU subsystem to the interrupt handler.
 type I = hal::i2c::Iom3;

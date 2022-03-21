@@ -14,7 +14,7 @@ use defmt::{debug, error, info, trace, warn};
 // we use this for defs of sinf etc.
 extern crate cmsis_dsp;
 
-use ambiq_hal::{rtc::Rtc, delay::FlashDelay};
+use ambiq_hal::{delay::FlashDelay, rtc::Rtc};
 use chrono::NaiveDateTime;
 use core::cell::RefCell;
 use core::fmt::Debug;
@@ -25,13 +25,13 @@ use embedded_hal::blocking::{
     i2c::{Read, Write, WriteRead},
 };
 
-pub mod log;
 pub mod axl;
-pub mod note;
-pub mod waves;
 pub mod fir;
+pub mod log;
+pub mod note;
 #[cfg(feature = "storage")]
 pub mod storage;
+pub mod waves;
 
 use axl::AxlPacket;
 
@@ -160,7 +160,12 @@ impl<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> Imu<E
         Imu { queue, waves }
     }
 
-    pub fn check_retrieve(&mut self, now: i64, lon: f64, lat: f64) -> Result<(), waves::ImuError<E>> {
+    pub fn check_retrieve(
+        &mut self,
+        now: i64,
+        lon: f64,
+        lat: f64,
+    ) -> Result<(), waves::ImuError<E>> {
         trace!("Polling IMU.. (now: {})", now,);
 
         self.waves.read_and_filter()?;
@@ -168,10 +173,15 @@ impl<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> Imu<E
         if self.waves.is_full() {
             trace!("waves buffer is full, pushing to queue..");
             let pck = self.waves.take_buf(now, lon, lat)?;
-            match self.queue.enqueue(pck) {
-                Ok(_) => (),
-                Err(pck) => error!("queue is full, discarding data: {}", pck.data.len()),
-            };
+
+            self.queue
+                .enqueue(pck)
+                .inspect_err(|pck| {
+                    error!("queue is full, discarding data: {}", pck.data.len());
+
+                    log::log("Queue is full: discarding package.");
+                })
+                .ok();
         }
 
         Ok(())
@@ -185,4 +195,3 @@ impl<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> Imu<E
         Ok(())
     }
 }
-

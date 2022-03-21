@@ -8,11 +8,11 @@ use panic_probe as _; // memory layout + panic handler
 #[defmt_test::tests]
 mod tests {
     use super::*;
+    use chrono::{NaiveDate, NaiveDateTime};
     #[allow(unused)]
     use defmt::{assert, assert_eq, info};
     use hal::i2c::{Freq, I2c};
     use sfy::note::Notecarrier;
-    use chrono::{NaiveDateTime, NaiveDate};
 
     struct State {
         note: Notecarrier<hal::i2c::Iom2>,
@@ -82,13 +82,7 @@ mod tests {
         let before = s.rtc.now().timestamp_millis();
         defmt::info!("now: {}", before);
 
-        let tm = s
-            .note
-            .card()
-            .time()
-            .unwrap()
-            .wait(&mut s.delay)
-            .unwrap();
+        let tm = s.note.card().time().unwrap().wait(&mut s.delay).unwrap();
         defmt::info!("time: {:?}", tm);
 
         if let Some(time) = tm.time {

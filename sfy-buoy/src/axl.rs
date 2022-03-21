@@ -57,4 +57,3 @@ mod tests {
         println!("{}", core::str::from_utf8(&b64).unwrap());
     }
 }
-

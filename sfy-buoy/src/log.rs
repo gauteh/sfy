@@ -1,18 +1,17 @@
 use ambiq_hal as hal;
-use hal::{i2c, delay::FlashDelay};
-use heapless::{mpmc::Q16, String};
+use cortex_m::interrupt::free;
 use embedded_hal::blocking::{
     delay::DelayMs,
     i2c::{Read, Write},
 };
-use cortex_m::interrupt::free;
+use hal::{delay::FlashDelay, i2c};
+use heapless::{mpmc::Q16, String};
 use notecard::NoteError;
 
 use crate::note::Notecarrier;
 
 /// Log message queue for messages to be sent back over notecard.
 static LOGQ: Q16<String<256>> = Q16::new();
-
 
 /// A reference to the Notecarrier once it is initialized. The idea is that
 /// it can be used from reset routines to transfer log messages. In that case the main thread will
@@ -21,10 +20,15 @@ pub static mut NOTE: Option<*mut Notecarrier<i2c::Iom2>> = None;
 
 pub fn log(msg: &str) {
     defmt::debug!("logq: {}", msg);
-    LOGQ.enqueue(String::from(msg)).inspect_err(|e| defmt::error!("failed to queue message: {:?}", e)).ok();
+    LOGQ.enqueue(String::from(msg))
+        .inspect_err(|e| defmt::error!("failed to queue message: {:?}", e))
+        .ok();
 }
 
-pub fn drain_log<I: Read + Write>(note: &mut Notecarrier<I>, delay: &mut impl DelayMs<u16>) -> Result<(), NoteError> {
+pub fn drain_log<I: Read + Write>(
+    note: &mut Notecarrier<I>,
+    delay: &mut impl DelayMs<u16>,
+) -> Result<(), NoteError> {
     note.drain_log(&LOGQ, delay)
 }
 
@@ -40,7 +44,9 @@ pub unsafe fn panic_drain_log() {
             note.reset(&mut delay).ok();
             delay.delay_ms(50u16);
 
-            drain_log(note, &mut delay).inspect_err(|e| defmt::error!("failed to drain log to notecard: {:?}", e)).ok();
+            drain_log(note, &mut delay)
+                .inspect_err(|e| defmt::error!("failed to drain log to notecard: {:?}", e))
+                .ok();
 
             delay.delay_ms(4000u16);
         } else {
@@ -48,4 +54,3 @@ pub unsafe fn panic_drain_log() {
         }
     })
 }
-
