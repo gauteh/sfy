@@ -1,28 +1,47 @@
 #! /usr/bin/env python
 
-import sys
-import scipy as sc, scipy.signal, scipy.integrate
-import numpy as np
+import click
+from tabulate import tabulate
+from tqdm import tqdm
 import matplotlib.pyplot as plt
-from sfy import axl
 
-f = sys.argv[1]
-print(f"opening file {f}..")
+from sfy.hub import Hub
+from sfy import signal
 
-ax = axl.Axl.from_file(f)
-print(ax)
 
-dt = 1. / ax.freq
-# w = np.trapz(ax.z, dx = dt)
-a = sc.signal.detrend(ax.z[256:])
-w = sc.integrate.cumtrapz(a, dx = dt)
-z = sc.integrate.cumtrapz(w, dx = dt)
+@click.group()
+def plotaxl():
+    pass
 
-plt.figure()
-plt.title(f"{ax.start} / {ax.received_dt} length: {ax.duration}s f={ax.freq}Hz")
-plt.plot(ax.mseconds[256:], a, label = 'a_z')
-plt.plot(ax.mseconds[256:-1], w, label = 'w_z')
-plt.plot(ax.mseconds[256:-2], z, label = 'z')
-plt.grid()
-plt.legend()
-plt.show()
+
+@plotaxl.command(help='Plot package')
+@click.argument('dev')
+@click.argument('file')
+def file(dev, file):
+    hub = Hub.from_env()
+    buoy = hub.buoy(dev)
+    ax = buoy.package(file)
+
+    a = signal.detrend(ax.z)
+    _, _, w = signal.velocity(ax)
+    _, _, u = signal.displacement(ax)
+
+
+    plt.figure()
+    plt.title(f"Buoy: {buoy.dev}\n{ax.start} / {ax.received_datetime} length: {ax.duration}s f={ax.freq}Hz")
+    plt.plot(ax.time[:], a, label = 'acceleration ($m/s^2$)')
+    plt.plot(ax.time[:-1], w, label = 'velocity ($m/s$)')
+    plt.plot(ax.time[:-2], u, label = 'displacement ($m$)')
+
+    print(ax.time[0])
+
+    plt.grid()
+    plt.legend()
+    plt.xlabel('Time')
+    plt.ylabel('Vertical movement $m$, $m/s$, $m/s^2$')
+
+    plt.show()
+
+if __name__ == '__main__':
+    plotaxl()
+

@@ -5,7 +5,7 @@ import base64
 import sys
 import logging
 import pytz
-from datetime import datetime
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -87,6 +87,14 @@ class Axl:
         """
         return datetime.fromtimestamp(
             self.timestamp / 1000. - (self.offset / self.freq), pytz.utc)
+
+    @property
+    def time(self):
+        """
+        UTC datetime timestamps of samples
+        """
+        t = np.array([datetime.fromtimestamp(s/1000., tz=pytz.utc) for s in self.mseconds])
+        return t
 
     @property
     def received_datetime(self):

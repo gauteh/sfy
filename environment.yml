@@ -6,6 +6,7 @@ dependencies:
   - numpy
   - scipy
   - matplotlib
+  - cartopy
   - pytz
   - requests
   - click
