@@ -1,5 +1,7 @@
 from urllib.parse import urljoin
 import requests
+from datetime import datetime
+import pytz
 
 from .axl import Axl
 
@@ -60,6 +62,28 @@ class Buoy:
 
     def raw_package(self, pck):
         return self.hub.__json_request__(f'{self.dev}/{pck}')
+
+    def packages_range(self, start=None, end=None):
+        """
+        Get packages _uploaded_ between start and end datetimes. This is not necessarily the timespan the packages cover.
+        """
+        pcks = self.packages()
+
+        pcks = ((pck.split('-')[0], pck) for pck in pcks)
+        pcks = ((datetime.fromtimestamp(float(pck[0]) / 1000.,
+                                        pytz.utc), pck[1]) for pck in pcks)
+
+        if start is not None:
+            if start.tzinfo is None:
+                start = pytz.utc.localize(start)
+            pcks = filter(lambda pck: pck[0] >= start, pcks)
+
+        if end is not None:
+            if end.tzinfo is None:
+                end = pytz.utc.localize(end)
+            pcks = filter(lambda pck: pck[0] <= end, pcks)
+
+        return list(pcks)
 
     def package(self, pck):
         return Axl.parse(self.hub.__request__(f'{self.dev}/{pck}').text)
