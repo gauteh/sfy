@@ -12,6 +12,7 @@ use ambiq_hal::{self as hal, prelude::*};
 use chrono::NaiveDate;
 use core::fmt::Write as _;
 use core::panic::PanicInfo;
+use core::sync::atomic::Ordering;
 #[allow(unused_imports)]
 use cortex_m::{
     asm,
@@ -267,6 +268,8 @@ fn RTC() {
 
             (now, lon, lat)
         });
+
+        sfy::COUNT.store((now / 1000).try_into().unwrap_or(0), Ordering::Relaxed);
 
         // XXX: This is the most time-critical part of the program.
         //

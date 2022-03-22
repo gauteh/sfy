@@ -19,6 +19,7 @@ use chrono::NaiveDateTime;
 use core::cell::RefCell;
 use core::fmt::Debug;
 use core::ops::DerefMut;
+use core::sync::atomic::{AtomicI32, Ordering};
 use cortex_m::interrupt::{free, Mutex};
 use embedded_hal::blocking::{
     delay::DelayMs,
@@ -42,6 +43,9 @@ pub static mut IMUQ: heapless::spsc::Queue<AxlPacket, 32> = heapless::spsc::Queu
 /// The STATE contains the Real-Time-Clock which needs to be shared, as well as up-to-date
 /// longitude and latitude.
 pub static STATE: Mutex<RefCell<Option<SharedState>>> = Mutex::new(RefCell::new(None));
+
+pub static COUNT: AtomicI32 = AtomicI32::new(0);
+defmt::timestamp!("{=i32}", COUNT.load(Ordering::Relaxed));
 
 pub struct SharedState {
     pub rtc: Rtc,
