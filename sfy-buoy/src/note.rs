@@ -132,8 +132,6 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         pck: &AxlPacket,
         delay: &mut impl DelayMs<u16>,
     ) -> Result<usize, NoteError> {
-        defmt::debug!("sending acceleration package");
-
         let b64 = pck.base64();
 
         for (pi, p) in b64.chunks(8 * 1024).enumerate() {
@@ -218,6 +216,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         let mut sz = 0;
 
         while let Some(pck) = queue.peek() {
+            defmt::debug!("sending package: queue sz: {}", queue.len());
             sz += self.send(pck, delay).inspect_err(|e| {
                 defmt::error!("Error while sending package to notecard: {:?}", e)
             })?;
