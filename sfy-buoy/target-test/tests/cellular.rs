@@ -49,7 +49,7 @@ mod tests {
         let status = s
             .note
             .hub()
-            .sync_status()
+            .sync_status(&mut s.delay)
             .unwrap()
             .wait(&mut s.delay)
             .unwrap();
@@ -60,18 +60,18 @@ mod tests {
         defmt::debug!("sending test log message to notehub..");
         s.note
             .hub()
-            .log("cain test starting up!", true, true)
+            .log(&mut s.delay, "cain test starting up!", true, true)
             .unwrap()
             .wait(&mut s.delay)
             .unwrap();
 
         defmt::debug!("initiate sync..");
-        s.note.hub().sync().unwrap().wait(&mut s.delay).unwrap();
+        s.note.hub().sync(&mut s.delay, false).unwrap().wait(&mut s.delay).unwrap();
 
         for _ in 0..30 {
             s.delay.delay_ms(1000u32);
             defmt::debug!("querying sync status..");
-            let status = s.note.hub().sync_status().unwrap().wait(&mut s.delay);
+            let status = s.note.hub().sync_status(&mut s.delay).unwrap().wait(&mut s.delay);
             defmt::debug!("status: {:?}", status);
 
             if let Ok(status) = status {

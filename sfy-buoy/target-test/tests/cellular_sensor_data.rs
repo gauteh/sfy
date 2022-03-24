@@ -65,7 +65,7 @@ mod tests {
 
         assert!(pck.data.len() == sfy::axl::AXL_SZ);
 
-        let r = s.note.send(pck, &mut s.delay).unwrap();
+        let r = s.note.send(&pck, &mut s.delay).unwrap();
         defmt::debug!("package queued for sending: {:?}", r);
 
         defmt::debug!("triggering sync..");

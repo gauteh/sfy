@@ -53,7 +53,7 @@ mod tests {
         let location = s
             .note
             .card()
-            .location()
+            .location(&mut s.delay)
             .unwrap()
             .wait(&mut s.delay)
             .unwrap();
@@ -82,7 +82,7 @@ mod tests {
         let before = s.rtc.now().timestamp_millis();
         defmt::info!("now: {}", before);
 
-        let tm = s.note.card().time().unwrap().wait(&mut s.delay).unwrap();
+        let tm = s.note.card().time(&mut s.delay).unwrap().wait(&mut s.delay).unwrap();
         defmt::info!("time: {:?}", tm);
 
         if let Some(time) = tm.time {
@@ -105,6 +105,7 @@ mod tests {
             .note
             .card()
             .location_mode(
+                &mut s.delay,
                 Some("periodic"),
                 Some(10),
                 None,
@@ -125,7 +126,7 @@ mod tests {
             "track: {:?}",
             s.note
                 .card()
-                .location_track(true, false, true, Some(1), None)
+                .location_track(&mut s.delay, true, false, true, Some(1), None)
                 .unwrap()
                 .wait(&mut s.delay)
         );
@@ -134,7 +135,7 @@ mod tests {
         let mode = s
             .note
             .card()
-            .location_mode(Some(""), None, None, None, None, None, None, None)
+            .location_mode(&mut s.delay, Some(""), None, None, None, None, None, None, None)
             .unwrap()
             .wait(&mut s.delay)
             .unwrap();
@@ -144,7 +145,7 @@ mod tests {
         let location = s
             .note
             .card()
-            .location()
+            .location(&mut s.delay)
             .unwrap()
             .wait(&mut s.delay)
             .unwrap();
