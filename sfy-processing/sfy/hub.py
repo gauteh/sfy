@@ -29,6 +29,9 @@ class Hub:
         self.key = key
         self.cache = Path(cache)
 
+        if not self.cache.exists():
+            os.makedirs(self.cache, exist_ok=True)
+
     @staticmethod
     def from_env():
         from urllib.parse import urljoin
