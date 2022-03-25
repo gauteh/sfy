@@ -13,7 +13,7 @@ jobs:
       SFY_READ_TOKEN: ${{ secrets.SFY_READ_TOKEN }}
       SFY_SERVER: ${{ secrets.SFY_SERVER }}
       SFY_DATA_CACHE: /tmp/sfy
-      CACHE_NUMBER: 0
+      CACHE_NUMBER: 1
 
     strategy:
       max-parallel: 5
@@ -33,12 +33,13 @@ jobs:
 
     - uses: actions/cache@v2
       with:
-        path: /usr/share/miniconda3/envs
+        path: /usr/share/miniconda
         key: conda-${{ hashFiles('environment.yml') }}-${{ env.CACHE_NUMBER }}
       id: cache
 
     - name: Install dependencies
       run: |
+        conda env list
         conda env update --file environment.yml --name base
       if: steps.cache.outputs.cache-hit != 'true'
 
