@@ -13,7 +13,7 @@
     "build:prod": "webpack --mode production",
     "check": "tsc && npm run lint",
     "lint": "tslint src/*.ts{,x} src/**/*.ts{,x}",
-    "serve": "tsc && webpack-dev-server --inline"
+    "serve": "tsc && webpack-dev-server"
   },
   "keywords": [
     "inferno",
@@ -35,6 +35,7 @@
     "leaflet": "^1.7.1",
     "moment": "^2.27.0",
     "mousetrap": "^1.6.5",
+    "process": "^0.11.10",
     "rxjs": "^6.5.5",
     "sanitize-html": "^2.3.2"
   },
@@ -51,24 +52,22 @@
     "babel-plugin-module-resolver": "^3.2.0",
     "clean-webpack-plugin": "^3.0.0",
     "css-loader": "^3.6.0",
-    "html-webpack-plugin": "^3.2.0",
+    "html-webpack-plugin": "5.5",
     "identity-obj-proxy": "^3.0.0",
-    "jest": "^24.9.0",
+    "jest": "^27.5.1",
     "node-fetch": "^2.6.1",
-    "node-sass": "^4.14.1",
-    "sass-loader": "^7.1.0",
+    "node-sass": "^7.0.1",
+    "sass-loader": "12",
     "source-map-loader": "^0.2.4",
     "style-loader": "^0.23.1",
-    "ts-jest": "^24.3.0",
     "ts-loader": "^6.2.2",
     "ts-transform-classcat": "^0.1.1",
     "ts-transform-inferno": "^4.0.3",
     "tsconfig-paths-webpack-plugin": "^3.2.0",
     "tslint": "^5.20.1",
     "typescript": "^3.9.5",
-    "uglify-es": "^3.3.9",
-    "webpack": "4.37.0",
-    "webpack-cli": "^3.3.12",
-    "webpack-dev-server": "^3.11.0"
+    "webpack": "^5.20.0",
+    "webpack-cli": "^4.9.2",
+    "webpack-dev-server": "^4.7.4"
   }
 }
