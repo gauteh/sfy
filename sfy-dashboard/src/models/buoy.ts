@@ -17,12 +17,26 @@ export class Buoy {
     this.dev = dev;
     this.files = files;
 
+    // Sort in ascending order by time received.
     this.files.sort((a, b) => {
       let a1 = parseInt(a.split('-')[0]);
       let b1 = parseInt(b.split('-')[0]);
 
       return b1 - a1
     });
+  }
+
+  public hasGps(): boolean {
+    return this.latitude !== undefined;
+  }
+
+  public lastFile(filter: string | undefined) {
+    let files = this.files.filter((fname: string) => filter !== undefined ? fname.includes(filter) : true);
+    if (files.length >= 1) {
+      return files[files.length - 1];
+    } else {
+      return null;
+    }
   }
 
   public lastContact(): Date | null {

@@ -16,11 +16,10 @@ export function get_buoys(api: ApiConf): Observable<string[]> {
 
 export function get_buoy(api: ApiConf, dev: string): Observable<Buoy> {
   return from(fetch(api.host + '/buoys/' + dev, api.headers())
-    .then((response) => {
+    .then(async (response) => {
       if (response.ok) {
-        return response.json().then((files) => {
-          return new Buoy(dev, files);
-        });
+        const files = await response.json();
+        return new Buoy(dev, files);
       } else {
         throw new Error("not ok");
       }

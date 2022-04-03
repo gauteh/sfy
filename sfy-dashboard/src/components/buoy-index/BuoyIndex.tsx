@@ -27,7 +27,7 @@ export class BuoyIndex
     buoys: new Array<Buoy>(),
   };
 
-  constructor(props, context) {
+  constructor(props: Props, context: any) {
     super(props, context);
   }
 
@@ -43,10 +43,10 @@ export class BuoyIndex
       mergeMap(buoys => buoys),
       concatMap(b => hub.get_buoy(hub.API_CONF, b)),
       concatMap(b => {
-        let last = b.files.reverse().find((fname) => fname.endsWith("axl.qo.json"));
+        let last = b.lastFile("axl.qo.json");
         console.log("getting files for: " + b.dev + ", last: " + last);
 
-        if (last !== undefined) {
+        if (last !== null) {
           return hub.get_file(hub.API_CONF, b.dev, last).pipe(
             map(f => {
               b.setPackage(f);
@@ -83,7 +83,7 @@ export class BuoyIndex
           {buoy.any_lon().toFixed(9)}
         </td>
         <td>
-          {buoy.latitude !== undefined ? '🛰' : '📡'}
+          {buoy.hasGps() ? '🛰' : '📡'}
         </td>
         <td>
           <span title={moment(buoy.lastContact()).utc().format("YYYY-MM-DD hh:mm:ss") + " UTC"}>

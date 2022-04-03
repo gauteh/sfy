@@ -4,12 +4,6 @@ const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
 const path = require("path");
 const webpack = require("webpack");
 
-const htmlPlugin = new HtmlWebPackPlugin({
-	template: "./src/index.html",
-	filename: "./index.html",
-	inject: false
-});
-
 module.exports = {
 	mode: "none",
 	devtool: "inline-source-map",
@@ -62,7 +56,11 @@ module.exports = {
 		port: 8080
 	},
 	plugins: [
-		htmlPlugin,
+		new HtmlWebPackPlugin({
+			template: "./src/index.html",
+			filename: "./index.html",
+			inject: false
+		}),
 		new CleanWebpackPlugin({
 			verbose: true
 		}),
