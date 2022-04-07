@@ -39,18 +39,6 @@ dependencies = [
 [[package]]
 name = "ambiq-apollo3-pac2"
 version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4a0e21a826b4a1cf0cf64ab50b68eda845b9cba700cd56689cafa3d378cc59c7"
-dependencies = [
- "bare-metal 0.2.5",
- "cortex-m 0.7.4",
- "cortex-m-rt",
- "vcell",
-]
-
-[[package]]
-name = "ambiq-apollo3-pac2"
-version = "0.2.0"
 source = "git+https://github.com/gauteh/ambiq-rs#c37a3a598f440af3bbb575843ba6f6a96c81aab7"
 dependencies = [
  "bare-metal 0.2.5",
@@ -62,29 +50,10 @@ dependencies = [
 [[package]]
 name = "ambiq-hal"
 version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4997462b197d136fc60e4205861d8a5b4fe12e8cc0226241ca409d46a1b479db"
-dependencies = [
- "ambiq-apollo3-pac2 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "ambiq-hal-sys 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "chrono",
- "cortex-m 0.7.4",
- "cortex-m-rt",
- "defmt",
- "embedded-hal",
- "embedded-time",
- "nb 1.0.0",
- "paste",
- "ufmt",
-]
-
-[[package]]
-name = "ambiq-hal"
-version = "0.2.0"
 source = "git+https://github.com/gauteh/ambiq-rs#c37a3a598f440af3bbb575843ba6f6a96c81aab7"
 dependencies = [
- "ambiq-apollo3-pac2 0.2.0 (git+https://github.com/gauteh/ambiq-rs)",
- "ambiq-hal-sys 0.1.0 (git+https://github.com/gauteh/ambiq-rs)",
+ "ambiq-apollo3-pac2",
+ "ambiq-hal-sys",
  "chrono",
  "cortex-m 0.7.4",
  "cortex-m-rt",
@@ -94,18 +63,6 @@ dependencies = [
  "nb 1.0.0",
  "paste",
  "ufmt",
-]
-
-[[package]]
-name = "ambiq-hal-sys"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a57974cfc7984f17f1ba8cc76006d19f23505d9eb7707435af55f1b9ec6ebc6a"
-dependencies = [
- "bindgen",
- "cc",
- "fs_extra",
- "glob",
 ]
 
 [[package]]
@@ -831,7 +788,6 @@ dependencies = [
 [[package]]
 name = "notecard"
 version = "0.1.0"
-source = "git+https://github.com/gauteh/notecard-rs#17fbb15d2cda2dd28f8ddc6620cdb603bd5e0214"
 dependencies = [
  "defmt",
  "embedded-hal",
@@ -1138,7 +1094,7 @@ name = "sfy"
 version = "0.1.0"
 dependencies = [
  "ahrs-fusion",
- "ambiq-hal 0.2.0 (git+https://github.com/gauteh/ambiq-rs)",
+ "ambiq-hal",
  "base64",
  "bincode",
  "bytemuck",
@@ -1232,7 +1188,7 @@ dependencies = [
 name = "test-target"
 version = "0.1.0"
 dependencies = [
- "ambiq-hal 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ambiq-hal",
  "chrono",
  "cortex-m 0.7.4",
  "cortex-m-rt",

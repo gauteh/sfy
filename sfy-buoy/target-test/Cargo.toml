@@ -42,4 +42,5 @@ chrono = { version = "0.4.19", default-features = false }
 
 [dependencies.ambiq-hal]
 version = "0.2"
-features = ["sparkfun-redboard-nano", "rt"]
+features = ["ambiq-sdk", "sparkfun-redboard-nano", "rt"]
+git = "https://github.com/gauteh/ambiq-rs"
