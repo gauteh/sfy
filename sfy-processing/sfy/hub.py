@@ -4,6 +4,8 @@ from urllib.parse import urljoin
 import requests
 from datetime import datetime
 import pytz
+import logging
+logger = logging.getLogger(__name__)
 
 from .axl import Axl
 
@@ -118,4 +120,8 @@ class Buoy:
             except:
                 os.remove(pckf)
 
-        return Axl.from_file(pckf)
+        try:
+            return Axl.from_file(pckf)
+        except:
+            logger.error(f"failed to parse file: {self.dev/pckf}")
+            return None

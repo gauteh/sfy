@@ -2,6 +2,7 @@
 import click
 from tabulate import tabulate
 from tqdm import tqdm
+import coloredlogs
 
 from sfy.hub import Hub
 from sfy.cli.track import track
@@ -51,4 +52,5 @@ def list(dev, start, end):
 
 
 if __name__ == '__main__':
+    coloredlogs.install()
     sfy()

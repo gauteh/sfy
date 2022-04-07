@@ -22,7 +22,7 @@ def track():
               default=None,
               help='Filter packages before this time',
               type=click.DateTime())
-def plot(dev, fast, start, end):
+def map(dev, fast, start, end):
     hub = Hub.from_env()
     buoy = hub.buoy(dev)
     print(buoy)
@@ -32,6 +32,7 @@ def plot(dev, fast, start, end):
 
     # download or fetch from cache
     pcks = [buoy.package(pck[1]) for pck in tqdm(pcks)]
+    pcks = [pck for pck in pcks if pck is not None]
 
     lon = [pck.lon for pck in pcks]
     lat = [pck.lat for pck in pcks]
