@@ -1,0 +1,3 @@
+CREATE TABLE buoys;
+
+CREATE TABLE events;

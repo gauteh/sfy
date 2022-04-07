@@ -3,9 +3,11 @@ use std::fs;
 use std::marker::PhantomData;
 use std::path::{Path, PathBuf};
 use tempfile::NamedTempFile;
+use sqlx::prelude::*;
 
 #[derive(Debug)]
 pub struct Database {
+
     path: PathBuf,
 }
 
