@@ -122,7 +122,7 @@ class Axl:
         """
         Time vector in milliseconds (UTC).
         """
-        t = np.arange(0, len(self.x)) / self.freq
+        t = np.arange(0, len(self.x)) * 1000. / self.freq
         return self.timestamp + t
 
     def __repr__(self):

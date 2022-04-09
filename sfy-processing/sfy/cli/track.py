@@ -27,7 +27,11 @@ def track():
               help='Map limits margins, format: 0.5,0.5',
               default=None,
               type=str)
-def map(dev, fast, start, end, margins):
+@click.option('--save',
+              help='Save to file',
+              default=None,
+              type=click.File())
+def map(dev, fast, start, end, margins, save):
     hub = Hub.from_env()
     buoy = hub.buoy(dev)
     print(buoy)
@@ -71,7 +75,11 @@ def map(dev, fast, start, end, margins):
 
     plt.legend()
     plt.title(f'Track of {buoy.dev}')
-    plt.show()
+
+    if save is not None:
+        plt.savefig(save)
+    else:
+        plt.show()
 
 
 if __name__ == '__main__':
