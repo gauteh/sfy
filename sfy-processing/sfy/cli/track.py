@@ -11,6 +11,7 @@ from sfy.hub import Hub
 def track():
     pass
 
+
 @track.command(help='Plot track of buoy')
 @click.argument('dev')
 @click.option('--fast', is_flag=True, help='Plot faster at lower quality.')
@@ -22,7 +23,11 @@ def track():
               default=None,
               help='Filter packages before this time',
               type=click.DateTime())
-def map(dev, fast, start, end):
+@click.option('--margins',
+              help='Map limits margins, format: 0.5,0.5',
+              default=None,
+              type=str)
+def map(dev, fast, start, end, margins):
     hub = Hub.from_env()
     buoy = hub.buoy(dev)
     print(buoy)
@@ -51,7 +56,17 @@ def map(dev, fast, start, end):
         ax.add_feature(gsh, zorder=-1)
 
     ax.plot(lon, lat, '-o', transform=crs.PlateCarree(), label=buoy.dev)
-    ax.margins(0.2, 0.2)
+
+    if margins is not None:
+        ms = margins.split(',')
+        mx = float(ms[0])
+        my = float(ms[1])
+        margins = (mx, my)
+    else:
+        margins = (0.2, 0.2)
+
+    ax.margins(*margins)
+
     ax.gridlines(crs.PlateCarree(), draw_labels=True)
 
     plt.legend()
