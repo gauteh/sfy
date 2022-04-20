@@ -125,6 +125,16 @@ impl<'a> Buoy<'a> {
         Ok(entries)
     }
 
+    /// Get the last received axl.qo entry for the buoy.
+    pub async fn last(&self) -> Result<Vec<u8>> {
+        let entries = self.entries().await?;
+
+        match entries.iter().rev().find(|p| p.contains("axl.qo")) {
+            Some(p) => return self.get(p).await,
+            None => Err(eyre!("No axl entry found."))
+        }
+    }
+
     pub async fn get(&self, file: impl AsRef<Path>) -> Result<Vec<u8>> {
         use tokio::fs;
 
@@ -199,5 +209,15 @@ mod tests {
         b.append("entry-0", "data-0").await.unwrap();
 
         assert_eq!(b.get("entry-0").await.unwrap(), b"data-0");
+    }
+
+    #[tokio::test]
+    async fn append_last() {
+        let (_tmp, mut db) = Database::temporary();
+        let mut b = db.buoy("buoy-01").unwrap();
+        b.append("entry-0-axl.qo", "data-0").await.unwrap();
+        b.append("entry-1-sessi.qo", "data-1").await.unwrap();
+
+        assert_eq!(b.last().await.unwrap(), b"data-0");
     }
 }
