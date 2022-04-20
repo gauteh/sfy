@@ -3,10 +3,38 @@
 | Component                      | Homepage | Hardware repository | Dimensions |
 |--------------------------------|----------|---------------------|------------|
 | Sparkfun Redboard Artemis Nano | [sparkfun](https://www.sparkfun.com/products/15443?_ga=2.158373882.1315469777.1632664195-1601050442.1628850831) | [github](https://github.com/sparkfun/RedBoard_Artemis_Nano) | [pdf](https://github.com/sparkfun/RedBoard_Artemis_Nano/blob/master/Documents/Dimensions.pdf) |
-| Qwiic Cellular Notecarrier     | [sparkfun](https://www.sparkfun.com/products/17114) | [github](https://github.com/sparkfunX/Qwiic_Cellular-Notecarrier) | [pdf](https://github.com/sparkfunX/Qwiic_Cellular-Notecarrier/files/7748075/Qwiic-Cellular-Notepad.Dimensional.Drawing.pdf) |
-| Adafruit ISM330DHCX + LIS3MDL  | [adafruit](https://www.adafruit.com/product/4569) | [github](https://github.com/adafruit/Adafruit-ISM330DHCX-LIS3MDL-FeatherWing-PCB) | [pdf](dimensions/ism330dhcx.pdf) |
-| Pololu 3.3V Step-Up/Step-Down Voltage Regulator | [pololu](https://www.pololu.com/product/2122/specs) | N/A | 0.45″ × 0.65″ × 0.1″ |
 
-## Adafruit ISM330DHCX + LIS3MDL
 
-* SDA and SCL pins are swapped. QWIIC connector is correct.
+# Assembly
+
+* Assemble parts without soldering on first to make sure correct orientation and
+    side is used.
+
+## Artemis
+
+1) Solder on pin headers
+2) Solder onto protoboard, USB port out.
+
+## Notecard
+
+1) Remove 0Ohm resistor if using passive GPS antenna.
+2) Cut all pins, except VIO on VIO side (3V3).
+2) Use side with where + rail is outermost for VIO (3V3)
+3) Mark this side on protoboard as 3V3, and other as 5V.
+4) Make marks where the SDA, SCL and power pins are connected on protoboard
+
+## IMU
+
+1) On VDD, VDDIO side remove all pins except: VDD, VDDIO, SCx, SDx.
+2) This side will fit on other side of protoboard, so that VDD, VDDIO, etc are
+connected to the VIO (3V3) rail.
+
+## Super-capacitors
+
+1) Solder in series over 5V power-rail.
+
+## Power
+
+1) Attach power-cables with connector to 5V side as close as possible to V+ and
+GND of notecard as possible. Make sure this loop uses high-quality wires and
+good solders.

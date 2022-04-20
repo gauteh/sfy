@@ -5,10 +5,10 @@
 # The small friendly buoy
 
 * [sfy-buoy](sfy-buoy/) - the firmware for the buoy.
+* [hardware](hardware/Hardware.md) - hardware and assembly instructions.
 * [sfy-data](sfy-data/) - the server scraping or receiving data from deployed
     buoys.
 * [sfy-processing](sfy-processing/) - python libraries and tools for reading and post-processing received data.
-* [hardware](hardware/Hardware.md) - hardware and dimensions.
 
 # Acknowledgements
 
