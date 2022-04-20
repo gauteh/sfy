@@ -108,6 +108,11 @@ class Buoy:
 
         return list(pcks)
 
+    def last(self):
+        p = self.hub.__request__(f'{self.dev}/last').text
+
+        return Axl.parse(p)
+
     def package(self, pck):
         dev_path = self.hub.cache / self.dev
         os.makedirs(dev_path, exist_ok=True)
