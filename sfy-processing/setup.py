@@ -12,4 +12,10 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     include_package_data=False,
     setup_requires=['setuptools_scm'],
+    entry_points={
+        'console_scripts': [
+            'sfydata=sfy.cli.sfydata:sfy'
+            ]
+        }
+
 )

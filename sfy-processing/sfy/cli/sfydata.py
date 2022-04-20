@@ -11,7 +11,7 @@ from sfy.cli.axl import axl
 
 @click.group()
 def sfy():
-    pass
+    coloredlogs.install()
 
 
 sfy.add_command(track)
@@ -52,5 +52,4 @@ def list(dev, start, end):
 
 
 if __name__ == '__main__':
-    coloredlogs.install()
     sfy()
