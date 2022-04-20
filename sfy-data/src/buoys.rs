@@ -11,7 +11,11 @@ use warp::{http::Response, http::StatusCode, reject, Filter, Rejection, Reply};
 pub fn filters(
     state: State,
 ) -> impl warp::Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    append(state.clone()).or(list(state.clone())).or(entries(state.clone())).or(entry(state.clone()))
+    append(state.clone())
+        .or(list(state.clone()))
+        .or(entries(state.clone()))
+        .or(last(state.clone()))
+        .or(entry(state.clone()))
 }
 
 pub fn append(
@@ -62,6 +66,18 @@ pub fn entry(
         .and(check_read_token(state.clone()))
         .and(with_state(state.clone()))
         .and_then(handlers::entry)
+}
+
+pub fn last(
+    state: State,
+) -> impl warp::Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    let state = state.clone();
+
+    warp::path!("buoys" / String / "last")
+        .and(warp::get())
+        .and(check_read_token(state.clone()))
+        .and(with_state(state.clone()))
+        .and_then(handlers::last)
 }
 
 fn with_state(state: State) -> impl Filter<Extract = (State,), Error = Infallible> + Clone {
@@ -169,12 +185,17 @@ pub mod handlers {
             .await
             .buoy(&buoy)
             .map_err(|_| reject::custom(AppendErrors::Internal))?
-            .entries().await
+            .entries()
+            .await
             .map_err(|_| reject::custom(AppendErrors::Internal))?;
         Ok(warp::reply::json(&entries))
     }
 
-    pub async fn entry(buoy: String, entry: String, state: State) -> Result<impl warp::Reply, warp::Rejection> {
+    pub async fn entry(
+        buoy: String,
+        entry: String,
+        state: State,
+    ) -> Result<impl warp::Reply, warp::Rejection> {
         let buoy = sanitize(buoy);
         let entry = sanitize(entry);
 
@@ -184,7 +205,30 @@ pub mod handlers {
             .await
             .buoy(&buoy)
             .map_err(|_| reject::custom(AppendErrors::Internal))?
-            .get(entry).await
+            .get(entry)
+            .await
+            .map_err(|_| reject::custom(AppendErrors::Internal))?;
+
+        Ok(Response::builder()
+            .status(200)
+            .header("Content-Type", "application/json")
+            .body(entry))
+    }
+
+    pub async fn last(
+        buoy: String,
+        state: State,
+    ) -> Result<impl warp::Reply, warp::Rejection> {
+        let buoy = sanitize(buoy);
+
+        let entry = state
+            .db
+            .write()
+            .await
+            .buoy(&buoy)
+            .map_err(|_| reject::custom(AppendErrors::Internal))?
+            .last()
+            .await
             .map_err(|_| reject::custom(AppendErrors::Internal))?;
 
         Ok(Response::builder()
@@ -415,9 +459,15 @@ mod tests {
             .reply(&f)
             .await;
 
-        assert_eq!(res.headers().get("Content-Type").unwrap().to_str().unwrap(), "application/json");
+        assert_eq!(
+            res.headers().get("Content-Type").unwrap().to_str().unwrap(),
+            "application/json"
+        );
         assert_eq!(res.status(), 200);
-        assert_eq!(res.body(), "[\"0-9ef2e080-f0b4-4036-8ccc-ec4206553537_sensor.db.json\"]");
+        assert_eq!(
+            res.body(),
+            "[\"0-9ef2e080-f0b4-4036-8ccc-ec4206553537_sensor.db.json\"]"
+        );
     }
 
     #[tokio::test]
@@ -454,7 +504,63 @@ mod tests {
             .await;
 
         assert_eq!(res.status(), 200);
-        assert_eq!(res.headers().get("Content-Type").unwrap().to_str().unwrap(), "application/json");
+        assert_eq!(
+            res.headers().get("Content-Type").unwrap().to_str().unwrap(),
+            "application/json"
+        );
+        assert_eq!(res.body(), &event);
+    }
+
+    #[tokio::test]
+    async fn last_entry() {
+        let (_tmp, state) = crate::test_state();
+
+        let f = filters(state);
+
+        let event = std::fs::read("tests/events/sensor.db_01.json").unwrap();
+        let res = warp::test::request()
+            .path("/buoy")
+            .method("POST")
+            .header("SFY_AUTH_TOKEN", "token1")
+            .body(&event)
+            .reply(&f)
+            .await;
+
+        assert_eq!(res.status(), 200);
+
+        let res = warp::test::request()
+            .path("/buoys/dev864475044203262/last")
+            .method("GET")
+            .header("SFY_AUTH_TOKEN", "r-token1")
+            .reply(&f)
+            .await;
+
+        assert_eq!(res.status(), 500);
+
+        let event = std::fs::read("tests/events/1647870799330-1876870b-4708-4366-8db5-68f872cc4e6d_axl.qo.json").unwrap();
+        let res = warp::test::request()
+            .path("/buoy")
+            .method("POST")
+            .header("SFY_AUTH_TOKEN", "token1")
+            .body(&event)
+            .reply(&f)
+            .await;
+
+        assert_eq!(res.status(), 200);
+
+        let res = warp::test::request()
+            .path("/buoys/dev867730051260788/last")
+            .method("GET")
+            .header("SFY_AUTH_TOKEN", "r-token1")
+            .reply(&f)
+            .await;
+
+        assert_eq!(res.status(), 200);
+
+        assert_eq!(
+            res.headers().get("Content-Type").unwrap().to_str().unwrap(),
+            "application/json"
+        );
         assert_eq!(res.body(), &event);
     }
 }
