@@ -46,5 +46,5 @@ jobs:
     - name: Test with pytest
       run: |
         cd sfy-processing/
-        conda install pytest
+        conda install -y pytest pytest-benchmark
         pytest

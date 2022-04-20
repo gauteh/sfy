@@ -39,9 +39,9 @@ def test_get_package(sfy):
     print(pck)
 
 
-def test_get_last(sfy):
+def test_get_last(sfy, benchmark):
     b = sfy.buoy("867730051260788")
-    pck = b.last()
+    pck = benchmark(b.last)
     print(pck)
 
 
