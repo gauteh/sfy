@@ -38,7 +38,11 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         note.card()
             .location_mode(
                 delay,
-                Some("periodic"),
+                if cfg!(feature = "continuous") {
+                    Some("continuous")
+                } else {
+                    Some("periodic")
+                },
                 Some(60),
                 None,
                 None,
@@ -154,7 +158,11 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                     None,
                     Some(meta),
                     Some(core::str::from_utf8(p).unwrap()),
-                    false,
+                    if cfg!(feature = "continuous") {
+                        true
+                    } else {
+                        false
+                    },
                 )?
                 .wait(delay)?;
 
@@ -195,13 +203,17 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         let mut sz = 0;
 
         while let Some(pck) = queue.peek() {
-            let sync_status = self.note.hub().sync_status(delay)?.wait(delay)?;
-            if sync_status.requested.is_some() {
-                defmt::warn!(
-                    "notecard is syncing, not sending any data-packages until done: queue sz: {}",
-                    queue.len()
-                );
-                return Ok(sz);
+            #[cfg(not(feature = "continuous"))]
+            {
+                let sync_status = self.note.hub().sync_status(delay)?.wait(delay)?;
+
+                if sync_status.requested.is_some() {
+                    defmt::warn!(
+                        "notecard is syncing, not sending any data-packages until done: queue sz: {}",
+                        queue.len()
+                    );
+                    return Ok(sz);
+                }
             }
 
             let status = self.note.card().status(delay)?.wait(delay)?;

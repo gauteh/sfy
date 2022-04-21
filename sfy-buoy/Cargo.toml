@@ -63,6 +63,7 @@ notecard = { path = "../../../../dev/embedded/notecard-rs" }
 
 [features]
 default = [ "deploy" ]
+continuous = []
 storage = [ "bincode", "embedded-sdmmc" ]
 host-tests = []
 deploy = [ ]
