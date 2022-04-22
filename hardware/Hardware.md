@@ -1,9 +1,6 @@
 # Hardware
 
-| Component                      | Homepage | Hardware repository | Dimensions |
-|--------------------------------|----------|---------------------|------------|
-| Sparkfun Redboard Artemis Nano | [sparkfun](https://www.sparkfun.com/products/15443?_ga=2.158373882.1315469777.1632664195-1601050442.1628850831) | [github](https://github.com/sparkfun/RedBoard_Artemis_Nano) | [pdf](https://github.com/sparkfun/RedBoard_Artemis_Nano/blob/master/Documents/Dimensions.pdf) |
-
+schematic: [(pdf)](sfy-schema-v1.pdf) | [(kicad)](sfy/)
 
 # Assembly
 
