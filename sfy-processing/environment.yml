@@ -1,0 +1,13 @@
+name: sfy
+channels:
+  - conda-forge
+dependencies:
+  - matplotlib
+  - numpy
+  - scipy
+  - requests
+  - pytest
+  - pytest-benchmark
+  - cartopy
+  - coloredlogs
+  - tqdm
