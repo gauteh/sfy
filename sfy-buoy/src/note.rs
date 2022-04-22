@@ -18,12 +18,27 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         let mut note = Notecard::new(i2c);
         note.initialize(delay)?;
 
+        #[cfg(feature = "continuous")]
+        note.card()
+            .location_mode(
+                delay,
+                Some("off"),
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+            )?
+            .wait(delay)?;
+
         note.hub()
             .set(
                 delay,
                 Some(env!("BUOYPR", "Specify notehub project")),
                 None,
-                Some(notecard::hub::req::HubMode::Periodic),
+                Some(notecard::hub::req::HubMode::Continuous),
                 Some(&BUOYSN),
                 Some(20), // max time between out-going sync in minutes.
                 None,
@@ -35,14 +50,11 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             )?
             .wait(delay)?;
 
+        #[cfg(not(feature = "continuous"))]
         note.card()
             .location_mode(
                 delay,
-                if cfg!(feature = "continuous") {
-                    Some("continuous")
-                } else {
-                    Some("periodic")
-                },
+                Some("periodic"),
                 Some(60),
                 None,
                 None,
