@@ -2,6 +2,11 @@
 
 schematic: [(pdf)](sfy-schema-v1.pdf) | [(kicad)](sfy/)
 
+<a href="sfy-schema-v1.pdf">
+    <img src="sfy-schema-v1.png" width="100%" />
+</a>
+
+
 # Assembly
 
 * Assemble parts without soldering on first to make sure correct orientation and
