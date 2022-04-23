@@ -2,7 +2,7 @@
 
 import click
 import matplotlib.pyplot as plt
-import time
+from datetime import timedelta
 
 from sfy.hub import Hub
 from sfy import signal
@@ -48,7 +48,11 @@ def file(dev, file):
               help='Time to sleep between update',
               default=5.0,
               type=float)
-def monitor(dev, sleep):
+@click.option('--window',
+              help='Time window to show',
+              default=None,
+              type=float)
+def monitor(dev, sleep, window):
     hub = Hub.from_env()
     buoy = hub.buoy(dev)
 
@@ -63,28 +67,38 @@ def monitor(dev, sleep):
     lv = None
     lu = None
 
+    axl = None
+
     while True:
-        axl = buoy.last()
+        naxl = buoy.last()
+        print(naxl.time[0])
 
-        plt.title(
-            f"Buoy: {buoy.dev}\n{axl.start} / {axl.received_datetime} length: {axl.duration}s f={axl.freq}Hz"
-        )
+        if axl is None or axl.start != naxl.start:
+            print("new data package")
+            axl = naxl
 
-        a = signal.detrend(axl.z)
-        _, _, w = signal.velocity(axl)
-        _, _, u = signal.displacement(axl)
+            plt.title(
+                f"Buoy: {buoy.dev}\n{axl.start} / {axl.received_datetime} length: {axl.duration}s f={axl.freq}Hz"
+            )
 
-        if la is None:
-            la, = ax.plot(axl.time[:], a, '--', alpha=.5, label='acceleration ($m/s^2$)')
-            lv, = ax.plot(axl.time[:-1], w, '--', alpha=.5, label='velocity ($m/s$)')
-            lu, = ax.plot(axl.time[:-2], u, label='displacement ($m$)')
-        else:
-            la.set_data(axl.time[:], a)
-            lv.set_data(axl.time[:-1], w)
-            lu.set_data(axl.time[:-2], u)
+            a = signal.detrend(axl.z)
+            _, _, w = signal.velocity(axl)
+            _, _, u = signal.displacement(axl)
 
-        print(axl.time[0])
+            if la is None:
+                la, = ax.plot(axl.time[:], a, 'k--', alpha=.5, label='acceleration ($m/s^2$)')
+                lv, = ax.plot(axl.time[:-1], w, 'g--', alpha=.5, label='velocity ($m/s$)')
+                lu, = ax.plot(axl.time[:-2], u, 'b', label='displacement ($m$)')
+            else:
+                la.set_data(axl.time[:], a)
+                lv.set_data(axl.time[:-1], w)
+                lu.set_data(axl.time[:-2], u)
 
         plt.legend()
+
+        if window is not None:
+            plt.xlim([axl.end - timedelta(seconds=window), axl.end])
+
+
         plt.pause(sleep)
 

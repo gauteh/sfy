@@ -87,6 +87,13 @@ class Axl:
         """
         return datetime.fromtimestamp(
             self.timestamp / 1000. - (self.offset / self.freq), pytz.utc)
+    @property
+    def end(self):
+        """
+        UTC Datetime of start of samples. Taking `offset` into account.
+        """
+        return datetime.fromtimestamp(
+            self.timestamp / 1000. - (self.offset / self.freq) + self.duration, pytz.utc)
 
     @property
     def time(self):
