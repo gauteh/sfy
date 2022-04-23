@@ -52,7 +52,8 @@ def monitor(dev, sleep):
     hub = Hub.from_env()
     buoy = hub.buoy(dev)
 
-    plt.figure()
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
     plt.grid()
     plt.legend()
     plt.xlabel('Time')
@@ -63,21 +64,27 @@ def monitor(dev, sleep):
     lu = None
 
     while True:
-        ax = buoy.last()
+        axl = buoy.last()
 
         plt.title(
-            f"Buoy: {buoy.dev}\n{ax.start} / {ax.received_datetime} length: {ax.duration}s f={ax.freq}Hz"
+            f"Buoy: {buoy.dev}\n{axl.start} / {axl.received_datetime} length: {axl.duration}s f={axl.freq}Hz"
         )
 
-        a = signal.detrend(ax.z)
-        _, _, w = signal.velocity(ax)
-        _, _, u = signal.displacement(ax)
+        a = signal.detrend(axl.z)
+        _, _, w = signal.velocity(axl)
+        _, _, u = signal.displacement(axl)
 
-        la = plt.plot(ax.time[:], a, label='acceleration ($m/s^2$)')
-        lv = plt.plot(ax.time[:-1], w, label='velocity ($m/s$)')
-        lu = plt.plot(ax.time[:-2], u, label='displacement ($m$)')
+        if la is None:
+            la, = ax.plot(axl.time[:], a, '--', alpha=.5, label='acceleration ($m/s^2$)')
+            lv, = ax.plot(axl.time[:-1], w, '--', alpha=.5, label='velocity ($m/s$)')
+            lu, = ax.plot(axl.time[:-2], u, label='displacement ($m$)')
+        else:
+            la.set_data(axl.time[:], a)
+            lv.set_data(axl.time[:-1], w)
+            lu.set_data(axl.time[:-2], u)
 
-        print(ax.time[0])
+        print(axl.time[0])
 
+        plt.legend()
         plt.pause(sleep)
 

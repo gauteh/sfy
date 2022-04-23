@@ -12,3 +12,4 @@ dependencies:
   - click
   - tabulate
   - tqdm
+  - python-dotenv
