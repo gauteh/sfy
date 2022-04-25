@@ -23,7 +23,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             .location_mode(
                 delay,
                 Some("continuous"),
-                Some(300), // https://discuss.blues.io/t/gps-in-continuous-hub-mode/788/4
+                Some(360), // https://discuss.blues.io/t/gps-in-continuous-hub-mode/788/4
                 None,
                 None,
                 None,
