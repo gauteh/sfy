@@ -24,6 +24,7 @@ def file(dev, file):
     a = signal.detrend(ax.z)
     _, _, w = signal.velocity(ax)
     _, _, u = signal.displacement(ax)
+    u = signal.detrend(u)
 
     plt.figure()
     plt.title(

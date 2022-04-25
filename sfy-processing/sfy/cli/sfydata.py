@@ -47,7 +47,7 @@ def list(dev, start, end):
         pcks = [[
             ax[1].start.strftime("%Y-%m-%d %H:%M:%S UTC"), ax[1].lon,
             ax[1].lat, ax[0]
-        ] for ax in pcks]
+        ] for ax in pcks if ax[1] is not None]
         print(tabulate(pcks, headers=['Time', 'Lon', 'Lat', 'File']))
 
 

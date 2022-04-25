@@ -29,6 +29,10 @@ def displacement(a: Axl):
     """
     x, y, z = velocity(a)
 
+    x = detrend(x)
+    y = detrend(y)
+    z = detrend(z)
+
     x = integrate(x, a.dt)
     y = integrate(y, a.dt)
     z = integrate(z, a.dt)
