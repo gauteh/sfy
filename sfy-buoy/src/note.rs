@@ -22,8 +22,8 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         note.card()
             .location_mode(
                 delay,
-                Some("off"),
-                None,
+                Some("continuous"),
+                Some(300), // https://discuss.blues.io/t/gps-in-continuous-hub-mode/788/4
                 None,
                 None,
                 None,
@@ -38,9 +38,13 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                 delay,
                 Some(env!("BUOYPR", "Specify notehub project")),
                 None,
-                Some(notecard::hub::req::HubMode::Continuous),
+                if cfg!(feature = "continuous") {
+                    Some(notecard::hub::req::HubMode::Continuous)
+                } else {
+                    Some(notecard::hub::req::HubMode::Periodic)
+                },
                 Some(&BUOYSN),
-                Some(20), // max time between out-going sync in minutes.
+                Some(10), // max time between out-going sync in minutes.
                 None,
                 None,
                 None,
@@ -55,7 +59,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             .location_mode(
                 delay,
                 Some("periodic"),
-                Some(60),
+                Some(10),
                 None,
                 None,
                 None,
