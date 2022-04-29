@@ -87,6 +87,7 @@ class Axl:
         """
         return datetime.fromtimestamp(
             self.timestamp / 1000. - (self.offset / self.freq), pytz.utc)
+
     @property
     def end(self):
         """

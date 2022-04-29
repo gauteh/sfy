@@ -13,3 +13,4 @@ dependencies:
   - tabulate
   - tqdm
   - python-dotenv
+  - coloredlogs
