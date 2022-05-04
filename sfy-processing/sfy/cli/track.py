@@ -36,12 +36,7 @@ def map(dev, fast, start, end, margins, save):
     buoy = hub.buoy(dev)
     print(buoy)
 
-    pcks = buoy.packages_range(start, end)
-    pcks = [pck for pck in pcks if 'axl.qo.json' in pck[1]]
-
-    # download or fetch from cache
-    pcks = [buoy.package(pck[1]) for pck in tqdm(pcks)]
-    pcks = [pck for pck in pcks if pck is not None]
+    pcks = buoy.axl_packages_range(start, end)
 
     lon = [pck.lon for pck in pcks]
     lat = [pck.lat for pck in pcks]

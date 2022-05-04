@@ -10,6 +10,25 @@ from datetime import datetime, timedelta
 logger = logging.getLogger(__name__)
 
 
+class AxlCollection:
+    pcks: ['Axl']
+
+    def __init__(self, pcks):
+        self.pcks = pcks
+        self.pcks.sort(key=lambda pck: pck.start)
+
+    def clip(self, start, end):
+        """
+        Clip the collection between start and end.
+        """
+        self.pcks = [
+            pck for pck in self.pcks if pck.start >= start and pck.start <= end
+        ]
+
+    def __len__(self):
+        return len(self.pcks)
+
+
 @dataclass(frozen=True)
 class Axl:
     received: float
@@ -94,14 +113,18 @@ class Axl:
         UTC Datetime of start of samples. Taking `offset` into account.
         """
         return datetime.fromtimestamp(
-            self.timestamp / 1000. - (self.offset / self.freq) + self.duration, pytz.utc)
+            self.timestamp / 1000. - (self.offset / self.freq) + self.duration,
+            pytz.utc)
 
     @property
     def time(self):
         """
         UTC datetime timestamps of samples
         """
-        t = np.array([datetime.fromtimestamp(s/1000., tz=pytz.utc) for s in self.mseconds])
+        t = np.array([
+            datetime.fromtimestamp(s / 1000., tz=pytz.utc)
+            for s in self.mseconds
+        ])
         return t
 
     @property
@@ -182,7 +205,7 @@ class Axl:
             'freq': self.freq,
         }
 
-        payload = np.zeros((len(self.x) * 3,), dtype = np.float16)
+        payload = np.zeros((len(self.x) * 3, ), dtype=np.float16)
         payload[0::3] = self.x
         payload[1::3] = self.y
         payload[2::3] = self.z
@@ -194,7 +217,8 @@ class Axl:
 
         payload = base64.b64encode(payload.tobytes()).decode()
 
-        del data['length'], data['offset'], data['timestamp'], data['lon'], data['lat'], data['freq']
+        del data['length'], data['offset'], data['timestamp'], data[
+            'lon'], data['lat'], data['freq']
         del data['x'], data['y'], data['z']
 
         data['payload'] = payload

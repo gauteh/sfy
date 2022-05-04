@@ -2,6 +2,7 @@
 import click
 from tabulate import tabulate
 from tqdm import tqdm
+from datetime import datetime, timezone
 import coloredlogs
 
 from sfy.hub import Hub
@@ -46,9 +47,11 @@ def list(dev, start, end):
 
         pcks = [[
             ax[1].start.strftime("%Y-%m-%d %H:%M:%S UTC"), ax[1].lon,
-            ax[1].lat, ax[0]
+            ax[1].lat,
+            datetime.fromtimestamp(float(ax[0].split('-')[0]) / 1000., tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+            ax[0]
         ] for ax in pcks if ax[1] is not None]
-        print(tabulate(pcks, headers=['Time', 'Lon', 'Lat', 'File']))
+        print(tabulate(pcks, headers=['DataTime', 'Lon', 'Lat', 'TxTime', 'File']))
 
 
 if __name__ == '__main__':

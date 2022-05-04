@@ -2,12 +2,13 @@ import os
 from pathlib import Path
 from urllib.parse import urljoin
 import requests
-from datetime import datetime
-import pytz
+from datetime import datetime, timezone
 import logging
+from tqdm import tqdm
 logger = logging.getLogger(__name__)
 
 from .axl import Axl
+from .timeutil import utcify
 
 
 class Hub:
@@ -96,20 +97,31 @@ class Buoy:
         pcks = self.packages()
 
         pcks = ((pck.split('-')[0], pck) for pck in pcks)
-        pcks = ((datetime.fromtimestamp(float(pck[0]) / 1000.,
-                                        pytz.utc), pck[1]) for pck in pcks)
+        pcks = ((datetime.fromtimestamp(float(pck[0]) / 1000., tz=timezone.utc), pck[1]) for pck in pcks)
 
         if start is not None:
-            if start.tzinfo is None:
-                start = pytz.utc.localize(start)
+            start = utcify(start)
             pcks = filter(lambda pck: pck[0] >= start, pcks)
 
         if end is not None:
-            if end.tzinfo is None:
-                end = pytz.utc.localize(end)
+            end = utcify(end)
             pcks = filter(lambda pck: pck[0] <= end, pcks)
 
         return list(pcks)
+
+    def axl_packages_range(self, start=None, end=None):
+        logger.debug(f"fetching axl pacakges between {start} and {end}")
+
+        pcks = self.packages_range(start, end)
+        pcks = [pck for pck in pcks if 'axl.qo.json' in pck[1]]
+        logger.debug(f"found {len(pcks)} packages, downloading..")
+
+        # download or fetch from cache
+        pcks = [self.package(pck[1]) for pck in tqdm(pcks)]
+        pcks = [pck for pck in pcks if pck is not None]
+        logger.debug(f"dowloaded {len(pcks)} packages.")
+
+        return pcks
 
     def last(self):
         p = self.hub.__request__(f'{self.dev}/last').text
