@@ -1,4 +1,5 @@
 import pytest
+import numpy as np
 from datetime import datetime, timezone
 
 from sfy import hub
@@ -19,4 +20,7 @@ def test_collect(sfy):
     assert len(pcks) > 2
 
     c = AxlCollection(pcks)
+    print("duration:", c.duration)
+
+    np.testing.assert_almost_equal(c.duration, len(pcks) * 1024 / 52.)
 

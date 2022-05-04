@@ -11,11 +11,18 @@ logger = logging.getLogger(__name__)
 
 
 class AxlCollection:
+    GAP_LIMIT = 1.  # limit in seconds before data is not considered continuous
+
     pcks: ['Axl']
 
     def __init__(self, pcks):
+        assert len(pcks) > 0, "must be at least one package"
+
         self.pcks = pcks
         self.pcks.sort(key=lambda pck: pck.start)
+
+        assert all(pck.frequency == pcks[0].frequency
+                   for pck in pcks), "all packages must be the same frequency"
 
     def clip(self, start, end):
         """
@@ -27,6 +34,54 @@ class AxlCollection:
 
     def __len__(self):
         return len(self.pcks)
+
+    @property
+    def duration(self):
+        return sum(pck.duration for pck in self.pcks)
+
+    @property
+    def start(self):
+        return self.pcks[0].start
+
+    @property
+    def end(self):
+        return self.pcks[-1].end
+
+    @property
+    def frequency(self):
+        return self.pcks[0].frequency
+
+    @property
+    def dt(self):
+        return self.pcks[0].dt
+
+    @property
+    def time(self):
+        return np.concatenate([pck.time for pck in self.pcks])
+
+    @property
+    def mseconds(self):
+        return np.concatenate([pck.mseconds for pck in self.pcks])
+
+    @property
+    def x(self):
+        return np.concatenate([pck.x for pck in self.pcks])
+
+    @property
+    def y(self):
+        return np.concatenate([pck.y for pck in self.pcks])
+
+    @property
+    def z(self):
+        return np.concatenate([pck.z for pck in self.pcks])
+
+    @property
+    def lons(self):
+        return [pck.lon for pck in self.pcks]
+
+    @property
+    def lats(self):
+        return [pck.lat for pck in self.pcks]
 
 
 @dataclass(frozen=True)
