@@ -5,6 +5,7 @@ import requests
 from datetime import datetime, timezone
 import logging
 from tqdm import tqdm
+
 logger = logging.getLogger(__name__)
 
 from .axl import Axl
@@ -69,20 +70,36 @@ class Hub:
         """
         return [Buoy(self, d) for d in self.__json_request__('./')]
 
-    def buoy(self, dev):
-        return next(filter(lambda b: dev in b.dev, self.buoys()))
+    def buoy(self, dev: str):
+        return next(filter(lambda b: b.matches(dev), self.buoys()))
 
 
 class Buoy:
     hub: Hub
     dev: str
+    name: str
 
     def __init__(self, hub, dev):
         self.hub = hub
-        self.dev = dev
+
+        if isinstance(dev, list):
+            self.dev = dev[0]
+            self.name = dev[1]
+        else:
+            self.dev = dev
+            self.name = None
 
     def __repr__(self):
         return f"Buoy <{self.dev}>"
+
+    def matches(self, key):
+        key = key.lower()
+
+        if key in self.dev.lower(): return True
+        if self.name is not None:
+            if key in self.name.lower(): return True
+
+        return False
 
     def packages(self):
         return self.hub.__json_request__(self.dev)
@@ -100,7 +117,9 @@ class Buoy:
         pcks = self.packages()
 
         pcks = ((pck.split('-')[0], pck) for pck in pcks)
-        pcks = ((datetime.fromtimestamp(float(pck[0]) / 1000., tz=timezone.utc), pck[1]) for pck in pcks)
+        pcks = ((datetime.fromtimestamp(float(pck[0]) / 1000.,
+                                        tz=timezone.utc), pck[1])
+                for pck in pcks)
 
         if start is not None:
             start = utcify(start)

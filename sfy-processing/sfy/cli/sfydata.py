@@ -35,8 +35,8 @@ def list(dev, start, end):
     if dev is None:
         buoys = hub.buoys()
         buoys.sort(key=lambda b: b.dev)
-        buoys = [[b.dev] for b in buoys]
-        print(tabulate(buoys, headers=['Buoys']))
+        buoys = [[b.dev, b.name] for b in buoys]
+        print(tabulate(buoys, headers=['Buoys', 'Name']))
     else:
         buoy = hub.buoy(dev)
         pcks = buoy.packages_range(start, end)
