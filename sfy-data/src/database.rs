@@ -1,6 +1,7 @@
 use eyre::Result;
-use sqlx::SqlitePool;
+use sqlx::{SqlitePool, sqlite::SqliteConnectOptions, sqlite::SqlitePoolOptions};
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 #[derive(Debug)]
 pub struct Database {
@@ -12,7 +13,8 @@ impl Database {
         let path: PathBuf = path.as_ref().into();
         info!("opening database at: {:?}", path);
 
-        let db = SqlitePool::connect(&format!("sqlite:{}", path.to_string_lossy())).await?;
+        let db = SqliteConnectOptions::from_str(&format!("sqlite:{}", path.to_string_lossy()))?.create_if_missing(true);
+        let db  = SqlitePoolOptions::new().connect_with(db).await?;
 
         info!("running db migrations..");
         sqlx::migrate!("./migrations").run(&db).await?;
