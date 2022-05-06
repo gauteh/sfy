@@ -113,6 +113,7 @@ fn check_read_token(state: State) -> impl Filter<Extract = (), Error = Rejection
 struct Event {
     event: String,
     device: String,
+    name: Option<String>,
     file: Option<String>,
     #[allow(unused)]
     body: json::Value,
@@ -133,6 +134,11 @@ fn parse_data(body: &[u8]) -> eyre::Result<Event> {
         .map(String::from)
         .ok_or(eyre!("no dev field"))?;
 
+    let name = body
+        .get("sn")
+        .and_then(json::Value::as_str)
+        .map(String::from);
+
     let file = body
         .get("file")
         .and_then(json::Value::as_str)
@@ -141,6 +147,7 @@ fn parse_data(body: &[u8]) -> eyre::Result<Event> {
     Ok(Event {
         event,
         device,
+        name,
         file,
         body,
     })
@@ -183,7 +190,7 @@ pub mod handlers {
             .db
             .write()
             .await
-            .buoy(&buoy)
+            .buoy(&buoy).await
             .map_err(|_| reject::custom(AppendErrors::Internal))?
             .entries()
             .await
@@ -204,6 +211,7 @@ pub mod handlers {
             .write()
             .await
             .buoy(&buoy)
+            .await
             .map_err(|_| reject::custom(AppendErrors::Internal))?
             .get(entry)
             .await
@@ -226,6 +234,7 @@ pub mod handlers {
             .write()
             .await
             .buoy(&buoy)
+            .await
             .map_err(|_| reject::custom(AppendErrors::Internal))?
             .last()
             .await
@@ -258,8 +267,8 @@ pub mod handlers {
                 event.event, event.device, device, event.file
             );
 
-            let mut db = state.db.write().await;
-            let mut b = db.buoy(&device).map_err(|e| {
+            let db = state.db.write().await;
+            let mut b = db.buoy(&device).await.map_err(|e| {
                 error!("failed to open database for device: {}: {:?}", &device, e);
                 reject::custom(AppendErrors::Database)
             })?;
@@ -273,7 +282,7 @@ pub mod handlers {
             let file = sanitize(&file);
             debug!("writing to: {}", file);
 
-            b.append(&file, &body).await.map_err(|e| {
+            b.append(event.name, &file, &body).await.map_err(|e| {
                 error!("failed to write file: {:?}", e);
                 reject::custom(AppendErrors::Database)
             })?;
@@ -282,8 +291,8 @@ pub mod handlers {
         } else {
             warn!("could not parse event, storing event in lost+found");
 
-            let mut db = state.db.write().await;
-            let mut b = db.buoy("lost+found").map_err(|e| {
+            let db = state.db.write().await;
+            let mut b = db.buoy("lost+found").await.map_err(|e| {
                 error!("failed to open database for lost+found: {:?}", e);
                 reject::custom(AppendErrors::Database)
             })?;
@@ -292,7 +301,7 @@ pub mod handlers {
             let file = sanitize(&file);
             debug!("writing to: {}", file);
 
-            b.append(&file, &body).await.map_err(|e| {
+            b.append(None, &file, &body).await.map_err(|e| {
                 error!("failed to write file: {:?}", e);
                 reject::custom(AppendErrors::Database)
             })?;
@@ -364,7 +373,7 @@ mod tests {
 
         assert_eq!(res.status(), 200);
 
-        let e = state.db.write().await.buoy("dev864475044203262").unwrap().get("0-9ef2e080-f0b4-4036-8ccc-ec4206553537_sensor.db.json").await.unwrap();
+        let e = state.db.read().await.buoy("dev864475044203262").await.unwrap().get("0-9ef2e080-f0b4-4036-8ccc-ec4206553537_sensor.db.json").await.unwrap();
 
         assert_eq!(&e, &event);
     }
@@ -421,7 +430,7 @@ mod tests {
             .await;
 
         assert_eq!(res.status(), 200);
-        assert_eq!(res.body(), "[\"dev864475044203262\"]");
+        assert_eq!(res.body(), "[[\"dev864475044203262\",\"cain\"]]");
     }
 
     #[tokio::test]

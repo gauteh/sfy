@@ -1,0 +1,135 @@
+{
+  "db": "SQLite",
+  "1e009f7d391166166e356e5dcad554ca04ef56d05ed0fabbcc61b55db5e90031": {
+    "describe": {
+      "columns": [
+        {
+          "name": "data",
+          "ordinal": 0,
+          "type_info": "Blob"
+        }
+      ],
+      "nullable": [
+        true
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT data FROM events WHERE dev = ?1 AND instr(event, 'axl.qo') ORDER BY event DESC LIMIT 1"
+  },
+  "4208b9eda13a19f9ce7e6c7cd06613b6074a7581e6abde6481f7b5d40a0d744b": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "INSERT OR REPLACE INTO buoys (dev, name) VALUES ( ?1, ?2 )"
+  },
+  "4c9be561ee9b4d5bac15e8f0430e353c39f8e83bf96aec9e4a40d0845281b593": {
+    "describe": {
+      "columns": [
+        {
+          "name": "dev",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        true,
+        true
+      ],
+      "parameters": {
+        "Right": 0
+      }
+    },
+    "query": "SELECT dev, name FROM buoys ORDER BY dev"
+  },
+  "984649d912657bc582d4db828db6e110681f5d9c64c715cf5dbb89af08aa06d7": {
+    "describe": {
+      "columns": [
+        {
+          "name": "data",
+          "ordinal": 0,
+          "type_info": "Blob"
+        }
+      ],
+      "nullable": [
+        true
+      ],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "SELECT data FROM events WHERE dev = ?1 AND event = ?2"
+  },
+  "b0ce7e708ec84564f2db228a932c60b750290427d01e39e3615014734624dd06": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 3
+      }
+    },
+    "query": "INSERT INTO events (dev, event, data) VALUES ( ?1, ?2, ?3 )"
+  },
+  "c8a6aa770eb114d29fec3fd29c57c4ad49d9d0a0849b5f64a4b54eddeb433e59": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "INSERT INTO buoys (dev) VALUES ( ?1 )"
+  },
+  "e3bde13a888baa04646183e5f70beeff8a22b60483d4d0482c6976b61e44fa4f": {
+    "describe": {
+      "columns": [
+        {
+          "name": "dev",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        true,
+        true
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT dev, name FROM buoys where dev = ?1"
+  },
+  "f38ca25b036d3594994997dc67366687727d58cf0d2c0b929b2a977b6044814f": {
+    "describe": {
+      "columns": [
+        {
+          "name": "event",
+          "ordinal": 0,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        true
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT event FROM events where dev = ?1 ORDER BY event"
+  }
+}
