@@ -318,7 +318,7 @@ mod tests {
 
     #[tokio::test]
     async fn check_token_ok() {
-        let (_, state) = crate::test_state();
+        let state = crate::test_state().await;
 
         let f = check_token(state);
 
@@ -339,10 +339,10 @@ mod tests {
 
     #[tokio::test]
     async fn append_to_database() {
-        let (tmp, state) = crate::test_state();
+        let state = crate::test_state().await;
         let event = std::fs::read("tests/events/sensor.db_01.json").unwrap();
 
-        let f = filters(state);
+        let f = filters(state.clone());
 
         let res = warp::test::request()
             .path("/buoy")
@@ -364,16 +364,14 @@ mod tests {
 
         assert_eq!(res.status(), 200);
 
-        let path = tmp
-            .path()
-            .join("dev864475044203262")
-            .join("0-9ef2e080-f0b4-4036-8ccc-ec4206553537_sensor.db.json");
-        assert_eq!(std::fs::read(path).unwrap().as_slice(), &event);
+        let e = state.db.write().await.buoy("dev864475044203262").unwrap().get("0-9ef2e080-f0b4-4036-8ccc-ec4206553537_sensor.db.json").await.unwrap();
+
+        assert_eq!(&e, &event);
     }
 
     #[tokio::test]
     async fn bad_event() {
-        let (_, state) = crate::test_state();
+        let state = crate::test_state().await;
         let event = br#"{ "noevent": "asdf", "something": "hey", bad json even }"#;
 
         let f = filters(state);
@@ -391,7 +389,7 @@ mod tests {
 
     #[tokio::test]
     async fn list_buoys() {
-        let (_tmp, state) = crate::test_state();
+        let state = crate::test_state().await;
         let event = std::fs::read("tests/events/sensor.db_01.json").unwrap();
 
         let f = filters(state);
@@ -428,7 +426,7 @@ mod tests {
 
     #[tokio::test]
     async fn list_entries() {
-        let (_tmp, state) = crate::test_state();
+        let state = crate::test_state().await;
         let event = std::fs::read("tests/events/sensor.db_01.json").unwrap();
 
         let f = filters(state);
@@ -472,7 +470,7 @@ mod tests {
 
     #[tokio::test]
     async fn get_entry() {
-        let (_tmp, state) = crate::test_state();
+        let state = crate::test_state().await;
         let event = std::fs::read("tests/events/sensor.db_01.json").unwrap();
 
         let f = filters(state);
@@ -513,7 +511,7 @@ mod tests {
 
     #[tokio::test]
     async fn last_entry() {
-        let (_tmp, state) = crate::test_state();
+        let state = crate::test_state().await;
 
         let f = filters(state);
 

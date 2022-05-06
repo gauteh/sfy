@@ -42,7 +42,7 @@ async fn main() -> eyre::Result<()> {
     let config = config::Config::from_path(sfy.config);
 
     let database = config.database.clone().expect("no database path specified");
-    let database = database::Database::open(database)?;
+    let database = database::Database::open(database).await?;
     let database = tokio::sync::RwLock::new(database);
 
     let state = Arc::new(SfyState {
@@ -84,13 +84,13 @@ async fn main() -> eyre::Result<()> {
 }
 
 #[cfg(test)]
-fn test_state() -> (tempfile::TempDir, State) {
+async fn test_state() -> State {
     let config = config::Config::test_config();
-    let (dir, db) = database::Database::temporary();
+    let db = database::Database::temporary().await;
     let db = tokio::sync::RwLock::new(db);
 
     let state = SfyState { config, db };
     let state = Arc::new(state);
 
-    (dir, state)
+    state
 }

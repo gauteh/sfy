@@ -4,21 +4,22 @@ use std::marker::PhantomData;
 use std::path::{Path, PathBuf};
 use tempfile::NamedTempFile;
 use sqlx::prelude::*;
+use sqlx::SqlitePool;
 
 #[derive(Debug)]
 pub struct Database {
-
     path: PathBuf,
+    db: SqlitePool,
 }
 
 impl Database {
-    pub fn open(path: impl AsRef<Path>) -> Result<Database> {
+    pub async fn open(path: impl AsRef<Path>) -> Result<Database> {
         let path: PathBuf = path.as_ref().into();
         info!("opening database at: {:?}", path);
 
-        ensure!(path.exists(), "database path does not exist");
+        let db = SqlitePool::connect(&format!("sqlite::{}", path.to_string_lossy())).await?;
 
-        Ok(Database { path })
+        Ok(Database { path, db })
     }
 
     /// Open buoy for writing.
@@ -56,13 +57,10 @@ impl Database {
     }
 
     #[cfg(test)]
-    pub fn temporary() -> (tempfile::TempDir, Database) {
-        let dir = tempfile::tempdir().unwrap();
-        let db = Database::open(dir.path()).unwrap();
+    pub async fn temporary() -> Database {
+        warn!("create temporary database at in memory");
 
-        warn!("create temporary database at: {:?}", dir.path());
-
-        (dir, db)
+        Database::open("sqlite::memory").await.unwrap()
     }
 }
 
@@ -149,22 +147,20 @@ impl<'a> Buoy<'a> {
 mod tests {
     use super::*;
 
-    #[test]
-    fn create_temporary() {
-        let (tmp, _db) = Database::temporary();
-
-        assert!(tmp.path().exists());
+    #[tokio::test]
+    async fn create_temporary() {
+        let _db = Database::temporary().await;
     }
 
-    #[test]
-    fn get_new_buoy() {
-        let (_tmp, mut db) = Database::temporary();
+    #[tokio::test]
+    async fn get_new_buoy() {
+        let mut db = Database::temporary().await;
         let _b = db.buoy("test-01");
     }
 
     #[tokio::test]
     async fn add_some_entries() {
-        let (_tmp, mut db) = Database::temporary();
+        let mut db = Database::temporary().await;
         let mut b = db.buoy("buoy-01").unwrap();
 
         b.append("entry-0", "data-0").await.unwrap();
@@ -178,7 +174,7 @@ mod tests {
 
     #[tokio::test]
     async fn add_existing_entry() {
-        let (_tmp, mut db) = Database::temporary();
+        let mut db = Database::temporary().await;
         let mut b = db.buoy("buoy-01").unwrap();
 
         b.append("entry-0", "data-0").await.unwrap();
@@ -187,7 +183,7 @@ mod tests {
 
     #[tokio::test]
     async fn list_buoys() {
-        let (_tmp, mut db) = Database::temporary();
+        let mut db = Database::temporary().await;
         db.buoy("buoy-01").unwrap();
         db.buoy("buoy-02").unwrap();
 
@@ -196,7 +192,7 @@ mod tests {
 
     #[tokio::test]
     async fn list_entries() {
-        let (_tmp, mut db) = Database::temporary();
+        let mut db = Database::temporary().await;
         let mut b = db.buoy("buoy-01").unwrap();
         b.append("entry-0", "data-0").await.unwrap();
         b.append("entry-1", "data-1").await.unwrap();
@@ -206,7 +202,7 @@ mod tests {
 
     #[tokio::test]
     async fn append_get() {
-        let (_tmp, mut db) = Database::temporary();
+        let mut db = Database::temporary().await;
         let mut b = db.buoy("buoy-01").unwrap();
         b.append("entry-0", "data-0").await.unwrap();
 
@@ -215,7 +211,7 @@ mod tests {
 
     #[tokio::test]
     async fn append_last() {
-        let (_tmp, mut db) = Database::temporary();
+        let mut db = Database::temporary().await;
         let mut b = db.buoy("buoy-01").unwrap();
         b.append("entry-0-axl.qo", "data-0").await.unwrap();
         b.append("entry-1-sessi.qo", "data-1").await.unwrap();
