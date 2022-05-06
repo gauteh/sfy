@@ -52,33 +52,39 @@
     },
     "query": "SELECT dev, name FROM buoys ORDER BY dev"
   },
-  "984649d912657bc582d4db828db6e110681f5d9c64c715cf5dbb89af08aa06d7": {
-    "describe": {
-      "columns": [
-        {
-          "name": "data",
-          "ordinal": 0,
-          "type_info": "Blob"
-        }
-      ],
-      "nullable": [
-        true
-      ],
-      "parameters": {
-        "Right": 2
-      }
-    },
-    "query": "SELECT data FROM events WHERE dev = ?1 AND event = ?2"
-  },
-  "b0ce7e708ec84564f2db228a932c60b750290427d01e39e3615014734624dd06": {
+  "64709d16319456285630b5d8a42712a126259fe648f55b8900f9e3fbf17f2e91": {
     "describe": {
       "columns": [],
       "nullable": [],
       "parameters": {
-        "Right": 3
+        "Right": 4
       }
     },
-    "query": "INSERT INTO events (dev, event, data) VALUES ( ?1, ?2, ?3 )"
+    "query": "INSERT INTO events (dev, received, event, data) VALUES ( ?1, ?2, ?3, ?4 )"
+  },
+  "bd60544e7cc0b982bf0cb455261ae7ad46741338c49dd5ab7d5b8d06456fee6d": {
+    "describe": {
+      "columns": [
+        {
+          "name": "received",
+          "ordinal": 0,
+          "type_info": "Int64"
+        },
+        {
+          "name": "event",
+          "ordinal": 1,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        true
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT received, event FROM events where dev = ?1 ORDER BY event"
   },
   "c8a6aa770eb114d29fec3fd29c57c4ad49d9d0a0849b5f64a4b54eddeb433e59": {
     "describe": {
@@ -114,22 +120,22 @@
     },
     "query": "SELECT dev, name FROM buoys where dev = ?1"
   },
-  "f38ca25b036d3594994997dc67366687727d58cf0d2c0b929b2a977b6044814f": {
+  "e9f07ce71c50e05dc3c5bec78f8cad93caed05982fa67ceac5e703f9bf4a3738": {
     "describe": {
       "columns": [
         {
-          "name": "event",
+          "name": "data",
           "ordinal": 0,
-          "type_info": "Text"
+          "type_info": "Blob"
         }
       ],
       "nullable": [
         true
       ],
       "parameters": {
-        "Right": 1
+        "Right": 3
       }
     },
-    "query": "SELECT event FROM events where dev = ?1 ORDER BY event"
+    "query": "SELECT data FROM events WHERE dev = ?1 AND received = ?2 AND event = ?3"
   }
 }

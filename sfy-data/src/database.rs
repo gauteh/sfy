@@ -80,6 +80,7 @@ impl Buoy {
         &mut self,
         name: Option<String>,
         event: impl AsRef<Path>,
+        received: u64,
         data: impl AsRef<[u8]>,
     ) -> eyre::Result<()> {
         let data = data.as_ref();
@@ -106,9 +107,11 @@ impl Buoy {
             data.len()
         );
 
+        let r = received as i64;
         sqlx::query!(
-            "INSERT INTO events (dev, event, data) VALUES ( ?1, ?2, ?3 )",
+            "INSERT INTO events (dev, received, event, data) VALUES ( ?1, ?2, ?3, ?4 )",
             self.dev,
+            r,
             event,
             data
         )
@@ -120,13 +123,19 @@ impl Buoy {
 
     pub async fn entries(&self) -> Result<Vec<String>> {
         let events = sqlx::query!(
-            "SELECT event FROM events where dev = ?1 ORDER BY event",
+            "SELECT received, event FROM events where dev = ?1 ORDER BY event",
             self.dev
         )
         .fetch_all(&self.db)
         .await?
         .iter()
-        .map(|r| r.event.clone().unwrap_or(String::new()))
+        .map(|r| {
+            format!(
+                "{}-{}",
+                r.received.clone(),
+                r.event.clone().unwrap_or(String::new())
+            )
+        })
         .collect();
 
         Ok(events)
@@ -147,9 +156,14 @@ impl Buoy {
     pub async fn get(&self, file: impl AsRef<Path>) -> Result<Vec<u8>> {
         let file = file.as_ref().to_string_lossy().into_owned();
 
+        let (received, file) = file
+            .split_once('-')
+            .ok_or(eyre!("incorrect format of event"))?;
+
         let event = sqlx::query!(
-            "SELECT data FROM events WHERE dev = ?1 AND event = ?2",
+            "SELECT data FROM events WHERE dev = ?1 AND received = ?2 AND event = ?3",
             self.dev,
+            received,
             file
         )
         .fetch_one(&self.db)
@@ -182,10 +196,10 @@ mod tests {
         let db = Database::temporary().await;
         let mut b = db.buoy("buoy-01").await.unwrap();
 
-        b.append(None, "entry-0", "data-0").await.unwrap();
-        b.append(None, "entry-1", "data-1").await.unwrap();
+        b.append(None, "entry-0", 0, "data-0").await.unwrap();
+        b.append(None, "entry-1", 0, "data-1").await.unwrap();
 
-        assert_eq!(b.get("entry-0").await.unwrap(), b"data-0");
+        assert_eq!(b.get("0-entry-0").await.unwrap(), b"data-0");
     }
 
     #[tokio::test]
@@ -193,8 +207,8 @@ mod tests {
         let db = Database::temporary().await;
         let mut b = db.buoy("buoy-01").await.unwrap();
 
-        b.append(None, "entry-0", "data-0").await.unwrap();
-        assert!(b.append(None, "entry-0", "data-1").await.is_err());
+        b.append(None, "entry-0", 0, "data-0").await.unwrap();
+        assert!(b.append(None, "entry-0", 0, "data-1").await.is_err());
     }
 
     #[tokio::test]
@@ -213,12 +227,12 @@ mod tests {
     async fn list_entries() {
         let db = Database::temporary().await;
         let mut b = db.buoy("buoy-01").await.unwrap();
-        b.append(None, "entry-0", "data-0").await.unwrap();
-        b.append(None, "entry-1", "data-1").await.unwrap();
+        b.append(None, "entry-0", 0, "data-0").await.unwrap();
+        b.append(None, "entry-1", 0, "data-1").await.unwrap();
 
         assert_eq!(
             db.buoy("buoy-01").await.unwrap().entries().await.unwrap(),
-            ["entry-0", "entry-1"]
+            ["0-entry-0", "0-entry-1"]
         );
     }
 
@@ -226,17 +240,17 @@ mod tests {
     async fn append_get() {
         let db = Database::temporary().await;
         let mut b = db.buoy("buoy-01").await.unwrap();
-        b.append(None, "entry-0", "data-0").await.unwrap();
+        b.append(None, "entry-0", 0, "data-0").await.unwrap();
 
-        assert_eq!(b.get("entry-0").await.unwrap(), b"data-0");
+        assert_eq!(b.get("0-entry-0").await.unwrap(), b"data-0");
     }
 
     #[tokio::test]
     async fn append_last() {
         let db = Database::temporary().await;
         let mut b = db.buoy("buoy-01").await.unwrap();
-        b.append(None, "entry-0-axl.qo", "data-0").await.unwrap();
-        b.append(None, "entry-1-sessi.qo", "data-1").await.unwrap();
+        b.append(None, "entry-0-axl.qo", 0, "data-0").await.unwrap();
+        b.append(None, "entry-1-sessi.qo", 0, "data-1").await.unwrap();
 
         assert_eq!(b.last().await.unwrap(), b"data-0");
     }

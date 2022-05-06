@@ -113,6 +113,7 @@ fn check_read_token(state: State) -> impl Filter<Extract = (), Error = Rejection
 struct Event {
     event: String,
     device: String,
+    received: u64,
     name: Option<String>,
     file: Option<String>,
     #[allow(unused)]
@@ -139,6 +140,12 @@ fn parse_data(body: &[u8]) -> eyre::Result<Event> {
         .and_then(json::Value::as_str)
         .map(String::from);
 
+    let received = body
+        .get("received")
+        .and_then(json::Value::as_f64)
+        .unwrap_or(0.0);
+    let received = (received * 1000.).trunc() as u64;
+
     let file = body
         .get("file")
         .and_then(json::Value::as_str)
@@ -147,6 +154,7 @@ fn parse_data(body: &[u8]) -> eyre::Result<Event> {
     Ok(Event {
         event,
         device,
+        received,
         name,
         file,
         body,
@@ -190,7 +198,8 @@ pub mod handlers {
             .db
             .write()
             .await
-            .buoy(&buoy).await
+            .buoy(&buoy)
+            .await
             .map_err(|_| reject::custom(AppendErrors::Internal))?
             .entries()
             .await
@@ -223,10 +232,7 @@ pub mod handlers {
             .body(entry))
     }
 
-    pub async fn last(
-        buoy: String,
-        state: State,
-    ) -> Result<impl warp::Reply, warp::Rejection> {
+    pub async fn last(buoy: String, state: State) -> Result<impl warp::Reply, warp::Rejection> {
         let buoy = sanitize(buoy);
 
         let entry = state
@@ -252,13 +258,6 @@ pub mod handlers {
     ) -> Result<impl warp::Reply, warp::Rejection> {
         trace!("got message: {:#?}", body);
 
-        use std::time::{SystemTime, UNIX_EPOCH};
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map_err(|_| reject::custom(AppendErrors::Internal))?;
-
-        let now = if cfg!(test) { 0 } else { now.as_millis() };
-
         if let Ok(event) = parse_data(&body) {
             let device = sanitize(&event.device);
 
@@ -274,15 +273,14 @@ pub mod handlers {
             })?;
 
             let file = &format!(
-                "{}-{}_{}.json",
-                now,
+                "{}_{}.json",
                 event.event,
                 event.file.unwrap_or("__unnamed__".into())
             );
             let file = sanitize(&file);
             debug!("writing to: {}", file);
 
-            b.append(event.name, &file, &body).await.map_err(|e| {
+            b.append(event.name, &file, event.received, &body).await.map_err(|e| {
                 error!("failed to write file: {:?}", e);
                 reject::custom(AppendErrors::Database)
             })?;
@@ -297,11 +295,18 @@ pub mod handlers {
                 reject::custom(AppendErrors::Database)
             })?;
 
+            use std::time::{SystemTime, UNIX_EPOCH};
+            let now = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .map_err(|_| reject::custom(AppendErrors::Internal))?;
+
+            let now = if cfg!(test) { 0 } else { now.as_millis() };
+
             let file = &format!("{}.json", now,);
             let file = sanitize(&file);
             debug!("writing to: {}", file);
 
-            b.append(None, &file, &body).await.map_err(|e| {
+            b.append(None, &file, now as u64, &body).await.map_err(|e| {
                 error!("failed to write file: {:?}", e);
                 reject::custom(AppendErrors::Database)
             })?;
@@ -373,7 +378,16 @@ mod tests {
 
         assert_eq!(res.status(), 200);
 
-        let e = state.db.read().await.buoy("dev864475044203262").await.unwrap().get("0-9ef2e080-f0b4-4036-8ccc-ec4206553537_sensor.db.json").await.unwrap();
+        let e = state
+            .db
+            .read()
+            .await
+            .buoy("dev864475044203262")
+            .await
+            .unwrap()
+            .get("1639059643089-9ef2e080-f0b4-4036-8ccc-ec4206553537_sensor.db.json")
+            .await
+            .unwrap();
 
         assert_eq!(&e, &event);
     }
@@ -473,7 +487,7 @@ mod tests {
         assert_eq!(res.status(), 200);
         assert_eq!(
             res.body(),
-            "[\"0-9ef2e080-f0b4-4036-8ccc-ec4206553537_sensor.db.json\"]"
+            "[\"1639059643089-9ef2e080-f0b4-4036-8ccc-ec4206553537_sensor.db.json\"]"
         );
     }
 
@@ -496,7 +510,7 @@ mod tests {
 
         // Missing token
         let res = warp::test::request()
-            .path("/buoys/dev864475044203262/0-9ef2e080-f0b4-4036-8ccc-ec4206553537_sensor.db.json")
+            .path("/buoys/dev864475044203262/1639059643089-9ef2e080-f0b4-4036-8ccc-ec4206553537_sensor.db.json")
             .method("GET")
             .reply(&f)
             .await;
@@ -504,7 +518,7 @@ mod tests {
         assert_eq!(res.status(), 400);
 
         let res = warp::test::request()
-            .path("/buoys/dev864475044203262/0-9ef2e080-f0b4-4036-8ccc-ec4206553537_sensor.db.json")
+            .path("/buoys/dev864475044203262/1639059643089-9ef2e080-f0b4-4036-8ccc-ec4206553537_sensor.db.json")
             .method("GET")
             .header("SFY_AUTH_TOKEN", "r-token1")
             .reply(&f)
@@ -544,7 +558,10 @@ mod tests {
 
         assert_eq!(res.status(), 500);
 
-        let event = std::fs::read("tests/events/1647870799330-1876870b-4708-4366-8db5-68f872cc4e6d_axl.qo.json").unwrap();
+        let event = std::fs::read(
+            "tests/events/1647870799330-1876870b-4708-4366-8db5-68f872cc4e6d_axl.qo.json",
+        )
+        .unwrap();
         let res = warp::test::request()
             .path("/buoy")
             .method("POST")

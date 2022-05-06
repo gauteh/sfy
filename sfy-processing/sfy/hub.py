@@ -88,6 +88,9 @@ class Buoy:
         return self.hub.__json_request__(self.dev)
 
     def raw_package(self, pck):
+        return self.hub.__request__(f'{self.dev}/{pck}').text
+
+    def json_package(self, pck):
         return self.hub.__json_request__(f'{self.dev}/{pck}')
 
     def packages_range(self, start=None, end=None):
