@@ -123,7 +123,7 @@ impl Buoy {
 
     pub async fn entries(&self) -> Result<Vec<String>> {
         let events = sqlx::query!(
-            "SELECT received, event FROM events where dev = ?1 ORDER BY event",
+            "SELECT received, event FROM events where dev = ?1 ORDER BY received",
             self.dev
         )
         .fetch_all(&self.db)
@@ -143,7 +143,7 @@ impl Buoy {
 
     /// Get the last received axl.qo entry for the buoy.
     pub async fn last(&self) -> Result<Vec<u8>> {
-        let event = sqlx::query!("SELECT data FROM events WHERE dev = ?1 AND instr(event, 'axl.qo') ORDER BY event DESC LIMIT 1", self.dev)
+        let event = sqlx::query!("SELECT data FROM events WHERE dev = ?1 AND instr(event, 'axl.qo') ORDER BY received DESC LIMIT 1", self.dev)
             .fetch_one(&self.db)
             .await?;
 
