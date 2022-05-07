@@ -161,9 +161,12 @@ class Buoy:
                     fd.write(self.hub.__request__(f'{self.dev}/{pck}').text)
             except:
                 os.remove(pckf)
+                raise
 
         try:
             return Axl.from_file(pckf)
-        except:
-            logger.error(f"failed to parse file: {self.dev}/{pckf}")
+        except KeyError:
+            raise
+        except Exception as e:
+            logger.error(f"failed to parse file: {self.dev}/{pckf}: {e}")
             return None
