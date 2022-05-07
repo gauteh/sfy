@@ -1,5 +1,5 @@
 use eyre::Result;
-use sqlx::{SqlitePool, sqlite::SqliteConnectOptions, sqlite::SqlitePoolOptions};
+use sqlx::{sqlite::SqliteConnectOptions, sqlite::SqlitePoolOptions, SqlitePool};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
@@ -13,8 +13,9 @@ impl Database {
         let path: PathBuf = path.as_ref().into();
         info!("opening database at: {:?}", path);
 
-        let db = SqliteConnectOptions::from_str(&format!("sqlite:{}", path.to_string_lossy()))?.create_if_missing(true);
-        let db  = SqlitePoolOptions::new().connect_with(db).await?;
+        let db = SqliteConnectOptions::from_str(&format!("sqlite:{}", path.to_string_lossy()))?
+            .create_if_missing(true);
+        let db = SqlitePoolOptions::new().connect_with(db).await?;
 
         info!("running db migrations..");
         sqlx::migrate!("./migrations").run(&db).await?;
@@ -28,17 +29,17 @@ impl Database {
             .fetch_optional(&self.db)
             .await?;
 
-        if buoy.is_none() {
-            info!("New buoy registered: {}", dev);
-            sqlx::query!("INSERT INTO buoys (dev) VALUES ( ?1 )", dev)
-                .execute(&self.db)
-                .await?;
+        let known = buoy.is_some();
+
+        if !known {
+            debug!("Unknown buoy: {}", dev);
         }
 
         let name = buoy.map(|b| b.name).flatten();
 
         Ok(Buoy {
             dev: String::from(dev),
+            known,
             name,
             db: self.db.clone().clone(),
         })
@@ -72,6 +73,8 @@ impl Database {
 #[derive(Debug)]
 pub struct Buoy {
     dev: String,
+    /// Does the buoy exist in the database already.
+    known: bool,
     name: Option<String>,
     db: SqlitePool,
 }
@@ -88,17 +91,28 @@ impl Buoy {
         let data = data.as_ref();
         let event = event.as_ref().to_string_lossy().into_owned();
 
-        if let Some(name) = name {
+        if let Some(ref name) = name {
             if self.name.as_ref() != Some(&name) {
-                info!("updating name of buoy from {:?} to {:?}", self.name, name);
-                sqlx::query!(
-                    "INSERT OR REPLACE INTO buoys (dev, name) VALUES ( ?1, ?2 )",
-                    self.dev,
-                    name
-                )
-                .execute(&self.db)
-                .await?;
+                debug!("Updating name for: {} to {}", self.dev, name);
+                self.known = false;
             }
+        }
+
+        if !self.known {
+            info!(
+                "Updating or inserting buoy from {:?} to {:?}",
+                self.name, name
+            );
+
+            sqlx::query!(
+                "INSERT OR REPLACE INTO buoys (dev, name) VALUES ( ?1, ?2 )",
+                self.dev,
+                name
+            )
+            .execute(&self.db)
+            .await?;
+
+            self.known = true;
         }
 
         debug!(
@@ -252,7 +266,9 @@ mod tests {
         let db = Database::temporary().await;
         let mut b = db.buoy("buoy-01").await.unwrap();
         b.append(None, "entry-0-axl.qo", 0, "data-0").await.unwrap();
-        b.append(None, "entry-1-sessi.qo", 0, "data-1").await.unwrap();
+        b.append(None, "entry-1-sessi.qo", 0, "data-1")
+            .await
+            .unwrap();
 
         assert_eq!(b.last().await.unwrap(), b"data-0");
     }
