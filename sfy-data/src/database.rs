@@ -138,6 +138,8 @@ impl Buoy {
     }
 
     pub async fn entries(&self) -> Result<Vec<String>> {
+        ensure!(self.known, "No such buoy");
+
         let events = sqlx::query!(
             "SELECT received, event FROM events where dev = ?1 ORDER BY received",
             self.dev
@@ -159,6 +161,8 @@ impl Buoy {
 
     /// Get the last received axl.qo entry for the buoy.
     pub async fn last(&self) -> Result<Vec<u8>> {
+        ensure!(self.known, "No such buoy");
+
         let event = sqlx::query!("SELECT data FROM events WHERE dev = ?1 AND instr(event, 'axl.qo') ORDER BY received DESC LIMIT 1", self.dev)
             .fetch_one(&self.db)
             .await?;
@@ -170,6 +174,8 @@ impl Buoy {
     }
 
     pub async fn get(&self, file: impl AsRef<Path>) -> Result<Vec<u8>> {
+        ensure!(self.known, "No such buoy");
+
         let file = file.as_ref().to_string_lossy().into_owned();
 
         let (received, file) = file
@@ -230,8 +236,12 @@ mod tests {
     #[tokio::test]
     async fn list_buoys() {
         let db = Database::temporary().await;
-        db.buoy("buoy-01").await.unwrap();
-        db.buoy("buoy-02").await.unwrap();
+
+        let mut b = db.buoy("buoy-01").await.unwrap();
+        b.append(None, "entry-0", 0, "data-0").await.unwrap();
+
+        let mut b = db.buoy("buoy-02").await.unwrap();
+        b.append(None, "entry-1", 0, "data-1").await.unwrap();
 
         let devs = db.buoys().await.unwrap();
         let devs: Vec<_> = devs.iter().map(|(dev, _)| dev).collect();
