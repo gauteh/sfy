@@ -165,5 +165,5 @@ class Buoy:
         try:
             return Axl.from_file(pckf)
         except:
-            logger.error(f"failed to parse file: {self.dev/pckf}")
+            logger.error(f"failed to parse file: {self.dev}/{pckf}")
             return None
