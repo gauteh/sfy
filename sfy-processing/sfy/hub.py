@@ -5,6 +5,7 @@ import requests
 from datetime import datetime, timezone
 import logging
 from tqdm import tqdm
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -165,8 +166,7 @@ class Buoy:
 
         try:
             return Axl.from_file(pckf)
-        except KeyError:
-            raise
-        except Exception as e:
+        except json.decoder.JSONDecodeError as e:
+            # logger.exception(e)
             logger.error(f"failed to parse file: {self.dev}/{pckf}: {e}")
             return None

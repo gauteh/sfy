@@ -32,9 +32,9 @@ def test_get_raw_package(sfy):
 
 
 def test_get_package(sfy):
-    b = sfy.buoy("867730051260788")
+    b = sfy.buoy("dev864475044204278")
     pck = b.package(
-        '1647857681694-a90b61ed-4244-4785-a797-413c411d636c_axl.qo.json')
+        '1650973616744-42e2549d-868b-4c46-a7ef-723c7a1e6418_axl.qo.json')
     print(pck)
 
 
