@@ -155,6 +155,10 @@ class Axl:
         return 1. / self.freq
 
     @property
+    def frequency(self):
+        return self.freq
+
+    @property
     def start(self):
         """
         UTC Datetime of start of samples. Taking `offset` into account.
