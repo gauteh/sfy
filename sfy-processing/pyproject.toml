@@ -1,0 +1,12 @@
+[project]
+name = "sfy-processing"
+version = "0.1.0"
+description = "Processing tools for SFY"
+authors = [ { name = "Gaute Hope", email = "gauteh@met.no" } ]
+dependencies = [ ]
+
+[project.urls]
+repository = "http://github.com/gauteh/sfy"
+
+[project.scripts]
+"sfydata" = "sfy.cli.sfydata:sfy"
