@@ -308,7 +308,6 @@ pub mod handlers {
     ) -> Result<impl warp::Reply, warp::Rejection> {
         let buoy = sanitize(buoy);
 
-        // TODO: unnecessarily fetches data from db
         let entries = state
             .db
             .write()
@@ -316,13 +315,13 @@ pub mod handlers {
             .buoy(&buoy)
             .await
             .map_err(|_| reject::custom(AppendErrors::Internal))?
-            .get_range(from, to)
+            .list_range(from, to)
             .await
             .map_err(|_| reject::custom(AppendErrors::Internal))?;
 
         let entries: Vec<String> = entries
             .into_iter()
-            .map(|e| format!("{}-{}", e.received, e.event))
+            .map(|e| format!("{}-{}", e.0, e.1))
             .collect();
 
         Ok(warp::reply::json(&entries))
@@ -760,6 +759,9 @@ mod tests {
         );
 
         println!("{revents:?}");
-        assert_eq!(&revents, &[ "2000-event-2_axl.qo.json", "3000-event-3_axl.qo.json" ]);
+        assert_eq!(
+            &revents,
+            &["2000-event-2_axl.qo.json", "3000-event-3_axl.qo.json"]
+        );
     }
 }

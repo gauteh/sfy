@@ -1,6 +1,8 @@
 use eyre::Result;
 use serde::{Deserialize, Serialize};
-use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions, SqlitePool, SqliteJournalMode, SqliteSynchronous};
+use sqlx::sqlite::{
+    SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqlitePoolOptions, SqliteSynchronous,
+};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
@@ -157,11 +159,9 @@ impl Buoy {
             "SELECT received, event FROM events where dev = ?1 ORDER BY received",
             self.dev
         )
+        .map(|r| format!("{}-{}", r.received, r.event))
         .fetch_all(&self.db)
-        .await?
-        .iter()
-        .map(|r| format!("{}-{}", r.received.clone(), r.event))
-        .collect();
+        .await?;
 
         Ok(events)
     }
@@ -202,6 +202,22 @@ impl Buoy {
             Some(event) => Ok(event),
             None => Err(eyre!("No such event found.")),
         }
+    }
+
+    pub async fn list_range(&self, start: i64, end: i64) -> Result<Vec<(i64, String)>> {
+        ensure!(self.known, "No such buoy");
+
+        let events = sqlx::query!(
+            "SELECT event, received FROM events WHERE dev = ?1 AND received >= ?2 AND received <= ?3 ORDER BY received",
+            self.dev,
+            start,
+            end,
+        )
+        .map(|r| (r.received, r.event))
+        .fetch_all(&self.db)
+        .await?;
+
+        Ok(events)
     }
 
     pub async fn get_range(&self, start: i64, end: i64) -> Result<Vec<Event>> {
