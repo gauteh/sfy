@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 import logging
 from tqdm import tqdm
 import json
+import math
 
 logger = logging.getLogger(__name__)
 
@@ -131,6 +132,28 @@ class Buoy:
             pcks = filter(lambda pck: pck[0] <= end, pcks)
 
         return list(pcks)
+
+    def fetch_axl_packages_range(self, start=None, end=None):
+        """
+        Batch fetch axl packages in range.
+        """
+        if start is None:
+            start = 0
+        else:
+            start = start.timestamp() * 1000.
+
+        if end is None:
+            last = self.last()
+            end = last.received * 1000.
+        else:
+            end = end.timestamp() * 1000.
+
+        start = math.floor(start)
+        end = math.ceil(end)
+
+        path = f"{self.dev}/from/{start}/to/{end}"
+        logger.info(f"Downloading packages between {start} and {end}..")
+        return self.hub.__json_request__(path)
 
     def axl_packages_range(self, start=None, end=None):
         logger.debug(f"fetching axl pacakges between {start} and {end}")
