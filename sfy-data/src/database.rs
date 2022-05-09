@@ -1,4 +1,5 @@
 use eyre::Result;
+use serde::{Deserialize, Serialize};
 use sqlx::{sqlite::SqliteConnectOptions, sqlite::SqlitePoolOptions, SqlitePool};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -79,6 +80,13 @@ pub struct Buoy {
     db: SqlitePool,
 }
 
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+pub struct Event {
+    pub received: i64,
+    pub event: String,
+    pub data: Option<Vec<u8>>,
+}
+
 impl Buoy {
     /// Append new event to buoy, `name` is parsed serial number of buoy.
     pub async fn append(
@@ -147,13 +155,7 @@ impl Buoy {
         .fetch_all(&self.db)
         .await?
         .iter()
-        .map(|r| {
-            format!(
-                "{}-{}",
-                r.received.clone(),
-                r.event.clone().unwrap_or(String::new())
-            )
-        })
+        .map(|r| format!("{}-{}", r.received.clone(), r.event))
         .collect();
 
         Ok(events)
@@ -195,6 +197,22 @@ impl Buoy {
             Some(event) => Ok(event),
             None => Err(eyre!("No such event found.")),
         }
+    }
+
+    pub async fn get_range(&self, start: i64, end: i64) -> Result<Vec<Event>> {
+        ensure!(self.known, "No such buoy");
+
+        let events = sqlx::query_as!(
+            Event,
+            "SELECT event, received, data FROM events WHERE dev = ?1 AND received >= ?2 AND received <= ?3",
+            self.dev,
+            start,
+            end,
+        )
+        .fetch_all(&self.db)
+        .await?;
+
+        Ok(events)
     }
 }
 
@@ -269,6 +287,60 @@ mod tests {
         b.append(None, "entry-0", 0, "data-0").await.unwrap();
 
         assert_eq!(b.get("0-entry-0").await.unwrap(), b"data-0");
+    }
+
+    #[tokio::test]
+    async fn append_get_range() {
+        let db = Database::temporary().await;
+        let mut b = db.buoy("buoy-01").await.unwrap();
+        b.append(None, "entry-0", 0, "data-0").await.unwrap();
+        b.append(None, "entry-1", 1, "data-1").await.unwrap();
+        b.append(None, "entry-2", 2, "data-2").await.unwrap();
+        b.append(None, "entry-3", 3, "data-3").await.unwrap();
+
+        assert_eq!(b.get("0-entry-0").await.unwrap(), b"data-0");
+
+        let r1 = b.get_range(0, 2).await.unwrap();
+        assert_eq!(r1.len(), 3);
+
+        let Event {
+            received,
+            event,
+            data,
+        } = &r1[0];
+        assert_eq!(*received, 0);
+        assert_eq!(event, "entry-0");
+        assert_eq!(data, &Some(b"data-0".to_vec()));
+
+        let Event {
+            received,
+            event,
+            data,
+        } = &r1[2];
+        assert_eq!(*received, 2);
+        assert_eq!(event, "entry-2");
+        assert_eq!(data, &Some(b"data-2".to_vec()));
+
+        let r2 = b.get_range(2, 3).await.unwrap();
+        assert_eq!(r2.len(), 2);
+
+        let Event {
+            received,
+            event,
+            data,
+        } = &r2[0];
+        assert_eq!(*received, 2);
+        assert_eq!(event, "entry-2");
+        assert_eq!(data, &Some(b"data-2".to_vec()));
+
+        let Event {
+            received,
+            event,
+            data,
+        } = &r2[1];
+        assert_eq!(*received, 3);
+        assert_eq!(event, "entry-3");
+        assert_eq!(data, &Some(b"data-3".to_vec()));
     }
 
     #[tokio::test]

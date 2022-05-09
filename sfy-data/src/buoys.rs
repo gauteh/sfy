@@ -15,6 +15,7 @@ pub fn filters(
         .or(list(state.clone()))
         .or(entries(state.clone()))
         .or(last(state.clone()))
+        .or(range(state.clone()))
         .or(entry(state.clone()))
 }
 
@@ -78,6 +79,18 @@ pub fn last(
         .and(check_read_token(state.clone()))
         .and(with_state(state.clone()))
         .and_then(handlers::last)
+}
+
+pub fn range(
+    state: State,
+) -> impl warp::Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    let state = state.clone();
+
+    warp::path!("buoys" / String / "from" / i64 / "to" / i64)
+        .and(warp::get())
+        .and(check_read_token(state.clone()))
+        .and(with_state(state.clone()))
+        .and_then(handlers::range)
 }
 
 fn with_state(state: State) -> impl Filter<Extract = (State,), Error = Infallible> + Clone {
@@ -252,6 +265,28 @@ pub mod handlers {
             .body(entry))
     }
 
+    pub async fn range(
+        buoy: String,
+        from: i64,
+        to: i64,
+        state: State,
+    ) -> Result<impl warp::Reply, warp::Rejection> {
+        let buoy = sanitize(buoy);
+
+        let entries = state
+            .db
+            .write()
+            .await
+            .buoy(&buoy)
+            .await
+            .map_err(|_| reject::custom(AppendErrors::Internal))?
+            .get_range(from, to)
+            .await
+            .map_err(|_| reject::custom(AppendErrors::Internal))?;
+
+        Ok(warp::reply::json(&entries))
+    }
+
     pub async fn append(
         body: bytes::Bytes,
         state: State,
@@ -280,10 +315,12 @@ pub mod handlers {
             let file = sanitize(&file);
             debug!("writing to: {}", file);
 
-            b.append(event.name, &file, event.received, &body).await.map_err(|e| {
-                error!("failed to write file: {:?}", e);
-                reject::custom(AppendErrors::Database)
-            })?;
+            b.append(event.name, &file, event.received, &body)
+                .await
+                .map_err(|e| {
+                    error!("failed to write file: {:?}", e);
+                    reject::custom(AppendErrors::Database)
+                })?;
 
             Ok("".into_response())
         } else {
@@ -306,10 +343,12 @@ pub mod handlers {
             let file = sanitize(&file);
             debug!("writing to: {}", file);
 
-            b.append(None, &file, now as u64, &body).await.map_err(|e| {
-                error!("failed to write file: {:?}", e);
-                reject::custom(AppendErrors::Database)
-            })?;
+            b.append(None, &file, now as u64, &body)
+                .await
+                .map_err(|e| {
+                    error!("failed to write file: {:?}", e);
+                    reject::custom(AppendErrors::Database)
+                })?;
 
             Ok(StatusCode::BAD_REQUEST.into_response())
         }
@@ -586,5 +625,78 @@ mod tests {
             "application/json"
         );
         assert_eq!(res.body(), &event);
+    }
+
+    #[tokio::test]
+    async fn range() {
+        use crate::database::Event;
+
+        let state = crate::test_state().await;
+
+        let f = filters(state);
+
+        let events = [
+            r#"{"received": 0, "event": "event-0", "device": "0", "name": "0", "file": "axl.qo" }"#,
+            r#"{"received": 1, "event": "event-1", "device": "0", "name": "0", "file": "axl.qo" }"#,
+            r#"{"received": 2, "event": "event-2", "device": "0", "name": "0", "file": "axl.qo" }"#,
+            r#"{"received": 3, "event": "event-3", "device": "0", "name": "0", "file": "axl.qo" }"#,
+        ];
+
+        for e0 in events {
+            println!("posting: {}", e0);
+            let res = warp::test::request()
+                .path("/buoy")
+                .method("POST")
+                .header("SFY_AUTH_TOKEN", "token1")
+                .body(&e0)
+                .reply(&f)
+                .await;
+
+            assert_eq!(res.status(), 200);
+        }
+
+        // Received is multiplied to 1000 in parse_data.
+
+        let res = warp::test::request()
+            .path("/buoys/0/from/0/to/2000")
+            .method("GET")
+            .header("SFY_AUTH_TOKEN", "r-token1")
+            .reply(&f)
+            .await;
+
+        assert_eq!(res.status(), 200);
+
+        let revents: Vec<Event> = json::from_slice(res.body()).unwrap();
+        println!("{:?}", revents);
+
+        assert_eq!(revents.len(), 3);
+
+        assert_eq!(
+            res.headers().get("Content-Type").unwrap().to_str().unwrap(),
+            "application/json"
+        );
+
+        assert_eq!(revents[2].received, 2000);
+
+        let res = warp::test::request()
+            .path("/buoys/0/from/2000/to/3000")
+            .method("GET")
+            .header("SFY_AUTH_TOKEN", "r-token1")
+            .reply(&f)
+            .await;
+
+        assert_eq!(res.status(), 200);
+
+        let revents: Vec<Event> = json::from_slice(res.body()).unwrap();
+        println!("{:?}", revents);
+
+        assert_eq!(revents.len(), 2);
+
+        assert_eq!(
+            res.headers().get("Content-Type").unwrap().to_str().unwrap(),
+            "application/json"
+        );
+
+        assert_eq!(revents[1].received, 3000);
     }
 }

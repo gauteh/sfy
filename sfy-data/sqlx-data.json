@@ -34,6 +34,36 @@
     },
     "query": "SELECT dev, name FROM buoys ORDER BY dev"
   },
+  "5001a3e3595f114b461a94110458025d69e6326514d813d427a1c6cfc5fdbf34": {
+    "describe": {
+      "columns": [
+        {
+          "name": "event",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "received",
+          "ordinal": 1,
+          "type_info": "Int64"
+        },
+        {
+          "name": "data",
+          "ordinal": 2,
+          "type_info": "Blob"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        true
+      ],
+      "parameters": {
+        "Right": 3
+      }
+    },
+    "query": "SELECT event, received, data FROM events WHERE dev = ?1 AND received >= ?2 AND received <= ?3"
+  },
   "53d67d23159f966ff62d72b43d8f7573c5971f48c9a4e51d220c187fe76955d1": {
     "describe": {
       "columns": [
@@ -62,16 +92,6 @@
     },
     "query": "INSERT INTO events (dev, received, event, data) VALUES ( ?1, ?2, ?3, ?4 )"
   },
-  "c8a6aa770eb114d29fec3fd29c57c4ad49d9d0a0849b5f64a4b54eddeb433e59": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Right": 1
-      }
-    },
-    "query": "INSERT INTO buoys (dev) VALUES ( ?1 )"
-  },
   "d096f1531e856fc7ed9bfb75a0dcf3519bef3a536391a35b5c3a9ec37432c316": {
     "describe": {
       "columns": [
@@ -88,7 +108,7 @@
       ],
       "nullable": [
         false,
-        true
+        false
       ],
       "parameters": {
         "Right": 1
