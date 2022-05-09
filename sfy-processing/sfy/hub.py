@@ -116,20 +116,29 @@ class Buoy:
         """
         Get packages _uploaded_ between start and end datetimes. This is not necessarily the timespan the packages cover.
         """
-        pcks = self.packages()
+        if start is None:
+            start = 0
+        else:
+            start = utcify(start)
+            start = start.timestamp() * 1000.
+
+        if end is None:
+            last = self.last()
+            end = last.received * 1000.
+        else:
+            end = utcify(end)
+            end = end.timestamp() * 1000.
+
+        start = math.floor(start)
+        end = math.ceil(end)
+
+        path = f"list/{self.dev}/from/{start}/to/{end}"
+        pcks = self.hub.__json_request__(path)
 
         pcks = ((pck.split('-')[0], pck) for pck in pcks)
         pcks = ((datetime.fromtimestamp(float(pck[0]) / 1000.,
                                         tz=timezone.utc), pck[1])
                 for pck in pcks)
-
-        if start is not None:
-            start = utcify(start)
-            pcks = filter(lambda pck: pck[0] >= start, pcks)
-
-        if end is not None:
-            end = utcify(end)
-            pcks = filter(lambda pck: pck[0] <= end, pcks)
 
         return list(pcks)
 
@@ -140,12 +149,14 @@ class Buoy:
         if start is None:
             start = 0
         else:
+            start = utcify(start)
             start = start.timestamp() * 1000.
 
         if end is None:
             last = self.last()
             end = last.received * 1000.
         else:
+            end = utcify(end)
             end = end.timestamp() * 1000.
 
         start = math.floor(start)
@@ -162,8 +173,52 @@ class Buoy:
         pcks = [pck for pck in pcks if 'axl.qo.json' in pck[1]]
         logger.debug(f"found {len(pcks)} packages, downloading..")
 
-        # download or fetch from cache
-        pcks = [self.package(pck[1]) for pck in tqdm(pcks)]
+        data_pcks = []
+
+        print(len(pcks))
+        i = 0
+        while i < len(pcks):
+            print("o", i)
+            p = pcks[i]
+            if self.cache_exists(p[1]):
+                data_pcks.append(self.package(p[1]))
+                i += 1
+            else:
+                # find next cached package or end
+                j = i + 1
+                while j < len(pcks):
+                    print("i", i, j)
+                    pj = pcks[j]
+                    if self.cache_exists(pj[1]):
+                        j -= 1
+                        break
+                    else:
+                        # continue search
+                        j += 1
+
+                if j == len(pcks): j -= 1
+
+                # fetch range from i to j
+                npcks = self.fetch_axl_packages_range(
+                    pcks[i][0], pcks[j][0])
+                data_pcks.extend(npcks)
+
+                i = j+1
+
+        # print(bytearray(data_pcks[0]['data']))
+
+        # data_pcks = [Axl.parse(bytearray(d['data'])) for d in data_pcks]
+
+        for pd, dd in zip(pcks, data_pcks):
+            print(pd[0].timestamp(), dd['received'])
+
+        print(len(data_pcks))
+        u = set((p['received'] for p in data_pcks))
+        print(len(u))
+        assert len(u) == len(data_pcks)
+        assert len(pcks) == len(data_pcks)
+
+        pcks = [[p[1], d] for p,d in zip(pcks, data_pcks)]
         pcks = [pck for pck in pcks if pck is not None]
         logger.debug(f"dowloaded {len(pcks)} packages.")
 
@@ -173,6 +228,11 @@ class Buoy:
         p = self.hub.__request__(f'{self.dev}/last').text
 
         return Axl.parse(p)
+
+    def cache_exists(self, pck):
+        dev_path = self.hub.cache / self.dev
+        pckf: Path = dev_path / pck
+        return pckf.exists()
 
     def package(self, pck):
         dev_path = self.hub.cache / self.dev
