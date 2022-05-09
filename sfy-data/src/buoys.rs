@@ -308,6 +308,7 @@ pub mod handlers {
     ) -> Result<impl warp::Reply, warp::Rejection> {
         let buoy = sanitize(buoy);
 
+        // TODO: unnecessarily fetches data from db
         let entries = state
             .db
             .write()

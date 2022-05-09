@@ -204,7 +204,7 @@ impl Buoy {
 
         let events = sqlx::query_as!(
             Event,
-            "SELECT event, received, data FROM events WHERE dev = ?1 AND received >= ?2 AND received <= ?3",
+            "SELECT event, received, data FROM events WHERE dev = ?1 AND received >= ?2 AND received <= ?3 ORDER BY received",
             self.dev,
             start,
             end,
