@@ -16,6 +16,7 @@ pub fn filters(
         .or(entries(state.clone()))
         .or(last(state.clone()))
         .or(range(state.clone()))
+        .or(list_range(state.clone()))
         .or(entry(state.clone()))
 }
 
@@ -91,6 +92,18 @@ pub fn range(
         .and(check_read_token(state.clone()))
         .and(with_state(state.clone()))
         .and_then(handlers::range)
+}
+
+pub fn list_range(
+    state: State,
+) -> impl warp::Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    let state = state.clone();
+
+    warp::path!("buoys" / "list" / String / "from" / i64 / "to" / i64)
+        .and(warp::get())
+        .and(check_read_token(state.clone()))
+        .and(with_state(state.clone()))
+        .and_then(handlers::list_range)
 }
 
 fn with_state(state: State) -> impl Filter<Extract = (State,), Error = Infallible> + Clone {
@@ -283,6 +296,33 @@ pub mod handlers {
             .get_range(from, to)
             .await
             .map_err(|_| reject::custom(AppendErrors::Internal))?;
+
+        Ok(warp::reply::json(&entries))
+    }
+
+    pub async fn list_range(
+        buoy: String,
+        from: i64,
+        to: i64,
+        state: State,
+    ) -> Result<impl warp::Reply, warp::Rejection> {
+        let buoy = sanitize(buoy);
+
+        let entries = state
+            .db
+            .write()
+            .await
+            .buoy(&buoy)
+            .await
+            .map_err(|_| reject::custom(AppendErrors::Internal))?
+            .get_range(from, to)
+            .await
+            .map_err(|_| reject::custom(AppendErrors::Internal))?;
+
+        let entries: Vec<String> = entries
+            .into_iter()
+            .map(|e| format!("{}-{}", e.received, e.event))
+            .collect();
 
         Ok(warp::reply::json(&entries))
     }
@@ -698,5 +738,27 @@ mod tests {
         );
 
         assert_eq!(revents[1].received, 3000);
+
+        // List
+        let res = warp::test::request()
+            .path("/buoys/list/0/from/2000/to/3000")
+            .method("GET")
+            .header("SFY_AUTH_TOKEN", "r-token1")
+            .reply(&f)
+            .await;
+
+        assert_eq!(res.status(), 200);
+
+        let revents: Vec<String> = json::from_slice(res.body()).unwrap();
+
+        assert_eq!(revents.len(), 2);
+
+        assert_eq!(
+            res.headers().get("Content-Type").unwrap().to_str().unwrap(),
+            "application/json"
+        );
+
+        println!("{revents:?}");
+        assert_eq!(&revents, &[ "2000-event-2_axl.qo.json", "3000-event-3_axl.qo.json" ]);
     }
 }
