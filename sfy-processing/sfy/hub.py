@@ -173,52 +173,8 @@ class Buoy:
         pcks = [pck for pck in pcks if 'axl.qo.json' in pck[1]]
         logger.debug(f"found {len(pcks)} packages, downloading..")
 
-        data_pcks = []
-
-        print(len(pcks))
-        i = 0
-        while i < len(pcks):
-            print("o", i)
-            p = pcks[i]
-            if self.cache_exists(p[1]):
-                data_pcks.append(self.package(p[1]))
-                i += 1
-            else:
-                # find next cached package or end
-                j = i + 1
-                while j < len(pcks):
-                    print("i", i, j)
-                    pj = pcks[j]
-                    if self.cache_exists(pj[1]):
-                        j -= 1
-                        break
-                    else:
-                        # continue search
-                        j += 1
-
-                if j == len(pcks): j -= 1
-
-                # fetch range from i to j
-                npcks = self.fetch_axl_packages_range(
-                    pcks[i][0], pcks[j][0])
-                data_pcks.extend(npcks)
-
-                i = j+1
-
-        # print(bytearray(data_pcks[0]['data']))
-
-        # data_pcks = [Axl.parse(bytearray(d['data'])) for d in data_pcks]
-
-        for pd, dd in zip(pcks, data_pcks):
-            print(pd[0].timestamp(), dd['received'])
-
-        print(len(data_pcks))
-        u = set((p['received'] for p in data_pcks))
-        print(len(u))
-        assert len(u) == len(data_pcks)
-        assert len(pcks) == len(data_pcks)
-
-        pcks = [[p[1], d] for p,d in zip(pcks, data_pcks)]
+        # download or fetch from cache
+        pcks = [self.package(pck[1]) for pck in tqdm(pcks)]
         pcks = [pck for pck in pcks if pck is not None]
         logger.debug(f"dowloaded {len(pcks)} packages.")
 
@@ -249,7 +205,7 @@ class Buoy:
 
         try:
             return Axl.from_file(pckf)
-        except json.decoder.JSONDecodeError as e:
+        except (KeyError, json.decoder.JSONDecodeError) as e:
             # logger.exception(e)
             logger.error(f"failed to parse file: {self.dev}/{pckf}: {e}")
             return None

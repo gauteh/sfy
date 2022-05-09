@@ -53,6 +53,5 @@ def test_list_packages_range(sfy):
 def test_fetch_raw_range(sfy):
     b = sfy.buoy("867730051260788")
     start = datetime(2022, 1, 21, tzinfo=timezone.utc)
-    end = datetime(2022, 1, 22, tzinfo=timezone.utc)
-    pcks = b.fetch_axl_packages_range(start=start, end=end)
-    print(pcks)
+    pcks = b.packages_range(start=start)
+    assert all((pck[0] > start for pck in pcks))
