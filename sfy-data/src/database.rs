@@ -1,6 +1,6 @@
 use eyre::Result;
 use serde::{Deserialize, Serialize};
-use sqlx::{sqlite::SqliteConnectOptions, sqlite::SqlitePoolOptions, SqlitePool};
+use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions, SqlitePool, SqliteJournalMode, SqliteSynchronous};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
@@ -15,7 +15,12 @@ impl Database {
         info!("opening database at: {:?}", path);
 
         let db = SqliteConnectOptions::from_str(&format!("sqlite:{}", path.to_string_lossy()))?
-            .create_if_missing(true);
+            .create_if_missing(true)
+            .journal_mode(SqliteJournalMode::Wal)
+            .synchronous(SqliteSynchronous::Normal)
+            .page_size(10 * 1024)
+            .pragma("mmap_size", "3000000000")
+            .pragma("temp_store", "memory");
         let db = SqlitePoolOptions::new().connect_with(db).await?;
 
         info!("running db migrations..");
