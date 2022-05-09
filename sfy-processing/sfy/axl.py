@@ -121,6 +121,16 @@ class Axl:
     y: np.ndarray
     z: np.ndarray
 
+    # I think these are deprecated, and only present in old events.
+    best_id: str = None
+    best_location_type: str = None
+    best_location_when: str = None
+    best_location: str = None
+    best_country: str = None
+    best_timezone: str = None
+    best_lat: str = None
+    best_lon: str = None
+
     when: int = None
 
     where_when: int = None

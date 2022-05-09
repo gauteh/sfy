@@ -34,9 +34,14 @@ def list(dev, start, end):
 
     if dev is None:
         buoys = hub.buoys()
-        buoys.sort(key=lambda b: b.dev)
-        buoys = [[b.dev, b.name] for b in buoys]
-        print(tabulate(buoys, headers=['Buoys', 'Name']))
+
+        last = [b.last() if 'lost+found' not in b.dev else None for b in buoys]
+        last = [l.received_datetime if l else None for l in last]
+
+        buoys = [[b.dev, b.name, l] for b, l in zip(buoys, last)]
+        buoys.sort(key=lambda b: b[2].timestamp() if b[2] else 0)
+
+        print(tabulate(buoys, headers=['Buoys', 'Name', 'Last contact']))
     else:
         buoy = hub.buoy(dev)
         pcks = buoy.packages_range(start, end)
