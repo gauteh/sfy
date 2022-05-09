@@ -7,10 +7,12 @@ import logging
 import pytz
 from datetime import datetime, timedelta
 
+from .timeseries import AxlTimeseries
+
 logger = logging.getLogger(__name__)
 
 
-class AxlCollection:
+class AxlCollection(AxlTimeseries):
     GAP_LIMIT = 1.  # limit in seconds before data is not considered continuous
 
     pcks: ['Axl']
@@ -31,6 +33,28 @@ class AxlCollection:
         self.pcks = [
             pck for pck in self.pcks if pck.start >= start and pck.start <= end
         ]
+
+    def segments(self, eps_gap=GAP_LIMIT):
+        """
+        Return iterable of collections split at gaps (above eps) in packages.
+        """
+        pcks = self.pcks.copy()
+        segment = []
+
+        assert len(pcks) > 0
+
+        while len(pcks) > 0:
+            if len(segment) == 0:
+                segment.append(pcks.pop(0))
+            elif np.abs(segment[-1].end.timestamp() -
+                        pcks[0].start.timestamp()) <= eps_gap:
+                segment.append(pcks.pop(0))
+            else:
+                yield AxlCollection(segment)
+                segment = []
+
+        if len(segment) > 0:
+            yield AxlCollection(segment)
 
     def __len__(self):
         return len(self.pcks)
@@ -85,7 +109,7 @@ class AxlCollection:
 
 
 @dataclass(frozen=True)
-class Axl:
+class Axl(AxlTimeseries):
     received: float
     routed: float
 

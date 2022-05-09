@@ -1,14 +1,12 @@
 import scipy as sc, scipy.signal, scipy.integrate
 
-from .axl import Axl
-
 def detrend(s):
     return sc.signal.detrend(s)
 
 def integrate(s, dt):
     return sc.integrate.cumtrapz(s, dx = dt)
 
-def velocity(a: Axl):
+def velocity(a: 'Axl'):
     """
     Calculate velocity from axelerometer package. Resulting vectors will be one length shorter than the original.
     """
@@ -23,7 +21,7 @@ def velocity(a: Axl):
 
     return x, y, z
 
-def displacement(a: Axl):
+def displacement(a: 'Axl'):
     """
     Calculate diplacement from axelerometer package. Resulting vectors will be two length shorter than the original.
     """
@@ -38,5 +36,4 @@ def displacement(a: Axl):
     z = integrate(z, a.dt)
 
     return x, y, z
-
 
