@@ -31,6 +31,6 @@ def test_segment(sfy):
     c = AxlCollection(pcks)
 
     segments = list(c.segments())
-    assert len(segments) == 3
+    assert len(segments) == 2
     assert sum((len(s) for s in segments)) == len(c)
 
