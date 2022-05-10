@@ -3,4 +3,5 @@
   (lib (name "ism330dhcx")(type "KiCad")(uri "${KIPRJMOD}/symbols/ism330dhcx.kicad_sym")(options "")(descr ""))
   (lib (name "pololu")(type "KiCad")(uri "${KIPRJMOD}/symbols/pololu.kicad_sym")(options "")(descr ""))
   (lib (name "notecarrier-b")(type "KiCad")(uri "${KIPRJMOD}/symbols/notecarrier-b.kicad_sym")(options "")(descr ""))
+  (lib (name "microsd")(type "KiCad")(uri "${KIPRJMOD}/symbols/microsd.kicad_sym")(options "")(descr ""))
 )
