@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class AxlCollection(AxlTimeseries):
-    GAP_LIMIT = 1.  # limit in seconds before data is not considered continuous
+    GAP_LIMIT = 2.  # limit in seconds before data is not considered continuous
 
     pcks: ['Axl']
 
@@ -145,7 +145,7 @@ class Axl(AxlTimeseries):
     y: np.ndarray
     z: np.ndarray
 
-    # I think these are deprecated, and only present in old events.
+    # These are either new or deprecated, only present in some packages.
     best_id: str = None
     best_location_type: str = None
     best_location_when: str = None

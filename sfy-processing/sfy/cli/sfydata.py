@@ -4,6 +4,9 @@ from tabulate import tabulate
 from tqdm import tqdm
 from datetime import datetime, timezone
 import coloredlogs
+import logging
+
+logger = logging.getLogger(__name__)
 
 from sfy.hub import Hub
 from sfy.cli.track import track
@@ -44,6 +47,7 @@ def list(dev, start, end):
         print(tabulate(buoys, headers=['Buoys', 'Name', 'Last contact']))
     else:
         buoy = hub.buoy(dev)
+        logger.info(f"Listing packages for {buoy}")
         pcks = buoy.packages_range(start, end)
         pcks = [pck for pck in pcks if 'axl.qo.json' in pck[1]]
 

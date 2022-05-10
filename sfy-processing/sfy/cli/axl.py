@@ -37,7 +37,7 @@ def axl():
               help='Clip results after this (default: tx-end)',
               type=click.DateTime())
 @click.option('--plot', is_flag=True, help='Plot timeseries')
-def timeseries(dev, tx_start, tx_end, start, end, plot):
+def ts(dev, tx_start, tx_end, start, end, plot):
     hub = Hub.from_env()
     buoy = hub.buoy(dev)
 
@@ -68,6 +68,9 @@ def timeseries(dev, tx_start, tx_end, start, end, plot):
     # filter packages between start and end
     pcks.clip(start, end)
     logger.info(f"{len(pcks)} in start <-> end range")
+
+    segments = list(pcks.segments())
+    logger.info(f"Collection consists of: {len(segments)} segments")
 
     if plot:
         logger.info("Plotting..")
