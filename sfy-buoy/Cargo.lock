@@ -1196,6 +1196,8 @@ dependencies = [
  "defmt",
  "defmt-rtt",
  "defmt-test",
+ "embedded-hal",
+ "embedded-sdmmc",
  "half",
  "heapless",
  "ism330dhcx",

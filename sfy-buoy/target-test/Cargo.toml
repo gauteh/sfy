@@ -18,6 +18,10 @@ name = "gps"
 harness = false
 
 [[test]]
+name = "storage"
+harness = false
+
+[[test]]
 name = "cellular"
 harness = false
 
@@ -39,8 +43,14 @@ panic-probe = { version = "0.3.0", features = ["print-defmt"] }
 ism330dhcx = "0.4.0"
 half = { version = "1.8.2", features = [ "use-intrinsics", "bytemuck" ] }
 chrono = { version = "0.4.19", default-features = false }
+embedded-hal = "0.2.6"
+embedded-sdmmc = { version = "0.3.0", default-features = false, features = ["defmt-log"], optional = true }
 
 [dependencies.ambiq-hal]
 version = "0.2"
 features = ["ambiq-sdk", "sparkfun-redboard-nano", "rt"]
 git = "https://github.com/gauteh/ambiq-rs"
+
+[patch.crates-io]
+embedded-sdmmc = { git = "https://github.com/gauteh/embedded-sdmmc-rs", branch = "defmt" }
+
