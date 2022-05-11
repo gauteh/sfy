@@ -8,7 +8,7 @@ $ pip install -e .
 
 ## Usage
 
-Specify the server and read-token in a [`.env`](./.env) file:
+Specify the server and read-token in a [`.env`](./.env-example) file:
 
 ```
 SFY_SERVER="http://wavebug.met.no:3000/"
