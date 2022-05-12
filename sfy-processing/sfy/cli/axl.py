@@ -135,7 +135,7 @@ def monitor(dev, sleep, window):
         naxl = buoy.last()
         print(naxl.time[0])
 
-        if axl is None or axl.start != naxl.start:
+        if axl is None:
             print("new data package")
             axl = naxl
 
@@ -147,25 +147,20 @@ def monitor(dev, sleep, window):
             _, _, w = signal.velocity(axl)
             _, _, u = signal.displacement(axl)
 
-            if la is None:
-                la, = ax.plot(axl.time[:],
-                              a,
-                              'k--',
-                              alpha=.5,
-                              label='acceleration ($m/s^2$)')
-                lv, = ax.plot(axl.time[:-1],
-                              w,
-                              'g--',
-                              alpha=.5,
-                              label='velocity ($m/s$)')
-                lu, = ax.plot(axl.time[:-2],
-                              u,
-                              'b',
-                              label='displacement ($m$)')
-            else:
-                la.set_data(axl.time[:], a)
-                lv.set_data(axl.time[:-1], w)
-                lu.set_data(axl.time[:-2], u)
+            la, = ax.plot(axl.time[:],
+                            a,
+                            'k--',
+                            alpha=.5,
+                            label='acceleration ($m/s^2$)')
+            lv, = ax.plot(axl.time[:-1],
+                            w,
+                            'g--',
+                            alpha=.5,
+                            label='velocity ($m/s$)')
+            lu, = ax.plot(axl.time[:-2],
+                            u,
+                            'b',
+                            label='displacement ($m$)')
 
         plt.legend()
 
