@@ -1,33 +1,47 @@
-//! Storage works by inserting itself between the IMU queue and the notecarrier. The IMU keeps
-//! pushing and either the notecarrier or the sd-storage needs to keep up. The notecarrier keeps
-//! pushing to the notecard as long as there is new data in the queue.
+//! Stores data-packages to the SD-card.
 //!
-//! With the SD-storage we can also support a longer delay between transmissions, since the
-//! notecard is no longer required to keep up with the limited RAM.
-//!
-//! It would be great if we could control somewhat what we want from the buoy using the notecarrier.
-//! That requires that we keep up-to-date some statistics/status on the notecarrier, and that the
-//! notecarrier can communicate to the storage what has already been sent. This can probably go
-//! through `main` to avoid too much interdependency.
+//! Every data-package is stored to the SD-card and queued for the Notecard. It should also be
+//! possible to request a range of old packages.
 
+use chrono::{Datelike, NaiveDateTime, Timelike};
+use core::sync::atomic::Ordering;
 use embedded_sdmmc::{SdMmcSpi, TimeSource, Timestamp};
+use embedded_hal::spi;
+
+use ambiq_hal::spi::{Freq, Spi0 as Spi};
+use ambiq_hal::gpio::pin::{Mode, P35 as CS};
 
 use crate::axl::AxlPacket;
+use crate::COUNT;
 
 pub enum StorageErr {
     SdMmcErr,
 }
 
 pub struct Storage {
-    // sd: SdMmcSpi,
+    sd: SdMmcSpi<Spi, CS<{Mode::Output}>>,
     /// Last written ID.
     current_id: u32,
 }
 
 impl Storage {
-    // pub fn open() -> Storage {
-    //     // Get last id (or create file with 0, or scan)
-    // }
+    pub fn open(spi: Spi, cs: CS<{ Mode::Output }>) -> Storage {
+        // Get last id (or create file with 0, verify it's free, or scan)
+        defmt::info!("Opening SD card..");
+
+        let mut sd = SdMmcSpi::new(spi, cs);
+
+        defmt::info!("Initialize SD-card..");
+        {
+            let block = sd.acquire().unwrap();
+
+            let sz = block.card_size_bytes().unwrap() / 1024_u64.pow(2);
+
+            defmt::info!("SD card size: {} mb", sz);
+        }
+
+        Storage { sd, current_id: 0 }
+    }
 
     /// Takes IMU queue and stores items.
     pub fn drain_queue(&mut self) -> Result<(), ()> {
@@ -38,8 +52,22 @@ impl Storage {
         self.current_id
     }
 
-    // Deserialize and return AxlPacket.
+    // Deserialize and return AxlPacket (without modifying sent status).
     pub fn get(&self, id: u32) -> Result<AxlPacket, StorageErr> {
+        unimplemented!()
+    }
+
+    // Mark package as sent
+    pub fn mark_sent(&mut self, id: u32) -> Result<(), StorageErr> {
+        unimplemented!()
+    }
+
+    // Store a new package and mark it as unsent.
+    pub fn store(&mut self, pck: AxlPacket) -> Result<u32, StorageErr> {
+        // Store to id
+        // Store unsent-status
+        // Update current ID on disk
+        // Update current ID in self
         unimplemented!()
     }
 }
@@ -55,6 +83,24 @@ impl TimeSource for NullClock {
             hours: 0,
             minutes: 0,
             seconds: 0,
+        }
+    }
+}
+
+/// Accesses `core::COUNT` to get globally updated timestamp from RTC interrupt, which is set by
+/// the GPS.
+struct CountClock;
+
+impl TimeSource for CountClock {
+    fn get_timestamp(&self) -> Timestamp {
+        let dt = NaiveDateTime::from_timestamp(COUNT.load(Ordering::Relaxed) as i64, 0);
+        Timestamp {
+            year_since_1970: (dt.year() - 1970) as u8,
+            zero_indexed_month: dt.month0() as u8,
+            zero_indexed_day: dt.day0() as u8,
+            hours: dt.hour() as u8,
+            minutes: dt.minute() as u8,
+            seconds: dt.second() as u8,
         }
     }
 }

@@ -62,7 +62,7 @@ embedded-sdmmc = { git = "https://github.com/gauteh/embedded-sdmmc-rs", branch =
 # embedded-sdmmc = { path = "../../../dev/embedded/embedded-sdmmc-rs" }
 
 [features]
-default = [ "deploy" ]
+default = [ "deploy", "storage" ]
 continuous = []
 storage = [ "bincode", "embedded-sdmmc" ]
 host-tests = []

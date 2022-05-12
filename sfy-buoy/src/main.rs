@@ -20,16 +20,21 @@ use cortex_m::{
 };
 use cortex_m_rt::{entry, exception, ExceptionFrame};
 use defmt_rtt as _;
-use embedded_hal::blocking::{
+use embedded_hal::{
+    spi,
+    blocking::{
     delay::DelayMs,
     i2c::{Read, Write},
-};
+}};
 use git_version::git_version;
 use hal::{i2c, pac::interrupt};
+use hal::spi::{Freq, Spi};
 
 use sfy::log::log;
 use sfy::note::Notecarrier;
 use sfy::waves::Waves;
+#[cfg(feature = "storage")]
+use sfy::storage::Storage;
 use sfy::{Imu, Location, SharedState, State, IMUQ, STATE};
 
 /// This static is used to transfer ownership of the IMU subsystem to the interrupt handler.
@@ -82,6 +87,16 @@ fn main() -> ! {
 
     info!("Giving subsystems a couple of seconds to boot..");
     delay.delay_ms(5_000u32);
+
+    #[cfg(feature = "storage")]
+    let storage = {
+        info!("Setting up storage..");
+
+        debug!("Setting up SPI for SD card..");
+        let spi = Spi::new(dp.IOM0, pins.d12, pins.d13, pins.d11, Freq::F100kHz, spi::MODE_0);
+        let cs = pins.a14.into_push_pull_output();
+        let storage = Storage::open(spi, cs);
+    };
 
     info!("Setting up Notecarrier..");
     let mut note = Notecarrier::new(i2c4, &mut delay).unwrap();
