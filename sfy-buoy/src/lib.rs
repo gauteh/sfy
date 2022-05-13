@@ -35,9 +35,12 @@ pub mod waves;
 
 use axl::AxlPacket;
 
-/// This queue is filled up by the IMU in an interrupt with ready batches of time series. It is
-/// consumed by the main thread and drained to the notecard / cellular.
-pub static mut IMUQ: heapless::spsc::Queue<AxlPacket, 32> = heapless::spsc::Queue::new();
+/// These queues are filled up by the IMU interrupt in read batches of time-series. It is then consumed
+/// the main thread and first drained to the SD storage (if enabled), and then queued for the notecard.
+#[cfg(feature = "storage")]
+pub static mut STORAGEQ: heapless::spsc::Queue<AxlPacket, 32> = heapless::spsc::Queue::new();
+
+pub static mut NOTEQ: heapless::spsc::Queue<AxlPacket, 32> = heapless::spsc::Queue::new();
 
 /// The STATE contains the Real-Time-Clock which needs to be shared, as well as up-to-date
 /// longitude and latitude.

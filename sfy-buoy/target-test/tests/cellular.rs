@@ -66,12 +66,22 @@ mod tests {
             .unwrap();
 
         defmt::debug!("initiate sync..");
-        s.note.hub().sync(&mut s.delay, false).unwrap().wait(&mut s.delay).unwrap();
+        s.note
+            .hub()
+            .sync(&mut s.delay, false)
+            .unwrap()
+            .wait(&mut s.delay)
+            .unwrap();
 
         for _ in 0..30 {
             s.delay.delay_ms(1000u32);
             defmt::debug!("querying sync status..");
-            let status = s.note.hub().sync_status(&mut s.delay).unwrap().wait(&mut s.delay);
+            let status = s
+                .note
+                .hub()
+                .sync_status(&mut s.delay)
+                .unwrap()
+                .wait(&mut s.delay);
             defmt::debug!("status: {:?}", status);
 
             if let Ok(status) = status {

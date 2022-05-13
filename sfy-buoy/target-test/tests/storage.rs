@@ -11,10 +11,10 @@ mod tests {
     use chrono::{NaiveDate, NaiveDateTime};
     #[allow(unused)]
     use defmt::{assert, assert_eq, info};
-    use hal::spi::{Freq, Spi};
-    use hal::prelude::*;
     use embedded_hal::spi;
     use embedded_sdmmc::SdMmcSpi;
+    use hal::prelude::*;
+    use hal::spi::{Freq, Spi};
 
     struct State {
         // note: Notecarrier<hal::i2c::Iom2>,
@@ -37,7 +37,14 @@ mod tests {
         let delay = hal::delay::Delay::new(core.SYST, &mut dp.CLKGEN);
 
         defmt::info!("Setting up SPI");
-        let spi = Spi::new(dp.IOM0, pins.d12, pins.d13, pins.d11, Freq::F100kHz, spi::MODE_0);
+        let spi = Spi::new(
+            dp.IOM0,
+            pins.d12,
+            pins.d13,
+            pins.d11,
+            Freq::F100kHz,
+            spi::MODE_0,
+        );
 
         let cs = pins.a14.into_push_pull_output();
 
@@ -53,4 +60,3 @@ mod tests {
         let _block = s.sd.acquire().unwrap();
     }
 }
-

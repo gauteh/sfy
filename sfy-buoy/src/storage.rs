@@ -5,27 +5,33 @@
 
 use chrono::{Datelike, NaiveDateTime, Timelike};
 use core::sync::atomic::Ordering;
-use embedded_sdmmc::{SdMmcSpi, TimeSource, Timestamp};
 use embedded_hal::spi;
+use embedded_sdmmc::{SdMmcError, SdMmcSpi, TimeSource, Timestamp};
 
-use ambiq_hal::spi::{Freq, Spi0 as Spi};
 use ambiq_hal::gpio::pin::{Mode, P35 as CS};
+use ambiq_hal::spi::{Freq, Spi0 as Spi};
 
 use crate::axl::AxlPacket;
 use crate::COUNT;
 
 pub enum StorageErr {
-    SdMmcErr,
+    SdMmcErr(SdMmcError),
+}
+
+impl From<SdMmcError> for StorageErr {
+    fn from(e: SdMmcError) -> Self {
+        StorageErr::SdMmcErr(e)
+    }
 }
 
 pub struct Storage {
-    sd: SdMmcSpi<Spi, CS<{Mode::Output}>>,
+    sd: SdMmcSpi<Spi, CS<{ Mode::Output }>>,
     /// Last written ID.
     current_id: u32,
 }
 
 impl Storage {
-    pub fn open(spi: Spi, cs: CS<{ Mode::Output }>) -> Storage {
+    pub fn open(spi: Spi, cs: CS<{ Mode::Output }>) -> Result<Storage, StorageErr> {
         // Get last id (or create file with 0, verify it's free, or scan)
         defmt::info!("Opening SD card..");
 
@@ -33,14 +39,14 @@ impl Storage {
 
         defmt::info!("Initialize SD-card..");
         {
-            let block = sd.acquire().unwrap();
+            let block = sd.acquire()?;
 
-            let sz = block.card_size_bytes().unwrap() / 1024_u64.pow(2);
+            let sz = block.card_size_bytes()? / 1024_u64.pow(2);
 
             defmt::info!("SD card size: {} mb", sz);
         }
 
-        Storage { sd, current_id: 0 }
+        Ok(Storage { sd, current_id: 0 })
     }
 
     /// Takes IMU queue and stores items.

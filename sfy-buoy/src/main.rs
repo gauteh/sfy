@@ -21,21 +21,22 @@ use cortex_m::{
 use cortex_m_rt::{entry, exception, ExceptionFrame};
 use defmt_rtt as _;
 use embedded_hal::{
-    spi,
     blocking::{
-    delay::DelayMs,
-    i2c::{Read, Write},
-}};
+        delay::DelayMs,
+        i2c::{Read, Write},
+    },
+    spi,
+};
 use git_version::git_version;
-use hal::{i2c, pac::interrupt};
 use hal::spi::{Freq, Spi};
+use hal::{i2c, pac::interrupt};
 
 use sfy::log::log;
 use sfy::note::Notecarrier;
-use sfy::waves::Waves;
 #[cfg(feature = "storage")]
 use sfy::storage::Storage;
-use sfy::{Imu, Location, SharedState, State, IMUQ, STATE};
+use sfy::waves::Waves;
+use sfy::{Imu, Location, SharedState, State, NOTEQ, STATE};
 
 /// This static is used to transfer ownership of the IMU subsystem to the interrupt handler.
 type I = hal::i2c::Iom3;
@@ -93,9 +94,16 @@ fn main() -> ! {
         info!("Setting up storage..");
 
         debug!("Setting up SPI for SD card..");
-        let spi = Spi::new(dp.IOM0, pins.d12, pins.d13, pins.d11, Freq::F100kHz, spi::MODE_0);
+        let spi = Spi::new(
+            dp.IOM0,
+            pins.d12,
+            pins.d13,
+            pins.d11,
+            Freq::F100kHz,
+            spi::MODE_0,
+        );
         let cs = pins.a14.into_push_pull_output();
-        let storage = Storage::open(spi, cs);
+        Storage::open(spi, cs)
     };
 
     info!("Setting up Notecarrier..");
@@ -131,8 +139,8 @@ fn main() -> ! {
     info!("Enable IMU.");
     waves.enable_fifo(&mut delay).unwrap();
 
-    let imu = sfy::Imu::new(waves, unsafe { IMUQ.split().0 });
-    let mut imu_queue = unsafe { IMUQ.split().1 };
+    let imu = sfy::Imu::new(waves, unsafe { NOTEQ.split().0 });
+    let mut imu_queue = unsafe { NOTEQ.split().1 };
 
     // Move state into globally available variables. And IMU into temporary variable for
     // moving it into the `RTC` interrupt routine, before we enable interrupts.
@@ -166,11 +174,12 @@ fn main() -> ! {
             sfy::log::drain_log(&mut note, &mut delay).ok();
 
             led.toggle().unwrap();
-            match (
-                location.check_retrieve(&STATE, &mut delay, &mut note),
-                note.drain_queue(&mut imu_queue, &mut delay),
-                note.check_and_sync(&mut delay),
-            ) {
+
+            let l = location.check_retrieve(&STATE, &mut delay, &mut note);
+            let nd = note.drain_queue(&mut imu_queue, &mut delay);
+            let ns = note.check_and_sync(&mut delay);
+
+            match (l, nd, ns) {
                 (Ok(_), Ok(_), Ok(_)) => good_tries = GOOD_TRIES,
                 (l, dq, cs) => {
                     error!(

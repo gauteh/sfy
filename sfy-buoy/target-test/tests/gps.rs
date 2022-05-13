@@ -82,7 +82,13 @@ mod tests {
         let before = s.rtc.now().timestamp_millis();
         defmt::info!("now: {}", before);
 
-        let tm = s.note.card().time(&mut s.delay).unwrap().wait(&mut s.delay).unwrap();
+        let tm = s
+            .note
+            .card()
+            .time(&mut s.delay)
+            .unwrap()
+            .wait(&mut s.delay)
+            .unwrap();
         defmt::info!("time: {:?}", tm);
 
         if let Some(time) = tm.time {
@@ -135,7 +141,17 @@ mod tests {
         let mode = s
             .note
             .card()
-            .location_mode(&mut s.delay, Some(""), None, None, None, None, None, None, None)
+            .location_mode(
+                &mut s.delay,
+                Some(""),
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+            )
             .unwrap()
             .wait(&mut s.delay)
             .unwrap();
