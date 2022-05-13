@@ -36,14 +36,16 @@ class AxlCollection(AxlTimeseries):
         # identify these packages.
         #
 
-        # pcks = []
-        # while not self.pcks.empty():
-        #     p = self.pcks.pop(0)
+        pcks = []
+        while not len(self.pcks) == 0:
+            p = self.pcks.pop(0)
 
-        #     i = self.pcks.
-        #     if any(self.pcks, lambda o: o.start == p.start):
-        #         logger.warn("duplicate package found")
-        #         if
+            o = next((o for o in self.pcks if p.duplicate(o)), None)
+            if o is not None:
+                logger.warn("duplicate package found, skipping this.")
+            else:
+                pcks.append(p)
+        self.pcks = pcks
 
 
     def clip(self, start, end):
@@ -209,6 +211,14 @@ class Axl(AxlTimeseries):
             return False
 
         return True
+
+    def duplicate(self, o):
+        if self.timestamp == o.timestamp:
+            if self.lon == o.lon and self.lat == o.lat and self.offset == o.offset and all(self.x == o.x) and all(self.y == o.y) and all(self.z == o.z):
+                return True
+            else:
+                logger.warn(f"duplicate timestamp {self.start}, but other fields mismatch.")
+                return False
 
     @property
     def dt(self) -> float:
