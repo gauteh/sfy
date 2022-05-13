@@ -63,5 +63,14 @@ def list(dev, start, end):
         print(tabulate(pcks, headers=['DataTime', 'Lon', 'Lat', 'TxTime', 'File']))
 
 
+@sfy.command(help='Print JSON')
+@click.argument('dev')
+@click.argument('file')
+def json(dev, file):
+    hub = Hub.from_env()
+    buoy = hub.buoy(dev)
+    ax = buoy.package(file)
+    print(str(ax.json()))
+
 if __name__ == '__main__':
     sfy()

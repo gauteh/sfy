@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class AxlCollection(AxlTimeseries):
-    GAP_LIMIT = 2.  # limit in seconds before data is not considered continuous
+    GAP_LIMIT = 10.  # limit in seconds before data is not considered continuous
 
     pcks: ['Axl']
 
@@ -25,6 +25,26 @@ class AxlCollection(AxlTimeseries):
 
         assert all(pck.frequency == pcks[0].frequency
                    for pck in pcks), "all packages must be the same frequency"
+
+        # Remove duplicates:
+        #
+        # Duplicates can occur when the buoy tries to send a data-package, and
+        # the notecard / modem indicates an error (or there was an I2C error),
+        # while the package still went through. The buoy will then try to send
+        # the data once more. All the fields of the package (body, timestamp,
+        # _and_ data vectors) will be _identical_. We can therefore reliably
+        # identify these packages.
+        #
+
+        # pcks = []
+        # while not self.pcks.empty():
+        #     p = self.pcks.pop(0)
+
+        #     i = self.pcks.
+        #     if any(self.pcks, lambda o: o.start == p.start):
+        #         logger.warn("duplicate package found")
+        #         if
+
 
     def clip(self, start, end):
         """
@@ -55,6 +75,15 @@ class AxlCollection(AxlTimeseries):
 
         if len(segment) > 0:
             yield AxlCollection(segment)
+
+    def max_gap(self):
+        if len(self.pcks) == 1:
+            return np.nan
+
+        d = []
+        for i, _s in enumerate(self.pcks[:-1]):
+            d.append(self.pcks[i + 1].start - self.pcks[i].end)
+        return max(d)
 
     def __len__(self):
         return len(self.pcks)

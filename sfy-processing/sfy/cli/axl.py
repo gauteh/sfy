@@ -3,6 +3,8 @@
 import click
 import matplotlib.pyplot as plt
 from datetime import timedelta, datetime
+from tabulate import tabulate
+import numpy as np
 
 from sfy.hub import Hub
 from sfy.axl import AxlCollection
@@ -71,6 +73,25 @@ def ts(dev, tx_start, tx_end, start, end, plot):
 
     segments = list(pcks.segments())
     logger.info(f"Collection consists of: {len(segments)} segments")
+
+    assert len(pcks) == sum(len(s) for s in segments)
+
+    stable = [[
+        s.start,
+        s.end,
+        s.duration,
+        timedelta(seconds = s.duration),
+        s.max_gap(),
+        np.nan,
+        len(s),
+        s.pcks[0].start,
+        s.pcks[-1].start
+        ] for s in segments]
+
+    for i, _ in enumerate(stable[1:]):
+        stable[i+1][5] = (stable[i+1][0] - stable[i][1])
+
+    print(tabulate(stable, headers = ['Start', 'End', 'Duration (s)', 'Duration', 'Max Internal Gap', 'Segment Gap', 'Packages', 's0', 's-1']))
 
     if plot:
         logger.info("Plotting..")
