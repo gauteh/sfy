@@ -6,8 +6,8 @@
 use chrono::{Datelike, NaiveDateTime, Timelike};
 use core::sync::atomic::Ordering;
 use embedded_sdmmc::{
-    BlockDevice, Controller, Error as GenericSdMmcError, File, Mode, SdMmcError, SdMmcSpi,
-    TimeSource, Timestamp, Volume, VolumeIdx,
+    Controller, Error as GenericSdMmcError, Mode, SdMmcError, SdMmcSpi, TimeSource, Timestamp,
+    VolumeIdx,
 };
 
 use ambiq_hal::gpio::pin::{Mode as SpiMode, P35 as CS};
@@ -15,6 +15,10 @@ use ambiq_hal::spi::Spi0 as Spi;
 
 use crate::axl::AxlPacket;
 use crate::COUNT;
+
+mod handles;
+
+use handles::*;
 
 pub enum StorageErr {
     SdMmcErr(SdMmcError),
@@ -30,51 +34,6 @@ impl From<SdMmcError> for StorageErr {
 impl From<embedded_sdmmc::Error<SdMmcError>> for StorageErr {
     fn from(e: embedded_sdmmc::Error<SdMmcError>) -> Self {
         StorageErr::GenericSdMmmcErr(e)
-    }
-}
-
-/// A FileHandle that requires exclusive access to the Controller and Volume. Not a big loss
-/// for us, but it allows use to make _more_ sure the file-handle is closed, and not
-/// accidently left open because of early-returns `(?)`.
-struct FileHandle<'c, 'v, D: BlockDevice, T: TimeSource> {
-    ctrl: &'c mut Controller<D, T>,
-    vol: &'v mut Volume,
-    file: Option<File>,
-}
-
-impl<'c, 'v, D: BlockDevice, T: TimeSource> FileHandle<'c, 'v, D, T> {
-    pub fn new(ctrl: &'c mut Controller<D, T>, vol: &'v mut Volume, file: File) -> Self {
-        FileHandle {
-            ctrl,
-            vol,
-            file: Some(file),
-        }
-    }
-
-    // pub fn open_in_dir(
-
-    pub fn close(self) {
-        drop(self);
-    }
-
-    pub fn read(&mut self, buf: &mut [u8]) {
-        let file = self.file.as_mut().unwrap();
-        self.ctrl.read(&self.vol, file, buf);
-    }
-
-    pub fn write(&mut self, buf: &[u8]) {
-        let file = self.file.as_mut().unwrap();
-        self.ctrl.write(&mut self.vol, file, buf);
-    }
-}
-
-impl<D: BlockDevice, T: TimeSource> Drop for FileHandle<'_, '_, D, T> {
-    fn drop(&mut self) {
-        let file = self.file.take();
-
-        if let Some(file) = file {
-            self.ctrl.close_file(&self.vol, file);
-        }
     }
 }
 
@@ -103,15 +62,13 @@ impl Storage {
             let mut c = Controller::new(block, CountClock);
             let mut v = c.get_volume(VolumeIdx(0))?;
 
-            let root = c.open_root_dir(&v)?;
-
-            let idf = c.open_file_in_dir(&mut v, &root, ID_FILE, Mode::ReadOnly);
+            let mut root = DirHandle::open_root(&mut c, &mut v)?;
+            let idf = root.open_file(ID_FILE, Mode::ReadOnly);
 
             match idf {
-                Ok(f) => {
+                Ok(mut idf) => {
                     let mut buf = [0u8; 128];
-                    let mut fh = FileHandle::new(&mut c, &mut v, f);
-                    fh.read(&mut buf);
+                    idf.read(&mut buf)?;
 
                     Ok(0)
                 }
