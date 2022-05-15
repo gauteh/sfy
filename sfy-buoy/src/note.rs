@@ -76,7 +76,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         let mut n = Notecarrier { note };
         n.setup_templates(delay)?;
 
-        defmt::info!("initializing initial sync..");
+        defmt::info!("initializing initial sync (removing any penalties)..");
         n.note.hub().sync(delay, true)?.wait(delay)?;
 
         Ok(n)
@@ -221,15 +221,15 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         while let Some(pck) = queue.peek() {
             #[cfg(not(feature = "continuous"))]
             {
-                let sync_status = self.note.hub().sync_status(delay)?.wait(delay)?;
+                // let sync_status = self.note.hub().sync_status(delay)?.wait(delay)?;
 
-                if sync_status.requested.is_some() {
-                    defmt::warn!(
-                        "notecard is syncing, not sending any data-packages until done: queue sz: {}",
-                        queue.len()
-                    );
-                    return Ok(sz);
-                }
+                // if sync_status.requested.is_some() {
+                //     defmt::warn!(
+                //         "notecard is syncing, not sending any data-packages until done: queue sz: {}",
+                //         queue.len()
+                //     );
+                //     return Ok(sz);
+                // }
             }
 
             let status = self.note.card().status(delay)?.wait(delay)?;
