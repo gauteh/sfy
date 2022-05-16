@@ -4,6 +4,8 @@
 
 # The small friendly buoy
 
+<iframe width="560" height="315" src="https://www.youtube-nocookie.com/embed/qK1Di7pjYFI" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
 * [sfy-buoy](sfy-buoy/) - the firmware for the buoy.
 * [hardware](hardware/Hardware.md) - hardware and assembly instructions.
 * [sfy-data](sfy-data/) - the server scraping or receiving data from deployed
