@@ -1,7 +1,7 @@
 FROM ubuntu:latest
 
 RUN apt-get update -y
-RUN apt-get install -y git build-essential cmake libssl-dev curl gcc-arm-none-eabi binutils-arm-none-eabi
+RUN apt-get install -y git build-essential cmake libssl-dev curl gcc-arm-none-eabi binutils-arm-none-eabi libclang-dev clang
 
 SHELL ["/bin/bash", "-c"]
 RUN curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain nightly -y
