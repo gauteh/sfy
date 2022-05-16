@@ -14,6 +14,7 @@ RUN cargo install cargo-binutils
 RUN curl -L -O "https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-$(uname)-$(uname -m).sh"
 RUN bash "Mambaforge-$(uname)-$(uname -m).sh" -b
 RUN rm "Mambaforge-$(uname)-$(uname -m).sh"
+RUN /root/mambaforge/bin/mamba init
 
 ADD . work/
 WORKDIR work/
