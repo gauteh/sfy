@@ -4,13 +4,15 @@
 
 # The small friendly buoy
 
-<iframe width="560" height="315" src="https://www.youtube-nocookie.com/embed/qK1Di7pjYFI" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-
 * [sfy-buoy](sfy-buoy/) - the firmware for the buoy.
 * [hardware](hardware/Hardware.md) - hardware and assembly instructions.
 * [sfy-data](sfy-data/) - the server scraping or receiving data from deployed
     buoys.
 * [sfy-processing](sfy-processing/) - python libraries and tools for reading and post-processing received data.
+
+The buoys deployed in the surf on the coast of Norway:
+
+[![Wave buoys in the surf zone at Jæren](http://img.youtube.com/vi/qK1Di7pjYFI/0.jpg)](http://www.youtube.com/watch?v=qK1Di7pjYFI "Wave buoys in the surf zone at Jæren")
 
 # Acknowledgements
 
