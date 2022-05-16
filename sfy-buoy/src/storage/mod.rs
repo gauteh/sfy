@@ -23,6 +23,7 @@ use handles::*;
 pub enum StorageErr {
     SdMmcErr(SdMmcError),
     GenericSdMmmcErr(GenericSdMmcError<SdMmcError>),
+    ParseIDFailure,
 }
 
 impl From<SdMmcError> for StorageErr {
@@ -42,7 +43,7 @@ const ID_FILE: &'static str = "sfy.id";
 pub struct Storage {
     sd: SdMmcSpi<Spi, CS<{ SpiMode::Output }>>,
     /// Last written ID.
-    current_id: u32,
+    current_id: u64,
 }
 
 impl Storage {
@@ -54,7 +55,7 @@ impl Storage {
         // TODO: Re-clock SPI
 
         defmt::info!("Initialize SD-card..");
-        {
+        let current_id = {
             let block = sd.acquire()?;
             let sz = block.card_size_bytes()? / 1024_u64.pow(2);
             defmt::info!("SD card size: {} mb", sz);
@@ -65,19 +66,30 @@ impl Storage {
             let mut root = DirHandle::open_root(&mut c, &mut v)?;
             let idf = root.open_file(ID_FILE, Mode::ReadOnly);
 
-            match idf {
+            let id = match idf {
                 Ok(mut idf) => {
                     let mut buf = [0u8; 128];
                     idf.read(&mut buf)?;
 
-                    Ok(0)
+                    // TODO: Handle corrupted ID file.
+                    let buf = core::str::from_utf8(&buf).map_err(|_| StorageErr::ParseIDFailure)?;
+                    let id = u64::from_str_radix(&buf, 10).map_err(|_| StorageErr::ParseIDFailure)?;
+
+                    Ok(id)
                 }
                 Err(GenericSdMmcError::FileNotFound) => Ok(0),
                 Err(e) => Err(e),
             }?;
-        }
 
-        Ok(Storage { sd, current_id: 0 })
+            id
+        };
+
+        Ok(Storage { sd, current_id })
+    }
+
+    /// Writes the current ID to SD-card.
+    pub fn write_id(&mut self) -> Result<(), StorageErr> {
+        Ok(())
     }
 
     /// Takes IMU queue and stores items.
@@ -85,7 +97,7 @@ impl Storage {
         todo!()
     }
 
-    pub fn current_id(&self) -> u32 {
+    pub fn current_id(&self) -> u64 {
         self.current_id
     }
 
