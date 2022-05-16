@@ -33,7 +33,9 @@ impl<'c, 'v, D: BlockDevice, T: TimeSource> DirHandle<'c, 'v, D, T> {
         &mut self,
         name: &str,
     ) -> Result<DirHandle<'_, '_, D, T>, GenericSdMmcError<D::Error>> {
-        let dir = self.ctrl.open_dir(&self.vol, &self.dir.as_ref().unwrap(), name)?;
+        let dir = self
+            .ctrl
+            .open_dir(&self.vol, &self.dir.as_ref().unwrap(), name)?;
         Ok(DirHandle::from(self.ctrl, self.vol, dir))
     }
 

@@ -9,21 +9,19 @@
 //! length data-package, this should amount to 4389 files per day. Each directory will last a bit
 //! longer than two days.
 
-use chrono::{Datelike, NaiveDateTime, Timelike};
-use core::sync::atomic::Ordering;
 use embedded_sdmmc::{
-    Controller, Error as GenericSdMmcError, Mode, SdMmcError, SdMmcSpi, TimeSource, Timestamp,
-    VolumeIdx,
+    Controller, Error as GenericSdMmcError, Mode, SdMmcError, SdMmcSpi, VolumeIdx,
 };
 
 use ambiq_hal::gpio::pin::{Mode as SpiMode, P35 as CS};
 use ambiq_hal::spi::Spi0 as Spi;
 
 use crate::axl::AxlPacket;
-use crate::COUNT;
 
+mod clock;
 mod handles;
 
+use clock::CountClock;
 use handles::*;
 
 pub enum StorageErr {
@@ -128,35 +126,29 @@ impl Storage {
     }
 }
 
-struct NullClock;
+pub fn id_to_parts(id: u32) -> Result<(heapless::String<10>, heapless::String<8>), ()> {
+    let dir = id / 10000;
+    let file = id % 10000;
 
-impl TimeSource for NullClock {
-    fn get_timestamp(&self) -> Timestamp {
-        Timestamp {
-            year_since_1970: 0,
-            zero_indexed_month: 0,
-            zero_indexed_day: 0,
-            hours: 0,
-            minutes: 0,
-            seconds: 0,
-        }
-    }
+    let dir = heapless::String::from(dir);
+    let mut file = heapless::String::from(file);
+    file.push_str(".axl")?;
+
+    Ok((dir, file))
 }
 
-/// Accesses `core::COUNT` to get globally updated timestamp from RTC interrupt, which is set by
-/// the GPS.
-struct CountClock;
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-impl TimeSource for CountClock {
-    fn get_timestamp(&self) -> Timestamp {
-        let dt = NaiveDateTime::from_timestamp(COUNT.load(Ordering::Relaxed) as i64, 0);
-        Timestamp {
-            year_since_1970: (dt.year() - 1970) as u8,
-            zero_indexed_month: dt.month0() as u8,
-            zero_indexed_day: dt.day0() as u8,
-            hours: dt.hour() as u8,
-            minutes: dt.minute() as u8,
-            seconds: dt.second() as u8,
-        }
+    #[test]
+    fn test_id_to_parts() {
+        let (dir, file) = id_to_parts(0).unwrap();
+        assert_eq!(dir, "0");
+        assert_eq!(file, "0.axl");
+
+        let (dir, file) = id_to_parts(1234567).unwrap();
+        assert_eq!(dir, "123");
+        assert_eq!(file, "4567.axl");
     }
 }

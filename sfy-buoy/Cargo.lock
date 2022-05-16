@@ -19,8 +19,8 @@ dependencies = [
 
 [[package]]
 name = "ahrs-fusion"
-version = "0.3.0"
-source = "git+https://github.com/gauteh/ahrs-fusion#dd8ee19f41c7c59f13fb295c450651e5a176c5d4"
+version = "0.4.0"
+source = "git+https://github.com/gauteh/ahrs-fusion#844e5f76021374c6ed6dfa8d4bdb58292d81a9de"
 dependencies = [
  "bindgen",
  "cc",
@@ -1033,9 +1033,9 @@ dependencies = [
 
 [[package]]
 name = "ryu"
-version = "1.0.9"
+version = "1.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "73b4b750c782965c211b42f022f59af1fbceabdd026623714f104152f1ec149f"
+checksum = "f3f6f92acf49d1b98f7a81226834412ada05458b7364277387724a237f062695"
 
 [[package]]
 name = "scopeguard"
