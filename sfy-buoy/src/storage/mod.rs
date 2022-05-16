@@ -2,6 +2,12 @@
 //!
 //! Every data-package is stored to the SD-card and queued for the Notecard. It should also be
 //! possible to request a range of old packages.
+//!
+//! The maximum number of files in a FAT32 directory is 65536. If a data package has ID
+//! `1234567` it is put in the directory: `123` and named `4567.axl`. The directory is the full
+//! ID stripped of the last 4 digits, and the file name is the last 4 digits. At 52 Hz and 1024
+//! length data-package, this should amount to 4389 files per day. Each directory will last a bit
+//! longer than two days.
 
 use chrono::{Datelike, NaiveDateTime, Timelike};
 use core::sync::atomic::Ordering;
@@ -43,7 +49,7 @@ const ID_FILE: &'static str = "sfy.id";
 pub struct Storage {
     sd: SdMmcSpi<Spi, CS<{ SpiMode::Output }>>,
     /// Last written ID.
-    current_id: u64,
+    current_id: u32,
 }
 
 impl Storage {
@@ -73,7 +79,8 @@ impl Storage {
 
                     // TODO: Handle corrupted ID file.
                     let buf = core::str::from_utf8(&buf).map_err(|_| StorageErr::ParseIDFailure)?;
-                    let id = u64::from_str_radix(&buf, 10).map_err(|_| StorageErr::ParseIDFailure)?;
+                    let id =
+                        u32::from_str_radix(&buf, 10).map_err(|_| StorageErr::ParseIDFailure)?;
 
                     Ok(id)
                 }
@@ -97,7 +104,7 @@ impl Storage {
         todo!()
     }
 
-    pub fn current_id(&self) -> u64 {
+    pub fn current_id(&self) -> u32 {
         self.current_id
     }
 
