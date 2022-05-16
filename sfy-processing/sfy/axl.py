@@ -17,10 +17,10 @@ class AxlCollection(AxlTimeseries):
 
     pcks: ['Axl']
 
-    def __init__(self, pcks):
+    def __init__(self, pcks: ['Axl']):
         assert len(pcks) > 0, "must be at least one package"
 
-        self.pcks = pcks
+        self.pcks = pcks.copy()
         self.pcks.sort(key=lambda pck: pck.start)
 
         assert all(pck.frequency == pcks[0].frequency

@@ -21,6 +21,7 @@ def test_collect(sfy):
 
     c = AxlCollection(pcks)
     print("duration:", c.duration)
+    print(f"len= {len(pcks)}")
 
     np.testing.assert_almost_equal(c.duration, len(pcks) * 1024 / 52.)
 
