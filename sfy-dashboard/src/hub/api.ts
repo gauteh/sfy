@@ -20,7 +20,7 @@ export class ApiConf {
   }
 }
 
-export const SFY_SERVER='http://157.249.74.12:3000'
+export const SFY_SERVER='https://wavebug.met.no'
 
 export let API_CONF: ApiConf = new ApiConf(SFY_SERVER, undefined);
 
