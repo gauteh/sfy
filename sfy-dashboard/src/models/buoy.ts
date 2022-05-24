@@ -13,9 +13,10 @@ export class Buoy {
 
   public package: any;
 
-  constructor(dev: string, files: string[]) {
+  constructor(dev: string, sn: string, files: string[]) {
     this.dev = dev;
     this.files = files;
+    this.sn = sn;
 
     // Sort in ascending order by time received.
     this.files.sort((a, b) => {
@@ -30,18 +31,14 @@ export class Buoy {
     return this.latitude !== undefined;
   }
 
-  public lastFile(filter: string | undefined) {
-    let files = this.files.filter((fname: string) => filter !== undefined ? fname.includes(filter) : true);
-    if (files.length >= 1) {
-      return files[files.length - 1];
-    } else {
-      return null;
-    }
+  public async setLast() {
+    const last = await hub.last_file(hub.API_CONF, this.dev);
+    this.setPackage(last);
   }
 
   public lastContact(): Date | null {
-    if (this.files.length > 0) {
-      return new Date(parseInt(this.files[this.files.length - 1].split('-')[0]));
+    if (this.package) {
+      return new Date(this.package.received * 1000.);
     } else {
       return null;
     }
@@ -50,20 +47,18 @@ export class Buoy {
   public setPackage(p: any) {
     this.package = p;
 
-    this.sn = p.sn;
-
-    this.latitude = p.body.longitude;
-    this.longitude = p.body.longitude;
+    this.latitude = p.body.lat;
+    this.longitude = p.body.lon;
 
     this.tower_lat = p.tower_lat;
     this.tower_lon = p.tower_lon;
   }
 
   public any_lat(): number {
-    return this.latitude != undefined ? this.latitude : this.tower_lat;
+    return this.latitude !== undefined ? this.latitude : this.tower_lat;
   }
 
   public any_lon(): number {
-    return this.longitude != undefined ? this.longitude : this.tower_lon;
+    return this.longitude !== undefined ? this.longitude : this.tower_lon;
   }
 }

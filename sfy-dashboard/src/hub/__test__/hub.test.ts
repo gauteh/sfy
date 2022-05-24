@@ -15,7 +15,7 @@ describe ('buoys api', () => {
     (global as any).fetch = require ('node-fetch');
     const bs = await hub.get_buoys(TEST_CONF).toPromise();
 
-    const bi = await hub.get_buoy(TEST_CONF, bs[0]).toPromise();
+    const bi = await hub.get_buoy(TEST_CONF, bs[0], b[1]).toPromise();
     expect(bi.files.length > 1);
     // console.log("files: " + bi.files.length);
   });
@@ -27,7 +27,7 @@ describe ('buoys api', () => {
     (global as any).fetch = require ('node-fetch');
     const bs = await hub.get_buoys(TEST_CONF).toPromise();
 
-    const bi = await hub.get_buoy(TEST_CONF, bs[0]).toPromise();
+    const bi = await hub.get_buoy(TEST_CONF, bs[0], b[1]).toPromise();
     expect(bi.files.length > 1);
 
     const fi = await hub.get_file(TEST_CONF, bi.dev, bi.files[0]).toPromise();

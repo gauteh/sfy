@@ -32,37 +32,24 @@ export class BuoyIndex
   }
 
   componentDidMount() {
-    this.loadBuoys();
+    (async () => await this.loadBuoys())();
   }
 
-  public loadBuoys = () => {
+  public loadBuoys = async () => {
     this.state.buoys.length = 0;
     this.setState({buoys: []});
 
-    hub.get_buoys(hub.API_CONF).pipe(
-      mergeMap(buoys => buoys),
-      concatMap(b => hub.get_buoy(hub.API_CONF, b)),
-      concatMap(b => {
-        let last = b.lastFile("axl.qo.json");
-        console.log("getting files for: " + b.dev + ", last: " + last);
+    const devs = await hub.get_buoys(hub.API_CONF);
+    for (const devsn of devs) {
+      if (devsn[0] !== "lost+found") {
+        let b = await hub.get_buoy(hub.API_CONF, devsn[0], devsn[1]);
+        await b.setLast();
 
-        if (last !== null) {
-          return hub.get_file(hub.API_CONF, b.dev, last).pipe(
-            map(f => {
-              b.setPackage(f);
-              return b;
-            })
-          );
-        } else {
-          return of(b);
-        }
-      })
-    ).subscribe(b => {
-      this.state.buoys.push(b);
-      this.state.buoys.sort((a, b) => b.lastContact().getTime() - a.lastContact().getTime());
-      this.setState({buoys: this.state.buoys});
+        this.state.buoys.push(b);
+        this.state.buoys.sort((a, b) => b.lastContact().getTime() - a.lastContact().getTime());
+        this.setState({buoys: this.state.buoys});
+      }
     }
-    );
   }
 
   public Row(buoy) {
@@ -83,7 +70,7 @@ export class BuoyIndex
           {buoy.any_lon().toFixed(9)}
         </td>
         <td>
-          {buoy.hasGps() ? '🛰' : '📡'}
+          {buoy.hasGps() ? 'GPS' : 'Cel.'}
         </td>
         <td>
           <span title={moment(buoy.lastContact()).utc().format("YYYY-MM-DD hh:mm:ss") + " UTC"}>
