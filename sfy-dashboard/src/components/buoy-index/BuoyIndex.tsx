@@ -42,7 +42,7 @@ export class BuoyIndex
     const devs = await hub.get_buoys(hub.API_CONF);
     for (const devsn of devs) {
       if (devsn[0] !== "lost+found") {
-        let b = await hub.get_buoy(hub.API_CONF, devsn[0], devsn[1]);
+        let b = new Buoy(devsn[0], devsn[1]);
         await b.setLast();
 
         this.state.buoys.push(b);

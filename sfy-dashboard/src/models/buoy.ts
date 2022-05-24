@@ -3,7 +3,6 @@ import * as hub from 'hub';
 export class Buoy {
   public dev: string = '';
   public sn: string = '';
-  public files: string[];
 
   public latitude: number;
   public longitude: number;
@@ -13,18 +12,9 @@ export class Buoy {
 
   public package: any;
 
-  constructor(dev: string, sn: string, files: string[]) {
+  constructor(dev: string, sn: string) {
     this.dev = dev;
-    this.files = files;
     this.sn = sn;
-
-    // Sort in ascending order by time received.
-    this.files.sort((a, b) => {
-      let a1 = parseInt(a.split('-')[0]);
-      let b1 = parseInt(b.split('-')[0]);
-
-      return b1 - a1
-    });
   }
 
   public hasGps(): boolean {

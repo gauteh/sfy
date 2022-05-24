@@ -47,7 +47,7 @@ export class BuoyMap
   componentDidUpdate(props) {
     for (const buoy of props.buoys) {
       let marker = L.marker([buoy.any_lat(), buoy.any_lon()]).addTo(this.map);
-      marker.bindTooltip(buoy.dev);
+      marker.bindTooltip(`${buoy.sn} (${buoy.dev})`);
     }
   }
 
