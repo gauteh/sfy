@@ -157,7 +157,7 @@ def monitor(dev, sleep, window):
             plt.legend()
             plt.xlabel('Time')
             plt.ylabel('Vertical movement $m$, $m/s$, $m/s^2$')
-            
+
             print("new data package")
             axl = naxl
 
@@ -185,23 +185,23 @@ def monitor(dev, sleep, window):
                             label='displacement ($m$)')
         else:
             if (axl != naxl):
-            	print('Update...')
+                print('Update...')
             axl = naxl
             a = signal.detrend(axl.z)
             _, _, w = signal.velocity(axl)
             _, _, u = signal.displacement(axl)
-            
+
             la.set_ydata(a)
             lv.set_ydata(w)
             lu.set_ydata(u)
-            
+
             la.set_xdata(axl.time[:])
             lv.set_xdata(axl.time[:-1])
             lu.set_xdata(axl.time[:-2])
-            
+
             fig.canvas.draw()
             fig.canvas.flush_events()
-	
+
         plt.legend()
 
         if window is not None:
