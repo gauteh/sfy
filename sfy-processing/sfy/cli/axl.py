@@ -137,12 +137,7 @@ def monitor(dev, sleep, window):
     hub = Hub.from_env()
     buoy = hub.buoy(dev)
 
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
-    plt.grid()
-    plt.legend()
-    plt.xlabel('Time')
-    plt.ylabel('Vertical movement $m$, $m/s$, $m/s^2$')
+    
 
     la = None
     lv = None
@@ -155,6 +150,14 @@ def monitor(dev, sleep, window):
         print(naxl.time[0])
 
         if axl is None:
+            plt.ion()
+            fig = plt.figure()
+            ax = fig.add_subplot(111)
+            plt.grid()
+            plt.legend()
+            plt.xlabel('Time')
+            plt.ylabel('Vertical movement $m$, $m/s$, $m/s^2$')
+            
             print("new data package")
             axl = naxl
 
@@ -180,7 +183,25 @@ def monitor(dev, sleep, window):
                             u,
                             'b',
                             label='displacement ($m$)')
-
+        else:
+            if (axl != naxl):
+            	print('Update...')
+            axl = naxl
+            a = signal.detrend(axl.z)
+            _, _, w = signal.velocity(axl)
+            _, _, u = signal.displacement(axl)
+            
+            la.set_ydata(a)
+            lv.set_ydata(w)
+            lu.set_ydata(u)
+            
+            la.set_xdata(axl.time[:])
+            lv.set_xdata(axl.time[:-1])
+            lu.set_xdata(axl.time[:-2])
+            
+            fig.canvas.draw()
+            fig.canvas.flush_events()
+	
         plt.legend()
 
         if window is not None:
