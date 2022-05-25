@@ -168,6 +168,7 @@ class Axl(AxlTimeseries):
     length: int
     offset: int
     timestamp: int  # milliseconds, i64
+    position_time: int # time of location fix, u32
     lon: float
     lat: float
     freq: float
@@ -305,6 +306,7 @@ class Axl(AxlTimeseries):
         data['length'] = data['body']['length']
         data['offset'] = data['body'].get('offset', 0)
         data['timestamp'] = data['body']['timestamp']
+        data['position_time'] = data['body'].get('position_time', 0)
         data['lon'] = data['body'].get('lon')
         data['lat'] = data['body'].get('lat')
         data['freq'] = data['body'].get('freq', 208.)
@@ -332,6 +334,7 @@ class Axl(AxlTimeseries):
             'length': self.length,
             'offset': self.offset,
             'timestamp': self.timestamp,
+            'position_time': self.position_time,
             'lon': self.lon,
             'lat': self.lat,
             'freq': self.freq,

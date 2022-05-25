@@ -10,6 +10,7 @@ pub struct AxlPacket {
     /// Timstamp of sample at `offset`.
     pub timestamp: i64,
     pub offset: u16,
+    pub position_time: u32,
     pub lon: f64,
     pub lat: f64,
     pub freq: f32,
@@ -44,6 +45,7 @@ mod tests {
     fn base64_data_package() {
         let p = AxlPacket {
             timestamp: 0,
+            position_time: 0,
             lat: 0.0,
             lon: 0.0,
             freq: 100.0,

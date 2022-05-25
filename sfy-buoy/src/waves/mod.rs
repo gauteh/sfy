@@ -98,6 +98,7 @@ pub struct Waves<I2C: WriteRead + Write> {
 
     /// Timestamp at `fifo_offset` sample in buffer.
     pub timestamp: i64,
+    pub position_time: u32,
     pub lon: f64,
     pub lat: f64,
 
@@ -143,6 +144,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
             output_freq,
             buf: ImuBuf::new(freq.value()),
             timestamp: 0,
+            position_time: 0,
             lon: 0.0,
             lat: 0.0,
             fifo_offset: 0,
@@ -288,9 +290,10 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
     }
 
     /// Take buf and reset timestamp.
-    pub fn take_buf(&mut self, now: i64, lon: f64, lat: f64) -> Result<AxlPacket, E> {
+    pub fn take_buf(&mut self, now: i64, position_time: u32, lon: f64, lat: f64) -> Result<AxlPacket, E> {
         let pck = AxlPacket {
             timestamp: self.timestamp,
+            position_time: self.position_time,
             offset: self.fifo_offset,
             data: self.buf.take_buf(),
             lon: self.lon,
@@ -301,6 +304,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         self.lon = lon;
         self.lat = lat;
         self.timestamp = now;
+        self.position_time = position_time;
         self.fifo_offset = self.imu.fifostatus.diff_fifo(&mut self.i2c)? / 2;
 
         defmt::debug!(

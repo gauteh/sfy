@@ -116,6 +116,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         #[derive(serde::Serialize, Default)]
         struct AxlPacketMetaTemplate {
             timestamp: u32,
+            position_time: u32,
             offset: u32,
             length: u32,
             freq: f32,
@@ -126,6 +127,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
 
         let meta_template = AxlPacketMetaTemplate {
             timestamp: 18,
+            position_time: 14,
             offset: 14,
             length: 14,
             freq: 14.1,
@@ -161,6 +163,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                 packet: pi as u32,
                 length: p.len() as u32,
                 freq: pck.freq,
+                position_time: pck.position_time,
                 lon: pck.lon,
                 lat: pck.lat,
             };
@@ -292,6 +295,7 @@ pub struct AxlPacketMeta {
     pub packet: u32,
     pub length: u32,
     pub freq: f32,
+    pub position_time: u32,
     pub lon: f64,
     pub lat: f64,
 }

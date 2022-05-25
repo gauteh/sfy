@@ -51,6 +51,7 @@ defmt::timestamp!("{=i32}", COUNT.load(Ordering::Relaxed));
 
 pub struct SharedState {
     pub rtc: Rtc,
+    pub position_time: u32,
     pub lon: f64,
     pub lat: f64,
 }
@@ -80,6 +81,7 @@ pub enum LocationState {
 pub struct Location {
     pub lat: f64,
     pub lon: f64,
+    pub position_time: u32,
     pub time: u32,
 
     pub state: LocationState,
@@ -90,6 +92,7 @@ impl Location {
         Location {
             lat: 0.0,
             lon: 0.0,
+            position_time: 0,
             time: 0,
             state: LocationState::Trying(-999),
         }
@@ -119,6 +122,7 @@ impl Location {
                     Location {
                         lat: Some(lat),
                         lon: Some(lon),
+                        time: Some(position_time),
                         ..
                     },
                     Ok(Time {
@@ -130,6 +134,7 @@ impl Location {
 
                     self.lat = lat;
                     self.lon = lon;
+                    self.position_time = position_time;
                     self.time = time;
 
                     free(|cs| {
@@ -137,6 +142,7 @@ impl Location {
                         let state: &mut _ = state.deref_mut().as_mut().unwrap();
 
                         state.rtc.set(NaiveDateTime::from_timestamp(time as i64, 0));
+                        state.position_time = position_time;
                         state.lat = lat;
                         state.lon = lon;
 
@@ -169,6 +175,7 @@ impl<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> Imu<E
     pub fn check_retrieve(
         &mut self,
         now: i64,
+        position_time: u32,
         lon: f64,
         lat: f64,
     ) -> Result<(), waves::ImuError<E>> {
@@ -178,7 +185,7 @@ impl<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> Imu<E
 
         if self.waves.is_full() {
             trace!("waves buffer is full, pushing to queue..");
-            let pck = self.waves.take_buf(now, lon, lat)?;
+            let pck = self.waves.take_buf(now, position_time, lon, lat)?;
 
             self.queue
                 .enqueue(pck)
@@ -193,9 +200,9 @@ impl<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> Imu<E
         Ok(())
     }
 
-    pub fn reset(&mut self, now: i64, lon: f64, lat: f64) -> Result<(), waves::ImuError<E>> {
+    pub fn reset(&mut self, now: i64, position_time: u32, lon: f64, lat: f64) -> Result<(), waves::ImuError<E>> {
         self.waves.reset()?;
-        self.waves.take_buf(now, lon, lat)?; // buf is empty, this sets time and offset.
+        self.waves.take_buf(now, position_time, lon, lat)?; // buf is empty, this sets time and offset.
         self.waves.enable_fifo(&mut FlashDelay)?;
 
         Ok(())

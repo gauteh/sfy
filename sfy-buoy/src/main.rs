@@ -133,7 +133,7 @@ fn main() -> ! {
     info!("Setting up IMU..");
     let mut waves = Waves::new(i2c3).unwrap();
     waves
-        .take_buf(rtc.now().timestamp_millis(), 0.0, 0.0)
+        .take_buf(rtc.now().timestamp_millis(), 0, 0.0, 0.0)
         .unwrap(); // set timestamp.
 
     info!("Enable IMU.");
@@ -149,6 +149,7 @@ fn main() -> ! {
 
         STATE.borrow(cs).replace(Some(SharedState {
             rtc,
+            position_time: 0,
             lon: 0.0,
             lat: 0.0,
         }));
@@ -283,15 +284,16 @@ fn RTC() {
     }
 
     if let Some(imu) = imu {
-        let (now, lon, lat) = free(|cs| {
+        let (now, position_time, lon, lat) = free(|cs| {
             let state = STATE.borrow(cs).borrow();
             let state = state.as_ref().unwrap();
 
             let now = state.rtc.now().timestamp_millis();
+            let position_time = state.position_time;
             let lon = state.lon;
             let lat = state.lat;
 
-            (now, lon, lat)
+            (now, position_time, lon, lat)
         });
 
         sfy::COUNT.store((now / 1000).try_into().unwrap_or(0), Ordering::Relaxed);
@@ -300,14 +302,14 @@ fn RTC() {
         //
         // It seems that the IMU I2C communication sometimes fails with a NAK, causing a module
         // reset, which again might cause a HardFault.
-        match imu.check_retrieve(now, lon, lat) {
+        match imu.check_retrieve(now, position_time, lon, lat) {
             Ok(_) => {
                 *GOOD_TRIES = 5;
             }
             Err(e) => {
                 error!("IMU ISR failed: {:?}, resetting IMU..", e);
 
-                let r = imu.reset(now, lon, lat);
+                let r = imu.reset(now, position_time, lon, lat);
                 warn!("IMU reset: {:?}", r);
 
                 let mut msg = heapless::String::<256>::new();
