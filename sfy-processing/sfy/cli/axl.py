@@ -137,7 +137,7 @@ def monitor(dev, sleep, window):
     hub = Hub.from_env()
     buoy = hub.buoy(dev)
 
-    
+
 
     la = None
     lv = None
