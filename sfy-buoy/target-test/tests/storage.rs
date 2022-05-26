@@ -16,6 +16,8 @@ mod tests {
     use hal::prelude::*;
     use hal::spi::{Freq, Spi};
 
+    use sfy::storage::Storage;
+
     struct State {
         // note: Notecarrier<hal::i2c::Iom2>,
         #[allow(unused)]
@@ -23,7 +25,7 @@ mod tests {
         #[allow(unused)]
         rtc: hal::rtc::Rtc,
 
-        sd: SdMmcSpi<hal::spi::Spi0, hal::gpio::pin::P35<{ hal::gpio::pin::Mode::Output }>>,
+        storage: Storage,
     }
 
     #[init]
@@ -47,16 +49,28 @@ mod tests {
         );
 
         let cs = pins.a14.into_push_pull_output();
+        let storage = Storage::open(spi, cs).unwrap();
 
-        defmt::info!("Setting up SD SPI card driver");
-        let sd = SdMmcSpi::new(spi, cs);
-
-        State { delay, rtc, sd }
+        State { delay, rtc, storage }
     }
 
     #[test]
-    fn init_sd_card(s: &mut State) {
-        defmt::info!("init SD");
-        let _block = s.sd.acquire().unwrap();
+    fn initialize_storage(s: &mut State) {
+        defmt::info!("current id: {:?}", s.storage.current_id());
+        assert_eq!(s.storage.current_id(), Some(0), "tests run on card with data");
+    }
+
+    #[test]
+    fn write_id(s: &mut State) {
+        s.storage.write_id().unwrap();
+        assert_eq!(s.storage.read_id().unwrap(), 0);
+
+        s.storage.set_id(1);
+        s.storage.write_id().unwrap();
+        assert_eq!(s.storage.read_id().unwrap(), 1);
+
+        s.storage.set_id(0);
+        s.storage.write_id().unwrap();
+        assert_eq!(s.storage.read_id().unwrap(), 0);
     }
 }
