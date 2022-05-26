@@ -43,9 +43,9 @@ jobs:
         working-directory: sfy-buoy/
         run: cargo build --verbose
 
-      - name: Test (host-tests)
-        working-directory: sfy-buoy/
-        run: make host-test
+      # - name: Test (host-tests)
+      #   working-directory: sfy-buoy/
+      #   run: make host-test
 
       - name: Build (target tests)
         working-directory: sfy-buoy/target-test
