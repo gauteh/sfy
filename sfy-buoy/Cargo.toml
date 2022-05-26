@@ -47,7 +47,8 @@ git = "https://github.com/gauteh/ahrs-fusion"
 [patch.crates-io]
 # ism330dhcx = { git = "https://github.com/gauteh/ism330dhcx", branch = "fifo" }
 cmsis_dsp = { git = "https://github.com/samcrow/cmsis_dsp.rs" }
-embedded-sdmmc = { git = "https://github.com/gauteh/embedded-sdmmc-rs", branch = "defmt" }
+embedded-sdmmc = { git = "https://github.com/gauteh/embedded-sdmmc-rs", branch = "more-defmt" }
+# embedded-sdmmc = { path = "../../../../dev/embedded/embedded-sdmmc-rs" }
 
 # [patch.'https://github.com/gauteh/ahrs-fusion']
 # ahrs-fusion = { path = "../../../../dev/embedded/imu/ahrs-fusion" }
@@ -57,9 +58,6 @@ embedded-sdmmc = { git = "https://github.com/gauteh/embedded-sdmmc-rs", branch =
 
 # [patch.'https://github.com/gauteh/ambiq-rs']
 # ambiq-hal = { path = "../../../../dev/ambiq-rs/ambiq-hal" }
-
-# [patch.'https://github.com/gauteh/embedded-sdmmc-rs']
-# embedded-sdmmc = { path = "../../../dev/embedded/embedded-sdmmc-rs" }
 
 [features]
 default = [ "deploy", "storage" ]

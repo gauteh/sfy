@@ -477,7 +477,7 @@ dependencies = [
 [[package]]
 name = "embedded-sdmmc"
 version = "0.3.0"
-source = "git+https://github.com/gauteh/embedded-sdmmc-rs?branch=defmt#22b25df41834a30088e86d550ed7decc752f904a"
+source = "git+https://github.com/gauteh/embedded-sdmmc-rs?branch=more-defmt#ad9ca603ada5c87e6bbaafbc1b29b85e33131eb9"
 dependencies = [
  "byteorder",
  "defmt",
