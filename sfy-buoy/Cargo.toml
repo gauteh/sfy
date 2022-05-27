@@ -25,11 +25,11 @@ micromath = { version = "2", features = [ "quaternion", "vector" ] }
 bytemuck = "1.7.2"
 base64 = { version = "0.13.0", default-features = false }
 shared-bus = { version = "0.2.2", features = [ "cortex-m" ] }
-half = { version = "1.8.2", features = [ "use-intrinsics", "bytemuck" ] }
+half = { version = "1.8.2", features = [ "use-intrinsics", "bytemuck", "serde" ] }
 chrono = { version = "0.4.19", default-features = false }
-bincode = { version = "2.0.0-beta.0", default-features = false, features = ["derive"], optional = true }
 embedded-sdmmc = { version = "0.3.0", default-features = false, features = ["defmt-log"], optional = true }
 git-version = "0.3.5"
+postcard = { version = "0.7.3", optional = true }
 
 [dependencies.notecard]
 git = "https://github.com/gauteh/notecard-rs"
@@ -62,7 +62,7 @@ embedded-sdmmc = { git = "https://github.com/gauteh/embedded-sdmmc-rs", branch =
 [features]
 default = [ "deploy", "storage" ]
 continuous = []
-storage = [ "bincode", "embedded-sdmmc" ]
+storage = [ "postcard", "embedded-sdmmc" ]
 host-tests = []
 deploy = [ ]
 

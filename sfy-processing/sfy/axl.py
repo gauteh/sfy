@@ -5,7 +5,7 @@ import base64
 import sys
 import logging
 import pytz
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from .timeseries import AxlTimeseries
 
@@ -168,6 +168,7 @@ class Axl(AxlTimeseries):
     length: int
     offset: int
     timestamp: int  # milliseconds, i64
+    storage_id: int # ID of package on SD card (if applicable), may not be unique.
     position_time: int # time of location fix, u32
     lon: float
     lat: float
@@ -306,6 +307,7 @@ class Axl(AxlTimeseries):
         data['length'] = data['body']['length']
         data['offset'] = data['body'].get('offset', 0)
         data['timestamp'] = data['body']['timestamp']
+        data['storage_id'] = data['body'].get('storage_id', None)
         data['position_time'] = data['body'].get('position_time', 0)
         data['lon'] = data['body'].get('lon')
         data['lat'] = data['body'].get('lat')
@@ -334,6 +336,7 @@ class Axl(AxlTimeseries):
             'length': self.length,
             'offset': self.offset,
             'timestamp': self.timestamp,
+            'storage_id' : self.storage_id,
             'position_time': self.position_time,
             'lon': self.lon,
             'lat': self.lat,

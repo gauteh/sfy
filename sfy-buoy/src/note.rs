@@ -116,22 +116,22 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         #[derive(serde::Serialize, Default)]
         struct AxlPacketMetaTemplate {
             timestamp: u32,
-            position_time: u32,
             offset: u32,
             length: u32,
             freq: f32,
-            packet: u32,
+            storage_id: u32,
+            position_time: u32,
             lon: f32,
             lat: f32,
         }
 
         let meta_template = AxlPacketMetaTemplate {
             timestamp: 18,
-            position_time: 14,
             offset: 14,
             length: 14,
             freq: 14.1,
-            packet: 12,
+            storage_id: 14,
+            position_time: 14,
             lon: 18.1,
             lat: 18.1,
         };
@@ -156,42 +156,40 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
     ) -> Result<usize, NoteError> {
         let b64 = pck.base64();
 
-        for (pi, p) in b64.chunks(8 * 1024).enumerate() {
-            let meta = AxlPacketMeta {
-                timestamp: pck.timestamp,
-                offset: pck.offset as u32,
-                packet: pi as u32,
-                length: p.len() as u32,
-                freq: pck.freq,
-                position_time: pck.position_time,
-                lon: pck.lon,
-                lat: pck.lat,
-            };
+        let meta = AxlPacketMeta {
+            timestamp: pck.timestamp,
+            offset: pck.offset as u32,
+            length: b64.len() as u32,
+            freq: pck.freq,
+            storage_id: pck.storage_id,
+            position_time: pck.position_time,
+            lon: pck.lon,
+            lat: pck.lat,
+        };
 
-            let r = self
-                .note
-                .note()
-                .add(
-                    delay,
-                    Some("axl.qo"),
-                    None,
-                    Some(meta),
-                    Some(core::str::from_utf8(p).unwrap()),
-                    if cfg!(feature = "continuous") {
-                        true
-                    } else {
-                        false
-                    },
-                )?
-                .wait(delay)?;
+        let r = self
+            .note
+            .note()
+            .add(
+                delay,
+                Some("axl.qo"),
+                None,
+                Some(meta),
+                Some(core::str::from_utf8(&b64).unwrap()),
+                if cfg!(feature = "continuous") {
+                    true
+                } else {
+                    false
+                },
+            )?
+            .wait(delay)?;
 
-            defmt::debug!(
-                "sent data package: {}, bytes: {} (note: {:?})",
-                pi,
-                b64.len(),
-                r
-            );
-        }
+        defmt::debug!(
+            "sent data package: {}, bytes: {} (note: {:?})",
+            pck.storage_id,
+            b64.len(),
+            r
+        );
 
         Ok(b64.len())
     }
@@ -292,7 +290,8 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
 pub struct AxlPacketMeta {
     pub timestamp: i64,
     pub offset: u32,
-    pub packet: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub storage_id: Option<u32>,
     pub length: u32,
     pub freq: f32,
     pub position_time: u32,

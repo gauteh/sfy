@@ -293,9 +293,10 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
     pub fn take_buf(&mut self, now: i64, position_time: u32, lon: f64, lat: f64) -> Result<AxlPacket, E> {
         let pck = AxlPacket {
             timestamp: self.timestamp,
-            position_time: self.position_time,
             offset: self.fifo_offset,
             data: self.buf.take_buf(),
+            storage_id: None,
+            position_time: self.position_time,
             lon: self.lon,
             lat: self.lat,
             freq: self.output_freq,

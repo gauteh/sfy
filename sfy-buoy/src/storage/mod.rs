@@ -17,12 +17,12 @@ use core::fmt::Write as _;
 use embedded_sdmmc::{
     Controller, Error as GenericSdMmcError, Mode, SdMmcError, SdMmcSpi, VolumeIdx,
 };
-use heapless::String;
+use heapless::{String, Vec};
 
 use ambiq_hal::gpio::pin::{Mode as SpiMode, P35 as CS};
 use ambiq_hal::spi::Spi0 as Spi;
 
-use crate::axl::AxlPacket;
+use crate::axl::{AxlPacket, AXL_OUTN};
 
 mod clock;
 mod handles;
@@ -36,6 +36,7 @@ pub enum StorageErr {
     GenericSdMmmcErr(GenericSdMmcError<SdMmcError>),
     ParseIDFailure,
     WriteIDFailure,
+    WriteError,
 }
 
 impl From<SdMmcError> for StorageErr {
@@ -145,31 +146,66 @@ impl Storage {
         todo!()
     }
 
+    /// Returns the current (next free ID).
     pub fn current_id(&self) -> Option<u32> {
         self.current_id
     }
 
+    /// Set the current ID, but do not write to card.
     pub fn set_id(&mut self, id: u32) {
         self.current_id = Some(id);
     }
 
-    // Deserialize and return AxlPacket (without modifying sent status).
+    /// Deserialize and return AxlPacket (without modifying sent status).
     pub fn get(&self, id: u32) -> Result<AxlPacket, StorageErr> {
         unimplemented!()
     }
 
-    // Mark package as sent
+    /// Mark package as sent over notecard.
     pub fn mark_sent(&mut self, id: u32) -> Result<(), StorageErr> {
         unimplemented!()
     }
 
-    // Store a new package and mark it as unsent.
-    pub fn store(&mut self, pck: AxlPacket) -> Result<u32, StorageErr> {
-        // Store to id
-        // Store unsent-status
-        // Update current ID on disk
-        // Update current ID in self
+    /// Check if package has been sent over notecard.
+    pub fn is_sent(&mut self, id: u32) -> Result<bool, StorageErr> {
         unimplemented!()
+    }
+
+    /// Store a new package and mark it as unsent.
+    pub fn store(&mut self, pck: &mut AxlPacket) -> Result<u32, StorageErr> {
+        let id = self.current_id.unwrap();
+        let (dir, file) = id_to_parts(id).map_err(|_| StorageErr::WriteIDFailure)?;
+
+        // Package now has a storage ID.
+        pck.storage_id = Some(id);
+        self.current_id = Some(id + 1);
+        {
+            self.write_id()?;
+        }
+
+        // Serialize
+        let buf: Vec<u8, { AXL_OUTN }> =
+            postcard::to_vec(pck).map_err(|_| StorageErr::WriteError)?;
+
+        defmt::debug!(
+            "Writing package to card, id: {}, size: {}, timestamp: {}",
+            id,
+            buf.len(),
+            pck.timestamp
+        );
+        {
+            let block = self.sd.acquire()?;
+            let mut c = Controller::new(block, CountClock);
+            let mut v = c.get_volume(VolumeIdx(0))?;
+            let mut root = DirHandle::open_root(&mut c, &mut v)?;
+            let mut d = root.open_dir(&dir)?;
+            let mut f = d.open_file(&file, Mode::ReadWriteCreate)?;
+            f.write(&buf)?;
+        }
+
+        // Store unsent-status
+
+        Ok(id)
     }
 }
 

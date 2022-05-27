@@ -6,16 +6,27 @@ pub const AXL_SZ: usize = SAMPLE_SZ * 1024;
 /// Maximum length of base64 string from [f16; AXL_SZ]
 pub const AXL_OUTN: usize = { AXL_SZ * 2 } * 4 / 3 + 4;
 
+#[derive(serde::Serialize, Debug)]
 pub struct AxlPacket {
     /// Timstamp of sample at `offset`.
     pub timestamp: i64,
+
+    /// Offset in IMU FIFO at time of timestamp.
     pub offset: u16,
+
+    /// ID on SD-card. This one is not necessarily unique. Will not be set
+    /// before package has been written to SD-card.
+    pub storage_id: Option<u32>,
+
+    /// Time of position.
     pub position_time: u32,
     pub lon: f64,
     pub lat: f64,
+
+    /// Frequency of data.
     pub freq: f32,
 
-    /// This is moved to the payload of the note.
+    /// IMU data. This is moved to the payload when transmitting.
     pub data: heapless::Vec<f16, { AXL_SZ }>,
 }
 
