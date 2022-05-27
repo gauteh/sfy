@@ -6,7 +6,7 @@ pub const AXL_SZ: usize = SAMPLE_SZ * 1024;
 /// Maximum length of base64 string from [f16; AXL_SZ]
 pub const AXL_OUTN: usize = { AXL_SZ * 2 } * 4 / 3 + 4;
 
-#[derive(serde::Serialize, Debug)]
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
 pub struct AxlPacket {
     /// Timstamp of sample at `offset`.
     pub timestamp: i64,

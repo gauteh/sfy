@@ -37,6 +37,7 @@ pub enum StorageErr {
     ParseIDFailure,
     WriteIDFailure,
     WriteError,
+    ReadPackageError,
 }
 
 impl From<SdMmcError> for StorageErr {
@@ -56,7 +57,7 @@ const ID_DIGITS: usize = 10; // 8 is sufficient for 20 years.
 
 pub struct Storage {
     sd: SdMmcSpi<Spi, CS<{ SpiMode::Output }>>,
-    /// Last written ID.
+    /// Next free ID.
     current_id: Option<u32>,
 }
 
@@ -157,8 +158,29 @@ impl Storage {
     }
 
     /// Deserialize and return AxlPacket (without modifying sent status).
-    pub fn get(&self, id: u32) -> Result<AxlPacket, StorageErr> {
-        unimplemented!()
+    pub fn get(&mut self, id: u32) -> Result<AxlPacket, StorageErr> {
+        defmt::debug!("Reading file: {}", id);
+        let (dir, file) = id_to_parts(id).map_err(|_| StorageErr::ParseIDFailure)?;
+
+        let mut buf: Vec<u8, { AXL_OUTN }> = Vec::new();
+        buf.resize_default(AXL_OUTN).unwrap();
+
+        let buf = {
+            let block = self.sd.acquire()?;
+            let mut c = Controller::new(block, CountClock);
+            let mut v = c.get_volume(VolumeIdx(0))?;
+            let mut root = DirHandle::open_root(&mut c, &mut v)?;
+            let mut d = root.open_dir(&dir)?;
+            let mut f = d.open_file(&file, Mode::ReadOnly)?;
+            let sz = f.read(&mut buf)?;
+            defmt::trace!("Read {} bytes.", sz);
+            &buf[..sz]
+        };
+
+        // De-serialize
+        let pck: AxlPacket = postcard::from_bytes(buf).map_err(|_| StorageErr::ReadPackageError)?;
+
+        Ok(pck)
     }
 
     /// Mark package as sent over notecard.
@@ -187,6 +209,9 @@ impl Storage {
         let buf: Vec<u8, { AXL_OUTN }> =
             postcard::to_vec(pck).map_err(|_| StorageErr::WriteError)?;
 
+        // And write..
+        //
+        // TODO: Handle existing file, i.e.: ID was wrong.
         defmt::debug!(
             "Writing package to card, id: {}, size: {}, timestamp: {}",
             id,
@@ -203,18 +228,18 @@ impl Storage {
             f.write(&buf)?;
         }
 
-        // Store unsent-status
+        // TODO: Store unsent-status
 
         Ok(id)
     }
 }
 
-pub fn id_to_parts(id: u32) -> Result<(heapless::String<10>, heapless::String<8>), ()> {
+pub fn id_to_parts(id: u32) -> Result<(String<10>, String<8>), ()> {
     let dir = id / 10000;
     let file = id % 10000;
 
-    let dir = heapless::String::from(dir);
-    let mut file = heapless::String::from(file);
+    let dir = String::from(dir);
+    let mut file = String::from(file);
     file.push_str(".axl")?;
 
     Ok((dir, file))
