@@ -54,6 +54,8 @@ mod tests {
     fn send_axl_batch(s: &mut State) {
         let pck = sfy::axl::AxlPacket {
             timestamp: 1000,
+            storage_id: None,
+            position_time: 0,
             offset: 1,
             freq: 100.,
             lon: 10.23,
