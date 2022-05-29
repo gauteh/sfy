@@ -33,10 +33,10 @@ use hal::{i2c, pac::interrupt};
 
 use sfy::log::log;
 use sfy::note::Notecarrier;
-#[cfg(feature = "storage")]
-use sfy::storage::Storage;
 use sfy::waves::Waves;
 use sfy::{Imu, Location, SharedState, State, NOTEQ, STATE};
+#[cfg(feature = "storage")]
+use sfy::{storage::Storage, STORAGEQ};
 
 /// This static is used to transfer ownership of the IMU subsystem to the interrupt handler.
 type I = hal::i2c::Iom3;
@@ -104,7 +104,8 @@ fn main() -> ! {
         );
         let cs = pins.a14.into_push_pull_output();
         Storage::open(spi, cs)
-    };
+    }
+    .ok();
 
     info!("Setting up Notecarrier..");
     let mut note = Notecarrier::new(i2c4, &mut delay).unwrap();
@@ -139,8 +140,19 @@ fn main() -> ! {
     info!("Enable IMU.");
     waves.enable_fifo(&mut delay).unwrap();
 
-    let imu = sfy::Imu::new(waves, unsafe { NOTEQ.split().0 });
-    let mut imu_queue = unsafe { NOTEQ.split().1 };
+    #[cfg(not(feature = "storage"))]
+    let (imu_p, mut imu_queue) = unsafe { NOTEQ.split() };
+
+    #[cfg(feature = "storage")]
+    let (imu_p, storage_consumer) = unsafe { STORAGEQ.split() };
+
+    #[cfg(feature = "storage")]
+    let (note_p, mut imu_queue) = unsafe { NOTEQ.split() };
+
+    #[cfg(feature = "storage")]
+    let mut storage_manager = sfy::StorageManager::new(storage, storage_consumer, note_p);
+
+    let imu = sfy::Imu::new(waves, imu_p);
 
     // Move state into globally available variables. And IMU into temporary variable for
     // moving it into the `RTC` interrupt routine, before we enable interrupts.
@@ -177,6 +189,13 @@ fn main() -> ! {
             led.toggle().unwrap();
 
             let l = location.check_retrieve(&STATE, &mut delay, &mut note);
+
+            #[cfg(feature = "storage")]
+            storage_manager
+                .drain_queue()
+                .inspect_err(|e| error!("Failed to write to SD card: {:?}", e))
+                .ok();
+
             let nd = note.drain_queue(&mut imu_queue, &mut delay);
             let ns = note.check_and_sync(&mut delay);
 

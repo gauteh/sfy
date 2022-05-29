@@ -4,6 +4,8 @@ use embedded_hal::blocking::delay::DelayMs;
 use embedded_hal::blocking::i2c::{Read, Write};
 use notecard::{NoteError, Notecard};
 
+use crate::NOTEQ_SZ;
+
 pub const BUOYSN: &'static str = const { option_env!("BUOYSN").unwrap_or("cain") };
 
 /// Initialize sync when storage use is above this percentage.
@@ -214,7 +216,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
     /// Send all available packages to the notecard.
     pub fn drain_queue(
         &mut self,
-        queue: &mut heapless::spsc::Consumer<'static, AxlPacket, 32>,
+        queue: &mut heapless::spsc::Consumer<'static, AxlPacket, NOTEQ_SZ>,
         delay: &mut impl DelayMs<u16>,
     ) -> Result<usize, NoteError> {
         let mut sz = 0;

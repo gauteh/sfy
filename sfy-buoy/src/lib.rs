@@ -34,13 +34,23 @@ pub mod storage;
 pub mod waves;
 
 use axl::AxlPacket;
+#[cfg(feature = "storage")]
+use storage::Storage;
+
+pub const STORAGEQ_SZ: usize = 16;
+pub const NOTEQ_SZ: usize = 16;
+#[cfg(feature = "storage")]
+pub const IMUQ_SZ: usize = STORAGEQ_SZ;
+#[cfg(not(feature = "storage"))]
+pub const IMUQ_SZ: usize = NOTEQ_SZ;
 
 /// These queues are filled up by the IMU interrupt in read batches of time-series. It is then consumed
 /// the main thread and first drained to the SD storage (if enabled), and then queued for the notecard.
 #[cfg(feature = "storage")]
-pub static mut STORAGEQ: heapless::spsc::Queue<AxlPacket, 32> = heapless::spsc::Queue::new();
+pub static mut STORAGEQ: heapless::spsc::Queue<AxlPacket, STORAGEQ_SZ> =
+    heapless::spsc::Queue::new();
 
-pub static mut NOTEQ: heapless::spsc::Queue<AxlPacket, 32> = heapless::spsc::Queue::new();
+pub static mut NOTEQ: heapless::spsc::Queue<AxlPacket, NOTEQ_SZ> = heapless::spsc::Queue::new();
 
 /// The STATE contains the Real-Time-Clock which needs to be shared, as well as up-to-date
 /// longitude and latitude.
@@ -160,14 +170,14 @@ impl Location {
 }
 
 pub struct Imu<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> {
-    pub queue: heapless::spsc::Producer<'static, AxlPacket, 32>,
+    pub queue: heapless::spsc::Producer<'static, AxlPacket, IMUQ_SZ>,
     waves: waves::Waves<I>,
 }
 
 impl<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> Imu<E, I> {
     pub fn new(
         waves: waves::Waves<I>,
-        queue: heapless::spsc::Producer<'static, AxlPacket, 32>,
+        queue: heapless::spsc::Producer<'static, AxlPacket, IMUQ_SZ>,
     ) -> Imu<E, I> {
         Imu { queue, waves }
     }
@@ -200,11 +210,70 @@ impl<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> Imu<E
         Ok(())
     }
 
-    pub fn reset(&mut self, now: i64, position_time: u32, lon: f64, lat: f64) -> Result<(), waves::ImuError<E>> {
+    pub fn reset(
+        &mut self,
+        now: i64,
+        position_time: u32,
+        lon: f64,
+        lat: f64,
+    ) -> Result<(), waves::ImuError<E>> {
         self.waves.reset()?;
         self.waves.take_buf(now, position_time, lon, lat)?; // buf is empty, this sets time and offset.
         self.waves.enable_fifo(&mut FlashDelay)?;
 
         Ok(())
+    }
+}
+
+#[cfg(feature = "storage")]
+pub struct StorageManager {
+    storage: Option<Storage>,
+    pub storage_queue: heapless::spsc::Consumer<'static, AxlPacket, STORAGEQ_SZ>,
+    pub note_queue: heapless::spsc::Producer<'static, AxlPacket, NOTEQ_SZ>,
+}
+
+#[cfg(feature = "storage")]
+impl StorageManager {
+    pub fn new(
+        storage: Option<Storage>,
+        storage_queue: heapless::spsc::Consumer<'static, AxlPacket, STORAGEQ_SZ>,
+        note_queue: heapless::spsc::Producer<'static, AxlPacket, NOTEQ_SZ>,
+    ) -> StorageManager {
+        StorageManager {
+            storage,
+            storage_queue,
+            note_queue,
+        }
+    }
+
+    pub fn drain_queue(&mut self) -> Result<Option<u32>, storage::StorageErr> {
+        let mut e: Result<Option<u32>, storage::StorageErr> = Ok(None);
+
+        // TODO:
+        //
+        // * Try to reset or re-initialize in case of errors.
+        // * Log to disk
+        // * Store raw accel & gyro
+
+        while let Some(mut pck) = self.storage_queue.dequeue() {
+            if let Some(storage) = self.storage.as_mut() {
+                e = storage
+                    .store(&mut pck)
+                    .inspect_err(|err| {
+                        defmt::error!("Failed to save package: {}", err);
+                    }).map(|id| Some(id));
+            } else {
+                defmt::error!("Storage has failed to initialize, forwarding to notecard.");
+            }
+
+            self.note_queue
+                .enqueue(pck)
+                .inspect_err(|pck| {
+                    defmt::error!("queue is full, discarding data: {}", pck.data.len());
+                })
+                .ok();
+        }
+
+        e
     }
 }
