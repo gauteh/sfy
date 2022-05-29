@@ -317,7 +317,6 @@ impl<I2C: Read + Write> DerefMut for Notecarrier<I2C> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::axl::AXL_SZ;
     use half::f16;
 

@@ -8,8 +8,9 @@ pub const AXL_SZ: usize = SAMPLE_SZ * 1024;
 /// Maximum length of base64 string from [f16; AXL_SZ]
 pub const AXL_OUTN: usize = { AXL_SZ * 2 } * 4 / 3 + 4;
 
-/// Size of `AxlPacket` serialized using postcard with COBS. Experimentally derived.
-pub const AXL_POSTCARD_SZ: usize = 6207;
+/// Max size of `AxlPacket` serialized using postcard with COBS. Set with some margin since
+/// postcard messages are not fixed size.
+pub const AXL_POSTCARD_SZ: usize = 1024 * 8;
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, PartialEq)]
 pub struct AxlPacket {
@@ -94,21 +95,23 @@ mod tests {
     #[test]
     fn postcard_size() {
         let p = AxlPacket {
-            timestamp: 1002330,
+            timestamp: 100212312312330,
             position_time: 123123,
             lat: 34.52341,
             lon: 54.012,
             freq: 53.0,
-            offset: 15,
+            offset: 0,
             storage_id: Some(1489),
             data: (6..3078)
                 .map(|v| f16::from_f32(v as f32))
                 .collect::<Vec<_, { AXL_SZ }>>(),
         };
 
+        assert!(p.data.is_full());
+
         let v: Vec<_, { AXL_OUTN }> = postcard::to_vec_cobs(&p).unwrap();
         println!("{}", v.len());
 
-        assert_eq!(v.len(), AXL_POSTCARD_SZ);
+        assert!(v.len() < AXL_POSTCARD_SZ);
     }
 }

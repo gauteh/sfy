@@ -39,6 +39,8 @@ pub enum StorageErr {
     WriteIDFailure,
     WriteError,
     ReadPackageError,
+    SerializationError,
+    DiskFull,
 }
 
 impl From<SdMmcError> for StorageErr {
@@ -80,9 +82,35 @@ impl Storage {
             current_id: None,
         };
 
-        storage.current_id = Some(storage.read_id()?);
+        let c = storage.find_first_free_collection()?;
+        defmt::info!("Starting new collection: {}", c);
+        storage.current_id = Some(c * COLLECTION_SIZE);
+        storage.write_id()?;
 
         Ok(storage)
+    }
+
+    /// Find the first free collection. Every time the buoy starts up a new collection will be used
+    /// to prevent offset mismatch between file id. The ID will be set to the first entry in that
+    /// collection.
+    pub fn find_first_free_collection(&mut self) -> Result<u32, StorageErr> {
+        let block = self.sd.acquire()?;
+        let mut c = Controller::new(block, CountClock);
+        let mut v = c.get_volume(VolumeIdx(0))?;
+
+        let mut root = DirHandle::open_root(&mut c, &mut v)?;
+
+        for c in 0..65536u32 {
+            let f = collection_fname(c);
+            defmt::debug!("Searching for free collection, testing: {}", f);
+            match root.find_directory_entry(&f) {
+                Ok(_) => continue,
+                Err(GenericSdMmcError::FileNotFound) => return Ok(c),
+                Err(e) => return Err(e.into()),
+            }
+        }
+
+        Err(StorageErr::DiskFull)
     }
 
     /// Read the current ID.
@@ -106,8 +134,12 @@ impl Storage {
                 );
 
                 // TODO: Handle corrupted ID file.
-                let buf = core::str::from_utf8(&buf).map_err(|_| StorageErr::ParseIDFailure)?;
-                let id = u32::from_str_radix(&buf, 10).map_err(|_| StorageErr::ParseIDFailure)?;
+                let buf = core::str::from_utf8(&buf)
+                    .inspect_err(|e| defmt::error!("Parse id: {:?}", defmt::Debug2Format(e)))
+                    .map_err(|_| StorageErr::ParseIDFailure)?;
+                let id = u32::from_str_radix(&buf, 10)
+                    .inspect_err(|e| defmt::error!("Parse id: {:?}", defmt::Debug2Format(e)))
+                    .map_err(|_| StorageErr::ParseIDFailure)?;
 
                 Ok(id)
             }
@@ -200,8 +232,11 @@ impl Storage {
         }
 
         // Serialize
-        let buf: Vec<u8, { AXL_POSTCARD_SZ }> =
-            postcard::to_vec_cobs(pck).map_err(|_| StorageErr::WriteError)?;
+        let mut buf: Vec<u8, { AXL_POSTCARD_SZ }> =
+            postcard::to_vec_cobs(pck)
+            .inspect_err(|e| defmt::error!("Serialization: {:?}", defmt::Debug2Format(e)))
+            .map_err(|_| StorageErr::SerializationError)?;
+        buf.resize_default(buf.capacity()).unwrap();
 
         // And write..
         defmt::debug!(
@@ -219,7 +254,9 @@ impl Storage {
             let mut v = c.get_volume(VolumeIdx(0))?;
             let mut root = DirHandle::open_root(&mut c, &mut v)?;
             let mut f = root.open_file(&collection, Mode::ReadWriteCreateOrAppend)?;
-            f.seek_from_end(0).map_err(|_| StorageErr::WriteError)?; // We should already be at the
+            f.seek_from_end(0)
+                .inspect_err(|e| defmt::error!("File seek error: {}", e))
+                .map_err(|_| StorageErr::WriteError)?; // We should already be at the
                                                                      // end.
             f.write(&buf)?;
         }
@@ -230,9 +267,7 @@ impl Storage {
     pub fn remove_collection(&mut self, collection: u32) -> Result<(), StorageErr> {
         defmt::info!("Removing collection: {}", collection);
 
-        let mut f: String<32> = String::from(collection);
-        f.push_str(".").unwrap();
-        f.push_str(STORAGE_VERSION_STR).unwrap();
+        let f = collection_fname(collection);
 
         let block = self.sd.acquire()?;
         let mut c = Controller::new(block, CountClock);
@@ -244,6 +279,13 @@ impl Storage {
     }
 }
 
+pub fn collection_fname(c: u32) -> String<32> {
+    let mut f: String<32> = String::from(c);
+    f.push_str(".").unwrap();
+    f.push_str(STORAGE_VERSION_STR).unwrap();
+    f
+}
+
 /// Calculate collection file, file number in collection and byte offset of start of pacakge in
 /// collection file for a given ID.
 pub fn id_to_parts(id: u32) -> (String<32>, u32, usize) {
@@ -251,9 +293,7 @@ pub fn id_to_parts(id: u32) -> (String<32>, u32, usize) {
     let fileid = id % COLLECTION_SIZE;
     let offset = fileid as usize * AXL_POSTCARD_SZ;
 
-    let mut collection = String::from(collection);
-    collection.push_str(".").unwrap();
-    collection.push_str(STORAGE_VERSION_STR).unwrap();
+    let collection = collection_fname(collection);
 
     (collection, fileid, offset)
 }

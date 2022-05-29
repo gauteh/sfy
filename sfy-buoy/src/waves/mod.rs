@@ -385,7 +385,3 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-}

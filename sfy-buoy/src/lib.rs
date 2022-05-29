@@ -256,6 +256,7 @@ impl StorageManager {
         // * Store raw accel & gyro
 
         while let Some(mut pck) = self.storage_queue.dequeue() {
+            defmt::debug!("Storing package: {:?} (queue length: {})", pck, self.storage_queue.len());
             if let Some(storage) = self.storage.as_mut() {
                 e = storage
                     .store(&mut pck)

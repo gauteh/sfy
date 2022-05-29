@@ -1,6 +1,6 @@
 use core::ops::{Deref, DerefMut};
 use embedded_sdmmc::{
-    BlockDevice, Controller, Directory, Error as GenericSdMmcError, File, Mode, TimeSource, Volume,
+    BlockDevice, Controller, Directory, Error as GenericSdMmcError, File, Mode, TimeSource, Volume, DirEntry
 };
 
 pub struct DirHandle<'c, 'v, D: BlockDevice, T: TimeSource> {
@@ -56,6 +56,13 @@ impl<'c, 'v, D: BlockDevice, T: TimeSource> DirHandle<'c, 'v, D, T> {
         name: &str) -> Result<(), GenericSdMmcError<D::Error>> {
         let dir = self.dir.as_ref().unwrap();
         self.ctrl.delete_file_in_dir(&self.vol, dir, name)
+    }
+
+    pub fn find_directory_entry(
+        &mut self,
+        name: &str) -> Result<DirEntry, GenericSdMmcError<D::Error>> {
+        let dir = self.dir.as_ref().unwrap();
+        self.ctrl.find_directory_entry(&self.vol, dir, name)
     }
 }
 
