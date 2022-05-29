@@ -4,14 +4,12 @@
 //! possible to request a range of old packages.
 //!
 //! The maximum number of files in a FAT32 directory is 65536. If a data package has ID
-//! `1234567` it is put in the directory: `123` and named `4567.axl`. The directory is the full
-//! ID stripped of the last 4 digits, and the file name is the last 4 digits. At 52 Hz and 1024
-//! length data-package, this should amount to 4389 files per day. Each directory will last a bit
-//! longer than two days.
+//! `1234567` it is put in the file: `123.X` where `X` is the version of the storage format
+//! starting with 1. The packages are serialized using the `postcard` format and separated with
+//! `COBS`es. The collection file is the full ID stripped of the last 4 digits. Each collection
+//! file holds 10.000 packages.
 //!
-//! The data package needs information about:
-//!     * buoy ID / dev
-//!
+//! At 52 Hz and 1024 length data-package, there is 4389 packages per day. Each collection will last about 2 days. See tests for more details.
 
 use core::fmt::Write as _;
 use embedded_sdmmc::{
@@ -22,13 +20,16 @@ use heapless::{String, Vec};
 use ambiq_hal::gpio::pin::{Mode as SpiMode, P35 as CS};
 use ambiq_hal::spi::Spi0 as Spi;
 
-use crate::axl::{AxlPacket, AXL_OUTN};
+use crate::axl::{AxlPacket, AXL_POSTCARD_SZ};
 
 mod clock;
 mod handles;
 
 use clock::CountClock;
 use handles::*;
+
+pub const COLLECTION_SIZE: u32 = 10_000;
+pub const STORAGE_VERSION_STR: &'static str = "1";
 
 #[derive(Debug, defmt::Format)]
 pub enum StorageErr {
@@ -142,11 +143,6 @@ impl Storage {
         Ok(())
     }
 
-    /// Takes IMU queue and stores items.
-    pub fn drain_queue(&mut self) -> Result<(), ()> {
-        todo!()
-    }
-
     /// Returns the current (next free ID).
     pub fn current_id(&self) -> Option<u32> {
         self.current_id
@@ -157,46 +153,45 @@ impl Storage {
         self.current_id = Some(id);
     }
 
-    /// Deserialize and return AxlPacket (without modifying sent status).
+    /// Deserialize and return AxlPacket.
     pub fn get(&mut self, id: u32) -> Result<AxlPacket, StorageErr> {
         defmt::debug!("Reading file: {}", id);
-        let (dir, file) = id_to_parts(id).map_err(|_| StorageErr::ParseIDFailure)?;
+        let (collection, file, offset) = id_to_parts(id);
 
-        let mut buf: Vec<u8, { AXL_OUTN }> = Vec::new();
-        buf.resize_default(AXL_OUTN).unwrap();
+        let mut buf: Vec<u8, { AXL_POSTCARD_SZ }> = Vec::new();
+        buf.resize_default(AXL_POSTCARD_SZ).unwrap();
 
-        let buf = {
+        defmt::debug!(
+            "Reading package id: {} from collection: {}, fileid: {}, offset: {}",
+            id,
+            collection,
+            file,
+            offset
+        );
+
+        {
             let block = self.sd.acquire()?;
             let mut c = Controller::new(block, CountClock);
             let mut v = c.get_volume(VolumeIdx(0))?;
             let mut root = DirHandle::open_root(&mut c, &mut v)?;
-            let mut d = root.open_dir(&dir)?;
-            let mut f = d.open_file(&file, Mode::ReadOnly)?;
+            let mut f = root.open_file(&collection, Mode::ReadOnly)?;
+            f.seek_from_start(offset as u32)
+                .map_err(|_| StorageErr::ReadPackageError)?;
             let sz = f.read(&mut buf)?;
             defmt::trace!("Read {} bytes.", sz);
-            &buf[..sz]
-        };
+        }
 
         // De-serialize
-        let pck: AxlPacket = postcard::from_bytes(buf).map_err(|_| StorageErr::ReadPackageError)?;
+        let pck: AxlPacket =
+            postcard::from_bytes_cobs(&mut buf).map_err(|_| StorageErr::ReadPackageError)?;
 
         Ok(pck)
     }
 
-    /// Mark package as sent over notecard.
-    pub fn mark_sent(&mut self, id: u32) -> Result<(), StorageErr> {
-        unimplemented!()
-    }
-
-    /// Check if package has been sent over notecard.
-    pub fn is_sent(&mut self, id: u32) -> Result<bool, StorageErr> {
-        unimplemented!()
-    }
-
-    /// Store a new package and mark it as unsent.
+    /// Store a new package.
     pub fn store(&mut self, pck: &mut AxlPacket) -> Result<u32, StorageErr> {
         let id = self.current_id.unwrap();
-        let (dir, file) = id_to_parts(id).map_err(|_| StorageErr::WriteIDFailure)?;
+        let (collection, fid, offset) = id_to_parts(id);
 
         // Package now has a storage ID.
         pck.storage_id = Some(id);
@@ -206,43 +201,44 @@ impl Storage {
         }
 
         // Serialize
-        let buf: Vec<u8, { AXL_OUTN }> =
-            postcard::to_vec(pck).map_err(|_| StorageErr::WriteError)?;
+        let buf: Vec<u8, { AXL_POSTCARD_SZ }> =
+            postcard::to_vec_cobs(pck).map_err(|_| StorageErr::WriteError)?;
 
         // And write..
-        //
-        // TODO: Handle existing file, i.e.: ID was wrong.
         defmt::debug!(
-            "Writing package to card, id: {}, size: {}, timestamp: {}",
+            "Writing package to card id: {}, size: {}, timestamp: {}, collection: {}, fileid: {}, offset: {}",
             id,
             buf.len(),
-            pck.timestamp
+            pck.timestamp,
+            collection,
+            fid,
+            offset
         );
         {
             let block = self.sd.acquire()?;
             let mut c = Controller::new(block, CountClock);
             let mut v = c.get_volume(VolumeIdx(0))?;
             let mut root = DirHandle::open_root(&mut c, &mut v)?;
-            let mut d = root.open_dir(&dir)?;
-            let mut f = d.open_file(&file, Mode::ReadWriteCreate)?;
+            let mut f = root.open_file(&collection, Mode::ReadWriteCreateOrAppend)?;
+            f.seek_from_end(0).map_err(|_| StorageErr::WriteError)?; // We should already be at the
+                                                                     // end.
             f.write(&buf)?;
         }
-
-        // TODO: Store unsent-status
 
         Ok(id)
     }
 }
 
-pub fn id_to_parts(id: u32) -> Result<(String<10>, String<8>), ()> {
-    let dir = id / 10000;
-    let file = id % 10000;
+pub fn id_to_parts(id: u32) -> (String<32>, u32, usize) {
+    let collection = id / COLLECTION_SIZE;
+    let fileid = id % COLLECTION_SIZE;
+    let offset = fileid as usize * AXL_POSTCARD_SZ;
 
-    let dir = String::from(dir);
-    let mut file = String::from(file);
-    file.push_str(".axl")?;
+    let mut collection = String::from(collection);
+    collection.push_str(".").unwrap();
+    collection.push_str(STORAGE_VERSION_STR).unwrap();
 
-    Ok((dir, file))
+    (collection, fileid, offset)
 }
 
 #[cfg(test)]
@@ -251,12 +247,34 @@ mod tests {
 
     #[test]
     fn test_id_to_parts() {
-        let (dir, file) = id_to_parts(0).unwrap();
-        assert_eq!(dir, "0");
-        assert_eq!(file, "0.axl");
+        let (c, file, o) = id_to_parts(0);
+        assert_eq!(c, "0.1");
+        assert_eq!(file, 0);
+        assert_eq!(o, 0);
 
-        let (dir, file) = id_to_parts(1234567).unwrap();
-        assert_eq!(dir, "123");
-        assert_eq!(file, "4567.axl");
+        let (c, file, o) = id_to_parts(1234567);
+        assert_eq!(c, "123.1");
+        assert_eq!(file, 4567);
+        assert_eq!(o, 4567 * AXL_POSTCARD_SZ);
+    }
+
+    #[test]
+    fn test_fat32_limits() {
+        let pcks_per_day = 52 * 60 * 60 * 24 / 1024;
+        let collection_file_size = COLLECTION_SIZE * AXL_POSTCARD_SZ as u32;
+
+        // max file size.
+        assert!((collection_file_size as u64) < { 4 * 1024 * 1024 * 1024 });
+
+        println!("collection file size: {} b", collection_file_size);
+        println!("pcks per day: {}", pcks_per_day);
+
+        let collections_per_day = pcks_per_day as f32 / COLLECTION_SIZE as f32;
+        let collections_per_year = (pcks_per_day * 365) as f32 / COLLECTION_SIZE as f32;
+        println!("Collections per day: {}", collections_per_day);
+        println!("Collections per year: {}", collections_per_year);
+
+        // max files in directory (should last at least a year)
+        assert!(collections_per_year < 65536 as f32);
     }
 }

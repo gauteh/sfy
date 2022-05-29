@@ -1,3 +1,4 @@
+use core::ops::{Deref, DerefMut};
 use embedded_sdmmc::{
     BlockDevice, Controller, Directory, Error as GenericSdMmcError, File, Mode, TimeSource, Volume,
 };
@@ -29,6 +30,7 @@ impl<'c, 'v, D: BlockDevice, T: TimeSource> DirHandle<'c, 'v, D, T> {
         Ok(Self::from(ctrl, vol, dir))
     }
 
+    #[allow(unused)]
     pub fn open_dir(
         &mut self,
         name: &str,
@@ -86,6 +88,20 @@ impl<'c, 'v, D: BlockDevice, T: TimeSource> FileHandle<'c, 'v, D, T> {
     pub fn write(&mut self, buf: &[u8]) -> Result<usize, GenericSdMmcError<D::Error>> {
         let file = self.file.as_mut().unwrap();
         self.ctrl.write(&mut self.vol, file, buf)
+    }
+}
+
+impl<D: BlockDevice, T: TimeSource> Deref for FileHandle<'_, '_, D, T> {
+    type Target = File;
+
+    fn deref(&self) -> &Self::Target {
+        self.file.as_ref().unwrap()
+    }
+}
+
+impl<D: BlockDevice, T: TimeSource> DerefMut for FileHandle<'_, '_, D, T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.file.as_mut().unwrap()
     }
 }
 
