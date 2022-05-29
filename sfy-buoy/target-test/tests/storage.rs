@@ -190,4 +190,44 @@ mod tests {
 
         clean_up_collection(&mut s.storage);
     }
+
+    #[test]
+    fn write_many_packages(s: &mut State) {
+        for i in 0..10u32 {
+            let mut p = AxlPacket {
+                timestamp: 100 + i as i64,
+                position_time: 123123,
+                lat: 34.52341,
+                lon: 54.012,
+                freq: 53.0,
+                offset: 15,
+                storage_id: None,
+                data: (6..3078)
+                    .map(|v| f16::from_f32(v as f32))
+                    .collect::<Vec<_, { AXL_SZ }>>(),
+            };
+
+            s.storage.store(&mut p).unwrap();
+            assert_eq!(p.storage_id, Some(i));
+        }
+
+        for i in 0..10u32 {
+            let p = AxlPacket {
+                timestamp: 100 + i as i64,
+                position_time: 123123,
+                lat: 34.52341,
+                lon: 54.012,
+                freq: 53.0,
+                offset: 15,
+                storage_id: Some(i),
+                data: (6..3078)
+                    .map(|v| f16::from_f32(v as f32))
+                    .collect::<Vec<_, { AXL_SZ }>>(),
+            };
+
+            let p_read = s.storage.get(i).unwrap();
+            assert_eq!(p, p_read);
+        }
+        clean_up_collection(&mut s.storage);
+    }
 }
