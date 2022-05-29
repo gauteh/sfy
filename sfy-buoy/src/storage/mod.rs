@@ -340,13 +340,13 @@ mod tests {
     #[test]
     fn read_collection() {
         let mut c = std::fs::read("tests/data/0.1").unwrap();
-        assert_eq!(c.len(), AXL_POSTCARD_SZ * 3);
+        assert_eq!(c.len(), AXL_POSTCARD_SZ * 4);
 
         let buf = c.as_mut_slice();
 
         let p0: AxlPacket = postcard::from_bytes_cobs(&mut buf[..AXL_POSTCARD_SZ]).unwrap();
         let p1: AxlPacket = postcard::from_bytes_cobs(&mut buf[AXL_POSTCARD_SZ..(2*AXL_POSTCARD_SZ)]).unwrap();
-        let p2: AxlPacket = postcard::from_bytes_cobs(&mut buf[(AXL_POSTCARD_SZ*2)..]).unwrap();
+        let p2: AxlPacket = postcard::from_bytes_cobs(&mut buf[(AXL_POSTCARD_SZ*2)..(AXL_POSTCARD_SZ*3)]).unwrap();
 
         assert_eq!(p0.storage_id, Some(0));
         assert_eq!(p1.storage_id, Some(1));
@@ -392,5 +392,21 @@ mod tests {
         assert_eq!(p0_truth, p0);
         assert_eq!(p1_truth, p1);
         assert_eq!(p2_truth, p2);
+    }
+
+    #[test]
+    fn read_real_data() {
+        let mut c = std::fs::read("tests/data/1.1").unwrap();
+        assert_eq!(c.len(), AXL_POSTCARD_SZ * 7);
+
+        let buf = c.as_mut_slice();
+
+        for p in 0..7 {
+            let slice = &mut buf[(AXL_POSTCARD_SZ * p)..(AXL_POSTCARD_SZ * (p+1))];
+            let pck: AxlPacket = postcard::from_bytes_cobs(slice).unwrap();
+            println!("Deserialized data package: {:?}", pck);
+
+            assert_eq!(pck.storage_id, Some(10000 + p as u32));
+        }
     }
 }
