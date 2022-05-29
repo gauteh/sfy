@@ -8,15 +8,15 @@ use panic_probe as _; // memory layout + panic handler
 #[defmt_test::tests]
 mod tests {
     use super::*;
-    use chrono::{NaiveDate, NaiveDateTime};
     #[allow(unused)]
     use defmt::{assert, assert_eq, info};
     use embedded_hal::spi;
-    use embedded_sdmmc::SdMmcSpi;
-    use hal::prelude::*;
     use hal::spi::{Freq, Spi};
+    use half::f16;
+    use heapless::Vec;
 
     use sfy::storage::Storage;
+    use sfy::axl::{AXL_SZ, AxlPacket};
 
     struct State {
         // note: Notecarrier<hal::i2c::Iom2>,
@@ -72,5 +72,40 @@ mod tests {
         s.storage.set_id(0);
         s.storage.write_id().unwrap();
         assert_eq!(s.storage.read_id().unwrap(), 0);
+    }
+
+    #[test]
+    fn write_package(s: &mut State) {
+        let mut p = AxlPacket {
+            timestamp: 1002330,
+            position_time: 123123,
+            lat: 34.52341,
+            lon: 54.012,
+            freq: 53.0,
+            offset: 15,
+            storage_id: None,
+            data: (6..3078)
+                .map(|v| f16::from_f32(v as f32))
+                .collect::<Vec<_, { AXL_SZ }>>(),
+        };
+
+        s.storage.store(&mut p).unwrap();
+        assert_eq!(p.storage_id, Some(0));
+
+        let mut p = AxlPacket {
+            timestamp: 1002400,
+            position_time: 123123,
+            lat: 34.52341,
+            lon: 54.012,
+            freq: 53.0,
+            offset: 15,
+            storage_id: None,
+            data: (6..3078)
+                .map(|v| f16::from_f32(v as f32))
+                .collect::<Vec<_, { AXL_SZ }>>(),
+        };
+
+        s.storage.store(&mut p).unwrap();
+        assert_eq!(p.storage_id, Some(1));
     }
 }

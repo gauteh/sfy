@@ -10,7 +10,7 @@ pub const AXL_OUTN: usize = { AXL_SZ * 2 } * 4 / 3 + 4;
 /// Size of `AxlPacket` serialized using postcard with COBS. Experimentally derived.
 pub const AXL_POSTCARD_SZ: usize = 6207;
 
-#[derive(serde::Serialize, serde::Deserialize, Debug)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, PartialEq)]
 pub struct AxlPacket {
     /// Timstamp of sample at `offset`.
     pub timestamp: i64,

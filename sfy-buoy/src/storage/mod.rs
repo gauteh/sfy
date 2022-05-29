@@ -229,6 +229,8 @@ impl Storage {
     }
 }
 
+/// Calculate collection file, file number in collection and byte offset of start of pacakge in
+/// collection file for a given ID.
 pub fn id_to_parts(id: u32) -> (String<32>, u32, usize) {
     let collection = id / COLLECTION_SIZE;
     let fileid = id % COLLECTION_SIZE;
@@ -244,6 +246,8 @@ pub fn id_to_parts(id: u32) -> (String<32>, u32, usize) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use half::f16;
+    use crate::axl::AXL_SZ;
 
     #[test]
     fn test_id_to_parts() {
@@ -276,5 +280,47 @@ mod tests {
 
         // max files in directory (should last at least a year)
         assert!(collections_per_year < 65536 as f32);
+    }
+
+    #[test]
+    fn read_collection() {
+        let mut c = std::fs::read("tests/data/0.1").unwrap();
+        assert_eq!(c.len(), AXL_POSTCARD_SZ * 2);
+
+        let buf = c.as_mut_slice();
+
+        let p0: AxlPacket = postcard::from_bytes_cobs(&mut buf[..AXL_POSTCARD_SZ]).unwrap();
+        let p1: AxlPacket = postcard::from_bytes_cobs(&mut buf[AXL_POSTCARD_SZ..]).unwrap();
+
+        assert_eq!(p0.storage_id, Some(0));
+        assert_eq!(p1.storage_id, Some(1));
+
+        let p0_truth = AxlPacket {
+            timestamp: 1002330,
+            position_time: 123123,
+            lat: 34.52341,
+            lon: 54.012,
+            freq: 53.0,
+            offset: 15,
+            storage_id: Some(0),
+            data: (6..3078)
+                .map(|v| f16::from_f32(v as f32))
+                .collect::<Vec<_, { AXL_SZ }>>(),
+        };
+        let p1_truth = AxlPacket {
+            timestamp: 1002400,
+            position_time: 123123,
+            lat: 34.52341,
+            lon: 54.012,
+            freq: 53.0,
+            offset: 15,
+            storage_id: Some(1),
+            data: (6..3078)
+                .map(|v| f16::from_f32(v as f32))
+                .collect::<Vec<_, { AXL_SZ }>>(),
+        };
+
+        assert_eq!(p0_truth, p0);
+        assert_eq!(p1_truth, p1);
     }
 }
