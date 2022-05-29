@@ -300,15 +300,17 @@ mod tests {
     #[test]
     fn read_collection() {
         let mut c = std::fs::read("tests/data/0.1").unwrap();
-        assert_eq!(c.len(), AXL_POSTCARD_SZ * 2);
+        assert_eq!(c.len(), AXL_POSTCARD_SZ * 3);
 
         let buf = c.as_mut_slice();
 
         let p0: AxlPacket = postcard::from_bytes_cobs(&mut buf[..AXL_POSTCARD_SZ]).unwrap();
-        let p1: AxlPacket = postcard::from_bytes_cobs(&mut buf[AXL_POSTCARD_SZ..]).unwrap();
+        let p1: AxlPacket = postcard::from_bytes_cobs(&mut buf[AXL_POSTCARD_SZ..(2*AXL_POSTCARD_SZ)]).unwrap();
+        let p2: AxlPacket = postcard::from_bytes_cobs(&mut buf[(AXL_POSTCARD_SZ*2)..]).unwrap();
 
         assert_eq!(p0.storage_id, Some(0));
         assert_eq!(p1.storage_id, Some(1));
+        assert_eq!(p2.storage_id, Some(2));
 
         let p0_truth = AxlPacket {
             timestamp: 1002330,
@@ -334,8 +336,21 @@ mod tests {
                 .map(|v| f16::from_f32(v as f32))
                 .collect::<Vec<_, { AXL_SZ }>>(),
         };
+        let p2_truth = AxlPacket {
+            timestamp: 1002500,
+            position_time: 123123,
+            lat: 34.52341,
+            lon: 54.012,
+            freq: 53.0,
+            offset: 15,
+            storage_id: Some(2),
+            data: (9..3081)
+                .map(|v| f16::from_f32(v as f32))
+                .collect::<Vec<_, { AXL_SZ }>>(),
+        };
 
         assert_eq!(p0_truth, p0);
         assert_eq!(p1_truth, p1);
+        assert_eq!(p2_truth, p2);
     }
 }
