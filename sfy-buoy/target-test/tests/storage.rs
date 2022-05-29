@@ -5,6 +5,15 @@ use ambiq_hal as hal;
 use defmt_rtt as _;
 use panic_probe as _; // memory layout + panic handler
 
+use sfy::storage::Storage;
+
+fn clean_up_collection(s: &mut Storage) {
+    defmt::info!("cleaning up test collection");
+    s.remove_collection(0).unwrap();
+    s.set_id(0);
+    s.write_id().unwrap();
+}
+
 #[defmt_test::tests]
 mod tests {
     use super::*;
@@ -53,6 +62,8 @@ mod tests {
 
         State { delay, rtc, storage }
     }
+
+
 
     #[test]
     fn initialize_storage(s: &mut State) {
@@ -107,5 +118,76 @@ mod tests {
 
         s.storage.store(&mut p).unwrap();
         assert_eq!(p.storage_id, Some(1));
+
+        clean_up_collection(&mut s.storage);
+    }
+
+    #[test]
+    fn write_read_package(s: &mut State) {
+        let mut p = AxlPacket {
+            timestamp: 1002330,
+            position_time: 123123,
+            lat: 34.52341,
+            lon: 54.012,
+            freq: 53.0,
+            offset: 15,
+            storage_id: None,
+            data: (6..3078)
+                .map(|v| f16::from_f32(v as f32))
+                .collect::<Vec<_, { AXL_SZ }>>(),
+        };
+
+        s.storage.store(&mut p).unwrap();
+        assert_eq!(p.storage_id, Some(0));
+
+        let p_read = s.storage.get(0).unwrap();
+        assert_eq!(p, p_read);
+
+        let mut p1 = AxlPacket {
+            timestamp: 1002400,
+            position_time: 123123,
+            lat: 34.52341,
+            lon: 54.012,
+            freq: 53.0,
+            offset: 15,
+            storage_id: None,
+            data: (6..3078)
+                .map(|v| f16::from_f32(v as f32))
+                .collect::<Vec<_, { AXL_SZ }>>(),
+        };
+
+        s.storage.store(&mut p1).unwrap();
+        assert_eq!(p1.storage_id, Some(1));
+
+        let mut p2 = AxlPacket {
+            timestamp: 1002500,
+            position_time: 123123,
+            lat: 34.52341,
+            lon: 54.012,
+            freq: 53.0,
+            offset: 15,
+            storage_id: None,
+            data: (9..3081)
+                .map(|v| f16::from_f32(v as f32))
+                .collect::<Vec<_, { AXL_SZ }>>(),
+        };
+
+        s.storage.store(&mut p2).unwrap();
+        assert_eq!(p2.storage_id, Some(2));
+
+        // Do some random reads
+        let p_read = s.storage.get(0).unwrap();
+        assert_eq!(p, p_read);
+
+        let p_read = s.storage.get(2).unwrap();
+        assert_eq!(p2, p_read);
+
+        let p_read = s.storage.get(1).unwrap();
+        assert_eq!(p1, p_read);
+
+        let p_read = s.storage.get(0).unwrap();
+        assert_eq!(p, p_read);
+
+        clean_up_collection(&mut s.storage);
     }
 }

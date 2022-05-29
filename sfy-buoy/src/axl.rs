@@ -1,5 +1,6 @@
-use heapless::Vec;
+use defmt::{write, Format, Formatter};
 use half::f16;
+use heapless::Vec;
 
 pub const SAMPLE_SZ: usize = 3;
 pub const AXL_SZ: usize = SAMPLE_SZ * 1024;
@@ -32,6 +33,21 @@ pub struct AxlPacket {
 
     /// IMU data. This is moved to the payload when transmitting.
     pub data: Vec<f16, { AXL_SZ }>,
+}
+
+impl Format for AxlPacket {
+    fn format(&self, fmt: Formatter) {
+        write!(fmt, "AxlPacket(timestamp: {}, offset: {}, storage_id: {:?}, position_time: {}, lon: {}, lat: {}, freq: {}, data (length): {}))",
+            self.timestamp,
+            self.offset,
+            self.storage_id,
+            self.position_time,
+            self.lon,
+            self.lat,
+            self.freq,
+            self.data.len()
+            );
+    }
 }
 
 impl AxlPacket {

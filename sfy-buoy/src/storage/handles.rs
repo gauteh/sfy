@@ -50,6 +50,13 @@ impl<'c, 'v, D: BlockDevice, T: TimeSource> DirHandle<'c, 'v, D, T> {
         let file = self.ctrl.open_file_in_dir(self.vol, dir, name, mode)?;
         Ok(FileHandle::from(self.ctrl, self.vol, file))
     }
+
+    pub fn delete_file(
+        &mut self,
+        name: &str) -> Result<(), GenericSdMmcError<D::Error>> {
+        let dir = self.dir.as_ref().unwrap();
+        self.ctrl.delete_file_in_dir(&self.vol, dir, name)
+    }
 }
 
 impl<D: BlockDevice, T: TimeSource> Drop for DirHandle<'_, '_, D, T> {

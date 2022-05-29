@@ -18,7 +18,7 @@ use embedded_sdmmc::{
 use heapless::{String, Vec};
 
 use ambiq_hal::gpio::pin::{Mode as SpiMode, P35 as CS};
-use ambiq_hal::spi::Spi0 as Spi;
+use ambiq_hal::spi::{Spi0 as Spi, Freq};
 
 use crate::axl::{AxlPacket, AXL_POSTCARD_SZ};
 
@@ -67,11 +67,10 @@ impl Storage {
         defmt::info!("Opening SD card..");
 
         let mut sd = SdMmcSpi::new(spi, cs);
-        // TODO: Re-clock SPI
-
-        defmt::info!("Initialize SD-card..");
+        defmt::info!("Initialize SD-card (re-clock SPI to 1MHz)..");
         {
-            let block = sd.acquire()?;
+            let mut block = sd.acquire()?;
+            block.spi().set_freq(Freq::F1mHz);
             let sz = block.card_size_bytes()? / 1024_u64.pow(2);
             defmt::info!("SD card size: {} mb", sz);
         }
@@ -227,6 +226,22 @@ impl Storage {
 
         Ok(id)
     }
+
+    pub fn remove_collection(&mut self, collection: u32) -> Result<(), StorageErr> {
+        defmt::info!("Removing collection: {}", collection);
+
+        let mut f: String<32> = String::from(collection);
+        f.push_str(".").unwrap();
+        f.push_str(STORAGE_VERSION_STR).unwrap();
+
+        let block = self.sd.acquire()?;
+        let mut c = Controller::new(block, CountClock);
+        let mut v = c.get_volume(VolumeIdx(0))?;
+        let mut root = DirHandle::open_root(&mut c, &mut v)?;
+        root.delete_file(&f)?;
+
+        Ok(())
+    }
 }
 
 /// Calculate collection file, file number in collection and byte offset of start of pacakge in
@@ -246,8 +261,8 @@ pub fn id_to_parts(id: u32) -> (String<32>, u32, usize) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use half::f16;
     use crate::axl::AXL_SZ;
+    use half::f16;
 
     #[test]
     fn test_id_to_parts() {
