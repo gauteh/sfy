@@ -128,23 +128,12 @@ impl Location {
                 let tm = note.card().time(delay)?.wait(delay);
 
                 info!("Location: {:?}, Time: {:?}", gps, tm);
-                if let (
-                    Location {
-                        lat: Some(lat),
-                        lon: Some(lon),
-                        time: Some(position_time),
-                        ..
-                    },
-                    Ok(Time {
-                        time: Some(time), ..
-                    }),
-                ) = (gps, tm)
-                {
-                    info!("got time and location, setting RTC.");
 
-                    self.lat = lat;
-                    self.lon = lon;
-                    self.position_time = position_time;
+                if let Ok(Time {
+                    time: Some(time), ..
+                }) = tm
+                {
+                    info!("Got time, setting RTC.");
                     self.time = time;
 
                     free(|cs| {
@@ -152,10 +141,37 @@ impl Location {
                         let state: &mut _ = state.deref_mut().as_mut().unwrap();
 
                         state.rtc.set(NaiveDateTime::from_timestamp(time as i64, 0));
+                    });
+                }
+
+                if let Location {
+                    lat: Some(lat),
+                    lon: Some(lon),
+                    time: Some(position_time),
+                    ..
+                } = gps
+                {
+                    info!("Got location, setting position.");
+
+                    self.lat = lat;
+                    self.lon = lon;
+                    self.position_time = position_time;
+
+                    free(|cs| {
+                        let mut state = state.borrow(cs).borrow_mut();
+                        let state: &mut _ = state.deref_mut().as_mut().unwrap();
+
                         state.position_time = position_time;
                         state.lat = lat;
                         state.lon = lon;
+                    });
+                }
 
+                if let (Ok(Time { time: Some(_), .. }), Location { lat: Some(_), .. }) = (tm, gps) {
+                    info!("Both time and location retrieved.");
+                    free(|cs| {
+                        let mut state = state.borrow(cs).borrow_mut();
+                        let state: &mut _ = state.deref_mut().as_mut().unwrap();
                         self.state = Retrieved(state.rtc.now().timestamp_millis());
                     });
                 } else {
@@ -256,13 +272,18 @@ impl StorageManager {
         // * Store raw accel & gyro
 
         while let Some(mut pck) = self.storage_queue.dequeue() {
-            defmt::debug!("Storing package: {:?} (queue length: {})", pck, self.storage_queue.len());
+            defmt::debug!(
+                "Storing package: {:?} (queue length: {})",
+                pck,
+                self.storage_queue.len()
+            );
             if let Some(storage) = self.storage.as_mut() {
                 e = storage
                     .store(&mut pck)
                     .inspect_err(|err| {
                         defmt::error!("Failed to save package: {}", err);
-                    }).map(|id| Some(id));
+                    })
+                    .map(|id| Some(id));
             } else {
                 defmt::error!("Storage has failed to initialize, forwarding to notecard.");
             }
