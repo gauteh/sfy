@@ -58,9 +58,10 @@ def list(dev, start, end):
             ax[1].start.strftime("%Y-%m-%d %H:%M:%S UTC"), ax[1].lon,
             ax[1].lat,
             datetime.fromtimestamp(float(ax[0].split('-')[0]) / 1000., tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+            ax[1].storage_id,
             ax[0]
         ] for ax in pcks if ax[1] is not None]
-        print(tabulate(pcks, headers=['DataTime', 'Lon', 'Lat', 'TxTime', 'File']))
+        print(tabulate(pcks, headers=['DataTime', 'Lon', 'Lat', 'TxTime', 'StID', 'File']))
 
 
 @sfy.command(help='Print JSON')
