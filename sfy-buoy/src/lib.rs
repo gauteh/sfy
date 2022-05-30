@@ -37,10 +37,17 @@ use axl::AxlPacket;
 #[cfg(feature = "storage")]
 use storage::Storage;
 
-pub const STORAGEQ_SZ: usize = 16;
-pub const NOTEQ_SZ: usize = 16;
+pub const STORAGEQ_SZ: usize = 8;
+
+#[cfg(feature = "storage")]
+pub const NOTEQ_SZ: usize = 24;
+
+#[cfg(not(feature = "storage"))]
+pub const NOTEQ_SZ: usize = 32;
+
 #[cfg(feature = "storage")]
 pub const IMUQ_SZ: usize = STORAGEQ_SZ;
+
 #[cfg(not(feature = "storage"))]
 pub const IMUQ_SZ: usize = NOTEQ_SZ;
 
