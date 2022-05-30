@@ -69,10 +69,10 @@ impl Storage {
         defmt::info!("Opening SD card..");
 
         let mut sd = SdMmcSpi::new(spi, cs);
-        defmt::info!("Initialize SD-card (re-clock SPI to 1MHz)..");
+        defmt::info!("Initialize SD-card (re-clock SPI to 4MHz)..");
         {
             let mut block = sd.acquire()?;
-            block.spi().set_freq(Freq::F1mHz);
+            block.spi().set_freq(Freq::F4mHz);
             let sz = block.card_size_bytes()? / 1024_u64.pow(2);
             defmt::info!("SD card size: {} mb", sz);
         }
