@@ -15,6 +15,18 @@ pub struct Notecarrier<I2C: Read + Write> {
     note: Notecard<I2C>,
 }
 
+#[derive(serde::Serialize, serde::Deserialize, Default, defmt::Format)]
+pub struct StorageIdInfo {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_id: Option<u32>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub request_start: Option<u32>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub request_end: Option<u32>,
+}
+
 impl<I2C: Read + Write> Notecarrier<I2C> {
     pub fn new(i2c: I2C, delay: &mut impl DelayMs<u16>) -> Result<Notecarrier<I2C>, NoteError> {
         let mut note = Notecard::new(i2c);
@@ -209,6 +221,49 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                 .log(delay, msg.as_str(), false, false)?
                 .wait(delay)?;
         }
+
+        Ok(())
+    }
+
+    pub fn read_storage_info(
+        &mut self,
+        delay: &mut impl DelayMs<u16>,
+    ) -> Result<Option<StorageIdInfo>, NoteError> {
+        defmt::debug!("Read storage info..");
+        let r = self
+            .note
+            .note()
+            .get(delay, "storage.db", "storage-info", false, false)?
+            .wait(delay)?;
+
+        defmt::debug!("Storage info: {:?}", r.body);
+        Ok(r.body)
+    }
+
+    pub fn write_storage_info(
+        &mut self,
+        delay: &mut impl DelayMs<u16>,
+        last_id: u32,
+        request_start: Option<u32>,
+        request_end: Option<u32>,
+    ) -> Result<(), NoteError> {
+        defmt::debug!(
+            "Updating last written ID to: {}, request range: {} -> {}",
+            last_id,
+            request_start,
+            request_end
+        );
+
+        let info = StorageIdInfo {
+            last_id: Some(last_id),
+            request_start,
+            request_end,
+        };
+
+        self.note
+            .note()
+            .update(delay, "storage.db", "storage-info", Some(info), None, false)?
+            .wait(delay)?;
 
         Ok(())
     }

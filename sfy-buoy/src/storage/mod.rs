@@ -206,6 +206,12 @@ impl Storage {
             let mut v = c.get_volume(VolumeIdx(0))?;
             let mut root = DirHandle::open_root(&mut c, &mut v)?;
             let mut f = root.open_file(&collection, Mode::ReadOnly)?;
+
+            if f.length() < (offset + AXL_POSTCARD_SZ) as u32 {
+                defmt::debug!("Collection is not long enough, no such file in it.");
+                return Err(GenericSdMmcError::FileNotFound.into());
+            }
+
             f.seek_from_start(offset as u32)
                 .map_err(|_| StorageErr::ReadPackageError)?;
             let sz = f.read(&mut buf)?;

@@ -262,7 +262,11 @@ impl StorageManager {
         }
     }
 
-    pub fn drain_queue(&mut self) -> Result<Option<u32>, storage::StorageErr> {
+    pub fn drain_queue<I2C: Read + Write>(
+        &mut self,
+        note: &mut note::Notecarrier<I2C>,
+        delay: &mut impl DelayMs<u16>,
+    ) -> Result<Option<u32>, storage::StorageErr> {
         let mut e: Result<Option<u32>, storage::StorageErr> = Ok(None);
 
         // TODO:
@@ -294,6 +298,82 @@ impl StorageManager {
                     defmt::error!("queue is full, discarding data: {}", pck.data.len());
                 })
                 .ok();
+        }
+
+        // Send additional requested packages from SD-card.
+        if let Some(storage) = &mut self.storage {
+            let last_id = storage.current_id().unwrap();
+            let last_id = last_id.saturating_sub(1);
+
+            if let Ok(Some(note::StorageIdInfo {
+                last_id: _,
+                request_start: Some(request_start),
+                request_end: Some(request_end),
+            })) = note.read_storage_info(delay)
+            {
+                for id in (request_start..request_end).take(100) {
+                    let pck = storage.get(id);
+                    match pck {
+                        Ok(pck) => {
+                            match self.note_queue.enqueue(pck) {
+                                Ok(_) => {
+                                    // Update range of sent packages.
+                                    let request_start = (request_start + 1).min(request_end);
+
+                                    let (request_start, request_end) =
+                                        if request_start == request_end {
+                                            (None, None)
+                                        } else {
+                                            (Some(request_start), Some(request_end))
+                                        };
+
+                                    note.write_storage_info(
+                                        delay,
+                                        last_id,
+                                        request_start,
+                                        request_end,
+                                    )
+                                    .inspect_err(|e| {
+                                        defmt::error!("Failed to set storageinfo: {:?}", e)
+                                    })
+                                    .ok();
+                                }
+                                Err(_) => {
+                                    break;
+                                } // queue is full.
+                            }
+                        }
+                        Err(storage::StorageErr::GenericSdMmmcErr(
+                            embedded_sdmmc::Error::FileNotFound,
+                        )) => {
+                            defmt::debug!(
+                                "File does not exist, advancing range by full collection."
+                            );
+                            let request_start =
+                                (id / storage::COLLECTION_SIZE + 1) * storage::COLLECTION_SIZE;
+                            let (request_start, request_end) = if request_start == request_end {
+                                (None, None)
+                            } else {
+                                (Some(request_start), Some(request_end))
+                            };
+
+                            note.write_storage_info(delay, last_id, request_start, request_end)
+                                .inspect_err(|e| {
+                                    defmt::error!("Failed to set storageinfo: {:?}", e)
+                                })
+                                .ok();
+                        }
+                        Err(e) => {
+                            return Err(e);
+                        }
+                    }
+                }
+            } else {
+                // Updating last_id
+                note.write_storage_info(delay, last_id, None, None)
+                    .inspect_err(|e| defmt::error!("Failed to set storageinfo: {:?}", e))
+                    .ok();
+            }
         }
 
         e

@@ -192,7 +192,7 @@ fn main() -> ! {
 
             #[cfg(feature = "storage")]
             storage_manager
-                .drain_queue()
+                .drain_queue(&mut note, &mut delay)
                 .inspect_err(|e| error!("Failed to write to SD card: {:?}", e))
                 .ok();
 
