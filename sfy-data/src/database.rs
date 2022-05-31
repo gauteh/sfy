@@ -19,6 +19,33 @@ pub struct StorageInfo {
     pub request_end: Option<u64>,
 }
 
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum BuoyType {
+    SFY,
+    OMB,
+    Unknown,
+}
+
+impl From<&str> for BuoyType {
+    fn from(s: &str) -> BuoyType {
+        match s {
+            "sfy" => BuoyType::SFY,
+            "omb" => BuoyType::OMB,
+            _ => BuoyType::Unknown,
+        }
+    }
+}
+
+impl Into<String> for BuoyType {
+    fn into(self: Self) -> String {
+        match self {
+            BuoyType::SFY => "sfy".into(),
+            BuoyType::OMB => "omb".into(),
+            BuoyType::Unknown => "unknown".into()
+        }
+    }
+}
+
 impl Database {
     pub async fn open(path: impl AsRef<Path>) -> Result<Database> {
         let path: PathBuf = path.as_ref().into();
@@ -41,7 +68,7 @@ impl Database {
 
     /// Open buoy for writing.
     pub async fn buoy(&self, dev: &str) -> eyre::Result<Buoy> {
-        let buoy = sqlx::query!("SELECT dev, name FROM buoys where dev = ?1", dev)
+        let buoy = sqlx::query!("SELECT dev, name, buoy_type FROM buoys where dev = ?1", dev)
             .fetch_optional(&self.db)
             .await?;
 
@@ -51,19 +78,21 @@ impl Database {
             debug!("Unknown buoy: {}", dev);
         }
 
-        let name = buoy.map(|b| b.name).flatten();
+        let name = buoy.as_ref().map(|b| b.name.clone()).flatten();
+        let buoy_type = buoy.as_ref().map(|b| b.buoy_type.as_str().into()).unwrap_or(BuoyType::Unknown);
 
         Ok(Buoy {
             dev: String::from(dev),
             known,
             name,
+            buoy_type,
             db: self.db.clone().clone(),
         })
     }
 
     /// Get list of buoys.
-    pub async fn buoys(&self) -> eyre::Result<Vec<(String, String)>> {
-        let buoys = sqlx::query!("SELECT dev, name FROM buoys ORDER BY dev")
+    pub async fn buoys(&self) -> eyre::Result<Vec<(String, String, String)>> {
+        let buoys = sqlx::query!("SELECT dev, name, buoy_type FROM buoys ORDER BY dev")
             .fetch_all(&self.db)
             .await?
             .iter()
@@ -71,6 +100,7 @@ impl Database {
                 (
                     r.dev.clone(),
                     r.name.clone().unwrap_or(String::new()),
+                    r.buoy_type.clone(),
                 )
             })
             .collect();
@@ -92,6 +122,7 @@ pub struct Buoy {
     /// Does the buoy exist in the database already.
     known: bool,
     name: Option<String>,
+    buoy_type: BuoyType,
     db: SqlitePool,
 }
 
@@ -317,7 +348,7 @@ mod tests {
         b.append(None, "entry-1", 0, "data-1").await.unwrap();
 
         let devs = db.buoys().await.unwrap();
-        let devs: Vec<_> = devs.iter().map(|(dev, _)| dev).collect();
+        let devs: Vec<_> = devs.iter().map(|(dev, _, _)| dev).collect();
 
         assert_eq!(devs, ["buoy-01", "buoy-02"]);
     }
