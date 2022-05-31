@@ -263,6 +263,15 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             request_end,
         };
 
+        defmt::trace!("Delete current storage-info");
+        self.note
+            .note()
+            .delete(delay, "storage.db", "storage-info")
+            .and_then(|r| r.wait(delay))
+            .inspect_err(|e| defmt::error!("Failed to delete storage-info: {:?}", e))
+            .ok();
+
+        defmt::trace!("Writing new storage-info");
         self.note
             .note()
             .update(delay, "storage.db", "storage-info", Some(info), None, false)?
