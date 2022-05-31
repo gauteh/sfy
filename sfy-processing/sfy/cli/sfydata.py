@@ -8,7 +8,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from sfy.hub import Hub
+from sfy.hub import Hub, StorageInfo
 from sfy.cli.track import track
 from sfy.cli.axl import axl
 
@@ -41,10 +41,17 @@ def list(dev, start, end):
         last = [b.last() if 'lost+found' not in b.dev else None for b in buoys]
         last = [l.received_datetime if l else None for l in last]
 
-        buoys = [[b.dev, b.name, l] for b, l in zip(buoys, last)]
+        storage_info = [
+            b.storage_info() if 'lost+found' not in b.dev else StorageInfo.empty()
+            for b in buoys
+        ]
+
+        buoys = [[
+            b.dev, b.name, l, si.current_id, si.request_start, si.request_end
+        ] for b, l, si in zip(buoys, last, storage_info)]
         buoys.sort(key=lambda b: b[2].timestamp() if b[2] else 0)
 
-        print(tabulate(buoys, headers=['Buoys', 'Name', 'Last contact']))
+        print(tabulate(buoys, headers=['Buoys', 'Name', 'Last contact', 'Current ID', 'Request start', 'Request end']))
     else:
         buoy = hub.buoy(dev)
         logger.info(f"Listing packages for {buoy}")
@@ -57,11 +64,15 @@ def list(dev, start, end):
         pcks = [[
             ax[1].start.strftime("%Y-%m-%d %H:%M:%S UTC"), ax[1].lon,
             ax[1].lat,
-            datetime.fromtimestamp(float(ax[0].split('-')[0]) / 1000., tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
-            ax[1].storage_id,
-            ax[0]
+            datetime.fromtimestamp(
+                float(ax[0].split('-')[0]) / 1000.,
+                tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+            ax[1].storage_id, ax[0]
         ] for ax in pcks if ax[1] is not None]
-        print(tabulate(pcks, headers=['DataTime', 'Lon', 'Lat', 'TxTime', 'StID', 'File']))
+        print(
+            tabulate(
+                pcks,
+                headers=['DataTime', 'Lon', 'Lat', 'TxTime', 'StID', 'File']))
 
 
 @sfy.command(help='Print JSON')
@@ -72,6 +83,7 @@ def json(dev, file):
     buoy = hub.buoy(dev)
     ax = buoy.package(file)
     print(str(ax.json()))
+
 
 if __name__ == '__main__':
     sfy()

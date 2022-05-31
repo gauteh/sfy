@@ -13,6 +13,20 @@ logger = logging.getLogger(__name__)
 from .axl import Axl
 from .timeutil import utcify
 
+class StorageInfo:
+    current_id = None
+    request_start = None
+    request_end = None
+
+    def __init__(self, p):
+        self.current_id = p.get('current_id')
+        self.request_start = p.get('request_start')
+        self.request_end = p.get('request_end')
+
+    @staticmethod
+    def empty():
+        return StorageInfo({})
+
 
 class Hub:
     endpoint: str
@@ -184,6 +198,13 @@ class Buoy:
         p = self.hub.__request__(f'{self.dev}/last').text
 
         return Axl.parse(p)
+
+    def storage_info(self):
+        try:
+            p = self.hub.__json_request__(f'{self.dev}/storage_info')
+            return StorageInfo(p)
+        except requests.exceptions.HTTPError:
+            return StorageInfo.empty()
 
     def cache_exists(self, pck):
         dev_path = self.hub.cache / self.dev
