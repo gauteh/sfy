@@ -310,10 +310,9 @@ impl StorageManager {
         // Send additional requested packages from SD-card.
         if let Some(storage) = &mut self.storage {
             let last_id = storage.current_id().unwrap();
-            let last_id = last_id.saturating_sub(1);
 
             if let Ok(Some(note::StorageIdInfo {
-                last_id: _,
+                current_id: _,
                 request_start: Some(request_start),
                 request_end: Some(request_end),
             })) = note.read_storage_info(delay)
