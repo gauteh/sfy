@@ -1,0 +1,37 @@
+{
+  "event": "ae50c1e9-0800-4fd9-9cb6-cdd6a6d08eb3",
+  "session": "8966db35-fd25-4f85-b1ce-8a0ab3084c6c",
+  "best_id": "WAVEBUG04",
+  "device": "dev:864475044204278",
+  "sn": "WAVEBUG04",
+  "product": "product:no.met.gauteh:sfy",
+  "received": 1653994017.660386,
+  "routed": 1653994017,
+  "req": "note.update",
+  "when": 1653994015,
+  "file": "storage.db",
+  "note": "storage-info",
+  "updates": 498,
+  "body": {
+    "current_id": 40002
+  },
+  "best_location_type": "tower",
+  "best_location_when": 1653993983,
+  "best_lat": 60.3885375,
+  "best_lon": 5.326953124999999,
+  "best_location": "Bergen",
+  "best_country": "NO",
+  "best_timezone": "Europe/Oslo",
+  "tower_when": 1653993983,
+  "tower_lat": 60.3885375,
+  "tower_lon": 5.326953124999999,
+  "tower_country": "NO",
+  "tower_location": "Bergen",
+  "tower_timezone": "Europe/Oslo",
+  "tower_id": "242,1,11011,12299",
+  "project": {
+    "id": "app:4c5e935c-7acb-4f20-bca0-cda95e9fd1d2",
+    "name": "sfy",
+    "contacts": {}
+  }
+}

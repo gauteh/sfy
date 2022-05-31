@@ -1,14 +1,22 @@
+use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use eyre::Result;
 use serde::{Deserialize, Serialize};
+use serde_json as json;
 use sqlx::sqlite::{
     SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqlitePoolOptions, SqliteSynchronous,
 };
-use std::path::{Path, PathBuf};
-use std::str::FromStr;
 
 #[derive(Debug)]
 pub struct Database {
     db: SqlitePool,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct StorageInfo {
+    pub current_id: Option<u64>,
+    pub request_start: Option<u64>,
+    pub request_end: Option<u64>,
 }
 
 impl Database {
@@ -131,10 +139,11 @@ impl Buoy {
         }
 
         debug!(
-            "buoy: {} ({:?}): appending event: {:?}, size: {}",
+            "buoy: {} ({:?}): appending event: {:?}, received: {}, size: {}",
             self.dev,
             self.name,
             event,
+            received,
             data.len()
         );
 
@@ -177,6 +186,31 @@ impl Buoy {
         match event.data {
             Some(event) => Ok(event),
             None => Err(eyre!("No axl entry found.")),
+        }
+    }
+
+    pub async fn storage_info(&self) -> Result<StorageInfo> {
+        ensure!(self.known, "No such buoy");
+
+        let event = sqlx::query!("SELECT data FROM events WHERE dev = ?1 AND instr(event, 'storage.db') ORDER BY received DESC LIMIT 1", self.dev)
+            .fetch_one(&self.db)
+            .await?;
+
+        match &event.data {
+            Some(event) => {
+                let body: json::Value = json::from_slice(&event)?;
+
+                let info = body
+                    .get("body")
+                    .ok_or(eyre!("no event field"))?;
+
+                let current_id = info.get("current_id").and_then(json::Value::as_u64);
+                let request_start = info.get("request_start").and_then(json::Value::as_u64);
+                let request_end = info.get("request_end").and_then(json::Value::as_u64);
+
+                Ok(StorageInfo { current_id, request_start, request_end })
+            },
+            None => Err(eyre!("No storage entry found."))
         }
     }
 
@@ -374,5 +408,22 @@ mod tests {
             .unwrap();
 
         assert_eq!(b.last().await.unwrap(), b"data-0");
+    }
+
+    #[tokio::test]
+    async fn append_get_storage_info() {
+        let db = Database::temporary().await;
+        let mut b = db.buoy("buoy-01").await.unwrap();
+
+        let data = std::fs::read("tests/events/1653994017660-ae50c1e9-0800-4fd9-9cb6-cdd6a6d08eb3_storage.db.json").unwrap();
+
+        b.append(None, "ae50c1e9-0800-4fd9-9cb6-cdd6a6d08eb3_storage.db", 1653994017660, &data).await.unwrap();
+
+        let info = b.storage_info().await.unwrap();
+        println!("{:?}", info);
+
+        assert_eq!(info.current_id, Some(40002));
+        assert_eq!(info.request_start, None);
+        assert_eq!(info.request_end, None);
     }
 }

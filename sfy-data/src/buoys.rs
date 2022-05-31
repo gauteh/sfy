@@ -15,6 +15,7 @@ pub fn filters(
         .or(list(state.clone()))
         .or(entries(state.clone()))
         .or(last(state.clone()))
+        .or(storage_info(state.clone()))
         .or(range(state.clone()))
         .or(list_range(state.clone()))
         .or(entry(state.clone()))
@@ -80,6 +81,18 @@ pub fn last(
         .and(check_read_token(state.clone()))
         .and(with_state(state.clone()))
         .and_then(handlers::last)
+}
+
+pub fn storage_info(
+    state: State,
+) -> impl warp::Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    let state = state.clone();
+
+    warp::path!("buoys" / String / "storage_info")
+        .and(warp::get())
+        .and(check_read_token(state.clone()))
+        .and(with_state(state.clone()))
+        .and_then(handlers::storage_info)
 }
 
 pub fn range(
@@ -276,6 +289,23 @@ pub mod handlers {
             .status(200)
             .header("Content-Type", "application/json")
             .body(entry))
+    }
+
+    pub async fn storage_info(buoy: String, state: State) -> Result<impl warp::Reply, warp::Rejection> {
+        let buoy = sanitize(buoy);
+
+        let entry = state
+            .db
+            .write()
+            .await
+            .buoy(&buoy)
+            .await
+            .map_err(|_| reject::custom(AppendErrors::Internal))?
+            .storage_info()
+            .await
+            .map_err(|_| reject::custom(AppendErrors::Internal))?;
+
+        Ok(warp::reply::json(&entry))
     }
 
     pub async fn range(
@@ -763,5 +793,42 @@ mod tests {
             &revents,
             &["2000-event-2_axl.qo.json", "3000-event-3_axl.qo.json"]
         );
+    }
+
+    #[tokio::test]
+    async fn storage_info() {
+        let state = crate::test_state().await;
+
+        let f = filters(state);
+
+        let event = std::fs::read("tests/events/1653994017660-ae50c1e9-0800-4fd9-9cb6-cdd6a6d08eb3_storage.db.json").unwrap();
+        let res = warp::test::request()
+            .path("/buoy")
+            .method("POST")
+            .header("SFY_AUTH_TOKEN", "token1")
+            .body(&event)
+            .reply(&f)
+            .await;
+
+        assert_eq!(res.status(), 200);
+
+        let res = warp::test::request()
+            .path("/buoys/dev864475044204278/storage_info")
+            .method("GET")
+            .header("SFY_AUTH_TOKEN", "r-token1")
+            .reply(&f)
+            .await;
+
+        assert_eq!(res.status(), 200);
+
+        assert_eq!(
+            res.headers().get("Content-Type").unwrap().to_str().unwrap(),
+            "application/json"
+        );
+
+        let info: crate::database::StorageInfo = json::from_slice(res.body()).unwrap();
+        assert_eq!(info.current_id, Some(40002));
+        assert_eq!(info.request_start, None);
+        assert_eq!(info.request_end, None);
     }
 }
