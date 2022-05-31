@@ -1,6 +1,6 @@
 {
   "db": "SQLite",
-  "4208b9eda13a19f9ce7e6c7cd06613b6074a7581e6abde6481f7b5d40a0d744b": {
+  "09d56aab3e5e4e95222fdcd2d9581657cb147f14ccaf602de325f4e80039f6b8": {
     "describe": {
       "columns": [],
       "nullable": [],
@@ -8,7 +8,7 @@
         "Right": 2
       }
     },
-    "query": "INSERT OR REPLACE INTO buoys (dev, name) VALUES ( ?1, ?2 )"
+    "query": "INSERT OR REPLACE INTO buoys (dev, name, buoy_type) VALUES ( ?1, ?2, 'sfy' )"
   },
   "4c9be561ee9b4d5bac15e8f0430e353c39f8e83bf96aec9e4a40d0845281b593": {
     "describe": {
@@ -25,7 +25,7 @@
         }
       ],
       "nullable": [
-        true,
+        false,
         true
       ],
       "parameters": {
@@ -173,7 +173,7 @@
         }
       ],
       "nullable": [
-        true,
+        false,
         true
       ],
       "parameters": {

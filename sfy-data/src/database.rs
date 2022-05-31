@@ -69,7 +69,7 @@ impl Database {
             .iter()
             .map(|r| {
                 (
-                    r.dev.clone().unwrap_or(String::new()),
+                    r.dev.clone(),
                     r.name.clone().unwrap_or(String::new()),
                 )
             })
@@ -128,7 +128,7 @@ impl Buoy {
             );
 
             sqlx::query!(
-                "INSERT OR REPLACE INTO buoys (dev, name) VALUES ( ?1, ?2 )",
+                "INSERT OR REPLACE INTO buoys (dev, name, buoy_type) VALUES ( ?1, ?2, 'sfy' )",
                 self.dev,
                 name
             )
@@ -139,7 +139,7 @@ impl Buoy {
         }
 
         debug!(
-            "buoy: {} ({:?}): appending event: {:?}, received: {}, size: {}",
+            "buoy (sfy): {} ({:?}): appending event: {:?}, received: {}, size: {}",
             self.dev,
             self.name,
             event,
