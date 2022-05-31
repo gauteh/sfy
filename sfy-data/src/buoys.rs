@@ -12,6 +12,7 @@ pub fn filters(
     state: State,
 ) -> impl warp::Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     append(state.clone())
+        .or(append_omb(state.clone()))
         .or(list(state.clone()))
         .or(entries(state.clone()))
         .or(last(state.clone()))
@@ -33,6 +34,20 @@ pub fn append(
         .and(warp::body::bytes())
         .and(with_state(state.clone()))
         .and_then(handlers::append)
+}
+
+pub fn append_omb(
+    state: State,
+) -> impl warp::Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    let state = state.clone();
+
+    warp::path!("buoy" / "omb")
+        .and(warp::post())
+        .and(check_token(state.clone()))
+        .and(warp::body::content_length_limit(50 * 1024 * 1024))
+        .and(warp::body::bytes())
+        .and(with_state(state.clone()))
+        .and_then(handlers::append_omb)
 }
 
 pub fn list(
@@ -147,6 +162,45 @@ fn check_read_token(state: State) -> impl Filter<Extract = (), Error = Rejection
             }
         })
         .untuple_one()
+}
+
+#[derive(Debug)]
+struct OmbEvent {
+    device: String,
+    account: String,
+    received: u64,
+    #[allow(unused)]
+    body: json::Value,
+}
+
+fn parse_omb_data(body: &[u8]) -> eyre::Result<OmbEvent> {
+    let body: json::Value = json::from_slice(&body)?;
+
+    let device = body
+        .get("device")
+        .and_then(json::Value::as_str)
+        .map(String::from)
+        .ok_or(eyre!("no dev field"))?;
+
+    let account = body
+        .get("account")
+        .and_then(json::Value::as_str)
+        .map(String::from)
+        .ok_or(eyre!("no account field"))?;
+
+
+    let received = body
+        .get("datetime")
+        .and_then(json::Value::as_u64)
+        .ok_or(eyre!("no datetime field"))?;
+
+
+    Ok(OmbEvent {
+        device,
+        received,
+        account,
+        body,
+    })
 }
 
 struct Event {
@@ -291,7 +345,10 @@ pub mod handlers {
             .body(entry))
     }
 
-    pub async fn storage_info(buoy: String, state: State) -> Result<impl warp::Reply, warp::Rejection> {
+    pub async fn storage_info(
+        buoy: String,
+        state: State,
+    ) -> Result<impl warp::Reply, warp::Rejection> {
         let buoy = sanitize(buoy);
 
         let entry = state
@@ -423,6 +480,40 @@ pub mod handlers {
             Ok(StatusCode::BAD_REQUEST.into_response())
         }
     }
+
+    pub async fn append_omb(
+        body: bytes::Bytes,
+        state: State,
+    ) -> Result<impl warp::Reply, warp::Rejection> {
+        trace!("got message: {:#?}", body);
+
+        if let Ok(event) = parse_omb_data(&body) {
+            let device = sanitize(&event.device);
+
+            info!(
+                "omb event: {:?}",
+                event
+            );
+
+            let db = state.db.write().await;
+            let mut b = db.buoy(&device).await.map_err(|e| {
+                error!("failed to open database for device: {}: {:?}", &device, e);
+                reject::custom(AppendErrors::Database)
+            })?;
+
+
+            b.append_omb(event.account, event.received, &body)
+                .await
+                .map_err(|e| {
+                    error!("failed to write file: {:?}", e);
+                    reject::custom(AppendErrors::Database)
+                })?;
+
+            return Ok("".into_response());
+        }
+
+        Ok(StatusCode::BAD_REQUEST.into_response())
+    }
 }
 
 #[cfg(test)]
@@ -437,6 +528,13 @@ mod tests {
         assert_eq!(parsed.event, "9ef2e080-f0b4-4036-8ccc-ec4206553537");
         assert_eq!(parsed.device, "dev:864475044203262");
         assert_eq!(parsed.file, Some(String::from("sensor.db")));
+    }
+
+    #[test]
+    fn test_parse_omb_event() {
+        let event = std::fs::read("tests/events/01-omb.json").unwrap();
+        let parsed = parse_omb_data(&event).unwrap();
+        println!("{:?}", parsed);
     }
 
     #[tokio::test]
@@ -801,7 +899,10 @@ mod tests {
 
         let f = filters(state);
 
-        let event = std::fs::read("tests/events/1653994017660-ae50c1e9-0800-4fd9-9cb6-cdd6a6d08eb3_storage.db.json").unwrap();
+        let event = std::fs::read(
+            "tests/events/1653994017660-ae50c1e9-0800-4fd9-9cb6-cdd6a6d08eb3_storage.db.json",
+        )
+        .unwrap();
         let res = warp::test::request()
             .path("/buoy")
             .method("POST")

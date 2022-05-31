@@ -205,30 +205,16 @@ impl Buoy {
 
     pub async fn append_omb(
         &mut self,
-        name: Option<String>,
         account: String,
         received: u64,
         data: impl AsRef<[u8]>,
     ) -> eyre::Result<()> {
         let data = data.as_ref();
 
-        if let Some(ref name) = name {
-            if self.name.as_ref() != Some(&name) {
-                debug!("OMB: Updating name for: {} to {}", self.dev, name);
-                self.known = false;
-            }
-        }
-
         if !self.known {
-            info!(
-                "OMB: Updating or inserting buoy from {:?} to {:?}",
-                self.name, name
-            );
-
             sqlx::query!(
-                "INSERT OR REPLACE INTO buoys (dev, name, buoy_type) VALUES ( ?1, ?2, 'omb' )",
+                "INSERT OR REPLACE INTO buoys (dev,buoy_type) VALUES ( ?1, 'omb' )",
                 self.dev,
-                name
             )
             .execute(&self.db)
             .await?;
@@ -237,9 +223,8 @@ impl Buoy {
         }
 
         debug!(
-            "buoy (omb): {} ({:?}): appending event, account: {:?}, received: {}, size: {}",
+            "buoy (omb): {}: appending event, account: {:?}, received: {}, size: {}",
             self.dev,
-            self.name,
             account,
             received,
             data.len()

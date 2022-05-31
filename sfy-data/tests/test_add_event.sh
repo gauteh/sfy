@@ -1,16 +1,19 @@
-HOST=http://157.249.74.12:3000
-HOST=http://localhost:3000
+HOST=${SFY_SERVER}
+
+set -ep
 
 curl -f -v -X POST "${HOST}/buoy" \
   -H "SFY_AUTH_TOKEN: ${SFY_AUTH_TOKEN}" \
-  -d "{ \"event\": \"0000-test\", \"time\": \"$(date -u +%s)\", \"device\": \"dev:1234\" }"
+  --data-binary "@events/1647870799330-1876870b-4708-4366-8db5-68f872cc4e6d_axl.qo.json"
 
-# lost+found
 curl -f -v -X POST "${HOST}/buoy" \
   -H "SFY_AUTH_TOKEN: ${SFY_AUTH_TOKEN}" \
-  -d "{ \"badevent\": \"0000-test\", \"time\": \"$(date -u +%s)\", \"nodevice\": \"dev:1234\" }"
+  --data-binary "@events/1653994017660-ae50c1e9-0800-4fd9-9cb6-cdd6a6d08eb3_storage.db.json"
 
-# bad json
 curl -f -v -X POST "${HOST}/buoy" \
   -H "SFY_AUTH_TOKEN: ${SFY_AUTH_TOKEN}" \
-  -d "{ \"badjson\": \"0000-test\", \"time\": \"$(date -u +%s)\", \"nodevice\": \"dev:1234\"  asdfadsfa sdfasdfad }"
+  --data-binary "@events/sensor.db_01.json"
+
+curl -f -v -X POST "${HOST}/buoy/omb" \
+  -H "SFY_AUTH_TOKEN: ${SFY_AUTH_TOKEN}" \
+  --data-binary "@events/01-omb.json"

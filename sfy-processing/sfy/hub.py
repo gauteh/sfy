@@ -94,6 +94,7 @@ class Buoy:
     hub: Hub
     dev: str
     name: str
+    buoy_type: str
 
     def __init__(self, hub, dev):
         self.hub = hub
@@ -101,9 +102,11 @@ class Buoy:
         if isinstance(dev, list):
             self.dev = dev[0]
             self.name = dev[1]
+            self.buoy_type = dev[2]
         else:
             self.dev = dev
             self.name = None
+            self.buoy_type = 'sfy'
 
     def __repr__(self):
         return f"Buoy <{self.dev}>"
@@ -195,11 +198,20 @@ class Buoy:
         return pcks
 
     def last(self):
-        p = self.hub.__request__(f'{self.dev}/last').text
+        if self.buoy_type == 'omb':
+            return None
 
-        return Axl.parse(p)
+        try:
+            p = self.hub.__request__(f'{self.dev}/last').text
+
+            return Axl.parse(p)
+        except requests.exceptions.HTTPError:
+            return None
 
     def storage_info(self):
+        if self.buoy_type == 'omb':
+            return StorageInfo.empty()
+
         try:
             p = self.hub.__json_request__(f'{self.dev}/storage_info')
             return StorageInfo(p)

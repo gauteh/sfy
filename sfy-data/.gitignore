@@ -1,3 +1,4 @@
 target
 data/*
 test.db*
+*.db
