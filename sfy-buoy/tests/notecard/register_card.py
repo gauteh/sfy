@@ -25,12 +25,22 @@ sio = io.TextIOWrapper(io.BufferedRWPair(ser, ser), line_buffering=True, newline
 sio.write('{"req":"hub.set", "product": "%s", "sn":"%s"}\r' % (project, buoy))
 
 print("syncing..")
-sio.write('{"req":"hub.sync"}\r')
+sio.write('{"req":"hub.sync", "allow": true}\r')
 print(sio.readline())
 
 for _ in range(0,10):
     print("hub sync status:")
     sio.write('{"req":"hub.sync.status"}\r')
+    r = sio.readline()
+    print(r)
+
+    print("hub status:")
+    sio.write('{"req":"hub.status"}\r')
+    r = sio.readline()
+    print(r)
+
+    print("card wireless:")
+    sio.write('{"req":"card.wireless"}\r')
     r = sio.readline()
     print(r)
 
