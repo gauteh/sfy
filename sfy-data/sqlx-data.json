@@ -52,6 +52,24 @@
     },
     "query": "SELECT data FROM events WHERE dev = ?1 AND instr(event, 'axl.qo') ORDER BY received DESC LIMIT 1"
   },
+  "59b0b4b0c673cf93d7ff4f68c4a16af9f8522c7c113350d08728e16e2031a837": {
+    "describe": {
+      "columns": [
+        {
+          "name": "data",
+          "ordinal": 0,
+          "type_info": "Blob"
+        }
+      ],
+      "nullable": [
+        true
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT data FROM events WHERE dev = ?1 AND instr(event, 'storage.db') ORDER BY received DESC LIMIT 1"
+  },
   "64709d16319456285630b5d8a42712a126259fe648f55b8900f9e3fbf17f2e91": {
     "describe": {
       "columns": [],
