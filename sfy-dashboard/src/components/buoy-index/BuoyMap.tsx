@@ -37,11 +37,13 @@ export class BuoyMap
       maxZoom: 18,
       attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, ' +
         'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
-      id: 'mapbox/satellite-streets-v11',
+      id: 'mapbox/light-v10',
       tileSize: 512,
       zoomOffset: -1,
       access_token: MAPBOX_TOKEN
     }).addTo(this.map);
+
+    L.tileLayer('https://t1.openseamap.org/seamark/{z}/{x}/{y}.png').addTo(this.map);
   }
 
   componentDidUpdate(props) {
