@@ -2,6 +2,7 @@
   "account": "gauteh@met.no",
   "datetime": 1654028745000,
   "device": "OMB-TEST-1",
+  "type": "gps",
   "body": {
     "iridium_pos": [
       58.9,
@@ -9,7 +10,6 @@
     ],
     "messages": [
       {
-        "type": "gps",
         "lat": 58.9,
         "lon": 5.63
       }

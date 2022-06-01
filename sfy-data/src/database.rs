@@ -52,6 +52,39 @@ impl Into<String> for BuoyType {
     }
 }
 
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum OmbMessageType {
+    GPS,
+    IMU,
+    Unknown,
+}
+
+impl OmbMessageType {
+    pub fn to_str(&self) -> &'static str {
+        match self {
+            OmbMessageType::GPS => "gps",
+            OmbMessageType::IMU => "imu",
+            OmbMessageType::Unknown => "unknown",
+        }
+    }
+}
+
+impl From<&str> for OmbMessageType {
+    fn from(s: &str) -> OmbMessageType {
+        match s {
+            "gps" => OmbMessageType::GPS,
+            "imu" => OmbMessageType::IMU,
+            _ => OmbMessageType::Unknown,
+        }
+    }
+}
+
+impl Into<String> for OmbMessageType {
+    fn into(self: Self) -> String {
+        self.to_str().into()
+    }
+}
+
 impl Database {
     pub async fn open(path: impl AsRef<Path>) -> Result<Database> {
         let path: PathBuf = path.as_ref().into();
@@ -207,6 +240,7 @@ impl Buoy {
         &mut self,
         account: String,
         received: u64,
+        message_type: OmbMessageType,
         data: impl AsRef<[u8]>,
     ) -> eyre::Result<()> {
         let data = data.as_ref();
@@ -223,19 +257,22 @@ impl Buoy {
         }
 
         debug!(
-            "buoy (omb): {}: appending event, account: {:?}, received: {}, size: {}",
+            "buoy (omb): {}: appending event, account: {:?}, type: {:?}, received: {}, size: {}",
             self.dev,
             account,
+            message_type,
             received,
             data.len()
         );
 
+        let message_type = message_type.to_str();
         let r = received as i64;
         sqlx::query!(
-            "INSERT INTO omb_events (dev, received, account, data) VALUES ( ?1, ?2, ?3, ?4 )",
+            "INSERT INTO omb_events (dev, received, account, message_type, data) VALUES ( ?1, ?2, ?3, ?4, ?5 )",
             self.dev,
             r,
             account,
+            message_type,
             data
         )
         .execute(&self.db)
@@ -281,7 +318,7 @@ impl Buoy {
                 .fetch_one(&self.db)
                 .await?.data,
 
-            BuoyType::OMB => sqlx::query!("SELECT data FROM omb_events WHERE dev = ?1 ORDER BY received DESC LIMIT 1", self.dev)
+            BuoyType::OMB => sqlx::query!("SELECT data FROM omb_events WHERE dev = ?1 AND message_type = 'gps' ORDER BY received DESC LIMIT 1", self.dev)
                 .fetch_one(&self.db)
                 .await?.data,
 

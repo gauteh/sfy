@@ -169,6 +169,7 @@ struct OmbEvent {
     device: String,
     account: String,
     received: u64,
+    message_type: crate::database::OmbMessageType,
     #[allow(unused)]
     body: json::Value,
 }
@@ -194,10 +195,16 @@ fn parse_omb_data(body: &[u8]) -> eyre::Result<OmbEvent> {
         .and_then(json::Value::as_u64)
         .ok_or(eyre!("no datetime field"))?;
 
+    let message_type = body.get("type")
+        .and_then(json::Value::as_str)
+        .ok_or(eyre!("no type field"))?
+        .into();
+
 
     Ok(OmbEvent {
         device,
         received,
+        message_type,
         account,
         body,
     })
@@ -502,7 +509,7 @@ pub mod handlers {
             })?;
 
 
-            b.append_omb(event.account, event.received, &body)
+            b.append_omb(event.account, event.received, event.message_type, &body)
                 .await
                 .map_err(|e| {
                     error!("failed to write file: {:?}", e);
