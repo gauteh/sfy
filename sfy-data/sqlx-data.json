@@ -20,15 +20,35 @@
     },
     "query": "INSERT OR REPLACE INTO buoys (dev, name, buoy_type) VALUES ( ?1, ?2, 'sfy' )"
   },
-  "129b3f9a67c07a501bdd01293cc1bb8ed19681a8822db599fba010545bd7bc48": {
+  "29827c4bb027d29f7fd1697f498c2c6a2be91a159467c79e7ac777318f39f9f3": {
     "describe": {
-      "columns": [],
-      "nullable": [],
+      "columns": [
+        {
+          "name": "received",
+          "ordinal": 0,
+          "type_info": "Int64"
+        },
+        {
+          "name": "event",
+          "ordinal": 1,
+          "type_info": "Int64"
+        },
+        {
+          "name": "message_type",
+          "ordinal": 2,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
       "parameters": {
-        "Right": 4
+        "Right": 1
       }
     },
-    "query": "INSERT INTO omb_events (dev, received, account, data) VALUES ( ?1, ?2, ?3, ?4 )"
+    "query": "SELECT received, event, message_type FROM omb_events where dev = ?1 ORDER BY received"
   },
   "53d67d23159f966ff62d72b43d8f7573c5971f48c9a4e51d220c187fe76955d1": {
     "describe": {
@@ -47,6 +67,24 @@
       }
     },
     "query": "SELECT data FROM events WHERE dev = ?1 AND instr(event, 'axl.qo') ORDER BY received DESC LIMIT 1"
+  },
+  "5681f98a3810297bd33c0aa8067ffcb98fb9b71679c7ad2f1da489a1b846a073": {
+    "describe": {
+      "columns": [
+        {
+          "name": "data",
+          "ordinal": 0,
+          "type_info": "Blob"
+        }
+      ],
+      "nullable": [
+        true
+      ],
+      "parameters": {
+        "Right": 4
+      }
+    },
+    "query": "SELECT data FROM omb_events WHERE dev = ?1 AND received = ?2 AND event = ?3 AND message_type = ?4"
   },
   "59b0b4b0c673cf93d7ff4f68c4a16af9f8522c7c113350d08728e16e2031a837": {
     "describe": {
@@ -75,30 +113,6 @@
       }
     },
     "query": "INSERT INTO events (dev, received, event, data) VALUES ( ?1, ?2, ?3, ?4 )"
-  },
-  "6f2b970399d7e9bd67dc5fb9688d5a13bd7a7cdd3a5b11973e6d9c7736209e10": {
-    "describe": {
-      "columns": [
-        {
-          "name": "received",
-          "ordinal": 0,
-          "type_info": "Int64"
-        },
-        {
-          "name": "event",
-          "ordinal": 1,
-          "type_info": "Int64"
-        }
-      ],
-      "nullable": [
-        false,
-        false
-      ],
-      "parameters": {
-        "Right": 1
-      }
-    },
-    "query": "SELECT received, event FROM omb_events where dev = ?1 ORDER BY received"
   },
   "7e72b8662af7ccb98295210627b9bafe1212ffb9184f268fd8d46bf23900c521": {
     "describe": {
@@ -153,6 +167,24 @@
       }
     },
     "query": "SELECT event, received, data FROM events WHERE dev = ?1 AND received >= ?2 AND received <= ?3 ORDER BY received"
+  },
+  "a5795363da9c8a2d95aaf58735c7ff40b321cc47c50655136b48020c349b3019": {
+    "describe": {
+      "columns": [
+        {
+          "name": "data",
+          "ordinal": 0,
+          "type_info": "Blob"
+        }
+      ],
+      "nullable": [
+        true
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT data FROM omb_events WHERE dev = ?1 AND message_type = 'gps' ORDER BY received DESC LIMIT 1"
   },
   "b52ae20f315da372802921a07c87ba2242ed36511daa7d6cfde192a08ae0b674": {
     "describe": {
@@ -256,22 +288,14 @@
     },
     "query": "SELECT data FROM events WHERE dev = ?1 AND received = ?2 AND event = ?3"
   },
-  "f62316acf0a904245e8b4e0e63d209391df5a0cc0b612095aa47ed96d63eab6e": {
+  "ec7c0be54871b5c5d3f71c5b97a90ca1646db80f243c44cb0e03856e53be5eab": {
     "describe": {
-      "columns": [
-        {
-          "name": "data",
-          "ordinal": 0,
-          "type_info": "Blob"
-        }
-      ],
-      "nullable": [
-        true
-      ],
+      "columns": [],
+      "nullable": [],
       "parameters": {
-        "Right": 1
+        "Right": 5
       }
     },
-    "query": "SELECT data FROM omb_events WHERE dev = ?1 ORDER BY received DESC LIMIT 1"
+    "query": "INSERT INTO omb_events (dev, received, account, message_type, data) VALUES ( ?1, ?2, ?3, ?4, ?5 )"
   }
 }

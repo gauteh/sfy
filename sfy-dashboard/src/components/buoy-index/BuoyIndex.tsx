@@ -5,7 +5,7 @@ import cx from 'classnames';
 
 import {of} from 'rxjs';
 import {finalize, tap, concatMap, mergeMap, switchMap, map} from 'rxjs/operators';
-import {Buoy} from 'models';
+import {Buoy, OmbBuoy} from 'models';
 import * as hub from 'hub';
 
 import {BuoyMap} from './BuoyMap';
@@ -16,7 +16,7 @@ interface Props {
 }
 
 interface State {
-  buoys: Buoy[];
+  buoys: Array<Buoy|OmbBuoy>;
 }
 
 export class BuoyIndex
@@ -24,7 +24,7 @@ export class BuoyIndex
 {
 
   public state = {
-    buoys: new Array<Buoy>(),
+    buoys: new Array<Buoy | OmbBuoy>(),
   };
 
   constructor(props: Props, context: any) {
@@ -42,7 +42,16 @@ export class BuoyIndex
     const devs = await hub.get_buoys(hub.API_CONF);
     for (const devsn of devs) {
       if (devsn[0] !== "lost+found") {
-        let b = new Buoy(devsn[0], devsn[1]);
+        let b = undefined;
+
+        if (devsn[2] === "sfy") {
+          b = new Buoy(devsn[0], devsn[1]);
+        } else if (devsn[2] === "omb") {
+          b = new OmbBuoy(devsn[0]);
+        } else {
+          console.log("Unknown buoy:" + devsn);
+        }
+
         await b.setLast();
 
         this.state.buoys.push(b);

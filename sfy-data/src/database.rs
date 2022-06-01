@@ -296,10 +296,10 @@ impl Buoy {
             }
             BuoyType::OMB => {
                 sqlx::query!(
-                    "SELECT received, event FROM omb_events where dev = ?1 ORDER BY received",
+                    "SELECT received, event, message_type FROM omb_events where dev = ?1 ORDER BY received",
                     self.dev
                 )
-                .map(|r| format!("{}-{}", r.received, r.event))
+                .map(|r| format!("{}-{}-{}", r.received, r.event, r.message_type))
                 .fetch_all(&self.db)
                 .await?
             }
@@ -367,21 +367,43 @@ impl Buoy {
 
         let file = file.as_ref().to_string_lossy().into_owned();
 
-        let (received, file) = file
-            .split_once('-')
-            .ok_or(eyre!("incorrect format of event"))?;
+        let data = match self.buoy_type {
+            BuoyType::SFY => {
+                let (received, file) = file
+                    .split_once('-')
+                    .ok_or(eyre!("incorrect format of event"))?;
 
-        let event = sqlx::query!(
-            "SELECT data FROM events WHERE dev = ?1 AND received = ?2 AND event = ?3",
-            self.dev,
-            received,
-            file
-        )
-        .fetch_one(&self.db)
-        .await?;
+                sqlx::query!(
+                    "SELECT data FROM events WHERE dev = ?1 AND received = ?2 AND event = ?3",
+                    self.dev,
+                    received,
+                    file
+                )
+                .fetch_one(&self.db)
+                .await?.data
+            },
+            BuoyType::OMB => {
+                let parts: Vec<_> = file.splitn(3, '-').collect();
+                ensure!(parts.len() == 3, "incorrect format of event");
+                let received = parts[0];
+                let file = parts[1];
+                let message_type = parts[2];
 
-        match event.data {
-            Some(event) => Ok(event),
+                sqlx::query!(
+                    "SELECT data FROM omb_events WHERE dev = ?1 AND received = ?2 AND event = ?3 AND message_type = ?4",
+                    self.dev,
+                    received,
+                    file,
+                    message_type
+                )
+                .fetch_one(&self.db)
+                .await?.data
+            },
+            _ => return Err(eyre!("Unknown buoy type")),
+        };
+
+        match data {
+            Some(data) => Ok(data),
             None => Err(eyre!("No such event found.")),
         }
     }

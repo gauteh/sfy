@@ -13,6 +13,7 @@ export class Buoy {
   public package: any;
 
   constructor(dev: string, sn: string) {
+    console.log("SFY: " + dev + ", " + sn);
     this.dev = dev;
     this.sn = sn;
   }
