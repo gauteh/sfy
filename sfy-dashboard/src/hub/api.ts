@@ -20,8 +20,8 @@ export class ApiConf {
   }
 }
 
-// export const SFY_SERVER='https://wavebug.met.no'
-export const SFY_SERVER='http://localhost:3000'
+export const SFY_SERVER='https://wavebug.met.no'
+// export const SFY_SERVER='http://localhost:3000'
 
 export let API_CONF: ApiConf = new ApiConf(SFY_SERVER, undefined);
 
