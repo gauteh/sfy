@@ -52,11 +52,14 @@ export class BuoyIndex
           console.log("Unknown buoy:" + devsn);
         }
 
-        await b.setLast();
-
-        this.state.buoys.push(b);
-        this.state.buoys.sort((a, b) => b.lastContact().getTime() - a.lastContact().getTime());
-        this.setState({buoys: this.state.buoys});
+        try {
+          await b.setLast();
+          this.state.buoys.push(b);
+          this.state.buoys.sort((a, b) => b.lastContact().getTime() - a.lastContact().getTime());
+          this.setState({buoys: this.state.buoys});
+        } catch(err) {
+          console.log("failed to load buoy: " + err);
+        }
       }
     }
   }
