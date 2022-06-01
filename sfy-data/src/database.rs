@@ -236,6 +236,7 @@ impl Buoy {
         Ok(())
     }
 
+    /// Append to OpenMetBuoy (OMB)
     pub async fn append_omb(
         &mut self,
         account: String,
@@ -245,9 +246,11 @@ impl Buoy {
     ) -> eyre::Result<()> {
         let data = data.as_ref();
 
+        self.buoy_type = BuoyType::OMB;
+
         if !self.known {
             sqlx::query!(
-                "INSERT OR REPLACE INTO buoys (dev,buoy_type) VALUES ( ?1, 'omb' )",
+                "INSERT OR REPLACE INTO buoys (dev, buoy_type) VALUES ( ?1, 'omb' )",
                 self.dev,
             )
             .execute(&self.db)
@@ -380,8 +383,9 @@ impl Buoy {
                     file
                 )
                 .fetch_one(&self.db)
-                .await?.data
-            },
+                .await?
+                .data
+            }
             BuoyType::OMB => {
                 let parts: Vec<_> = file.splitn(3, '-').collect();
                 ensure!(parts.len() == 3, "incorrect format of event");
@@ -398,7 +402,7 @@ impl Buoy {
                 )
                 .fetch_one(&self.db)
                 .await?.data
-            },
+            }
             _ => return Err(eyre!("Unknown buoy type")),
         };
 
@@ -411,15 +415,31 @@ impl Buoy {
     pub async fn list_range(&self, start: i64, end: i64) -> Result<Vec<(i64, String)>> {
         ensure!(self.known, "No such buoy");
 
-        let events = sqlx::query!(
-            "SELECT event, received FROM events WHERE dev = ?1 AND received >= ?2 AND received <= ?3 ORDER BY received",
-            self.dev,
-            start,
-            end,
-        )
-        .map(|r| (r.received, r.event))
-        .fetch_all(&self.db)
-        .await?;
+        let events = match self.buoy_type {
+            BuoyType::SFY => {
+                sqlx::query!(
+                    "SELECT event, received FROM events WHERE dev = ?1 AND received >= ?2 AND received <= ?3 ORDER BY received",
+                    self.dev,
+                    start,
+                    end,
+                )
+                .map(|r| (r.received, r.event))
+                .fetch_all(&self.db)
+                .await?
+            },
+            BuoyType::OMB => {
+                sqlx::query!(
+                    "SELECT event, message_type, received FROM omb_events WHERE dev = ?1 AND received >= ?2 AND received <= ?3 ORDER BY received",
+                    self.dev,
+                    start,
+                    end,
+                )
+                .map(|r| (r.received, format!("{}-{}", r.event, r.message_type)))
+                .fetch_all(&self.db)
+                .await?
+            },
+            BuoyType::Unknown => return Err(eyre!("Unknown buoy type"))
+        };
 
         Ok(events)
     }
@@ -427,15 +447,31 @@ impl Buoy {
     pub async fn get_range(&self, start: i64, end: i64) -> Result<Vec<Event>> {
         ensure!(self.known, "No such buoy");
 
-        let events = sqlx::query_as!(
-            Event,
-            "SELECT event, received, data FROM events WHERE dev = ?1 AND received >= ?2 AND received <= ?3 ORDER BY received",
-            self.dev,
-            start,
-            end,
-        )
-        .fetch_all(&self.db)
-        .await?;
+        let events = match self.buoy_type {
+            BuoyType::SFY => {
+                sqlx::query_as!(
+                    Event,
+                    "SELECT event, received, data FROM events WHERE dev = ?1 AND received >= ?2 AND received <= ?3 ORDER BY received",
+                    self.dev,
+                    start,
+                    end,
+                )
+                .fetch_all(&self.db)
+                .await?
+            },
+            BuoyType::OMB => {
+                sqlx::query!(
+                    "SELECT event, message_type, received, data FROM omb_events WHERE dev = ?1 AND received >= ?2 AND received <= ?3 ORDER BY received",
+                    self.dev,
+                    start,
+                    end,
+                )
+                .map(|r| Event { event: format!("{}-{}", r.event, r.message_type), received: r.received, data: r.data })
+                .fetch_all(&self.db)
+                .await?
+            },
+            BuoyType::Unknown => return Err(eyre!("Unknown buoy type"))
+        };
 
         Ok(events)
     }
@@ -574,6 +610,18 @@ mod tests {
         let mut b = db.buoy("buoy-01").await.unwrap();
         b.append(None, "entry-0-axl.qo", 0, "data-0").await.unwrap();
         b.append(None, "entry-1-sessi.qo", 0, "data-1")
+            .await
+            .unwrap();
+
+        assert_eq!(b.last().await.unwrap(), b"data-0");
+    }
+
+    #[tokio::test]
+    async fn append_omb_last() {
+        let db = Database::temporary().await;
+        let mut b = db.buoy("buoy-01-omb").await.unwrap();
+        b.append_omb("testacc".into(), 0, OmbMessageType::GPS, "data-0").await.unwrap();
+        b.append_omb("testacc".into(), 0, OmbMessageType::GPS, "data-1")
             .await
             .unwrap();
 

@@ -5,7 +5,10 @@ use argh::FromArgs;
 use env_logger::Env;
 use std::path::PathBuf;
 use std::sync::Arc;
-use warp::{http::{Method, Uri}, Filter};
+use warp::{
+    http::{Method, Uri},
+    Filter,
+};
 
 #[macro_use]
 extern crate eyre;
@@ -59,13 +62,16 @@ async fn main() -> eyre::Result<()> {
 
     if let Some(dir) = config.files {
         info!("serving files in directory: {:?}", dir);
-        let redirect = warp::path("sfy").and(warp::path::end()).and(warp::path::full()).and_then(move |p: warp::path::FullPath| async move {
-            if p.as_str().ends_with("/") {
-                Err(warp::reject())
-            } else {
-                Ok(warp::redirect(Uri::from_static("/sfy/")))
-            }
-        });
+        let redirect = warp::path("sfy")
+            .and(warp::path::end())
+            .and(warp::path::full())
+            .and_then(move |p: warp::path::FullPath| async move {
+                if p.as_str().ends_with("/") {
+                    Err(warp::reject())
+                } else {
+                    Ok(warp::redirect(Uri::from_static("/sfy/")))
+                }
+            });
 
         let sfy = redirect.or(warp::path("sfy").and(warp::fs::dir(dir)));
         let api = sfy

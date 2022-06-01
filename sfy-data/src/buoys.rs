@@ -189,18 +189,17 @@ fn parse_omb_data(body: &[u8]) -> eyre::Result<OmbEvent> {
         .map(String::from)
         .ok_or(eyre!("no account field"))?;
 
-
     let received = body
         .get("datetime")
         .and_then(json::Value::as_f64)
         .ok_or(eyre!("no datetime field"))?;
     let received = received.trunc() as u64;
 
-    let message_type = body.get("type")
+    let message_type = body
+        .get("type")
         .and_then(json::Value::as_str)
         .ok_or(eyre!("no type field"))?
         .into();
-
 
     Ok(OmbEvent {
         device,
@@ -498,17 +497,13 @@ pub mod handlers {
         if let Ok(event) = parse_omb_data(&body) {
             let device = sanitize(&event.device);
 
-            info!(
-                "omb event: {:?}",
-                event
-            );
+            info!("omb event: {:?}", event);
 
             let db = state.db.write().await;
             let mut b = db.buoy(&device).await.map_err(|e| {
                 error!("failed to open database for device: {}: {:?}", &device, e);
                 reject::custom(AppendErrors::Database)
             })?;
-
 
             b.append_omb(event.account, event.received, event.message_type, &body)
                 .await
