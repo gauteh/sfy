@@ -107,6 +107,7 @@ impl Database {
 
     /// Open buoy for writing.
     pub async fn buoy(&self, dev: &str) -> eyre::Result<Buoy> {
+        let dev = percent_encoding::percent_decode_str(dev).decode_utf8_lossy().to_string();
         let buoy = sqlx::query!("SELECT dev, name, buoy_type FROM buoys where dev = ?1", dev)
             .fetch_optional(&self.db)
             .await?;
@@ -619,7 +620,7 @@ mod tests {
     #[tokio::test]
     async fn append_omb_last() {
         let db = Database::temporary().await;
-        let mut b = db.buoy("buoy-01-omb").await.unwrap();
+        let mut b = db.buoy("buoy 01-omb").await.unwrap();
         b.append_omb("testacc".into(), 0, OmbMessageType::GPS, "data-0").await.unwrap();
         b.append_omb("testacc".into(), 0, OmbMessageType::GPS, "data-1")
             .await

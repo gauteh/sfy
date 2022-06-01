@@ -1271,6 +1271,7 @@ dependencies = [
  "eyre",
  "futures-util",
  "log",
+ "percent-encoding",
  "rustbreak",
  "sanitize-filename",
  "serde",
