@@ -79,7 +79,7 @@ export class BuoyIndex
           {buoy.any_lon().toFixed(9)}
         </td>
         <td>
-          {buoy.hasGps() ? 'GPS' : 'Cel.'}
+          {buoy.hasGps() ? 'GPS' : 'Cel/Ird'}
         </td>
         <td>
           <span title={moment(buoy.lastContact()).utc().format("YYYY-MM-DD hh:mm:ss") + " UTC"}>

@@ -4,14 +4,14 @@
   "device": "OMB-TEST-1",
   "type": "gps",
   "body": {
-    "iridium_pos": [
-      58.9,
-      5.63
-    ],
+    "iridium_pos": {
+      "lat": 58.9,
+      "lon": 5.63
+    },
     "messages": [
       {
-        "lat": 58.9,
-        "lon": 5.63
+        "latitude": 58.9,
+        "longitude": 5.63
       }
     ]
   }

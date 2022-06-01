@@ -192,8 +192,9 @@ fn parse_omb_data(body: &[u8]) -> eyre::Result<OmbEvent> {
 
     let received = body
         .get("datetime")
-        .and_then(json::Value::as_u64)
+        .and_then(json::Value::as_f64)
         .ok_or(eyre!("no datetime field"))?;
+    let received = received.trunc() as u64;
 
     let message_type = body.get("type")
         .and_then(json::Value::as_str)
@@ -541,6 +542,10 @@ mod tests {
     fn test_parse_omb_event() {
         let event = std::fs::read("tests/events/01-omb.json").unwrap();
         let parsed = parse_omb_data(&event).unwrap();
+        println!("{:?}", parsed);
+
+        let event = br##"{"account": "gauteh@met.no", "datetime": 1654003378000.0, "device": "NOFO-OPV-2022-01", "type": "gps", "body": {"iridium_pos": {"lat": 58.92556666666667, "lon": 5.987166666666667}, "messages": [{"datetime_fix": 1654003274.0, "latitude": 58.8867932, "longitude": 5.7136341, "is_valid": true}]}}"##;
+        let parsed = parse_omb_data(event).unwrap();
         println!("{:?}", parsed);
     }
 

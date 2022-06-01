@@ -10,6 +10,8 @@ export class OmbBuoy {
   public iridium_lat: number = undefined;
   public iridium_lon: number = undefined;
 
+  public package = undefined;
+
   constructor(dev: string) {
     console.log("Omb: " + dev);
     this.dev = dev;
@@ -26,31 +28,33 @@ export class OmbBuoy {
   }
 
   public lastContact(): Date | null {
-    return null;
-    // if (this.package) {
-    //   return new Date(this.package.received * 1000.);
-    // } else {
-    //   return null;
-    // }
+    if (this.package) {
+      return new Date(this.package.datetime);
+    } else {
+      return null;
+    }
   }
 
   public setPackage(p: any) {
+    this.package = p;
+
+    this.iridium_lat = p.body.iridium_pos.lat;
+    this.iridium_lon = p.body.iridium_pos.lon;
+
     console.log(p);
-    // this.package = p;
-
-    // this.latitude = p.body.lat;
-    // this.longitude = p.body.lon;
-
-    // this.tower_lat = p.tower_lat;
-    // this.tower_lon = p.tower_lon;
+    if (p.type === "gps" && p.body.messages.length > 0) {
+      let pos = p.body.messages[p.body.messages.length - 1];
+      this.latitude = pos.latitude;
+      this.longitude = pos.longitude;
+    }
   }
 
   public any_lat = (): number => {
-    return this.latitude;
+    return this.latitude !== undefined ? this.latitude : this.iridium_lat;
   }
 
   public any_lon = (): number => {
-    return this.longitude;
+    return this.longitude !== undefined ? this.longitude : this.iridium_lon;
   }
 }
 
