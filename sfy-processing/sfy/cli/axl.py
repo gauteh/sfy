@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 from datetime import timedelta, datetime
 from tabulate import tabulate
 import numpy as np
+import os
+import xarray as xr
 
 from sfy.hub import Hub
 from sfy.axl import AxlCollection
@@ -38,8 +40,11 @@ def axl():
               default=None,
               help='Clip results after this (default: tx-end)',
               type=click.DateTime())
-@click.option('--plot', is_flag=True, help='Plot timeseries')
-def ts(dev, tx_start, tx_end, start, end, plot):
+@click.option('--file',
+              default=None,
+              help='Store to this file',
+              type=click.Path())
+def ts(dev, tx_start, tx_end, start, end, file):
     hub = Hub.from_env()
     buoy = hub.buoy(dev)
 
@@ -60,7 +65,9 @@ def ts(dev, tx_start, tx_end, start, end, plot):
     start = utcify(start)
     end = utcify(end)
 
-    logger.info(f"Scanning for packages tx: {tx_start} <-> {tx_end} and clipping between {start} <-> {end}")
+    logger.info(
+        f"Scanning for packages tx: {tx_start} <-> {tx_end} and clipping between {start} <-> {end}"
+    )
 
     pcks = buoy.axl_packages_range(tx_start, tx_end)
     logger.info(f"{len(pcks)} packages in tx range")
@@ -80,20 +87,27 @@ def ts(dev, tx_start, tx_end, start, end, plot):
         s.start,
         s.end,
         s.duration,
-        timedelta(seconds = s.duration),
+        timedelta(seconds=s.duration),
         s.max_gap(),
         np.nan,
         len(s),
-        ] for s in segments]
+    ] for s in segments]
 
     for i, _ in enumerate(stable[1:]):
-        stable[i+1][5] = (stable[i+1][0] - stable[i][1])
+        stable[i + 1][5] = (stable[i + 1][0] - stable[i][1])
 
-    print(tabulate(stable, headers = ['Start', 'End', 'Duration (s)', 'Duration', 'Max Internal Gap', 'Segment Gap', 'Packages']))
+    print(
+        tabulate(stable,
+                 headers=[
+                     'Start', 'End', 'Duration (s)', 'Duration',
+                     'Max Internal Gap', 'Segment Gap', 'Packages'
+                 ]))
 
-    if plot:
-        logger.info("Plotting..")
+    if file:
+        logger.info(f"Saving to {file}..")
 
+        assert not os.path.exists(file), "file exists"
+        pcks.to_netcdf(file)
 
 @axl.command(help='Plot package')
 @click.argument('dev')
@@ -137,8 +151,6 @@ def monitor(dev, sleep, window):
     hub = Hub.from_env()
     buoy = hub.buoy(dev)
 
-
-
     la = None
     lv = None
     lu = None
@@ -170,19 +182,16 @@ def monitor(dev, sleep, window):
             _, _, u = signal.displacement(axl)
 
             la, = ax.plot(axl.time[:],
-                            a,
-                            'k--',
-                            alpha=.5,
-                            label='acceleration ($m/s^2$)')
+                          a,
+                          'k--',
+                          alpha=.5,
+                          label='acceleration ($m/s^2$)')
             lv, = ax.plot(axl.time[:-1],
-                            w,
-                            'g--',
-                            alpha=.5,
-                            label='velocity ($m/s$)')
-            lu, = ax.plot(axl.time[:-2],
-                            u,
-                            'b',
-                            label='displacement ($m$)')
+                          w,
+                          'g--',
+                          alpha=.5,
+                          label='velocity ($m/s$)')
+            lu, = ax.plot(axl.time[:-2], u, 'b', label='displacement ($m$)')
         else:
             if (axl != naxl):
                 print('Update...')

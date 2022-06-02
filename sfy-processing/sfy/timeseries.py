@@ -1,3 +1,5 @@
+import numpy as np
+import xarray as xr
 from pathlib import Path
 
 class AxlTimeseries:
@@ -13,9 +15,11 @@ class AxlTimeseries:
         """
         pass
 
-    def to_nc(self, filename: Path):
+    def to_netcdf(self, filename: Path):
         """
         Write a CF-compliant NetCDF file to filename.
         """
-        pass
+        ds = xr.Dataset({'z': (('time'), self.z.astype(np.float32))},
+                        coords={'time': self.mseconds})
+        ds.to_netcdf(filename)
 
