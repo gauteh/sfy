@@ -14,3 +14,4 @@ dependencies:
   - tqdm
   - python-dotenv
   - coloredlogs
+  - xarray
