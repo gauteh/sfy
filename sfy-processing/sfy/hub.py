@@ -7,6 +7,7 @@ import logging
 from tqdm import tqdm
 import json
 import math
+import tempfile
 
 logger = logging.getLogger(__name__)
 
@@ -33,13 +34,19 @@ class Hub:
     key: str
     cache: Path
 
-    def __init__(self, endpoint, key, cache):
+    tmpdir = None
+
+    def __init__(self, endpoint, key, cache = None):
         """
         Set up a Hub client.
 
-            endpoint: URL to sfy hub.
+            endpoint: URL to sfy hub including buoys, e.g.:
+
+                https://wavebug.met.no/buoys/
 
             key: Read token.
+
+            cache: A directory used to cache the data files.
         """
         self.endpoint = endpoint
 
@@ -47,7 +54,13 @@ class Hub:
             self.endpoint += '/'
 
         self.key = key
-        self.cache = Path(cache)
+
+        if cache is not None:
+            self.cache = Path(cache)
+        else:
+            logger.error("No cache dir specified, will use temporary directory. This will cause data to be re-downloaded every time.")
+            self.tmpdir = tempfile.TemporaryDirectory()
+            self.cache = Path(self.tmpdir.name)
 
         if not self.cache.exists():
             os.makedirs(self.cache, exist_ok=True)
@@ -63,8 +76,8 @@ class Hub:
         KEY = os.getenv('SFY_READ_TOKEN')
         CACHE = os.getenv('SFY_DATA_CACHE')
 
-        if API is None or KEY is None or CACHE is None:
-            raise Exception("No API, KEY or CACHE")
+        if API is None or KEY is None:
+            raise Exception("Missing API or KEY")
 
         API = urljoin(API, 'buoys')
         return Hub(urljoin(API, 'buoys'), KEY, CACHE)
