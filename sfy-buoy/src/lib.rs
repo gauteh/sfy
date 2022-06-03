@@ -75,6 +75,9 @@ pub struct SharedState {
 
 pub trait State {
     fn now(&self) -> NaiveDateTime;
+
+    /// Returns now, posistion_time, lat, lon.
+    fn get(&self) -> (NaiveDateTime, u32, f64, f64);
 }
 
 impl State for Mutex<RefCell<Option<SharedState>>> {
@@ -84,6 +87,15 @@ impl State for Mutex<RefCell<Option<SharedState>>> {
             let state = state.as_ref().unwrap();
 
             state.rtc.now()
+        })
+    }
+
+    fn get(&self) -> (NaiveDateTime, u32, f64, f64) {
+        free(|cs| {
+            let state = self.borrow(cs).borrow();
+            let state = state.as_ref().unwrap();
+
+            (state.rtc.now(), state.position_time, state.lat, state.lon)
         })
     }
 }

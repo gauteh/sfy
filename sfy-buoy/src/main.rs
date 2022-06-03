@@ -34,9 +34,9 @@ use hal::{i2c, pac::interrupt};
 use sfy::log::log;
 use sfy::note::Notecarrier;
 use sfy::waves::Waves;
-use sfy::{Imu, Location, SharedState, State, NOTEQ, STATE};
 #[cfg(feature = "storage")]
 use sfy::{storage::Storage, STORAGEQ};
+use sfy::{Imu, Location, SharedState, State, NOTEQ, STATE};
 
 /// This static is used to transfer ownership of the IMU subsystem to the interrupt handler.
 type I = hal::i2c::Iom3;
@@ -107,6 +107,18 @@ fn main() -> ! {
     }
     .ok();
 
+    #[cfg(not(feature = "storage"))]
+    let (imu_p, mut imu_queue) = unsafe { NOTEQ.split() };
+
+    #[cfg(feature = "storage")]
+    let (imu_p, storage_consumer) = unsafe { STORAGEQ.split() };
+
+    #[cfg(feature = "storage")]
+    let (note_p, mut imu_queue) = unsafe { NOTEQ.split() };
+
+    #[cfg(feature = "storage")]
+    let mut storage_manager = sfy::StorageManager::new(storage, storage_consumer, note_p);
+
     info!("Setting up Notecarrier..");
     let mut note = Notecarrier::new(i2c4, &mut delay).unwrap();
 
@@ -125,39 +137,12 @@ fn main() -> ! {
         .and_then(|r| r.wait(&mut delay))
         .ok(); // this will fail if more than 100 notes is added.
 
-    // Set reference to NOTE for logging on panic and hard resets.
-    // TODO: Should maybe `pin_mut!` this to prevent it being moved on the stack.
-    free(|_| unsafe {
+    // Move state into globally available variables and set reference to NOTE for
+    // logging on panic and hard resets.
+    //
+    // TODO: Should maybe `pin_mut!` NOTE to prevent it being moved on the stack.
+    free(|cs| unsafe {
         sfy::log::NOTE = Some(&mut note as *mut _);
-    });
-
-    info!("Setting up IMU..");
-    let mut waves = Waves::new(i2c3).unwrap();
-    waves
-        .take_buf(rtc.now().timestamp_millis(), 0, 0.0, 0.0)
-        .unwrap(); // set timestamp.
-
-    info!("Enable IMU.");
-    waves.enable_fifo(&mut delay).unwrap();
-
-    #[cfg(not(feature = "storage"))]
-    let (imu_p, mut imu_queue) = unsafe { NOTEQ.split() };
-
-    #[cfg(feature = "storage")]
-    let (imu_p, storage_consumer) = unsafe { STORAGEQ.split() };
-
-    #[cfg(feature = "storage")]
-    let (note_p, mut imu_queue) = unsafe { NOTEQ.split() };
-
-    #[cfg(feature = "storage")]
-    let mut storage_manager = sfy::StorageManager::new(storage, storage_consumer, note_p);
-
-    let imu = sfy::Imu::new(waves, imu_p);
-
-    // Move state into globally available variables. And IMU into temporary variable for
-    // moving it into the `RTC` interrupt routine, before we enable interrupts.
-    free(|cs| {
-        unsafe { IMU = Some(imu) };
 
         STATE.borrow(cs).replace(Some(SharedState {
             rtc,
@@ -165,6 +150,30 @@ fn main() -> ! {
             lon: 0.0,
             lat: 0.0,
         }));
+    });
+
+    info!("Try to fetch location and time before starting main loop..");
+    location
+        .check_retrieve(&STATE, &mut delay, &mut note)
+        .inspect_err(|e| error!("Failed retrieving location and time: {:?}", e))
+        .ok();
+
+    info!("Setting up IMU..");
+    let (now, position_time, lat, lon) = STATE.get();
+    let mut waves = Waves::new(i2c3).unwrap();
+    waves
+        .take_buf(now.timestamp_millis(), position_time, lon, lat)
+        .unwrap(); // set timestamp.
+
+    info!("Enable IMU.");
+    waves.enable_fifo(&mut delay).unwrap();
+
+    let imu = sfy::Imu::new(waves, imu_p);
+
+    //  And IMU into temporary variable for moving it into the `RTC` interrupt
+    //  routine, _before_ we enable interrupts.
+    free(|_| {
+        unsafe { IMU = Some(imu) };
     });
 
     defmt::info!("Enable interrupts");
