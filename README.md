@@ -5,10 +5,12 @@
 # The small friendly buoy
 
 * [sfy-buoy](sfy-buoy/) - the firmware for the buoy.
-* [hardware](hardware/Hardware.md) - hardware and assembly instructions.
+* [hardware](hardware/Hardware.md) | [build-tutorial](https://www.hackster.io/gaute-hope/ocean-buoy-to-measure-waves-drift-using-low-power-cellular-16ad09) - hardware and assembly instructions.
 * [sfy-data](sfy-data/) - the server scraping or receiving data from deployed
     buoys.
 * [sfy-processing](sfy-processing/) - python libraries and tools for reading and post-processing received data.
+* [sfy-dashboard](sfy-dashboard/) - web interface for displaying latest position
+    and overview of buoys.
 
 The buoys deployed in the surf on the coast of Norway:
 
