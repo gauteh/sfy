@@ -158,8 +158,20 @@ fn main() -> ! {
         .inspect_err(|e| error!("Failed retrieving location and time: {:?}", e))
         .ok();
 
-    info!("Setting up IMU..");
     let (now, position_time, lat, lon) = STATE.get();
+    sfy::COUNT.store(
+        (now.timestamp_millis() / 1000).try_into().unwrap_or(0),
+        Ordering::Relaxed,
+    );
+    info!(
+        "Now: {} ms, position_time: {}, lat: {}, lon: {}",
+        now.timestamp_millis(),
+        position_time,
+        lat,
+        lon
+    );
+
+    info!("Setting up IMU..");
     let mut waves = Waves::new(i2c3).unwrap();
     waves
         .take_buf(now.timestamp_millis(), position_time, lon, lat)
