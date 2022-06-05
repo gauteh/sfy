@@ -15,7 +15,7 @@ pub struct Notecarrier<I2C: Read + Write> {
     note: Notecard<I2C>,
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Default, defmt::Format)]
+#[derive(serde::Serialize, serde::Deserialize, Default, defmt::Format, PartialEq)]
 pub struct StorageIdInfo {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub current_id: Option<u32>,
@@ -257,25 +257,31 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             request_end
         );
 
+        let current_info = self.read_storage_info(delay)?;
+
         let info = StorageIdInfo {
             current_id: Some(current_id),
             request_start,
             request_end,
         };
 
-        defmt::trace!("Delete current storage-info");
-        self.note
-            .note()
-            .delete(delay, "storage.db", "storage-info")
-            .and_then(|r| r.wait(delay))
-            .inspect_err(|e| defmt::error!("Failed to delete storage-info: {:?}", e))
-            .ok();
+        if Some(&info) != current_info.as_ref() {
+            defmt::trace!("Delete current storage-info");
+            self.note
+                .note()
+                .delete(delay, "storage.db", "storage-info")
+                .and_then(|r| r.wait(delay))
+                .inspect_err(|e| defmt::error!("Failed to delete storage-info: {:?}", e))
+                .ok();
 
-        defmt::trace!("Writing new storage-info");
-        self.note
-            .note()
-            .update(delay, "storage.db", "storage-info", Some(info), None, false)?
-            .wait(delay)?;
+            defmt::trace!("Writing new storage-info");
+            self.note
+                .note()
+                .update(delay, "storage.db", "storage-info", Some(info), None, false)?
+                .wait(delay)?;
+        } else {
+            defmt::debug!("Storage-info unchanged, not updating.");
+        }
 
         Ok(())
     }
