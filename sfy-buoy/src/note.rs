@@ -257,7 +257,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             request_end
         );
 
-        let current_info = self.read_storage_info(delay)?;
+        let current_info = self.read_storage_info(delay).ok().flatten();
 
         let info = StorageIdInfo {
             current_id: Some(current_id),
