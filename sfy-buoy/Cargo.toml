@@ -63,6 +63,7 @@ embedded-sdmmc = { git = "https://github.com/gauteh/embedded-sdmmc-rs", branch =
 [features]
 default = [ "deploy", "storage" ]
 continuous = []
+20Hz = []
 storage = [ "postcard", "embedded-sdmmc" ]
 host-tests = []
 deploy = [ ]

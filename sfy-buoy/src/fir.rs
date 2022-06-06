@@ -1,16 +1,38 @@
 use heapless::Deque;
 
-/// Filter order, length or number of taps.
-const NTAP: usize = 128;
+pub mod hz50 {
+    /// Filter order, length or number of taps.
+    pub const NTAP: usize = 128;
 
-/// Filter coefficients. Generated with Pythons `scipy.signal.firwin(...)`.
-const COEFFS: [f32; NTAP] = include!("firwin.coeff");
+    /// Filter coefficients. Generated with Pythons `scipy.signal.firwin(...)`.
+    pub const COEFFS: [f32; NTAP] = include!("firwin.25_208_coeff");
 
-/// Sample rate.
-pub const FREQ: f32 = 208.0;
+    /// Sample rate.
+    pub const FREQ: f32 = 208.0;
 
-/// Cut-off frequency of filter.
-pub const CUTOFF: f32 = 25.0;
+    /// Cut-off frequency of filter.
+    pub const CUTOFF: f32 = 25.0;
+}
+
+pub mod hz20 {
+    /// Filter order, length or number of taps.
+    pub const NTAP: usize = 128;
+
+    /// Filter coefficients. Generated with Pythons `scipy.signal.firwin(...)`.
+    pub const COEFFS: [f32; NTAP] = include!("firwin.10_208_coeff");
+
+    /// Sample rate.
+    pub const FREQ: f32 = 208.0;
+
+    /// Cut-off frequency of filter.
+    pub const CUTOFF: f32 = 10.0;
+}
+
+#[cfg(feature = "20Hz")]
+pub use hz20::*;
+
+#[cfg(not(feature = "20Hz"))]
+pub use hz50::*;
 
 /// Maximum decimation given `CUTOFF` and sample rate (`FREQ`).
 pub const DECIMATE: u8 = (FREQ / CUTOFF / 2.) as u8;
@@ -20,6 +42,7 @@ pub const OUT_FREQ: f32 = FREQ / DECIMATE as f32;
 
 /// The delay (in seconds) introduced by the filter: half the length of the filter.
 pub const DELAY: f32 = (NTAP / 2) as f32 / FREQ;
+
 
 /// A running FIR filter with pre-computed coefficients.
 pub struct FIR {
