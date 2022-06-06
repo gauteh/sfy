@@ -109,7 +109,7 @@ mod tests {
 
         assert!(p.data.is_full());
 
-        let v: Vec<_, { AXL_OUTN }> = postcard::to_vec_cobs(&p).unwrap();
+        let v: Vec<_, { AXL_POSTCARD_SZ }> = postcard::to_vec_cobs(&p).unwrap();
         println!("{}", v.len());
 
         assert!(v.len() < AXL_POSTCARD_SZ);
