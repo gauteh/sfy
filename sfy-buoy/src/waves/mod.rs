@@ -7,6 +7,7 @@ use embedded_hal::blocking::{
     i2c::{Write, WriteRead},
 };
 use ism330dhcx::{ctrl1xl, ctrl2g, fifo, fifoctrl, Ism330Dhcx};
+use static_assertions as sa;
 
 use crate::{axl::AxlPacket, fir};
 
@@ -24,7 +25,7 @@ pub enum Freq {
 }
 
 impl Freq {
-    pub fn value(&self) -> f32 {
+    pub const fn value(&self) -> f32 {
         use Freq::*;
 
         match self {
@@ -131,18 +132,20 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         defmt::debug!("setting up imu driver..");
         let imu = Ism330Dhcx::new_with_address(&mut i2c, 0x6a)?;
 
-        let freq = Freq::Hz208;
+        const FREQ: Freq = Freq::Hz208;
         let output_freq = fir::OUT_FREQ;
 
-        defmt::debug!("imu frequency: {}", freq.value());
+        sa::const_assert_eq!(FREQ.value(), fir::FREQ);
+
+        defmt::debug!("imu frequency: {}", FREQ.value());
         defmt::debug!("output frequency: {}", output_freq);
 
         let mut w = Waves {
             i2c,
             imu,
-            freq,
+            freq: FREQ,
             output_freq,
-            buf: ImuBuf::new(freq.value()),
+            buf: ImuBuf::new(FREQ.value()),
             timestamp: 0,
             position_time: 0,
             lon: 0.0,
