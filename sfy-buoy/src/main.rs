@@ -105,6 +105,17 @@ fn main() -> ! {
         let cs = pins.a14.into_push_pull_output();
         Storage::open(spi, cs)
     }
+    .inspect_err(|e| {
+        defmt::error!("Failed to setup storage: {}", e);
+
+        let mut msg = heapless::String::<256>::new();
+        write!(&mut msg, "storage-err: {:?}", e)
+            .inspect_err(|e| {
+                defmt::error!("failed to format storage-err: {:?}", defmt::Debug2Format(e))
+            })
+            .ok();
+        log(&msg);
+    })
     .ok();
 
     #[cfg(not(feature = "storage"))]
@@ -214,7 +225,20 @@ fn main() -> ! {
             #[cfg(feature = "storage")]
             storage_manager
                 .drain_queue(&mut note, &mut delay)
-                .inspect_err(|e| error!("Failed to write to SD card: {:?}", e))
+                .inspect_err(|e| {
+                    error!("Failed to write to SD card: {:?}", e);
+
+                    let mut msg = heapless::String::<256>::new();
+                    write!(&mut msg, "storage-err-l: {:?}", e)
+                        .inspect_err(|e| {
+                            defmt::error!(
+                                "failed to format storage-err: {:?}",
+                                defmt::Debug2Format(e)
+                            )
+                        })
+                        .ok();
+                    log(&msg);
+                })
                 .ok();
 
             let nd = note.drain_queue(&mut imu_queue, &mut delay);

@@ -11,14 +11,13 @@
 //!
 //! At 52 Hz and 1024 length data-package, there is 4389 packages per day. Each collection will last about 2 days. See tests for more details.
 
-use core::fmt::Write as _;
 use embedded_sdmmc::{
     Controller, Error as GenericSdMmcError, Mode, SdMmcError, SdMmcSpi, VolumeIdx,
 };
 use heapless::{String, Vec};
 
 use ambiq_hal::gpio::pin::{Mode as SpiMode, P35 as CS};
-use ambiq_hal::spi::{Spi0 as Spi, Freq};
+use ambiq_hal::spi::{Freq, Spi0 as Spi};
 
 use crate::axl::{AxlPacket, AXL_POSTCARD_SZ};
 
@@ -55,9 +54,6 @@ impl From<embedded_sdmmc::Error<SdMmcError>> for StorageErr {
     }
 }
 
-const ID_FILE: &'static str = "sfy.id";
-const ID_DIGITS: usize = 10; // 8 is sufficient for 20 years.
-
 pub struct Storage {
     sd: SdMmcSpi<Spi, CS<{ SpiMode::Output }>>,
     /// Next free ID.
@@ -85,7 +81,6 @@ impl Storage {
         let c = storage.find_first_free_collection()?;
         defmt::info!("Starting new collection: {}", c);
         storage.current_id = Some(c * COLLECTION_SIZE);
-        storage.write_id()?;
 
         Ok(storage)
     }
@@ -111,67 +106,6 @@ impl Storage {
         }
 
         Err(StorageErr::DiskFull)
-    }
-
-    /// Read the current ID.
-    pub fn read_id(&mut self) -> Result<u32, StorageErr> {
-        let block = self.sd.acquire()?;
-        let mut c = Controller::new(block, CountClock);
-        let mut v = c.get_volume(VolumeIdx(0))?;
-
-        let mut root = DirHandle::open_root(&mut c, &mut v)?;
-        let idf = root.open_file(ID_FILE, Mode::ReadOnly);
-
-        let id = match idf {
-            Ok(mut idf) => {
-                let mut buf = [0u8; ID_DIGITS];
-                let sz = idf.read(&mut buf)?;
-                let buf = &buf[..sz];
-
-                defmt::trace!(
-                    "ID file contents: {:?}",
-                    defmt::Debug2Format(&core::str::from_utf8(&buf))
-                );
-
-                // TODO: Handle corrupted ID file.
-                let buf = core::str::from_utf8(&buf)
-                    .inspect_err(|e| defmt::error!("Parse id: {:?}", defmt::Debug2Format(e)))
-                    .map_err(|_| StorageErr::ParseIDFailure)?;
-                let id = u32::from_str_radix(&buf, 10)
-                    .inspect_err(|e| defmt::error!("Parse id: {:?}", defmt::Debug2Format(e)))
-                    .map_err(|_| StorageErr::ParseIDFailure)?;
-
-                Ok(id)
-            }
-            Err(GenericSdMmcError::FileNotFound) => {
-                defmt::debug!("No ID file, returing zero.");
-                Ok(0)
-            }
-            Err(e) => Err(e),
-        }?;
-
-        Ok(id)
-    }
-
-    /// Writes the current ID to SD-card.
-    pub fn write_id(&mut self) -> Result<(), StorageErr> {
-        let id = self.current_id.unwrap();
-        defmt::debug!("Writing id: {}", id);
-        let block = self.sd.acquire()?;
-        let mut c = Controller::new(block, CountClock);
-        let mut v = c.get_volume(VolumeIdx(0))?;
-
-        let mut root = DirHandle::open_root(&mut c, &mut v)?;
-        let mut idf = root.open_file(ID_FILE, Mode::ReadWriteCreateOrTruncate)?;
-        let mut buf = String::<ID_DIGITS>::new();
-        write!(&mut buf, "{}", id).map_err(|e| {
-            defmt::error!("Format error: {:?}", defmt::Debug2Format(&e));
-            StorageErr::WriteIDFailure
-        })?;
-        defmt::trace!("Writing bytes: {:?}", &buf);
-        idf.write(buf.as_bytes())?;
-
-        Ok(())
     }
 
     /// Returns the current (next free ID).
@@ -233,13 +167,9 @@ impl Storage {
         // Package now has a storage ID.
         pck.storage_id = Some(id);
         self.current_id = Some(id + 1);
-        {
-            self.write_id()?;
-        }
 
         // Serialize
-        let mut buf: Vec<u8, { AXL_POSTCARD_SZ }> =
-            postcard::to_vec_cobs(pck)
+        let mut buf: Vec<u8, { AXL_POSTCARD_SZ }> = postcard::to_vec_cobs(pck)
             .inspect_err(|e| defmt::error!("Serialization: {:?}", defmt::Debug2Format(e)))
             .map_err(|_| StorageErr::SerializationError)?;
         buf.resize_default(buf.capacity()).unwrap();
@@ -263,7 +193,7 @@ impl Storage {
             f.seek_from_end(0)
                 .inspect_err(|e| defmt::error!("File seek error: {}", e))
                 .map_err(|_| StorageErr::WriteError)?; // We should already be at the
-                                                                     // end.
+                                                       // end.
             f.write(&buf)?;
         }
 
@@ -351,8 +281,11 @@ mod tests {
         let buf = c.as_mut_slice();
 
         let p0: AxlPacket = postcard::from_bytes_cobs(&mut buf[..AXL_POSTCARD_SZ]).unwrap();
-        let p1: AxlPacket = postcard::from_bytes_cobs(&mut buf[AXL_POSTCARD_SZ..(2*AXL_POSTCARD_SZ)]).unwrap();
-        let p2: AxlPacket = postcard::from_bytes_cobs(&mut buf[(AXL_POSTCARD_SZ*2)..(AXL_POSTCARD_SZ*3)]).unwrap();
+        let p1: AxlPacket =
+            postcard::from_bytes_cobs(&mut buf[AXL_POSTCARD_SZ..(2 * AXL_POSTCARD_SZ)]).unwrap();
+        let p2: AxlPacket =
+            postcard::from_bytes_cobs(&mut buf[(AXL_POSTCARD_SZ * 2)..(AXL_POSTCARD_SZ * 3)])
+                .unwrap();
 
         assert_eq!(p0.storage_id, Some(0));
         assert_eq!(p1.storage_id, Some(1));
@@ -408,7 +341,7 @@ mod tests {
         let buf = c.as_mut_slice();
 
         for p in 0..7 {
-            let slice = &mut buf[(AXL_POSTCARD_SZ * p)..(AXL_POSTCARD_SZ * (p+1))];
+            let slice = &mut buf[(AXL_POSTCARD_SZ * p)..(AXL_POSTCARD_SZ * (p + 1))];
             let pck: AxlPacket = postcard::from_bytes_cobs(slice).unwrap();
             println!("Deserialized data package: {:?}", pck);
 
