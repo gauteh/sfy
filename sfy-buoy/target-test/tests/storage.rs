@@ -11,7 +11,6 @@ fn clean_up_collection(s: &mut Storage) {
     defmt::info!("cleaning up test collection");
     s.remove_collection(0).unwrap();
     s.set_id(0);
-    s.write_id().unwrap();
 }
 
 #[defmt_test::tests]
@@ -69,20 +68,6 @@ mod tests {
     fn initialize_storage(s: &mut State) {
         defmt::info!("current id: {:?}", s.storage.current_id());
         assert_eq!(s.storage.current_id(), Some(0), "tests run on card with data");
-    }
-
-    #[test]
-    fn write_id(s: &mut State) {
-        s.storage.write_id().unwrap();
-        assert_eq!(s.storage.read_id().unwrap(), 0);
-
-        s.storage.set_id(1);
-        s.storage.write_id().unwrap();
-        assert_eq!(s.storage.read_id().unwrap(), 1);
-
-        s.storage.set_id(0);
-        s.storage.write_id().unwrap();
-        assert_eq!(s.storage.read_id().unwrap(), 0);
     }
 
     #[test]
