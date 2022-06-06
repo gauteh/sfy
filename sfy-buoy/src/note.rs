@@ -73,7 +73,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             .location_mode(
                 delay,
                 Some("periodic"),
-                Some(60),
+                Some(10 * 60),
                 None,
                 None,
                 None,
