@@ -3,6 +3,8 @@ import click
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 from cartopy import crs, feature as cfeature
+import pandas as pd
+import io
 
 from sfy.hub import Hub
 
@@ -75,6 +77,30 @@ def map(dev, fast, start, end, margins, save):
         plt.savefig(save)
     else:
         plt.show()
+
+@track.command(help='Output CSV of position')
+@click.argument('dev')
+@click.option('--start',
+              default=None,
+              help='Filter packages after this time',
+              type=click.DateTime())
+@click.option('--end',
+              default=None,
+              help='Filter packages before this time',
+              type=click.DateTime())
+def csv(dev, start, end):
+    hub = Hub.from_env()
+    buoy = hub.buoy(dev)
+
+    pcks = buoy.axl_packages_range(start, end)
+
+    lon = [pck.lon for pck in pcks]
+    lat = [pck.lat for pck in pcks]
+
+    df = pd.DataFrame({ 'Device': buoy.dev, 'Longitude': lon, 'Latitude': lat})
+    buf = io.StringIO()
+    df.to_csv(buf, index=False)
+    print(buf.getvalue())
 
 
 if __name__ == '__main__':
