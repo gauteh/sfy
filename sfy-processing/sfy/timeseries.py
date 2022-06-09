@@ -27,7 +27,7 @@ class AxlTimeseries:
                     ('time'),
                     self.z.astype(np.float32),
                     attrs={
-                        'unit': 'm -s^2',
+                        'unit': 'm/s^2',
                         'long_name': 'sea_water_wave_z_acceleration',
                         'description':
                         'Vertical acceleration (including gravity)'
@@ -37,7 +37,7 @@ class AxlTimeseries:
                     ('time'),
                     self.x.astype(np.float32),
                     attrs={
-                        'unit': 'm -s^2',
+                        'unit': 'm/s^2',
                         'long_name': 'sea_water_wave_x_acceleration',
                         'description': 'Horizontal x-axis acceleration'
                     }),
@@ -46,7 +46,7 @@ class AxlTimeseries:
                     ('time'),
                     self.y.astype(np.float32),
                     attrs={
-                        'unit': 'm -s^2',
+                        'unit': 'm/s^2',
                         'long_name': 'sea_water_wave_y_acceleration',
                         'description': 'Horizontal y-axis acceleration'
                     }),
