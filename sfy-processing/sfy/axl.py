@@ -47,7 +47,6 @@ class AxlCollection(AxlTimeseries):
                 pcks.append(p)
         self.pcks = pcks
 
-
     def clip(self, start, end):
         """
         Clip the collection between start and end.
@@ -131,12 +130,44 @@ class AxlCollection(AxlTimeseries):
         return np.concatenate([pck.z for pck in self.pcks])
 
     @property
+    def position_times(self):
+        return np.concatenate([pck.position_times for pck in self.pcks])
+
+    @property
     def lons(self):
         return [pck.lon for pck in self.pcks]
 
     @property
     def lats(self):
         return [pck.lat for pck in self.pcks]
+
+    @property
+    def device(self):
+        return self.pcks[0].device
+
+    @property
+    def sn(self):
+        return self.pcks[0].sn
+
+    @property
+    def storage_ids(self):
+        return np.concatenate([pck.storage_ids for pck in self.pcks])
+
+    @property
+    def received_times(self):
+        return np.concatenate([pck.received_times for pck in self.pcks])
+
+    @property
+    def added_times(self):
+        return np.concatenate([pck.added_times for pck in self.pcks])
+
+    def extra_attrs(self):
+        return {
+            'collection': 'yes',
+            'max_gap': self.max_gap().total_seconds(),
+            'max_gap:unit': 's',
+            'number_of_packages': len(self.pcks)
+        }
 
 
 @dataclass(frozen=True)
@@ -168,8 +199,8 @@ class Axl(AxlTimeseries):
     length: int
     offset: int
     timestamp: int  # milliseconds, i64
-    storage_id: int # ID of package on SD card (if applicable), may not be unique.
-    position_time: int # time of location fix, u32
+    storage_id: int  # ID of package on SD card (if applicable), may not be unique.
+    position_time: int  # time of location fix, u32
     lon: float
     lat: float
     freq: float
@@ -216,10 +247,14 @@ class Axl(AxlTimeseries):
 
     def duplicate(self, o):
         if self.timestamp == o.timestamp:
-            if self.lon == o.lon and self.lat == o.lat and self.offset == o.offset and all(self.x == o.x) and all(self.y == o.y) and all(self.z == o.z):
+            if self.lon == o.lon and self.lat == o.lat and self.offset == o.offset and all(
+                    self.x == o.x) and all(self.y == o.y) and all(
+                        self.z == o.z):
                 return True
             else:
-                logger.warn(f"duplicate timestamp {self.start}, but other fields mismatch.")
+                logger.warn(
+                    f"duplicate timestamp {self.start}, but other fields mismatch."
+                )
                 return False
 
     @property
@@ -290,6 +325,30 @@ class Axl(AxlTimeseries):
         t = np.arange(0, len(self.x)) * 1000. / self.freq
         return self.timestamp + t
 
+    @property
+    def position_times(self):
+        return np.array([self.position_time])
+
+    @property
+    def received_times(self):
+        return np.array([self.received_datetime])
+
+    @property
+    def added_times(self):
+        return np.array([self.added_datetime])
+
+    @property
+    def storage_ids(self):
+        return np.array([self.storage_id])
+
+    @property
+    def lons(self):
+        return [self.lon]
+
+    @property
+    def lats(self):
+        return [self.lat]
+
     def __repr__(self):
         return f"[Axl received={self.received} t={self.start} -> {'%.2f' % self.duration}s sz={len(self.x)}x3 @ f={self.freq}Hz, lon={self.lon}E lat={self.lat}N]"
 
@@ -336,7 +395,7 @@ class Axl(AxlTimeseries):
             'length': self.length,
             'offset': self.offset,
             'timestamp': self.timestamp,
-            'storage_id' : self.storage_id,
+            'storage_id': self.storage_id,
             'position_time': self.position_time,
             'lon': self.lon,
             'lat': self.lat,

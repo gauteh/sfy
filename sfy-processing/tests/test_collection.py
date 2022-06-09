@@ -33,10 +33,3 @@ def test_segment(sfyhub):
     assert sum((len(s) for s in segments)) == len(c)
 
 
-def test_to_nc(sfyhub, tmpdir):
-    b = sfyhub.buoy("dev864475044204278")
-    pcks = b.axl_packages_range(
-        datetime(2022, 4, 26, 11, 34, tzinfo=timezone.utc),
-        datetime(2022, 4, 26, 11, 35, tzinfo=timezone.utc))
-    c = AxlCollection(pcks)
-    c.to_netcdf(tmpdir / "test.nc")
