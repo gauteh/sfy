@@ -22,29 +22,32 @@ class AxlTimeseries:
     def to_dataset(self):
         ds = xr.Dataset(
             data_vars={
-                'z':
+                'w_z':
                 xr.Variable(
                     ('time'),
                     self.z.astype(np.float32),
                     attrs={
                         'unit': 'm -s^2',
+                        'long_name': 'sea_water_wave_z_acceleration',
                         'description':
                         'Vertical acceleration (including gravity)'
                     }),
-                'x':
+                'w_x':
                 xr.Variable(
                     ('time'),
                     self.x.astype(np.float32),
                     attrs={
                         'unit': 'm -s^2',
+                        'long_name': 'sea_water_wave_x_acceleration',
                         'description': 'Horizontal x-axis acceleration'
                     }),
-                'y':
+                'w_y':
                 xr.Variable(
                     ('time'),
                     self.y.astype(np.float32),
                     attrs={
                         'unit': 'm -s^2',
+                        'long_name': 'sea_water_wave_y_acceleration',
                         'description': 'Horizontal y-axis acceleration'
                     }),
                 'lon':
