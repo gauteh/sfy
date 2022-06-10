@@ -6,7 +6,6 @@ from datetime import timedelta, datetime
 from tabulate import tabulate
 import numpy as np
 import os
-import xarray as xr
 
 from sfy.hub import Hub
 from sfy.axl import AxlCollection

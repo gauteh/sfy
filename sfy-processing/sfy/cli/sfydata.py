@@ -11,15 +11,17 @@ logger = logging.getLogger(__name__)
 from sfy.hub import Hub, StorageInfo
 from sfy.cli.track import track
 from sfy.cli.axl import axl
+from sfy.cli.ctrl import ctrl
 
 
 @click.group()
 def sfy():
-    coloredlogs.install()
+    coloredlogs.install(level='debug')
 
 
 sfy.add_command(track)
 sfy.add_command(axl)
+sfy.add_command(ctrl)
 
 
 @sfy.command(help='List available buoys or data')
@@ -42,7 +44,8 @@ def list(dev, start, end):
         last = [l.received_datetime if l else None for l in last]
 
         storage_info = [
-            b.storage_info() if 'lost+found' not in b.dev else StorageInfo.empty()
+            b.storage_info()
+            if 'lost+found' not in b.dev else StorageInfo.empty()
             for b in buoys
         ]
 
@@ -51,7 +54,12 @@ def list(dev, start, end):
         ] for b, l, si in zip(buoys, last, storage_info)]
         buoys.sort(key=lambda b: b[2].timestamp() if b[2] else 0)
 
-        print(tabulate(buoys, headers=['Buoys', 'Name', 'Last contact', 'Current ID', 'Request start', 'Request end']))
+        print(
+            tabulate(buoys,
+                     headers=[
+                         'Buoys', 'Name', 'Last contact', 'Current ID',
+                         'Request start', 'Request end'
+                     ]))
     else:
         buoy = hub.buoy(dev)
         logger.info(f"Listing packages for {buoy}")

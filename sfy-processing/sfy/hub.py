@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 from .axl import Axl
 from .timeutil import utcify
 
+
 class StorageInfo:
     current_id = None
     request_start = None
@@ -28,6 +29,26 @@ class StorageInfo:
     def empty():
         return StorageInfo({})
 
+    def __repr__(self):
+        return f"StorageInfo <current: {self.current_id}, start: {self.request_start}, end: {self.request_end}>"
+
+    def dict(self):
+        j = {}
+
+        if self.current_id is not None:
+            j['current_id'] = self.current_id
+
+        if self.request_start is not None:
+            j['request_start'] = self.request_start
+
+        if self.request_end is not None:
+            j['request_end'] = self.request_end
+
+        return j
+
+    def json(self):
+        return json.dumps(self.dict())
+
 
 class Hub:
     endpoint: str
@@ -36,7 +57,7 @@ class Hub:
 
     tmpdir = None
 
-    def __init__(self, endpoint, key, cache = None):
+    def __init__(self, endpoint, key, cache=None):
         """
         Set up a Hub client.
 
@@ -58,7 +79,9 @@ class Hub:
         if cache is not None:
             self.cache = Path(cache)
         else:
-            logger.error("No cache dir specified, will use temporary directory. This will cause data to be re-downloaded every time.")
+            logger.error(
+                "No cache dir specified, will use temporary directory. This will cause data to be re-downloaded every time."
+            )
             self.tmpdir = tempfile.TemporaryDirectory()
             self.cache = Path(self.tmpdir.name)
 
@@ -101,6 +124,25 @@ class Hub:
 
     def buoy(self, dev: str):
         return next(filter(lambda b: b.matches(dev), self.buoys()))
+
+    def login(self):
+        """
+        Login to notehub to get token.
+        """
+
+        logger.debug('Logging into Notehub..')
+        user = os.getenv('SFY_NH_USER')
+        pw = os.getenv('SFY_NH_PW')
+        assert user is not None and pw is not None, "SFY_NH_USER and/or SFY_NH_PW env not set."
+
+        r = requests.post('https://api.notefile.net/auth/login',
+                          json={
+                              'username': user,
+                              'password': pw
+                          })
+        r.raise_for_status()
+
+        return r.json()['session_token']
 
 
 class Buoy:
