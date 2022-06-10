@@ -13,7 +13,7 @@ jobs:
       SFY_READ_TOKEN: ${{ secrets.SFY_READ_TOKEN }}
       SFY_SERVER: ${{ secrets.SFY_SERVER }}
       SFY_DATA_CACHE: /tmp/sfy
-      CACHE_NUMBER: 1
+      CACHE_NUMBER: 2
 
     strategy:
       max-parallel: 5
@@ -34,7 +34,7 @@ jobs:
 
     - uses: actions/cache@v2
       with:
-        path: ${{ env.CONDA }}/envs
+        path: /usr/share/miniconda
         key: ${{ runner.os }}-conda-${{ hashFiles('environment.yml') }}-${{ env.CACHE_NUMBER }}
       id: cache
 
