@@ -15,8 +15,9 @@ from sfy.cli.ctrl import ctrl
 
 
 @click.group()
-def sfy():
-    coloredlogs.install(level='debug')
+@click.option('--log', default='info', type=str, help='Python log level')
+def sfy(log):
+    coloredlogs.install(level=log)
 
 
 sfy.add_command(track)
