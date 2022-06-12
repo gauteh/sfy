@@ -21,6 +21,12 @@ pub struct StorageIdInfo {
     pub current_id: Option<u32>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub sent_id: Option<u32>,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Default, defmt::Format, PartialEq)]
+pub struct RequestData {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub request_start: Option<u32>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -231,7 +237,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
     pub fn read_storage_info(
         &mut self,
         delay: &mut impl DelayMs<u16>,
-    ) -> Result<Option<StorageIdInfo>, NoteError> {
+    ) -> Result<(Option<StorageIdInfo>, Option<RequestData>), NoteError> {
         defmt::debug!("Read storage info..");
         let r = self
             .note
@@ -239,30 +245,49 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             .get(delay, "storage.db", "storage-info", false, false)?
             .wait(delay)?;
 
-        defmt::debug!("Storage info: {:?}", r.body);
-        Ok(r.body)
+        let d = self
+            .note
+            .note()
+            .get(delay, "storage.db", "request-data", false, false)?
+            .wait(delay)?;
+
+        defmt::debug!("Storage info: {:?}, Request data: {:?}", r.body, d.body);
+
+        Ok((r.body, d.body))
     }
 
     pub fn write_storage_info(
         &mut self,
         delay: &mut impl DelayMs<u16>,
         current_id: u32,
-        request_start: Option<u32>,
-        request_end: Option<u32>,
+        mut sent_id: Option<u32>,
+        clear_request: bool,
     ) -> Result<(), NoteError> {
         defmt::debug!(
-            "Updating last written ID to: {}, request range: {} -> {}",
+            "Updating last written ID to: {}, sent_id: {}, clear request: {}",
             current_id,
-            request_start,
-            request_end
+            sent_id,
+            clear_request,
         );
 
-        let current_info = self.read_storage_info(delay).ok().flatten();
+        if clear_request {
+            defmt::info!("Clearing data-request..");
+            self.note
+                .note()
+                .delete(delay, "storage.db", "request-data")
+                .and_then(|r| r.wait(delay))
+                .inspect_err(|e| defmt::error!("Failed to delete request-data: {:?}", e))
+                .ok();
+
+            defmt::debug!("Clearing sent-id when data-request is complete.");
+            sent_id = None;
+        }
+
+        let current_info = self.read_storage_info(delay).ok().map(|(c, _)| c).flatten();
 
         let info = StorageIdInfo {
             current_id: Some(current_id),
-            request_start,
-            request_end,
+            sent_id,
         };
 
         if Some(&info) != current_info.as_ref() {
