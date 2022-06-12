@@ -936,7 +936,6 @@ mod tests {
 
         let info: crate::database::StorageInfo = json::from_slice(res.body()).unwrap();
         assert_eq!(info.current_id, Some(40002));
-        assert_eq!(info.request_start, None);
-        assert_eq!(info.request_end, None);
+        assert_eq!(info.sent_id, None);
     }
 }

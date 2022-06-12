@@ -15,8 +15,7 @@ pub struct Database {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StorageInfo {
     pub current_id: Option<u64>,
-    pub request_start: Option<u64>,
-    pub request_end: Option<u64>,
+    pub sent_id: Option<u64>,
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -353,13 +352,11 @@ impl Buoy {
                 let info = body.get("body").ok_or(eyre!("no event field"))?;
 
                 let current_id = info.get("current_id").and_then(json::Value::as_u64);
-                let request_start = info.get("request_start").and_then(json::Value::as_u64);
-                let request_end = info.get("request_end").and_then(json::Value::as_u64);
+                let sent_id = info.get("sent_id").and_then(json::Value::as_u64);
 
                 Ok(StorageInfo {
                     current_id,
-                    request_start,
-                    request_end,
+                    sent_id,
                 })
             }
             None => Err(eyre!("No storage entry found.")),
@@ -652,7 +649,6 @@ mod tests {
         println!("{:?}", info);
 
         assert_eq!(info.current_id, Some(40002));
-        assert_eq!(info.request_start, None);
-        assert_eq!(info.request_end, None);
+        assert_eq!(info.sent_id, None);
     }
 }
