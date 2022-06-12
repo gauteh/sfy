@@ -29,11 +29,6 @@ def get_pcks(dev, start, end):
 
     logger.info(f"Requesting packages from {b}: {info}")
 
-    info.request_start = start
-    info.request_end = end
-
-    logger.info(f"New storage.db: {info.json()}")
-
     token = hub.login()
 
     product = os.getenv('SFY_PRODUCT')
@@ -49,7 +44,7 @@ def get_pcks(dev, start, end):
         json={
             'req': 'note.delete',
             'file': 'storage.db',
-            'note': 'storage-info',
+            'note': 'request-data',
         },
         headers={'X-SESSION-TOKEN': token})
     logger.debug(f"Response: {r}: {r.text}")
@@ -61,8 +56,8 @@ def get_pcks(dev, start, end):
         json={
             'req': 'note.update',
             'file': 'storage.db',
-            'note': 'storage-info',
-            'body': info.dict()
+            'note': 'request-data',
+            'body': {'request_start' : start, 'request_end': end }
         },
         headers={'X-SESSION-TOKEN': token})
     logger.debug(f"Response: {r}: {r.text}")
@@ -77,11 +72,6 @@ def clear_get(dev):
     info = b.storage_info()
     logger.info(f"Clearing request for buoy: {b}: {info}")
 
-    info.request_end = None
-    info.request_start = None
-
-    logger.info(f"New storage.db: {info.json()}")
-
     token = hub.login()
 
     product = os.getenv('SFY_PRODUCT')
@@ -97,21 +87,9 @@ def clear_get(dev):
         json={
             'req': 'note.delete',
             'file': 'storage.db',
-            'note': 'storage-info',
+            'note': 'request-data',
         },
         headers={'X-SESSION-TOKEN': token})
     logger.debug(f"Response: {r}: {r.text}")
     r.raise_for_status()
 
-    logger.debug("Updating note..")
-    r = requests.post(
-        f'https://api.notefile.net/req?product={product}&device=dev:{b.dev[3:]}',
-        json={
-            'req': 'note.update',
-            'file': 'storage.db',
-            'note': 'storage-info',
-            'body': info.dict()
-        },
-        headers={'X-SESSION-TOKEN': token})
-    logger.debug(f"Response: {r}: {r.text}")
-    r.raise_for_status()

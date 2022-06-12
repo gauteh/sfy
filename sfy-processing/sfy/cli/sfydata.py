@@ -50,16 +50,18 @@ def list(dev, start, end):
             for b in buoys
         ]
 
-        buoys = [[
-            b.dev, b.name, l, si.current_id, si.request_start, si.request_end
-        ] for b, l, si in zip(buoys, last, storage_info)]
+        buoys = [[b.dev, b.name, l, si.current_id, si.sent_id]
+                 for b, l, si in zip(buoys, last, storage_info)]
         buoys.sort(key=lambda b: b[2].timestamp() if b[2] else 0)
 
         print(
             tabulate(buoys,
                      headers=[
-                         'Buoys', 'Name', 'Last contact', 'Current ID',
-                         'Request start', 'Request end'
+                         'Buoys',
+                         'Name',
+                         'Last contact',
+                         'Current ID',
+                         'Sent ID',
                      ]))
     else:
         buoy = hub.buoy(dev)

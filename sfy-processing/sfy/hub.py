@@ -17,37 +17,18 @@ from .timeutil import utcify
 
 class StorageInfo:
     current_id = None
-    request_start = None
-    request_end = None
+    sent_id = None
 
     def __init__(self, p):
         self.current_id = p.get('current_id')
-        self.request_start = p.get('request_start')
-        self.request_end = p.get('request_end')
+        self.sent_id = p.get('sent_id')
 
     @staticmethod
     def empty():
         return StorageInfo({})
 
     def __repr__(self):
-        return f"StorageInfo <current: {self.current_id}, start: {self.request_start}, end: {self.request_end}>"
-
-    def dict(self):
-        j = {}
-
-        if self.current_id is not None:
-            j['current_id'] = self.current_id
-
-        if self.request_start is not None:
-            j['request_start'] = self.request_start
-
-        if self.request_end is not None:
-            j['request_end'] = self.request_end
-
-        return j
-
-    def json(self):
-        return json.dumps(self.dict())
+        return f"StorageInfo <current: {self.current_id}, sent_id: {self.sent_id}>"
 
 
 class Hub:
