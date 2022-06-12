@@ -5,7 +5,7 @@
 # The small friendly buoy
 
 * [sfy-buoy](sfy-buoy/) - the firmware for the buoy.
-* [hardware](hardware/Hardware.md) | [build-tutorial](https://www.hackster.io/gaute-hope/ocean-buoy-to-measure-waves-drift-using-low-power-cellular-16ad09) - hardware and assembly instructions.
+* [hardware](hardware/Hardware.md) | [build-tutorial](https://www.hackster.io/gaute-hope/ocean-buoy-to-measure-waves-drift-using-low-power-cellular-16ad09) | [bill-of-materials](https://docs.google.com/spreadsheets/d/e/2PACX-1vRE62P6-pCVzig-hSsqVcr2DABZ5LlB4lt1ZFfrct_tdcxoljO3zjmq7vGT1-jjqNiVCXLdns6XSkHF/pubhtml?gid=0&single=true) - hardware and assembly instructions.
 * [sfy-data](sfy-data/) - the server scraping or receiving data from deployed
     buoys.
 * [sfy-processing](sfy-processing/) - python libraries and tools for reading and post-processing received data.
