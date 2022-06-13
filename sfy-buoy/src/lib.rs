@@ -335,61 +335,70 @@ impl StorageManager {
             )) = note.read_storage_info(delay)
             {
                 let sent_id = sent_id.unwrap_or(request_start);
-                let request_end = request_end.max(last_id);
+                let request_end = request_end.min(last_id);
 
-                for id in (sent_id..request_end).take(100) {
-                    let pck = storage.get(id);
+                if sent_id < request_end {
+                    defmt::info!("Request, sending range: {} -> {}", sent_id, request_end);
+                    for id in (sent_id..request_end).take(100) {
+                        let pck = storage.get(id);
 
-                    defmt::debug!("Sending stored package: {:?}", pck);
+                        defmt::debug!("Sending stored package: {:?}", pck);
 
-                    match pck {
-                        Ok(pck) => {
-                            match self.note_queue.enqueue(pck) {
-                                Ok(_) => {
-                                    // Update range of sent packages.
-                                    note.write_storage_info(
-                                        delay,
-                                        last_id,
-                                        Some(id),
-                                        if id >= request_end { true } else { false },
-                                    )
-                                    .inspect_err(|e| {
-                                        defmt::error!("Failed to set storageinfo: {:?}", e)
-                                    })
-                                    .ok();
+                        match pck {
+                            Ok(pck) => {
+                                match self.note_queue.enqueue(pck) {
+                                    Ok(_) => {
+                                        // Update range of sent packages.
+                                        note.write_storage_info(
+                                            delay,
+                                            last_id,
+                                            Some(id),
+                                            if id >= request_end { true } else { false },
+                                        )
+                                        .inspect_err(|e| {
+                                            defmt::error!("Failed to set storageinfo: {:?}", e)
+                                        })
+                                        .ok();
+                                    }
+                                    Err(_) => {
+                                        defmt::trace!("Notecard queue is full, not adding more packages.");
+                                        break;
+                                    } // queue is full.
                                 }
-                                Err(_) => {
-                                    defmt::trace!("Notecard queue is full, not adding more packages.");
-                                    break;
-                                } // queue is full.
+                            }
+                            Err(storage::StorageErr::GenericSdMmmcErr(
+                                embedded_sdmmc::Error::FileNotFound,
+                            )) => {
+                                let new_id =
+                                    ((id / storage::COLLECTION_SIZE) + 1) * storage::COLLECTION_SIZE;
+
+                                defmt::debug!(
+                                    "File does not exist, advancing range by full collection: {} -> {}.",
+                                    id, new_id
+                                );
+
+                                note.write_storage_info(
+                                    delay,
+                                    last_id,
+                                    Some(new_id),
+                                    if new_id >= request_end { true } else { false },
+                                )
+                                .inspect_err(|e| defmt::error!("Failed to set storageinfo: {:?}", e))
+                                .ok();
+
+                                break;
+                            }
+                            Err(e) => {
+                                return Err(e);
                             }
                         }
-                        Err(storage::StorageErr::GenericSdMmmcErr(
-                            embedded_sdmmc::Error::FileNotFound,
-                        )) => {
-                            let new_id =
-                                ((id / storage::COLLECTION_SIZE) + 1) * storage::COLLECTION_SIZE;
-
-                            defmt::debug!(
-                                "File does not exist, advancing range by full collection: {} -> {}.",
-                                id, new_id
-                            );
-
-                            note.write_storage_info(
-                                delay,
-                                last_id,
-                                Some(new_id),
-                                if new_id >= request_end { true } else { false },
-                            )
-                            .inspect_err(|e| defmt::error!("Failed to set storageinfo: {:?}", e))
-                            .ok();
-
-                            break;
-                        }
-                        Err(e) => {
-                            return Err(e);
-                        }
                     }
+                } else {
+                    // Request done, clearing.
+                    defmt::info!("Request complete, deleting request.");
+                    note.write_storage_info(delay, last_id, None, true)
+                        .inspect_err(|e| defmt::error!("Failed to set storageinfo: {:?}", e))
+                        .ok();
                 }
             } else {
                 // No data-request, updating last_id
