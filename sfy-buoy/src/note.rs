@@ -238,7 +238,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         &mut self,
         delay: &mut impl DelayMs<u16>,
     ) -> Result<(Option<StorageIdInfo>, Option<RequestData>), NoteError> {
-        defmt::debug!("Read storage info..");
+        defmt::trace!("Read storage info..");
         let r = self
             .note
             .note()
@@ -263,7 +263,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         mut sent_id: Option<u32>,
         clear_request: bool,
     ) -> Result<(), NoteError> {
-        defmt::debug!(
+        defmt::trace!(
             "Updating last written ID to: {}, sent_id: {}, clear request: {}",
             current_id,
             sent_id,
@@ -299,7 +299,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                 .inspect_err(|e| defmt::error!("Failed to delete storage-info: {:?}", e))
                 .ok();
 
-            defmt::trace!("Writing new storage-info");
+            defmt::debug!("Writing new storage-info: {:?}", info);
             self.note
                 .note()
                 .update(delay, "storage.db", "storage-info", Some(info), None, false)?
