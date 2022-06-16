@@ -16,7 +16,7 @@ heapless = { version = "0.7", features = [ "serde", "ufmt-impl", "defmt-impl" ] 
 postcard = "0.7.3"
 serde = { version = "1", features = ["derive"], default-features = false }
 argh = { version = "0.1.7", optional = true }
-anyhow = "1.0.57"
+anyhow = { version = "1.0.57", optional = true }
 
 
 [features]
