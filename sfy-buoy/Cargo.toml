@@ -5,7 +5,7 @@ edition = "2021"
 default-run = "sfy"
 
 [workspace]
-members = [ "target-test" ]
+members = [ "target-test", "sfypack" ]
 
 [dependencies]
 heapless = { version = "0.7", features = [ "serde", "ufmt-impl", "defmt-impl" ] }
@@ -31,6 +31,7 @@ embedded-sdmmc = { version = "0.3.0", default-features = false, features = ["def
 git-version = "0.3.5"
 postcard = { version = "0.7.3", optional = true }
 static_assertions = "1.1.0"
+sfypack = { path = "sfypack/", default-features = false }
 
 [dependencies.blues-notecard]
 git = "https://github.com/gauteh/notecard-rs"

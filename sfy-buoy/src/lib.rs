@@ -26,7 +26,8 @@ use embedded_hal::blocking::{
     i2c::{Read, Write, WriteRead},
 };
 
-pub mod axl;
+pub use sfypack::axl;
+
 pub mod fir;
 pub mod log;
 pub mod note;
