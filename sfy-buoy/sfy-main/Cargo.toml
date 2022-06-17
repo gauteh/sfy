@@ -1,0 +1,54 @@
+[package]
+name = "sfy-buoy"
+version = "0.1.0"
+edition = "2021"
+
+
+[dependencies]
+heapless = { version = "0.7", features = [ "serde", "ufmt-impl", "defmt-impl" ] }
+serde = { version = "1", features = ["derive"], default-features = false }
+serde-json-core = "0.4.0"
+cortex-m = "*"
+cortex-m-rt = "0.7.0"
+ufmt = "0.1.0"
+nb = "1.0.0"
+embedded-hal = "0.2.6"
+defmt = "0.3"
+defmt-rtt = "0.3"
+# panic-probe = { version = "0.3.0", features = ["print-defmt"] }
+ism330dhcx = "0.4.0"
+cmsis_dsp = { version = "0.1.0", features = [ "micromath" ] }
+micromath = { version = "2", features = [ "quaternion", "vector" ] }
+bytemuck = "1.7.2"
+base64 = { version = "0.13.0", default-features = false }
+shared-bus = { version = "0.2.2", features = [ "cortex-m" ] }
+half = { version = "1.8.2", features = [ "use-intrinsics", "bytemuck", "serde" ] }
+chrono = { version = "0.4.19", default-features = false }
+embedded-sdmmc = { version = "0.3.0", default-features = false, features = ["defmt-log"], optional = true }
+git-version = "0.3.5"
+postcard = { version = "0.7.3", optional = true }
+static_assertions = "1.1.0"
+sfy = { path = "../sfy", default-features = false }
+
+[dependencies.blues-notecard]
+git = "https://github.com/gauteh/notecard-rs"
+
+[dependencies.ambiq-hal]
+version = "0.2"
+features = ["ambiq-sdk", "sparkfun-redboard-nano", "rt"]
+git = "https://github.com/gauteh/ambiq-rs"
+
+[dependencies.ahrs-fusion]
+git = "https://github.com/gauteh/ahrs-fusion"
+
+[dev-dependencies]
+
+
+[features]
+default = [ "deploy", "storage" ]
+continuous = []
+20Hz = []
+storage = [ "postcard", "embedded-sdmmc" ]
+host-tests = []
+deploy = [ ]
+

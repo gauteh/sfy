@@ -1,7 +1,15 @@
 # sfy-buoy (small friendly buoy)
 
-## Building for deployment
+Folders:
 
+* sfy - library of firmware, portable to different platforms + tool for
+    unpacking SD-card files.
+* sfy-main - main function targeted for the Artemis.
+* target-test - unit tests for Artemis.
+
+usually flashing of the device etc. will be run from this directory.
+
+## Building for deployment
 ```sh
 $ BUOYPR=xxxx:your-notehub-account BUOYSN=WAVEBUGXX DEFMT_LOG=debug cargo build --release --features deploy
 ```
