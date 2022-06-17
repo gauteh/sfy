@@ -58,8 +58,8 @@ embedded-sdmmc = { git = "https://github.com/gauteh/embedded-sdmmc-rs", branch =
 # [patch.'https://github.com/gauteh/notecard-rs']
 # notecard = { path = "../../../../dev/embedded/notecard-rs" }
 
-# [patch.'https://github.com/gauteh/ambiq-rs']
-# ambiq-hal = { path = "../../../../dev/ambiq-rs/ambiq-hal" }
+[patch.'https://github.com/gauteh/ambiq-rs']
+ambiq-hal = { path = "../../../../dev/ambiq-rs/ambiq-hal" }
 
 [features]
 default = [ "deploy", "storage" ]

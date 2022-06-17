@@ -1,4 +1,4 @@
-use crate::axl::{AxlPacket, AXL_OUTN};
+use crate::axl::{AxlPacket, AxlPacketMeta, AXL_OUTN};
 use core::ops::{Deref, DerefMut};
 use embedded_hal::blocking::delay::DelayMs;
 use embedded_hal::blocking::i2c::{Read, Write};
@@ -384,19 +384,6 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
 
         Ok(())
     }
-}
-
-#[derive(serde::Serialize, Default)]
-pub struct AxlPacketMeta {
-    pub timestamp: i64,
-    pub offset: u32,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub storage_id: Option<u32>,
-    pub length: u32,
-    pub freq: f32,
-    pub position_time: u32,
-    pub lon: f64,
-    pub lat: f64,
 }
 
 impl<I2C: Read + Write> Deref for Notecarrier<I2C> {

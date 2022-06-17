@@ -69,6 +69,19 @@ impl AxlPacket {
     }
 }
 
+#[derive(serde::Serialize, Default)]
+pub struct AxlPacketMeta {
+    pub timestamp: i64,
+    pub offset: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub storage_id: Option<u32>,
+    pub length: u32,
+    pub freq: f32,
+    pub position_time: u32,
+    pub lon: f64,
+    pub lat: f64,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
