@@ -192,6 +192,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
+name = "blues-notecard"
+version = "0.1.0"
+source = "git+https://github.com/gauteh/notecard-rs#2aa6975d0d689ba105869f8dadd8ee57ef6babc5"
+dependencies = [
+ "defmt",
+ "embedded-hal",
+ "heapless",
+ "serde",
+ "serde-json-core",
+]
+
+[[package]]
 name = "bumpalo"
 version = "3.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -770,18 +782,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "notecard"
-version = "0.1.0"
-source = "git+https://github.com/gauteh/notecard-rs#5452cc4a693ed75c6a8571c96344d68e2aa249d9"
-dependencies = [
- "defmt",
- "embedded-hal",
- "heapless",
- "serde",
- "serde-json-core",
-]
-
-[[package]]
 name = "num"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1113,10 +1113,11 @@ dependencies = [
  "ahrs-fusion",
  "ambiq-hal",
  "base64",
+ "blues-notecard",
  "bytemuck",
  "chrono",
  "cmsis_dsp",
- "cortex-m 0.7.4",
+ "cortex-m 0.6.7",
  "cortex-m-rt",
  "defmt",
  "defmt-rtt",
@@ -1128,7 +1129,6 @@ dependencies = [
  "ism330dhcx",
  "micromath",
  "nb 1.0.0",
- "notecard",
  "postcard",
  "serde",
  "serde-json-core",

@@ -6,7 +6,7 @@ use embedded_hal::blocking::{
 };
 use hal::{delay::FlashDelay, i2c};
 use heapless::{mpmc::Q16, String};
-use notecard::NoteError;
+use blues_notecard::NoteError;
 
 use crate::note::Notecarrier;
 

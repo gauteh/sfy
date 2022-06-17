@@ -14,6 +14,7 @@ use defmt::{debug, error, info, trace, warn};
 extern crate cmsis_dsp;
 
 use ambiq_hal::{delay::FlashDelay, rtc::Rtc};
+use blues_notecard as notecard;
 use chrono::NaiveDateTime;
 use core::cell::RefCell;
 use core::fmt::Debug;

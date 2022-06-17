@@ -2,7 +2,7 @@ use crate::axl::{AxlPacket, AXL_OUTN};
 use core::ops::{Deref, DerefMut};
 use embedded_hal::blocking::delay::DelayMs;
 use embedded_hal::blocking::i2c::{Read, Write};
-use notecard::{NoteError, Notecard};
+use blues_notecard::{self as notecard, NoteError, Notecard};
 
 use crate::NOTEQ_SZ;
 
