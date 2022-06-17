@@ -269,6 +269,13 @@ class Axl(AxlTimeseries):
         return self.freq
 
     @property
+    def best_position_time(self):
+        if self.position_time:
+            return datetime.fromtimestamp(self.position_time / 1000., pytz.utc)
+        else:
+            return self.start
+
+    @property
     def start(self):
         """
         UTC Datetime of start of samples. Taking `offset` into account.
@@ -367,7 +374,7 @@ class Axl(AxlTimeseries):
         data['offset'] = data['body'].get('offset', 0)
         data['timestamp'] = data['body']['timestamp']
         data['storage_id'] = data['body'].get('storage_id', None)
-        data['position_time'] = data['body'].get('position_time', 0)
+        data['position_time'] = data['body'].get('position_time', data['body']['timestamp'])
         data['lon'] = data['body'].get('lon')
         data['lat'] = data['body'].get('lat')
         data['freq'] = data['body'].get('freq', 208.)
