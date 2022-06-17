@@ -309,20 +309,6 @@ fn reset<I: Read + Write>(note: &mut Notecarrier<I>, delay: &mut impl DelayMs<u1
     info!("Trying to send any remaining log messages..");
     sfy::log::drain_log(note, delay).ok();
 
-    warn!("Trying to restart notecard..");
-    note.card()
-        .restart(delay)
-        .and_then(|f| f.wait(delay))
-        .and_then(|r| {
-            info!("Notecard succesfully restarted.");
-            Ok(r)
-        })
-        .or_else(|e| {
-            error!("Could not restart notecard.");
-            Err(e)
-        })
-        .ok();
-
     warn!("Resetting in 3 seconds..");
     delay.delay_ms(3_000u16);
 
