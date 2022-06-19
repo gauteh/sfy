@@ -1,9 +1,12 @@
+cargo-features = [ "per-package-target" ]
+
 [package]
 name = "sfy-artemis"
 version = "0.1.0"
 edition = "2021"
 authors = [ "Gaute Hope <gauteh@met.no>" ]
 resolver = "2"
+forced-target = "thumbv7em-none-eabihf"
 
 
 [dependencies]

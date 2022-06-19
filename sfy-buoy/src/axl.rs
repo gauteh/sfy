@@ -12,7 +12,7 @@ pub const AXL_OUTN: usize = { AXL_SZ * 2 } * 4 / 3 + 4;
 /// postcard messages are not fixed size.
 pub const AXL_POSTCARD_SZ: usize = 1024 * 8;
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, PartialEq)]
+#[derive(serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct AxlPacket {
     /// Timstamp of sample at `offset`.
     pub timestamp: i64,
@@ -34,6 +34,21 @@ pub struct AxlPacket {
 
     /// IMU data. This is moved to the payload when transmitting.
     pub data: Vec<f16, { AXL_SZ }>,
+}
+
+impl core::fmt::Debug for AxlPacket {
+    fn fmt(&self, fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        core::write!(fmt, "AxlPacket(timestamp: {}, offset: {}, storage_id: {:?}, position_time: {}, lon: {}, lat: {}, freq: {}, data (length): {}))",
+            self.timestamp,
+            self.offset,
+            self.storage_id,
+            self.position_time,
+            self.lon,
+            self.lat,
+            self.freq,
+            self.data.len()
+            )
+    }
 }
 
 impl Format for AxlPacket {

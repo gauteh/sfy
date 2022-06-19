@@ -21,6 +21,8 @@ heapless = { version = "0.7", features = [ "serde", "ufmt-impl", "defmt-impl" ] 
 embedded-sdmmc = { version = "0.3.0", default-features = false, features = ["defmt-log"], optional = true }
 postcard = { version = "0.7.3", optional = true }
 serde = { version = "1", features = ["derive"], default-features = false }
+serde-json-core = { version = "0.4", optional = true }
+serde_json = { version = "1", optional = true }
 embedded-hal = "0.2.6"
 cortex-m = "*"
 ism330dhcx = "0.4.0"
@@ -41,7 +43,7 @@ git = "https://github.com/gauteh/notecard-rs"
 continuous = []
 20Hz = []
 storage = [ "postcard", "embedded-sdmmc" ]
-build-bin = [ "anyhow", "argh", "postcard" ]
+build-bin = [ "anyhow", "argh", "postcard", "serde-json-core/std", "serde_json" ]
 default = [ "storage", "build-bin" ]
 
 [patch.crates-io]
