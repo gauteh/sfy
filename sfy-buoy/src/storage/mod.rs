@@ -11,15 +11,13 @@
 //!
 //! At 52 Hz and 1024 length data-package, there is 4389 packages per day. Each collection will last about 2 days. See tests for more details.
 
+use core::ops::DerefMut;
 use core::fmt::Debug;
 use embedded_hal::{blocking::spi::Transfer, digital::v2::OutputPin};
 use embedded_sdmmc::{
     Controller, Error as GenericSdMmcError, Mode, SdMmcError, SdMmcSpi, VolumeIdx,
 };
 use heapless::{String, Vec};
-
-// use ambiq_hal::gpio::pin::{Mode as SpiMode, P35 as CS};
-// use ambiq_hal::spi::{Freq, Spi0 as Spi};
 
 use crate::axl::{AxlPacket, AXL_POSTCARD_SZ};
 
@@ -68,17 +66,17 @@ where <Spi as Transfer<u8>>::Error: Debug
 impl<Spi: Transfer<u8>, CS: OutputPin> Storage<Spi, CS>
 where <Spi as Transfer<u8>>::Error: Debug
 {
-    pub fn open(spi: Spi, cs: CS, clock: CountClock) -> Result<Storage<Spi, CS>, StorageErr> {
+    pub fn open(spi: Spi, cs: CS, clock: CountClock, reclock_cb: fn(&mut Spi) -> ()) -> Result<Storage<Spi, CS>, StorageErr> {
         defmt::info!("Opening SD card..");
 
         let mut sd = SdMmcSpi::new(spi, cs);
-        // defmt::info!("Initialize SD-card (re-clock SPI to 4MHz)..");
-        // {
-        //     let mut block = sd.acquire()?;
-        //     block.spi().set_freq(Freq::F4mHz);
-        //     let sz = block.card_size_bytes()? / 1024_u64.pow(2);
-        //     defmt::info!("SD card size: {} mb", sz);
-        // }
+        defmt::info!("Initialize SD-card (re-clock SPI to 4MHz)..");
+        {
+            let mut block = sd.acquire()?;
+            reclock_cb(block.spi().deref_mut());
+            let sz = block.card_size_bytes()? / 1024_u64.pow(2);
+            defmt::info!("SD card size: {} mb", sz);
+        }
 
         let mut storage = Storage {
             sd,

@@ -13,10 +13,10 @@ extern crate cmsis_dsp;
 
 use ambiq_hal::{self as hal, prelude::*};
 use chrono::NaiveDate;
+use core::cell::RefCell;
 use core::fmt::Write as _;
 use core::panic::PanicInfo;
 use core::sync::atomic::{AtomicI32, Ordering};
-use core::cell::RefCell;
 #[allow(unused_imports)]
 use cortex_m::{
     asm,
@@ -54,7 +54,8 @@ defmt::timestamp!("{=i32}", COUNT.load(Ordering::Relaxed));
 
 /// The STATE contains the Real-Time-Clock which needs to be shared, as well as up-to-date
 /// longitude and latitude.
-pub static STATE: Mutex<RefCell<Option<SharedState<hal::rtc::Rtc>>>> = Mutex::new(RefCell::new(None));
+pub static STATE: Mutex<RefCell<Option<SharedState<hal::rtc::Rtc>>>> =
+    Mutex::new(RefCell::new(None));
 
 #[entry]
 fn main() -> ! {
@@ -116,7 +117,9 @@ fn main() -> ! {
             spi::MODE_0,
         );
         let cs = pins.a14.into_push_pull_output();
-        Storage::open(spi, cs, sfy::storage::clock::CountClock(&COUNT))
+        Storage::open(spi, cs, sfy::storage::clock::CountClock(&COUNT), |spi| {
+            spi.set_freq(Freq::F4mHz)
+        })
     }
     .inspect_err(|e| {
         defmt::error!("Failed to setup storage: {}", e);

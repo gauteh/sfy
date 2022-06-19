@@ -174,7 +174,8 @@ impl Location {
 
                         state
                             .rtc
-                            .set_datetime(&NaiveDateTime::from_timestamp(time as i64, 0));
+                            .set_datetime(&NaiveDateTime::from_timestamp(time as i64, 0))
+                            .ok();
                     });
                 }
 
@@ -278,7 +279,8 @@ impl<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> Imu<E
 
 #[cfg(feature = "storage")]
 pub struct StorageManager<Spi: Transfer<u8>, CS: OutputPin>
-where <Spi as Transfer<u8>>::Error: Debug
+where
+    <Spi as Transfer<u8>>::Error: Debug,
 {
     storage: Option<Storage<Spi, CS>>,
     pub storage_queue: heapless::spsc::Consumer<'static, AxlPacket, STORAGEQ_SZ>,
@@ -287,7 +289,8 @@ where <Spi as Transfer<u8>>::Error: Debug
 
 #[cfg(feature = "storage")]
 impl<Spi: Transfer<u8>, CS: OutputPin> StorageManager<Spi, CS>
-where <Spi as Transfer<u8>>::Error: Debug
+where
+    <Spi as Transfer<u8>>::Error: Debug,
 {
     pub fn new(
         storage: Option<Storage<Spi, CS>>,
