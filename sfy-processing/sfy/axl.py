@@ -173,14 +173,8 @@ class AxlCollection(AxlTimeseries):
 @dataclass(frozen=True)
 class Axl(AxlTimeseries):
     received: float
-    routed: float
-
     event: str
-    session: str
-    product: str
-    req: str
     file: str
-    updates: int
 
     device: str
     sn: str
@@ -188,12 +182,7 @@ class Axl(AxlTimeseries):
     tower_when: int
     tower_lon: float
     tower_lat: float
-    tower_country: str
-    tower_location: str
     tower_timezone: str
-    tower_id: str
-
-    project: dict
 
     ## Payload and body
     length: int
@@ -219,6 +208,18 @@ class Axl(AxlTimeseries):
     best_lat: str = None
     best_lon: str = None
 
+    routed: float = None
+    session: str = None
+    product: str = None
+    req: str = None
+    updates: int = None
+
+    project: dict = None
+
+    tower_country: str = None
+    tower_location: str = None
+    tower_id: str = None
+
     when: int = None
 
     where_when: int = None
@@ -228,6 +229,7 @@ class Axl(AxlTimeseries):
     where_location: str = None
     where_country: str = None
     where_timezone: str = None
+    from_store: bool = False
 
     def __eq__(self, o: 'Axl'):
         eq = self.__dict__.keys() == o.__dict__.keys()

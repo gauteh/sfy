@@ -12,6 +12,7 @@ from sfy.hub import Hub, StorageInfo
 from sfy.cli.track import track
 from sfy.cli.axl import axl
 from sfy.cli.ctrl import ctrl
+from sfy.cli.store import store
 
 
 @click.group()
@@ -23,6 +24,7 @@ def sfy(log):
 sfy.add_command(track)
 sfy.add_command(axl)
 sfy.add_command(ctrl)
+sfy.add_command(store)
 
 
 @sfy.command(help='List available buoys or data')
