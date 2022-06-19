@@ -1,7 +1,9 @@
 [package]
-name = "sfy-buoy"
+name = "sfy-artemis"
 version = "0.1.0"
 edition = "2021"
+authors = [ "Gaute Hope <gauteh@met.no>" ]
+resolver = "2"
 
 
 [dependencies]
@@ -18,28 +20,17 @@ defmt-rtt = "0.3"
 # panic-probe = { version = "0.3.0", features = ["print-defmt"] }
 ism330dhcx = "0.4.0"
 cmsis_dsp = { version = "0.1.0", features = [ "micromath" ] }
-micromath = { version = "2", features = [ "quaternion", "vector" ] }
 bytemuck = "1.7.2"
 base64 = { version = "0.13.0", default-features = false }
-shared-bus = { version = "0.2.2", features = [ "cortex-m" ] }
 half = { version = "1.8.2", features = [ "use-intrinsics", "bytemuck", "serde" ] }
 chrono = { version = "0.4.19", default-features = false }
-embedded-sdmmc = { version = "0.3.0", default-features = false, features = ["defmt-log"], optional = true }
 git-version = "0.3.5"
-postcard = { version = "0.7.3", optional = true }
-static_assertions = "1.1.0"
-sfy = { path = "../sfy", default-features = false }
-
-[dependencies.blues-notecard]
-git = "https://github.com/gauteh/notecard-rs"
+sfy = { path = "../", default-features = false }
 
 [dependencies.ambiq-hal]
 version = "0.2"
 features = ["ambiq-sdk", "sparkfun-redboard-nano", "rt"]
 git = "https://github.com/gauteh/ambiq-rs"
-
-[dependencies.ahrs-fusion]
-git = "https://github.com/gauteh/ahrs-fusion"
 
 [dev-dependencies]
 
@@ -48,7 +39,7 @@ git = "https://github.com/gauteh/ahrs-fusion"
 default = [ "deploy", "storage" ]
 continuous = []
 20Hz = []
-storage = [ "postcard", "embedded-sdmmc" ]
+storage = [ "sfy/storage" ]
 host-tests = []
-deploy = [ ]
+deploy = []
 

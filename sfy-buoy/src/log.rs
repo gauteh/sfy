@@ -1,22 +1,14 @@
-use ambiq_hal as hal;
-use cortex_m::interrupt::free;
+use blues_notecard::NoteError;
 use embedded_hal::blocking::{
     delay::DelayMs,
     i2c::{Read, Write},
 };
-use hal::{delay::FlashDelay, i2c};
 use heapless::{mpmc::Q16, String};
-use blues_notecard::NoteError;
 
 use crate::note::Notecarrier;
 
 /// Log message queue for messages to be sent back over notecard.
 static LOGQ: Q16<String<256>> = Q16::new();
-
-/// A reference to the Notecarrier once it is initialized. The idea is that
-/// it can be used from reset routines to transfer log messages. In that case the main thread will
-/// not be running anyway.
-pub static mut NOTE: Option<*mut Notecarrier<i2c::Iom4>> = None;
 
 pub fn log(msg: &str) {
     defmt::debug!("logq: {}", msg);
@@ -33,24 +25,24 @@ pub fn drain_log<I: Read + Write>(
 }
 
 /// Tries to send the remaining queue to notecard in case of panic or HardFault.
-pub unsafe fn panic_drain_log() {
+pub unsafe fn panic_drain_log<IOM: Read + Write>(
+    note: Option<*mut Notecarrier<IOM>>,
+    delay: &mut impl DelayMs<u16>,
+) {
     defmt::warn!("entering panic_drain_log.");
-    free(|_| {
-        if let Some(note) = NOTE {
-            defmt::info!("NOTE is set, consuming response and sending log..");
-            let note: &mut Notecarrier<_> = &mut *note;
-            let mut delay = FlashDelay::new();
+    if let Some(note) = note {
+        defmt::info!("NOTE is set, consuming response and sending log..");
 
-            note.reset(&mut delay).ok();
-            delay.delay_ms(50u16);
+        let note: &mut Notecarrier<_> = &mut *note;
+        note.reset(delay).ok();
+        delay.delay_ms(50u16);
 
-            drain_log(note, &mut delay)
-                .inspect_err(|e| defmt::error!("failed to drain log to notecard: {:?}", e))
-                .ok();
+        drain_log(note, delay)
+            .inspect_err(|e| defmt::error!("failed to drain log to notecard: {:?}", e))
+            .ok();
 
-            delay.delay_ms(4000u16);
-        } else {
-            defmt::error!("NOTE is not set.");
-        }
-    })
+        delay.delay_ms(4000u16);
+    } else {
+        defmt::error!("NOTE is not set.");
+    }
 }

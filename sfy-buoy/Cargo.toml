@@ -1,5 +1,40 @@
+[package]
+name = "sfy"
+edition = "2021"
+version = "0.1.0"
+authors = [ "Gaute Hope <gauteh@met.no>" ]
+
 [workspace]
-members = [ "target-test", "sfy", "sfy-main" ]
+members = [ "target-test", "sfy-artemis" ]
+default-members = [ "sfy-artemis" ]
+
+[dependencies]
+base64 = { version = "0.13.0", default-features = false }
+defmt = "0.3.2"
+bytemuck = "1.7.2"
+half = { version = "1.8.2", features = [ "use-intrinsics", "bytemuck", "serde" ] }
+heapless = { version = "0.7", features = [ "serde", "ufmt-impl", "defmt-impl" ] }
+embedded-sdmmc = { version = "0.3.0", default-features = false, features = ["defmt-log"], optional = true }
+postcard = { version = "0.7.3", optional = true }
+serde = { version = "1", features = ["derive"], default-features = false }
+embedded-hal = "0.2.6"
+cortex-m = "*"
+ism330dhcx = "0.4.0"
+static_assertions = "1.1.0"
+chrono = { version = "0.4.19", default-features = false }
+micromath = { version = "2", features = [ "quaternion", "vector" ] }
+rtcc = "0.3.0"
+
+[dependencies.ahrs-fusion]
+git = "https://github.com/gauteh/ahrs-fusion"
+
+[dependencies.blues-notecard]
+git = "https://github.com/gauteh/notecard-rs"
+
+[features]
+continuous = []
+20Hz = []
+storage = [ "postcard", "embedded-sdmmc" ]
 
 [patch.crates-io]
 # ism330dhcx = { git = "https://github.com/gauteh/ism330dhcx", branch = "fifo" }

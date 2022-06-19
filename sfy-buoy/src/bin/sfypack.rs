@@ -1,9 +1,9 @@
 use anyhow::ensure;
 use argh::FromArgs;
-use std::path::{Path, PathBuf};
 use std::ops::Deref;
+use std::path::{Path, PathBuf};
 
-use sfypack::axl;
+use sfy::axl;
 
 #[derive(FromArgs)]
 /// Load and print Axl package from binary collection.
@@ -35,11 +35,15 @@ impl Collection {
 
         let n = b.len() / axl::AXL_POSTCARD_SZ;
 
-        eprintln!("Parsing {} bytes of packages..", b.len());
+        eprintln!(
+            "Parsing {} bytes of packages into {} packages..",
+            b.len(),
+            n
+        );
         let pcks = b
             .chunks_exact_mut(axl::AXL_POSTCARD_SZ)
             .map(|p| {
-                postcard::from_bytes_cobs(p).map_err(|e| anyhow::anyhow!("failed to parse package"))
+                postcard::from_bytes_cobs(p).map_err(|e| anyhow::anyhow!("failed to parse package: {:?}", e))
             })
             .collect::<anyhow::Result<Vec<_>>>()?;
 

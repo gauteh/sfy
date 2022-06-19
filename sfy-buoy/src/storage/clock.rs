@@ -1,8 +1,6 @@
 use chrono::{Datelike, NaiveDateTime, Timelike};
-use core::sync::atomic::Ordering;
+use core::sync::atomic::{AtomicI32, Ordering};
 use embedded_sdmmc::{TimeSource, Timestamp};
-
-use crate::COUNT;
 
 pub struct NullClock;
 
@@ -21,11 +19,11 @@ impl TimeSource for NullClock {
 
 /// Accesses `core::COUNT` to get globally updated timestamp from RTC interrupt, which is set by
 /// the GPS.
-pub struct CountClock;
+pub struct CountClock(pub &'static AtomicI32);
 
-impl TimeSource for CountClock {
+impl TimeSource for &CountClock {
     fn get_timestamp(&self) -> Timestamp {
-        let dt = NaiveDateTime::from_timestamp(COUNT.load(Ordering::Relaxed) as i64, 0);
+        let dt = NaiveDateTime::from_timestamp(self.0.load(Ordering::Relaxed) as i64, 0);
         Timestamp {
             year_since_1970: (dt.year() - 1970) as u8,
             zero_indexed_month: dt.month0() as u8,

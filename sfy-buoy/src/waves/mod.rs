@@ -168,18 +168,14 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
     }
 
     /// Attempt to reset and re-boot IMU.
-    pub fn reset(&mut self) -> Result<(), E> {
-        use ambiq_hal::delay::FlashDelay;
-
-        let mut delay = FlashDelay::new();
-
+    pub fn reset(&mut self, delay: &mut impl DelayMs<u16>) -> Result<(), E> {
         defmt::warn!("Attempting to reset IMU and filters.");
         self.disable_fifo()?;
-        delay.delay_ms(1000u32);
+        delay.delay_ms(1000u16);
 
         // Reboot IMU
         self.imu.ctrl3c.sw_reset(&mut self.i2c)?;
-        delay.delay_ms(1000u32);
+        delay.delay_ms(1000u16);
 
         self.imu = Ism330Dhcx::new_with_address(&mut self.i2c, 0x6a)?;
 

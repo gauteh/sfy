@@ -11,17 +11,19 @@
 //!
 //! At 52 Hz and 1024 length data-package, there is 4389 packages per day. Each collection will last about 2 days. See tests for more details.
 
+use core::fmt::Debug;
+use embedded_hal::{blocking::spi::Transfer, digital::v2::OutputPin};
 use embedded_sdmmc::{
     Controller, Error as GenericSdMmcError, Mode, SdMmcError, SdMmcSpi, VolumeIdx,
 };
 use heapless::{String, Vec};
 
-use ambiq_hal::gpio::pin::{Mode as SpiMode, P35 as CS};
-use ambiq_hal::spi::{Freq, Spi0 as Spi};
+// use ambiq_hal::gpio::pin::{Mode as SpiMode, P35 as CS};
+// use ambiq_hal::spi::{Freq, Spi0 as Spi};
 
 use crate::axl::{AxlPacket, AXL_POSTCARD_SZ};
 
-mod clock;
+pub mod clock;
 mod handles;
 
 use clock::CountClock;
@@ -54,28 +56,34 @@ impl From<embedded_sdmmc::Error<SdMmcError>> for StorageErr {
     }
 }
 
-pub struct Storage {
-    sd: SdMmcSpi<Spi, CS<{ SpiMode::Output }>>,
+pub struct Storage<Spi: Transfer<u8>, CS: OutputPin>
+where <Spi as Transfer<u8>>::Error: Debug
+{
+    sd: SdMmcSpi<Spi, CS>,
     /// Next free ID.
     current_id: Option<u32>,
+    clock: CountClock,
 }
 
-impl Storage {
-    pub fn open(spi: Spi, cs: CS<{ SpiMode::Output }>) -> Result<Storage, StorageErr> {
+impl<Spi: Transfer<u8>, CS: OutputPin> Storage<Spi, CS>
+where <Spi as Transfer<u8>>::Error: Debug
+{
+    pub fn open(spi: Spi, cs: CS, clock: CountClock) -> Result<Storage<Spi, CS>, StorageErr> {
         defmt::info!("Opening SD card..");
 
         let mut sd = SdMmcSpi::new(spi, cs);
-        defmt::info!("Initialize SD-card (re-clock SPI to 4MHz)..");
-        {
-            let mut block = sd.acquire()?;
-            block.spi().set_freq(Freq::F4mHz);
-            let sz = block.card_size_bytes()? / 1024_u64.pow(2);
-            defmt::info!("SD card size: {} mb", sz);
-        }
+        // defmt::info!("Initialize SD-card (re-clock SPI to 4MHz)..");
+        // {
+        //     let mut block = sd.acquire()?;
+        //     block.spi().set_freq(Freq::F4mHz);
+        //     let sz = block.card_size_bytes()? / 1024_u64.pow(2);
+        //     defmt::info!("SD card size: {} mb", sz);
+        // }
 
         let mut storage = Storage {
             sd,
             current_id: None,
+            clock,
         };
 
         let c = storage.find_first_free_collection()?;
@@ -90,7 +98,7 @@ impl Storage {
     /// collection.
     pub fn find_first_free_collection(&mut self) -> Result<u32, StorageErr> {
         let block = self.sd.acquire()?;
-        let mut c = Controller::new(block, CountClock);
+        let mut c = Controller::new(block, &self.clock);
         let mut v = c.get_volume(VolumeIdx(0))?;
 
         let mut root = DirHandle::open_root(&mut c, &mut v)?;
@@ -136,7 +144,7 @@ impl Storage {
 
         {
             let block = self.sd.acquire()?;
-            let mut c = Controller::new(block, CountClock);
+            let mut c = Controller::new(block, &self.clock);
             let mut v = c.get_volume(VolumeIdx(0))?;
             let mut root = DirHandle::open_root(&mut c, &mut v)?;
             let mut f = root.open_file(&collection, Mode::ReadOnly)?;
@@ -186,7 +194,7 @@ impl Storage {
         );
         {
             let block = self.sd.acquire()?;
-            let mut c = Controller::new(block, CountClock);
+            let mut c = Controller::new(block, &self.clock);
             let mut v = c.get_volume(VolumeIdx(0))?;
             let mut root = DirHandle::open_root(&mut c, &mut v)?;
             let mut f = root.open_file(&collection, Mode::ReadWriteCreateOrAppend)?;
@@ -206,7 +214,7 @@ impl Storage {
         let f = collection_fname(collection);
 
         let block = self.sd.acquire()?;
-        let mut c = Controller::new(block, CountClock);
+        let mut c = Controller::new(block, &self.clock);
         let mut v = c.get_volume(VolumeIdx(0))?;
         let mut root = DirHandle::open_root(&mut c, &mut v)?;
         root.delete_file(&f)?;

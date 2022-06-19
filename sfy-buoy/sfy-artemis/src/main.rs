@@ -1,6 +1,6 @@
 #![feature(result_option_inspect)]
-#![cfg_attr(not(feature = "host-tests"), no_std)]
-#![cfg_attr(not(feature = "host-tests"), no_main)]
+#![no_std]
+#![no_main]
 
 // #[cfg(all(not(test), not(feature = "deploy")))]
 // use panic_probe as _;
@@ -8,11 +8,15 @@
 #[allow(unused_imports)]
 use defmt::{debug, error, info, println, trace, warn};
 
+// we use this for defs of sinf etc.
+extern crate cmsis_dsp;
+
 use ambiq_hal::{self as hal, prelude::*};
 use chrono::NaiveDate;
 use core::fmt::Write as _;
 use core::panic::PanicInfo;
-use core::sync::atomic::Ordering;
+use core::sync::atomic::{AtomicI32, Ordering};
+use core::cell::RefCell;
 #[allow(unused_imports)]
 use cortex_m::{
     asm,
@@ -36,14 +40,23 @@ use sfy::note::Notecarrier;
 use sfy::waves::Waves;
 #[cfg(feature = "storage")]
 use sfy::{storage::Storage, STORAGEQ};
-use sfy::{Imu, Location, SharedState, State, NOTEQ, STATE};
+use sfy::{Imu, Location, SharedState, State, NOTEQ};
+
+mod log;
 
 /// This static is used to transfer ownership of the IMU subsystem to the interrupt handler.
 type I = hal::i2c::Iom3;
 type E = <I as embedded_hal::blocking::i2c::Write>::Error;
 static mut IMU: Option<sfy::Imu<E, I>> = None;
 
-#[cfg_attr(not(test), entry)]
+pub static COUNT: AtomicI32 = AtomicI32::new(0);
+defmt::timestamp!("{=i32}", COUNT.load(Ordering::Relaxed));
+
+/// The STATE contains the Real-Time-Clock which needs to be shared, as well as up-to-date
+/// longitude and latitude.
+pub static STATE: Mutex<RefCell<Option<SharedState<hal::rtc::Rtc>>>> = Mutex::new(RefCell::new(None));
+
+#[entry]
 fn main() -> ! {
     println!(
         "hello from sfy (v{}) (sn: {})!",
@@ -103,7 +116,7 @@ fn main() -> ! {
             spi::MODE_0,
         );
         let cs = pins.a14.into_push_pull_output();
-        Storage::open(spi, cs)
+        Storage::open(spi, cs, sfy::storage::clock::CountClock(&COUNT))
     }
     .inspect_err(|e| {
         defmt::error!("Failed to setup storage: {}", e);
@@ -153,7 +166,7 @@ fn main() -> ! {
     //
     // TODO: Should maybe `pin_mut!` NOTE to prevent it being moved on the stack.
     free(|cs| unsafe {
-        sfy::log::NOTE = Some(&mut note as *mut _);
+        log::NOTE = Some(&mut note as *mut _);
 
         STATE.borrow(cs).replace(Some(SharedState {
             rtc,
@@ -170,7 +183,7 @@ fn main() -> ! {
         .ok();
 
     let (now, position_time, lat, lon) = STATE.get();
-    sfy::COUNT.store(
+    COUNT.store(
         (now.timestamp_millis() / 1000).try_into().unwrap_or(0),
         Ordering::Relaxed,
     );
@@ -346,7 +359,7 @@ fn RTC() {
             (now, position_time, lon, lat)
         });
 
-        sfy::COUNT.store((now / 1000).try_into().unwrap_or(0), Ordering::Relaxed);
+        COUNT.store((now / 1000).try_into().unwrap_or(0), Ordering::Relaxed);
 
         // XXX: This is the most time-critical part of the program.
         //
@@ -359,7 +372,9 @@ fn RTC() {
             Err(e) => {
                 error!("IMU ISR failed: {:?}, resetting IMU..", e);
 
-                let r = imu.reset(now, position_time, lon, lat);
+                let mut delay = hal::delay::FlashDelay;
+
+                let r = imu.reset(now, position_time, lon, lat, &mut delay);
                 warn!("IMU reset: {:?}", r);
 
                 let mut msg = heapless::String::<256>::new();
@@ -384,20 +399,20 @@ fn RTC() {
     }
 }
 
-#[cfg(not(feature = "host-tests"))]
 #[allow(non_snake_case)]
 #[exception]
 unsafe fn HardFault(ef: &ExceptionFrame) -> ! {
     error!("hard fault exception: {:#?}", defmt::Debug2Format(ef));
 
+    let mut delay = hal::delay::FlashDelay;
+
     log("hard fault exception.");
-    sfy::log::panic_drain_log();
+    sfy::log::panic_drain_log(log::NOTE, &mut delay);
 
     warn!("resetting system..");
     cortex_m::peripheral::SCB::sys_reset()
 }
 
-#[cfg(not(feature = "host-tests"))]
 #[inline(never)]
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
@@ -409,7 +424,9 @@ fn panic(info: &PanicInfo) -> ! {
         .ok();
     log(&msg);
 
-    unsafe { sfy::log::panic_drain_log() };
+    let mut delay = hal::delay::FlashDelay;
+
+    unsafe { sfy::log::panic_drain_log(log::NOTE, &mut delay) };
 
     defmt::error!("panic logged, resetting..");
     cortex_m::peripheral::SCB::sys_reset();

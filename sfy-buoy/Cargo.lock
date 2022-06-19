@@ -28,21 +28,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "aligned"
-version = "0.3.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3a785a543aea40f5e4e2e93bb2655d31bc21bb391fff65697150973e383f16bb"
-dependencies = [
- "as-slice",
-]
-
-[[package]]
 name = "ambiq-apollo3-pac2"
 version = "0.2.0"
 source = "git+https://github.com/gauteh/ambiq-rs#e490162b0722ac6ba90e23ec25260b784ff7af60"
 dependencies = [
  "bare-metal 0.2.5",
- "cortex-m 0.7.5",
+ "cortex-m",
  "cortex-m-rt",
  "vcell",
 ]
@@ -55,7 +46,7 @@ dependencies = [
  "ambiq-apollo3-pac2",
  "ambiq-hal-sys",
  "chrono",
- "cortex-m 0.7.5",
+ "cortex-m",
  "cortex-m-rt",
  "defmt",
  "embedded-hal",
@@ -84,53 +75,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d52a9bb7ec0cf484c551830a7ce27bd20d67eac647e1befb56b0be4ee39a55d2"
 dependencies = [
  "winapi",
-]
-
-[[package]]
-name = "anyhow"
-version = "1.0.57"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08f9b8508dccb7687a1d6c4ce66b2b0ecef467c94667de27d8d7fe1f8d2a9cdc"
-
-[[package]]
-name = "argh"
-version = "0.1.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dbb41d85d92dfab96cb95ab023c265c5e4261bb956c0fb49ca06d90c570f1958"
-dependencies = [
- "argh_derive",
- "argh_shared",
-]
-
-[[package]]
-name = "argh_derive"
-version = "0.1.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "be69f70ef5497dd6ab331a50bd95c6ac6b8f7f17a7967838332743fbd58dc3b5"
-dependencies = [
- "argh_shared",
- "heck",
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "argh_shared"
-version = "0.1.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e6f8c380fa28aa1b36107cd97f0196474bb7241bb95a453c5c01a15ac74b2eac"
-
-[[package]]
-name = "as-slice"
-version = "0.1.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "45403b49e3954a4b8428a0ac21a4b7afadccf92bfd96273f1a58cd4812496ae0"
-dependencies = [
- "generic-array 0.12.4",
- "generic-array 0.13.3",
- "generic-array 0.14.5",
- "stable_deref_trait",
 ]
 
 [[package]]
@@ -403,19 +347,6 @@ dependencies = [
 
 [[package]]
 name = "cortex-m"
-version = "0.6.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9075300b07c6a56263b9b582c214d0ff037b00d45ec9fde1cc711490c56f1bb9"
-dependencies = [
- "aligned",
- "bare-metal 0.2.5",
- "bitfield",
- "cortex-m 0.7.5",
- "volatile-register",
-]
-
-[[package]]
-name = "cortex-m"
 version = "0.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cd20d4ac4aa86f4f75f239d59e542ef67de87cce2c282818dc6e84155d3ea126"
@@ -463,7 +394,7 @@ checksum = "95da181745b56d4bd339530ec393508910c909c784e8962d15d722bacf0bcbcd"
 dependencies = [
  "bare-metal 1.0.0",
  "cfg-if",
- "cortex-m 0.7.5",
+ "cortex-m",
  "riscv",
 ]
 
@@ -518,7 +449,7 @@ version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4df24f1ca104a0c1bce2047d8a21aa9fa29695e5d662118eb48daedb97edca88"
 dependencies = [
- "cortex-m 0.7.5",
+ "cortex-m",
  "cortex-m-rt",
  "defmt",
  "defmt-test-macros",
@@ -622,34 +553,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2022715d62ab30faffd124d40b76f4134a550a87792276512b18d63272333394"
 
 [[package]]
-name = "generic-array"
-version = "0.12.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ffdf9f34f1447443d37393cc6c2b8313aebddcd96906caf34e54c68d8e57d7bd"
-dependencies = [
- "typenum",
-]
-
-[[package]]
-name = "generic-array"
-version = "0.13.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f797e67af32588215eaaab8327027ee8e71b9dd0b2b26996aedf20c030fce309"
-dependencies = [
- "typenum",
-]
-
-[[package]]
-name = "generic-array"
-version = "0.14.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fd48d33ec7f05fbfa152300fdad764757cbded343c1aa1cff2fbaf4134851803"
-dependencies = [
- "typenum",
- "version_check",
-]
-
-[[package]]
 name = "git-version"
 version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -716,15 +619,6 @@ dependencies = [
  "spin 0.9.3",
  "stable_deref_trait",
  "ufmt-write",
-]
-
-[[package]]
-name = "heck"
-version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d621efb26863f0e9924c6ac577e8275e5e6b77455db64ffa6c65c904e9e132c"
-dependencies = [
- "unicode-segmentation",
 ]
 
 [[package]]
@@ -968,7 +862,7 @@ version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3ab1f00eac22bd18f8e5cae9555f2820b3a0c166b5b556ee3e203746ea6dcf3a"
 dependencies = [
- "cortex-m 0.7.5",
+ "cortex-m",
  "defmt",
 ]
 
@@ -1231,59 +1125,48 @@ dependencies = [
 name = "sfy"
 version = "0.1.0"
 dependencies = [
- "anyhow",
- "argh",
- "base64",
- "bytemuck",
- "defmt",
- "half",
- "heapless",
- "postcard",
- "serde",
-]
-
-[[package]]
-name = "sfy-buoy"
-version = "0.1.0"
-dependencies = [
  "ahrs-fusion",
- "ambiq-hal",
  "base64",
  "blues-notecard",
  "bytemuck",
  "chrono",
- "cmsis_dsp",
- "cortex-m 0.7.5",
- "cortex-m-rt",
+ "cortex-m",
  "defmt",
- "defmt-rtt",
  "embedded-hal",
  "embedded-sdmmc",
- "git-version",
  "half",
  "heapless",
  "ism330dhcx",
  "micromath",
- "nb 1.0.0",
  "postcard",
+ "rtcc",
  "serde",
- "serde-json-core",
- "sfy",
- "shared-bus",
  "static_assertions",
- "ufmt",
 ]
 
 [[package]]
-name = "shared-bus"
-version = "0.2.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c5bd050817922c3d71af0bf2df2e7f9a182065932dfc78e35500bc550f938005"
+name = "sfy-artemis"
+version = "0.1.0"
 dependencies = [
- "atomic-polyfill",
- "cortex-m 0.6.7",
+ "ambiq-hal",
+ "base64",
+ "bytemuck",
+ "chrono",
+ "cmsis_dsp",
+ "cortex-m",
+ "cortex-m-rt",
+ "defmt",
+ "defmt-rtt",
  "embedded-hal",
- "nb 0.1.3",
+ "git-version",
+ "half",
+ "heapless",
+ "ism330dhcx",
+ "nb 1.0.0",
+ "serde",
+ "serde-json-core",
+ "sfy",
+ "ufmt",
 ]
 
 [[package]]
@@ -1357,7 +1240,7 @@ version = "0.1.0"
 dependencies = [
  "ambiq-hal",
  "chrono",
- "cortex-m 0.7.5",
+ "cortex-m",
  "cortex-m-rt",
  "defmt",
  "defmt-rtt",
@@ -1478,12 +1361,6 @@ checksum = "d54590932941a9e9266f0832deed84ebe1bf2e4c9e4a3554d393d18f5e854bf9"
 dependencies = [
  "tinyvec",
 ]
-
-[[package]]
-name = "unicode-segmentation"
-version = "1.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7e8820f5d777f6224dc4be3632222971ac30164d4a258d595640799554ebfd99"
 
 [[package]]
 name = "unicode-width"
