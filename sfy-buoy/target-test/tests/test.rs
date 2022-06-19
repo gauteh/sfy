@@ -1,6 +1,7 @@
 #![no_std]
 #![no_main]
 
+extern crate cmsis_dsp; // sinf, cosf, etc
 use ambiq_hal as _;
 use defmt_rtt as _;
 use panic_probe as _; // memory layout + panic handler

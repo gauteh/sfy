@@ -31,7 +31,7 @@ name = "cellular_sensor_data"
 harness = false
 
 [dependencies]
-sfy = { path = "../" }
+sfy = { path = "../", features = [ "storage" ] }
 heapless = { version = "0.7", features = [ "serde", "ufmt-impl", "defmt-impl" ] }
 serde = { version = "1", features = ["derive"], default-features = false }
 serde-json-core = "0.4.0"
@@ -46,6 +46,7 @@ half = { version = "1.8.2", features = [ "use-intrinsics", "bytemuck" ] }
 chrono = { version = "0.4.19", default-features = false }
 embedded-hal = "0.2.6"
 embedded-sdmmc = { version = "0.3.0", default-features = false, features = ["defmt-log"] }
+cmsis_dsp = { version = "0.1.0", features = [ "micromath" ] }
 
 [dependencies.ambiq-hal]
 version = "0.2"

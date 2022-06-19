@@ -1,6 +1,7 @@
 #![no_std]
 #![no_main]
 
+extern crate cmsis_dsp; // sinf, cosf, etc
 use ambiq_hal as hal;
 use defmt_rtt as _;
 use panic_probe as _; // memory layout + panic handler
@@ -69,7 +70,7 @@ mod tests {
         defmt::info!("now: {}", before);
 
         let d = NaiveDate::from_ymd(2020, 1, 1).and_hms(0, 0, 0);
-        s.rtc.set(d);
+        s.rtc.set(&d);
         let now = s.rtc.now().timestamp_millis();
         defmt::info!("after change: {}", now);
         assert_ne!(before, now);
@@ -95,7 +96,7 @@ mod tests {
             let d = NaiveDateTime::from_timestamp(time as i64, 0);
             assert_eq!(d.timestamp(), time as i64);
 
-            s.rtc.set(d);
+            s.rtc.set(&d);
             let now = s.rtc.now().timestamp_millis();
 
             defmt::info!("after change: {}", now);

@@ -1,13 +1,20 @@
 #![no_std]
 #![no_main]
 
+extern crate cmsis_dsp; // sinf, cosf, etc
 use ambiq_hal as hal;
+use core::sync::atomic::AtomicI32;
 use defmt_rtt as _;
 use panic_probe as _; // memory layout + panic handler
 
 use sfy::storage::Storage;
 
-fn clean_up_collection(s: &mut Storage) {
+pub static COUNT: AtomicI32 = AtomicI32::new(0);
+
+type Spi0 = hal::spi::Spi0;
+type CS = hal::gpio::pin::P35<{ hal::gpio::Mode::Output }>;
+
+fn clean_up_collection(s: &mut Storage<Spi0, CS>) {
     defmt::info!("cleaning up test collection");
     s.remove_collection(0).unwrap();
     s.set_id(0);
@@ -23,8 +30,8 @@ mod tests {
     use half::f16;
     use heapless::Vec;
 
+    use sfy::axl::{AxlPacket, AXL_SZ};
     use sfy::storage::Storage;
-    use sfy::axl::{AXL_SZ, AxlPacket};
 
     struct State {
         // note: Notecarrier<hal::i2c::Iom2>,
@@ -33,7 +40,7 @@ mod tests {
         #[allow(unused)]
         rtc: hal::rtc::Rtc,
 
-        storage: Storage,
+        storage: Storage<Spi0, CS>,
     }
 
     #[init]
@@ -57,17 +64,26 @@ mod tests {
         );
 
         let cs = pins.a14.into_push_pull_output();
-        let storage = Storage::open(spi, cs).unwrap();
+        let storage = Storage::open(spi, cs, sfy::storage::clock::CountClock(&COUNT), |spi| {
+            spi.set_freq(Freq::F4mHz)
+        })
+        .unwrap();
 
-        State { delay, rtc, storage }
+        State {
+            delay,
+            rtc,
+            storage,
+        }
     }
-
-
 
     #[test]
     fn initialize_storage(s: &mut State) {
         defmt::info!("current id: {:?}", s.storage.current_id());
-        assert_eq!(s.storage.current_id(), Some(0), "tests run on card with data");
+        assert_eq!(
+            s.storage.current_id(),
+            Some(0),
+            "tests run on card with data"
+        );
     }
 
     #[test]
