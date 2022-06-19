@@ -1,16 +1,16 @@
 .DEFAULT_GOAL := build
 
 build:
-	cargo build -p sfy-artemis --release
+	cd sfy-artemis && cargo build --release
 
 objcopy: build
-	cargo objcopy -p sfy-artemis --release -- -O binary target/sby-buoy.bin
+	cd sfy-artemis && cargo objcopy --release -- -O binary ../target/sby-buoy.bin
 
 flash: objcopy
 	python3 ../tools/svl/svl.py -f target/sby-buoy.bin /dev/ttyUSB0 -v
 
 deploy:
-	DEFMT_LOG=warn,sfy=debug,sfy::note=trace cargo objcopy -p sfy-artemis --features deploy -- -O binary target/sby-buoy.bin
+	cd sfy-artemis && DEFMT_LOG=warn,sfy=debug,sfy::note=trace cargo objcopy --features deploy -- -O binary target/sby-buoy.bin
 	python3 ../tools/svl/svl.py -f target/sby-buoy.bin /dev/ttyUSB0 -v
 
 com:

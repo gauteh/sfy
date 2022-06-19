@@ -31,7 +31,7 @@ name = "cellular_sensor_data"
 harness = false
 
 [dependencies]
-sfy = { path = "../", features = [ "storage" ] }
+sfy = { path = "../", default-features = false, features = [ "storage" ] }
 heapless = { version = "0.7", features = [ "serde", "ufmt-impl", "defmt-impl" ] }
 serde = { version = "1", features = ["derive"], default-features = false }
 serde-json-core = "0.4.0"

@@ -42,6 +42,7 @@ continuous = []
 20Hz = []
 storage = [ "postcard", "embedded-sdmmc" ]
 build-bin = [ "anyhow", "argh", "postcard" ]
+default = [ "storage", "build-bin" ]
 
 [patch.crates-io]
 # ism330dhcx = { git = "https://github.com/gauteh/ism330dhcx", branch = "fifo" }

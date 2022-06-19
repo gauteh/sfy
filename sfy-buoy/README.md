@@ -4,13 +4,14 @@ Folders:
 
 * sfy - library of firmware, portable to different platforms + tool for
     unpacking SD-card files.
-* sfy-main - main function targeted for the Artemis.
+* sfy-artemis - main function targeted for the Artemis.
 * target-test - unit tests for Artemis.
 
 usually flashing of the device etc. will be run from this directory.
 
 ## Building for deployment
 ```sh
+$ cd sfy-artemis
 $ BUOYPR=xxxx:your-notehub-account BUOYSN=WAVEBUGXX DEFMT_LOG=debug cargo build --release --features deploy
 ```
 
@@ -33,6 +34,8 @@ $ make deploy
 ### Features
 
 * continuous: transmits data continuously, at the cost of power.
+
+* 20hz: set output sample rate of waves to 20Hz, rather than 52hz.
 
 * deploy: turns on `asm::wfi` in main loop over busy wait.
 

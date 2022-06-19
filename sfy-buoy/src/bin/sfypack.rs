@@ -65,10 +65,10 @@ mod tests {
 
     #[test]
     fn open_collection() {
-        let c = Collection::from_file("tests/73.1").unwrap();
+        let c = Collection::from_file("tests/data/73.1").unwrap();
         println!("packages: {}", c.pcks.len());
 
-        let c = Collection::from_file("tests/74.1").unwrap();
+        let c = Collection::from_file("tests/data/74.1").unwrap();
         println!("packages: {}", c.pcks.len());
 
         // for p in c.pcks {
