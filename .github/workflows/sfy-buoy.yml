@@ -40,12 +40,12 @@ jobs:
           rustup target add thumbv7em-none-eabihf
 
       - name: Build (buoy)
-        working-directory: sfy-buoy/
+        working-directory: sfy-buoy/sfy-artemis
         run: cargo build --verbose
 
-      # - name: Test (host-tests)
-      #   working-directory: sfy-buoy/
-      #   run: make host-test
+      - name: Test (host-tests)
+        working-directory: sfy-buoy/
+        run: make host-test
 
       - name: Build (target tests)
         working-directory: sfy-buoy/target-test

@@ -4,9 +4,13 @@ edition = "2021"
 version = "0.1.0"
 authors = [ "Gaute Hope <gauteh@met.no>" ]
 
+[[bin]]
+name = "sfypack"
+path = "src/bin/sfypack.rs"
+required-features = [ "build-bin" ]
+
 [workspace]
 members = [ "target-test", "sfy-artemis" ]
-default-members = [ "sfy-artemis" ]
 
 [dependencies]
 base64 = { version = "0.13.0", default-features = false }
@@ -24,6 +28,8 @@ static_assertions = "1.1.0"
 chrono = { version = "0.4.19", default-features = false }
 micromath = { version = "2", features = [ "quaternion", "vector" ] }
 rtcc = "0.3.0"
+anyhow = { version = "1", optional = true }
+argh = { version = "*", optional = true }
 
 [dependencies.ahrs-fusion]
 git = "https://github.com/gauteh/ahrs-fusion"
@@ -35,6 +41,7 @@ git = "https://github.com/gauteh/notecard-rs"
 continuous = []
 20Hz = []
 storage = [ "postcard", "embedded-sdmmc" ]
+build-bin = [ "anyhow", "argh", "postcard" ]
 
 [patch.crates-io]
 # ism330dhcx = { git = "https://github.com/gauteh/ism330dhcx", branch = "fifo" }

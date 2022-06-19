@@ -1,16 +1,16 @@
 .DEFAULT_GOAL := build
 
 build:
-	cargo build --release
+	cargo build -p sfy-artemis --release
 
 objcopy: build
-	cargo objcopy --release -- -O binary target/sby-buoy.bin
+	cargo objcopy -p sfy-artemis --release -- -O binary target/sby-buoy.bin
 
 flash: objcopy
 	python3 ../tools/svl/svl.py -f target/sby-buoy.bin /dev/ttyUSB0 -v
 
 deploy:
-	DEFMT_LOG=warn,sfy=debug,sfy::note=trace cargo objcopy --features deploy -- -O binary target/sby-buoy.bin
+	DEFMT_LOG=warn,sfy=debug,sfy::note=trace cargo objcopy -p sfy-artemis --features deploy -- -O binary target/sby-buoy.bin
 	python3 ../tools/svl/svl.py -f target/sby-buoy.bin /dev/ttyUSB0 -v
 
 com:
@@ -38,5 +38,4 @@ rtt:
 	stdbuf -i0 -e0 -o0 nc localhost 19021
 
 host-test:
-	$(eval TARGET = $(shell rustc -vV | sed -n 's|host: ||p'))
-	cargo test --features host-tests --target=$(TARGET)
+	cargo test --features storage
