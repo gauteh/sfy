@@ -8,6 +8,7 @@ import hashlib
 import json
 from datetime import datetime
 from sfy.hub import Hub
+from sfy.axl import Axl
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +29,27 @@ def store():
     help=
     'Actually post event to server, otherwise just parse, verify and check for duplicate.'
 )
-def put(dev, file, really):
+@click.option(
+    '-c',
+    '--continue',
+    'cont',
+    default=False,
+    is_flag=True,
+    type=bool,
+    help=
+    'Continue to next package in case of error.'
+)
+@click.option(
+        '--start-id',
+        default=None,
+        type=int,
+        help='Skip packages before this id')
+@click.option(
+        '--stop-id',
+        default=None,
+        type=int,
+        help='Skip packages after this id')
+def put(dev, file, really, cont, start_id, stop_id):
     """
     Put data from storage file to server.
     """
@@ -41,12 +62,22 @@ def put(dev, file, really):
     collection = json.loads(collection)
     logger.info(f"Read {len(collection)} packages.")
 
+    packages = b.axl_packages_range()
+
     if really:
         logger.warning("really posting packages, dry-run is off.")
     else:
-        logger.warning("not posting any packages, use --really to really do it.")
+        logger.warning("not posting any packages, use --really if you really really wanna do it.")
 
     for event in collection:
+        if start_id is not None:
+            if event['body']['storage_id'] < start_id:
+                continue
+
+        if stop_id is not None:
+            if event['body']['storage_id'] > stop_id:
+                continue
+
         time, lat, lon = event['body']['timestamp'], event['body'][
             'lat'], event['body']['lon']
         time_s = time / 1.e3
@@ -74,13 +105,36 @@ def put(dev, file, really):
         hash = f"{hash[:8]}-{hash[8:12]}-{hash[12:16]}-{hash[16:20]}-{hash[20:]}"
         event['event'] = hash
 
-        uri = f"{int(time)}-{event['event']}_axl.qo.json"
-        logger.info(f"Event: {uri}")
+        new_p = Axl.parse(json.dumps(event))
+        uri = f"{int(time):013d}-{event['event']}_axl.qo.json"
+        logger.info(f"Event: {uri}, package: {new_p}")
+
+        # check if store id already exists on server
+        storage_id = event['body']['storage_id']
+        existing_p = next(filter(lambda p: p.storage_id == storage_id, packages), None)
+
+        if existing_p is not None:
+            duplicate = new_p.duplicate(existing_p)
+
+            logger.error(f"found package with same storage_id: {storage_id} already on server, package duplicate: {duplicate}")
+
+            logger.info(f"Existing: {existing_p}")
+            logger.info(f"New: {new_p}")
+
+            if cont:
+                continue
+            else:
+                raise Exception("storage_id already exists")
 
         # check if event exists
         try:
             p = b.package(uri)
-            logger.error("package already exists on server, skipping.")
+            logger.error(f"package {p} already exists on server.")
+            if cont:
+                continue
+            else:
+                raise Exception("package already exists on server.")
+
         except requests.exceptions.HTTPError as e:
             # does not exist
             logger.debug("package is new, posting to server..")

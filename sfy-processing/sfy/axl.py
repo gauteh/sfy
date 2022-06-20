@@ -249,7 +249,7 @@ class Axl(AxlTimeseries):
 
     def duplicate(self, o):
         if self.timestamp == o.timestamp:
-            if self.lon == o.lon and self.lat == o.lat and self.offset == o.offset and all(
+            if self.storage_id == o.storage_id and self.lon == o.lon and self.lat == o.lat and self.offset == o.offset and all(
                     self.x == o.x) and all(self.y == o.y) and all(
                         self.z == o.z):
                 return True
@@ -258,6 +258,8 @@ class Axl(AxlTimeseries):
                     f"duplicate timestamp {self.start}, but other fields mismatch."
                 )
                 return False
+        else:
+            return False
 
     @property
     def dt(self) -> float:
@@ -359,7 +361,7 @@ class Axl(AxlTimeseries):
         return [self.lat]
 
     def __repr__(self):
-        return f"[Axl received={self.received} t={self.start} -> {'%.2f' % self.duration}s sz={len(self.x)}x3 @ f={self.freq}Hz, lon={self.lon}E lat={self.lat}N]"
+        return f"[Axl received={self.received} storage_id={self.storage_id} t={self.start} -> {'%.2f' % self.duration}s sz={len(self.x)}x3 @ f={self.freq}Hz, lon={self.lon}E lat={self.lat}N]"
 
     @staticmethod
     def parse(d) -> 'Axl':
@@ -376,7 +378,8 @@ class Axl(AxlTimeseries):
         data['offset'] = data['body'].get('offset', 0)
         data['timestamp'] = data['body']['timestamp']
         data['storage_id'] = data['body'].get('storage_id', None)
-        data['position_time'] = data['body'].get('position_time', data['body']['timestamp'])
+        data['position_time'] = data['body'].get('position_time',
+                                                 data['body']['timestamp'])
         data['lon'] = data['body'].get('lon')
         data['lat'] = data['body'].get('lat')
         data['freq'] = data['body'].get('freq', 208.)

@@ -220,7 +220,7 @@ class Buoy:
         return self.hub.__json_request__(path)
 
     def axl_packages_range(self, start=None, end=None):
-        logger.debug(f"fetching axl pacakges between {start} and {end}")
+        logger.debug(f"fetching axl packages between {start} and {end}")
 
         pcks = self.packages_range(start, end)
         pcks = [pck for pck in pcks if 'axl.qo.json' in pck[1]]
