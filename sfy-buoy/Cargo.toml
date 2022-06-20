@@ -43,7 +43,7 @@ git = "https://github.com/gauteh/notecard-rs"
 continuous = []
 20Hz = []
 storage = [ "postcard", "embedded-sdmmc" ]
-build-bin = [ "anyhow", "argh", "postcard", "serde-json-core/std", "serde_json" ]
+build-bin = [ "anyhow", "argh", "postcard", "serde-json-core/std", "serde_json", "chrono/std" ]
 default = [ "storage", "build-bin" ]
 
 [patch.crates-io]

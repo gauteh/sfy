@@ -1,5 +1,5 @@
-use anyhow::ensure;
 use argh::FromArgs;
+use chrono::NaiveDateTime;
 use serde_json as json;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
@@ -31,7 +31,11 @@ fn main() -> anyhow::Result<()> {
 
     if pck.list {
         for p in c.iter() {
-            eprintln!("{:?}", p);
+            let ts = NaiveDateTime::from_timestamp(
+                p.timestamp / 1000,
+                (p.timestamp % 1000 * 1_000_000).try_into().unwrap(),
+            );
+            eprintln!("{:?}: {:?}", ts, p);
         }
 
         eprintln!("Listed {} packages.", c.len());
@@ -45,6 +49,7 @@ fn main() -> anyhow::Result<()> {
             let pcks = c.pcks.iter().map(AxlNote::from).collect::<Vec<_>>();
             println!("{}", json::to_string_pretty(&pcks).unwrap());
         }
+        (false, false) => (),
         _ => eprintln!("only one of --json and --note may be specified at the same time"),
     }
 
@@ -88,10 +93,9 @@ impl Collection {
         let p = p.as_ref();
         let mut b = std::fs::read(p)?;
 
-        ensure!(
-            b.len() % axl::AXL_POSTCARD_SZ == 0,
-            "Collection consists of non-integer number of packages"
-        );
+        if (b.len() % axl::AXL_POSTCARD_SZ) != 0 {
+            eprintln!("Warning, collection consists of non-integer number of packages.");
+        }
 
         let n = b.len() / axl::AXL_POSTCARD_SZ;
 
@@ -102,11 +106,14 @@ impl Collection {
         );
         let pcks = b
             .chunks_exact_mut(axl::AXL_POSTCARD_SZ)
-            .map(|p| {
-                postcard::from_bytes_cobs(p)
-                    .map_err(|e| anyhow::anyhow!("failed to parse package: {:?}", e))
+            .filter_map(|p| match postcard::from_bytes_cobs(p) {
+                Ok(p) => Some(p),
+                Err(e) => {
+                    eprintln!("failed to parse package: {:?}", e);
+                    None
+                }
             })
-            .collect::<anyhow::Result<Vec<_>>>()?;
+            .collect::<Vec<_>>();
 
         Ok(Collection { pcks })
     }

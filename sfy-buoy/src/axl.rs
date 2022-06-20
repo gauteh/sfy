@@ -14,7 +14,7 @@ pub const AXL_POSTCARD_SZ: usize = 1024 * 8;
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct AxlPacket {
-    /// Timstamp of sample at `offset`.
+    /// Timestamp of sample at `offset` in ms.
     pub timestamp: i64,
 
     /// Offset in IMU FIFO at time of timestamp.
@@ -24,7 +24,7 @@ pub struct AxlPacket {
     /// before package has been written to SD-card.
     pub storage_id: Option<u32>,
 
-    /// Time of position.
+    /// Time of position in seconds.
     pub position_time: u32,
     pub lon: f64,
     pub lat: f64,
