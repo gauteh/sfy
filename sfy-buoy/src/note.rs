@@ -245,15 +245,19 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             .get(delay, "storage.db", "storage-info", false, false)?
             .wait(delay)?;
 
-        let d = self
+        defmt::trace!("Read request-data..");
+        let d: Option<RequestData> = self
             .note
             .note()
             .get(delay, "storage.db", "request-data", false, false)?
-            .wait(delay)?;
+            .wait(delay)
+            .map(|r| r.body)
+            .unwrap_or(None);
 
-        defmt::debug!("Storage info: {:?}, Request data: {:?}", r.body, d.body);
+        // defmt::debug!("Storage info: {:?}, Request data: {:?}", r.body, None);
+        defmt::debug!("asdf");
 
-        Ok((r.body, d.body))
+        Ok((r.body, None))
     }
 
     pub fn write_storage_info(
