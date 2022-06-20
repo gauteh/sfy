@@ -61,7 +61,7 @@ embedded-sdmmc = { git = "https://github.com/gauteh/embedded-sdmmc-rs", branch =
 # ambiq-hal = { path = "../../../../dev/ambiq-rs/ambiq-hal" }
 
 [features]
-default = [ "deploy", "storage" ]
+default = [ "deploy", "storage", "20Hz" ]
 continuous = []
 20Hz = []
 storage = [ "postcard", "embedded-sdmmc" ]
