@@ -249,11 +249,14 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             .note
             .note()
             .get(delay, "storage.db", "request-data", false, false)?
-            .wait(delay)?;
+            .wait(delay)
+            .inspect_err(|e| defmt::error!("failed to read request-data: {:?}", e))
+            .map(|r| r.body)
+            .unwrap_or(None);
 
-        defmt::debug!("Storage info: {:?}, Request data: {:?}", r.body, d.body);
+        defmt::debug!("Storage info: {:?}, Request data: {:?}", r.body, d);
 
-        Ok((r.body, d.body))
+        Ok((r.body, d))
     }
 
     pub fn write_storage_info(
