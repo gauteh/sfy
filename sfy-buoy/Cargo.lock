@@ -1228,6 +1228,7 @@ dependencies = [
  "heapless",
  "ism330dhcx",
  "nb 1.0.0",
+ "panic-probe",
  "serde",
  "serde-json-core",
  "sfy",

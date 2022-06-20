@@ -430,7 +430,7 @@ where
             } else {
                 // No data-request, updating last_id
                 note.write_storage_info(delay, last_id, None, false)
-                    .inspect_err(|e| defmt::error!("Failed to set storageinfo: {:?}", e))
+                    .inspect_err(|e| defmt::error!("Failed to set storageinfo"))
                     .ok();
             }
         }

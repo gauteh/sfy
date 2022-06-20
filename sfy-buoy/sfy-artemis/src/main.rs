@@ -2,8 +2,8 @@
 #![no_std]
 #![no_main]
 
-// #[cfg(all(not(test), not(feature = "deploy")))]
-// use panic_probe as _;
+#[cfg(not(feature = "deploy"))]
+use panic_probe as _;
 
 #[allow(unused_imports)]
 use defmt::{debug, error, info, println, trace, warn};
@@ -416,6 +416,7 @@ unsafe fn HardFault(ef: &ExceptionFrame) -> ! {
     cortex_m::peripheral::SCB::sys_reset()
 }
 
+#[cfg(feature = "deploy")]
 #[inline(never)]
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {

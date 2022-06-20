@@ -168,9 +168,11 @@ mod tests {
         let mut samples = s.waves.imu.fifostatus.diff_fifo(&mut s.waves.i2c).unwrap();
         assert_eq!(samples, 0);
 
+        let _p = s.waves.take_buf(100031231, 1231231, 34.0, 23.2).unwrap();
+
         s.waves.enable_fifo(&mut s.delay).unwrap();
 
-        for _ in 0..2 {
+        while !s.waves.is_full()  {
             defmt::debug!("wait for some samples..");
             s.delay.delay_ms(200u16);
 
@@ -179,8 +181,15 @@ mod tests {
 
             defmt::debug!("read and filter..");
             s.waves.read_and_filter().unwrap();
+
+            defmt::debug!("buffer: {}", s.waves.len());
         }
 
         defmt::debug!("time series len: {}", s.waves.len());
+
+        defmt::debug!("taking buf..");
+        let p = s.waves.take_buf(100031231, 1231231, 34.0, 23.2).unwrap();
+        defmt::debug!("pck: {:?}", p);
+
     }
 }

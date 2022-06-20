@@ -24,14 +24,14 @@ gdb-server:
 	JLinkGDBServer -select USB -device AMA3B1KK-KBR -endian little -if SWD -noir -noLocalhostOnly -nohalt
 
 gdb-flash:
-	gdb-multiarch --command=flash.gdb target/thumbv7em-none-eabihf/release/sfy
+	gdb-multiarch --command=flash.gdb target/thumbv7em-none-eabihf/release/sfy-artemis
 
 gdb-debug:
-	gdb-multiarch --command=debug.gdb target/thumbv7em-none-eabihf/debug/sfy
+	gdb-multiarch --command=debug.gdb target/thumbv7em-none-eabihf/debug/sfy-artemis
 
 defmt-rtt:
 	# stdbuf -i0 -e0 -o0 JLinkRTTClient < /dev/null | stdbuf -i0 -e0 -o0 tail -f -n +23 | defmt-print -e target/thumbv7em-none-eabihf/debug/sfy-buoy
-	stdbuf -i0 -e0 -o0 nc localhost 19021 | defmt-print -e target/thumbv7em-none-eabihf/debug/sfy-buoy
+	stdbuf -i0 -e0 -o0 nc localhost 19021 | defmt-print -e target/thumbv7em-none-eabihf/debug/sfy-artemis
 
 rtt:
 	# stdbuf -i0 -e0 -o0 JLinkRTTClient < /dev/null | stdbuf -i0 -e0 -o0 tail -f -n +23 | defmt-print -e target/thumbv7em-none-eabihf/debug/sfy-buoy
