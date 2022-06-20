@@ -250,7 +250,6 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             .note()
             .get(delay, "storage.db", "request-data", false, false)?
             .wait(delay)
-            .inspect_err(|e| defmt::error!("failed to read request-data: {:?}", e))
             .map(|r| r.body)
             .unwrap_or(None);
 
