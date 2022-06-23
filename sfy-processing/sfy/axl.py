@@ -275,7 +275,10 @@ class Axl(AxlTimeseries):
     @property
     def best_position_time(self):
         if self.position_time:
-            return datetime.fromtimestamp(self.position_time / 1000., pytz.utc)
+            try:
+                return datetime.fromtimestamp(self.position_time, pytz.utc)
+            except ValueError as ex:
+                return datetime.fromtimestamp(self.position_time / 1000., pytz.utc)
         else:
             return self.start
 
