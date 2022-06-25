@@ -410,7 +410,7 @@ unsafe fn HardFault(ef: &ExceptionFrame) -> ! {
     let mut delay = hal::delay::FlashDelay;
 
     log("hard fault exception.");
-    sfy::log::panic_drain_log(log::NOTE, &mut delay);
+    free(|_| sfy::log::panic_drain_log(log::NOTE, &mut delay));
 
     warn!("resetting system..");
     cortex_m::peripheral::SCB::sys_reset()
@@ -430,7 +430,7 @@ fn panic(info: &PanicInfo) -> ! {
 
     let mut delay = hal::delay::FlashDelay;
 
-    unsafe { sfy::log::panic_drain_log(log::NOTE, &mut delay) };
+    free(|_| unsafe { sfy::log::panic_drain_log(log::NOTE, &mut delay) });
 
     defmt::error!("panic logged, resetting..");
     cortex_m::peripheral::SCB::sys_reset();

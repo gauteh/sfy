@@ -24,7 +24,8 @@ pub fn drain_log<I: Read + Write>(
     note.drain_log(&LOGQ, delay)
 }
 
-/// Tries to send the remaining queue to notecard in case of panic or HardFault.
+/// Tries to send the remaining queue to notecard in case of panic or HardFault. Must be wrapped
+/// in free() to avoid multiple access.
 pub unsafe fn panic_drain_log<IOM: Read + Write>(
     note: Option<*mut Notecarrier<IOM>>,
     delay: &mut impl DelayMs<u16>,
