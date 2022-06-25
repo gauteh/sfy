@@ -69,6 +69,8 @@ def put(dev, file, really, cont, start_id, stop_id):
     else:
         logger.warning("not posting any packages, use --really if you really really wanna do it.")
 
+    uploaded = 0
+
     for event in collection:
         if start_id is not None:
             if event['body']['storage_id'] < start_id:
@@ -96,6 +98,12 @@ def put(dev, file, really, cont, start_id, stop_id):
         event['tower_lat'] = lat
         event['tower_lon'] = lon
         event['tower_timezone'] = 'UTC'
+
+        # simulate blues notecard JSON where default value is removed
+        for key in ['lon', 'lat', 'timestamp', 'position_time']:
+            if event['body'].get(key) == 0:
+                del event['body'][key]
+
 
         # make event id
         hash = hashlib.shake_256()
@@ -140,9 +148,14 @@ def put(dev, file, really, cont, start_id, stop_id):
             logger.debug("package is new, posting to server..")
             url = urljoin(hub.endpoint, "../buoy")
 
+            logger.info(f"Posting package: {new_p}..")
             if really:
                 r = requests.post(
                     url,
                     json=event,
                     headers={'SFY_AUTH_TOKEN': os.getenv('SFY_AUTH_TOKEN')})
                 r.raise_for_status()
+            uploaded += 1
+
+    logger.info(f"Uploaded {uploaded} packges, dry-run: {not really}")
+
