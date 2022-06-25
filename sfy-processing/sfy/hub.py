@@ -104,7 +104,19 @@ class Hub:
         return [Buoy(self, d) for d in self.__json_request__('./')]
 
     def buoy(self, dev: str):
-        return next(filter(lambda b: b.matches(dev), self.buoys()))
+        """
+        Return last buoy matching `dev` in `sn` or `dev`, sorted by last contact.
+        """
+        buoys = self.buoys()
+
+        last = [b.last() if 'lost+found' not in b.dev else None for b in buoys]
+        last = [l.received_datetime if l else None for l in last]
+
+        buoys = [[b, l] for b, l in zip(buoys, last)]
+        buoys.sort(key=lambda b: -b[1].timestamp() if b[1] else 0)
+
+        b = next(filter(lambda b: b[0].matches(dev), buoys))[0]
+        return b
 
     def login(self):
         """
