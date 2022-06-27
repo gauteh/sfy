@@ -223,6 +223,7 @@ impl Location {
 pub struct Imu<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> {
     pub queue: heapless::spsc::Producer<'static, AxlPacket, IMUQ_SZ>,
     waves: waves::Waves<I>,
+    last_read: i64,
 }
 
 impl<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> Imu<E, I> {
@@ -230,23 +231,27 @@ impl<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> Imu<E
         waves: waves::Waves<I>,
         queue: heapless::spsc::Producer<'static, AxlPacket, IMUQ_SZ>,
     ) -> Imu<E, I> {
-        Imu { queue, waves }
+        Imu { queue, waves, last_read: 0 }
     }
 
+    /// Read samples and check for full buffers. Return number of sample pairs consumed from IMU.
     pub fn check_retrieve(
         &mut self,
         now: i64,
         position_time: u32,
         lon: f64,
         lat: f64,
-    ) -> Result<(), waves::ImuError<E>> {
+    ) -> Result<u32, waves::ImuError<E>> {
         trace!("Polling IMU.. (now: {})", now,);
 
-        self.waves.read_and_filter()?;
+        let mut samples = self.waves.read_and_filter()?;
 
         if self.waves.is_full() {
             trace!("waves buffer is full, pushing to queue..");
             let pck = self.waves.take_buf(now, position_time, lon, lat)?;
+
+            trace!("collect remaining samples, to avoid overrun.");
+            samples += self.waves.read_and_filter()?;
 
             self.queue
                 .enqueue(pck)
@@ -258,7 +263,20 @@ impl<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> Imu<E
                 .ok();
         }
 
-        Ok(())
+        if samples == 0 {
+            let elapsed = now - self.last_read; // ms
+                                                // will be a large jump when getting time.
+            if elapsed > 3000 && elapsed < 100_0000 {
+                error!("Too few samples, IMU may be stuck: {}", elapsed);
+                self.last_read = now;
+                return Err(waves::ImuError::TooFewSamples(elapsed));
+            }
+        } else {
+            self.last_read = now;
+        }
+
+
+        Ok(samples)
     }
 
     pub fn reset(

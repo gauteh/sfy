@@ -119,6 +119,7 @@ pub enum ImuError<E: Debug> {
         buffer: usize,
     },
     FifoBadSequence(fifo::Value, fifo::Value),
+    TooFewSamples(i64),
 }
 
 impl<E: Debug> From<E> for ImuError<E> {
@@ -327,7 +328,9 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         self.buf.len()
     }
 
-    pub fn read_and_filter(&mut self) -> Result<(), ImuError<E>> {
+    /// Read and filter samples from IMU. Returns number of sample pairs consumed (at IMU
+    /// frequency).
+    pub fn read_and_filter(&mut self) -> Result<u32, ImuError<E>> {
         use fifo::Value;
 
         let n = self.imu.fifostatus.diff_fifo(&mut self.i2c)?;
@@ -356,6 +359,8 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
 
         let n = n / 2;
 
+        let mut samples = 0;
+
         for _ in 0..n {
             if self.buf.is_full() {
                 defmt::debug!("axl buf is full, waiting to be cleared..");
@@ -377,12 +382,14 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
                 defmt::error!("Bad sequence of samples in FIFO: {:?}, {:?}", m1, m2);
                 return Err(ImuError::FifoBadSequence(m1, m2));
             }
+
+            samples += 1;
         }
 
         let nn = imu.fifostatus.diff_fifo(i2c)?;
         defmt::trace!("fifo length after read: {}", nn);
 
-        Ok(())
+        Ok(samples)
     }
 }
 

@@ -95,7 +95,7 @@ fn main() -> ! {
     let mut rtc = hal::rtc::Rtc::new(dp.RTC, &mut dp.CLKGEN);
     rtc.set(&NaiveDate::from_ymd(2020, 1, 1).and_hms(0, 0, 0)); // Now timestamps will be positive.
     rtc.enable();
-    rtc.set_alarm_repeat(hal::rtc::AlarmRepeat::Second);
+    rtc.set_alarm_repeat(hal::rtc::AlarmRepeat::DeciSecond);
     rtc.enable_alarm();
 
     let mut location = Location::new();
