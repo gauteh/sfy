@@ -13,6 +13,7 @@
 
 use core::ops::DerefMut;
 use core::fmt::Debug;
+use cortex_m::interrupt::free;
 use embedded_hal::{blocking::spi::Transfer, digital::v2::OutputPin};
 use embedded_sdmmc::{
     Controller, Error as GenericSdMmcError, Mode, SdMmcError, SdMmcSpi, VolumeIdx,
@@ -190,7 +191,8 @@ where <Spi as Transfer<u8>>::Error: Debug
             fid,
             offset
         );
-        {
+
+        free(|_| {
             let block = self.sd.acquire()?;
             let mut c = Controller::new(block, &self.clock);
             let mut v = c.get_volume(VolumeIdx(0))?;
@@ -201,7 +203,9 @@ where <Spi as Transfer<u8>>::Error: Debug
                 .map_err(|_| StorageErr::WriteError)?; // We should already be at the
                                                        // end.
             f.write(&buf)?;
-        }
+
+            Ok::<(), StorageErr>(())
+        })?;
 
         Ok(id)
     }

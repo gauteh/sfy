@@ -95,7 +95,7 @@ fn main() -> ! {
     let mut rtc = hal::rtc::Rtc::new(dp.RTC, &mut dp.CLKGEN);
     rtc.set(&NaiveDate::from_ymd(2020, 1, 1).and_hms(0, 0, 0)); // Now timestamps will be positive.
     rtc.enable();
-    rtc.set_alarm_repeat(hal::rtc::AlarmRepeat::DeciSecond);
+    rtc.set_alarm_repeat(hal::rtc::AlarmRepeat::CentiSecond);
     rtc.enable_alarm();
 
     let mut location = Location::new();
@@ -118,7 +118,7 @@ fn main() -> ! {
         );
         let cs = pins.a14.into_push_pull_output();
         Storage::open(spi, cs, sfy::storage::clock::CountClock(&COUNT), |spi| {
-            spi.set_freq(Freq::F4mHz)
+            spi.set_freq(Freq::F12mHz)
         })
     }
     .inspect_err(|e| {
