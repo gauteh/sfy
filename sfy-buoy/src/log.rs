@@ -3,12 +3,12 @@ use embedded_hal::blocking::{
     delay::DelayMs,
     i2c::{Read, Write},
 };
-use heapless::{mpmc::Q16, String};
+use heapless::{mpmc::Q4 as Queue, String};
 
 use crate::note::Notecarrier;
 
 /// Log message queue for messages to be sent back over notecard.
-static LOGQ: Q16<String<256>> = Q16::new();
+static LOGQ: Queue<String<256>> = Queue::new();
 
 pub fn log(msg: &str) {
     defmt::debug!("logq: {}", msg);

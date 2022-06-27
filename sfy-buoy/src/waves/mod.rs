@@ -290,6 +290,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
 
     /// Take buf and reset timestamp.
     pub fn take_buf(&mut self, now: i64, position_time: u32, lon: f64, lat: f64) -> Result<AxlPacket, E> {
+        defmt::trace!("axl: taking buffer");
         let pck = AxlPacket {
             timestamp: self.timestamp,
             offset: self.fifo_offset,
@@ -300,6 +301,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
             lat: self.lat,
             freq: self.output_freq,
         };
+        defmt::trace!("axl: buffer taken: {:?}", pck);
 
         self.lon = lon;
         self.lat = lat;

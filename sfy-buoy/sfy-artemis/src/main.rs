@@ -95,7 +95,7 @@ fn main() -> ! {
     let mut rtc = hal::rtc::Rtc::new(dp.RTC, &mut dp.CLKGEN);
     rtc.set(&NaiveDate::from_ymd(2020, 1, 1).and_hms(0, 0, 0)); // Now timestamps will be positive.
     rtc.enable();
-    rtc.set_alarm_repeat(hal::rtc::AlarmRepeat::CentiSecond);
+    rtc.set_alarm_repeat(hal::rtc::AlarmRepeat::Second);
     rtc.enable_alarm();
 
     let mut location = Location::new();
@@ -232,7 +232,9 @@ fn main() -> ! {
         if (now - last) > 5000 {
             defmt::debug!("iteration, now: {}..", now);
 
-            sfy::log::drain_log(&mut note, &mut delay).ok();
+            sfy::log::drain_log(&mut note, &mut delay)
+                .inspect_err(|e| defmt::error!("drain log: {:?}", e))
+                .ok();
 
             led.toggle().unwrap();
 
@@ -340,7 +342,7 @@ fn RTC() {
     static mut GOOD_TRIES: u16 = 5;
 
     // FIFO size of IMU is 512 samples (uncompressed), sample rate at IMU is 208 Hz. So we
-    // need to empty FIFO at atleast (512 / 208) Hz = 2.46 Hz or every 404 ms.
+    // need to empty FIFO at atleast (208 / 512) Hz = 0.406 Hz or every 2.46 s.
 
     // Clear RTC interrupt
     unsafe {

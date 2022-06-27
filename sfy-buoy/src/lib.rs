@@ -41,10 +41,10 @@ use storage::Storage;
 pub const STORAGEQ_SZ: usize = 8;
 
 #[cfg(feature = "storage")]
-pub const NOTEQ_SZ: usize = 24;
+pub const NOTEQ_SZ: usize = 24 - STORAGEQ_SZ;
 
 #[cfg(not(feature = "storage"))]
-pub const NOTEQ_SZ: usize = 32;
+pub const NOTEQ_SZ: usize = 24;
 
 #[cfg(feature = "storage")]
 pub const IMUQ_SZ: usize = STORAGEQ_SZ;
@@ -430,7 +430,7 @@ where
             } else {
                 // No data-request, updating last_id
                 note.write_storage_info(delay, last_id, None, false)
-                    .inspect_err(|e| defmt::error!("Failed to set storageinfo"))
+                    .inspect_err(|e| defmt::error!("Failed to set storageinfo: {:?}", e))
                     .ok();
             }
         }

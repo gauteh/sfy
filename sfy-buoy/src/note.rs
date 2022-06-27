@@ -220,7 +220,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
     /// Send log messages
     pub fn drain_log(
         &mut self,
-        queue: &heapless::mpmc::Q16<heapless::String<256>>,
+        queue: &heapless::mpmc::Q4<heapless::String<256>>,
         delay: &mut impl DelayMs<u16>,
     ) -> Result<(), NoteError> {
         while let Some(msg) = queue.dequeue() {
@@ -243,7 +243,9 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             .note
             .note()
             .get(delay, "storage.db", "storage-info", false, false)?
-            .wait(delay)?;
+            .wait(delay)
+            .map(|r| r.body)
+            .unwrap_or(None);
 
         defmt::trace!("Read request-data..");
         let d: Option<RequestData> = self
@@ -254,10 +256,9 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             .map(|r| r.body)
             .unwrap_or(None);
 
-        // defmt::debug!("Storage info: {:?}, Request data: {:?}", r.body, None);
-        defmt::debug!("asdf");
+        defmt::debug!("Storage info: {:?}, Request data: {:?}", r, d);
 
-        Ok((r.body, None))
+        Ok((r, d))
     }
 
     pub fn write_storage_info(
