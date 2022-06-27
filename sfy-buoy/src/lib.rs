@@ -38,7 +38,7 @@ use axl::AxlPacket;
 #[cfg(feature = "storage")]
 use storage::Storage;
 
-pub const STORAGEQ_SZ: usize = 8;
+pub const STORAGEQ_SZ: usize = 12;
 
 #[cfg(feature = "storage")]
 pub const NOTEQ_SZ: usize = 24 - STORAGEQ_SZ;

@@ -229,7 +229,7 @@ fn main() -> ! {
     loop {
         let now = STATE.now().timestamp_millis();
 
-        if (now - last) > 5000 {
+        if (now - last) > 2000 {
             defmt::debug!("iteration, now: {}..", now);
 
             sfy::log::drain_log(&mut note, &mut delay)
