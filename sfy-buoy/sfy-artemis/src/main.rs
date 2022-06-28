@@ -125,7 +125,7 @@ fn main() -> ! {
         defmt::error!("Failed to setup storage: {}", e);
 
         let mut msg = heapless::String::<256>::new();
-        write!(&mut msg, "storage-err: {:?}", e)
+        write!(&mut msg, "storage setup err: {:?}", e)
             .inspect_err(|e| {
                 defmt::error!("failed to format storage-err: {:?}", defmt::Debug2Format(e))
             })

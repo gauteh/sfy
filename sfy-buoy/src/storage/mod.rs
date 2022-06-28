@@ -71,7 +71,7 @@ where <Spi as Transfer<u8>>::Error: Debug
         defmt::info!("Opening SD card..");
 
         let mut sd = SdMmcSpi::new(spi, cs);
-        defmt::info!("Initialize SD-card (re-clock SPI to 4MHz)..");
+        defmt::info!("Initialize SD-card (re-clock SPI)..");
         {
             let mut block = sd.acquire()?;
             reclock_cb(block.spi().deref_mut());
@@ -141,7 +141,7 @@ where <Spi as Transfer<u8>>::Error: Debug
             offset
         );
 
-        {
+        free(|_| {
             let block = self.sd.acquire()?;
             let mut c = Controller::new(block, &self.clock);
             let mut v = c.get_volume(VolumeIdx(0))?;
@@ -157,7 +157,9 @@ where <Spi as Transfer<u8>>::Error: Debug
                 .map_err(|_| StorageErr::ReadPackageError)?;
             let sz = f.read(&mut buf)?;
             defmt::trace!("Read {} bytes.", sz);
-        }
+
+            Ok::<(), StorageErr>(())
+        })?;
 
         // De-serialize
         let pck: AxlPacket =
