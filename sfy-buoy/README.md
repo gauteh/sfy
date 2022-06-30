@@ -33,6 +33,9 @@ $ make deploy
 
 ### Features
 
+* defmt-serial: logs defmt-messages over serial rather than RTT. So that you can
+    read messages without a hardware-debugger. See `make defmt-serial`.
+
 * continuous: transmits data continuously, at the cost of power.
 
 * 20hz: set output sample rate of waves to 20Hz, rather than 52hz.

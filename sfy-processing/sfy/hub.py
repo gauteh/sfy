@@ -288,5 +288,5 @@ class Buoy:
             return Axl.from_file(pckf)
         except (KeyError, json.decoder.JSONDecodeError) as e:
             # logger.exception(e)
-            logger.error(f"failed to parse file: {self.dev}/{pckf}: {e}")
+            logger.error(f"failed to parse file: {pckf}: {e}")
             return None

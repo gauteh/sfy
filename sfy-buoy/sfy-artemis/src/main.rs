@@ -8,6 +8,12 @@ use panic_probe as _;
 #[allow(unused_imports)]
 use defmt::{debug, error, info, println, trace, warn};
 
+#[cfg(not(feature = "defmt-serial"))]
+use defmt_rtt as _;
+
+#[cfg(feature = "defmt-serial")]
+use defmt_serial as _;
+
 // we use this for defs of sinf etc.
 extern crate cmsis_dsp;
 
@@ -23,7 +29,6 @@ use cortex_m::{
     interrupt::{free, Mutex},
 };
 use cortex_m_rt::{entry, exception, ExceptionFrame};
-use defmt_rtt as _;
 use embedded_hal::{
     blocking::{
         delay::DelayMs,
@@ -59,12 +64,6 @@ pub static STATE: Mutex<RefCell<Option<SharedState<hal::rtc::Rtc>>>> =
 
 #[entry]
 fn main() -> ! {
-    println!(
-        "hello from sfy (v{}) (sn: {})!",
-        git_version!(),
-        sfy::note::BUOYSN
-    );
-
     unsafe {
         // Set the clock frequency.
         halc::am_hal_clkgen_control(
@@ -86,6 +85,18 @@ fn main() -> ! {
 
     let pins = hal::gpio::Pins::new(dp.GPIO);
     let mut led = pins.d19.into_push_pull_output(); // d14 on redboard_artemis
+
+    // set up serial as defmt target.
+    #[cfg(feature = "defmt-serial")]
+    let mut serial = hal::uart::Uart0::new(dp.UART0, pins.tx0, pins.rx0);
+    #[cfg(feature = "defmt-serial")]
+    defmt_serial::defmt_serial!(serial, hal::uart::Uart0);
+
+    println!(
+        "hello from sfy (v{}) (sn: {})!",
+        git_version!(),
+        sfy::note::BUOYSN
+    );
 
     // let i2c2 = i2c::I2c::new(dp.IOM2, pins.d17, pins.d18, i2c::Freq::F100kHz);
     let i2c4 = i2c::I2c::new(dp.IOM4, pins.d10, pins.d9, i2c::Freq::F100kHz);

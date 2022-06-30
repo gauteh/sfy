@@ -49,7 +49,7 @@ dependencies = [
  "cortex-m",
  "cortex-m-rt",
  "defmt",
- "embedded-hal",
+ "embedded-hal 0.2.7",
  "embedded-time",
  "nb 1.0.0",
  "paste",
@@ -235,7 +235,7 @@ version = "0.1.0"
 source = "git+https://github.com/gauteh/notecard-rs#098085440738b42985822ffda9049490b9041c20"
 dependencies = [
  "defmt",
- "embedded-hal",
+ "embedded-hal 0.2.7",
  "heapless",
  "serde",
  "serde-json-core",
@@ -388,7 +388,7 @@ checksum = "cd20d4ac4aa86f4f75f239d59e542ef67de87cce2c282818dc6e84155d3ea126"
 dependencies = [
  "bare-metal 0.2.5",
  "bitfield",
- "embedded-hal",
+ "embedded-hal 0.2.7",
  "volatile-register",
 ]
 
@@ -479,6 +479,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "defmt-serial"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "10198c0235b612e9a15ddd3795595c70242c377df2c106c6c9e3138e3cbac0e1"
+dependencies = [
+ "critical-section",
+ "defmt",
+ "embedded-hal 1.0.0-alpha.8",
+ "nb 1.0.0",
+]
+
+[[package]]
 name = "defmt-test"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -518,13 +530,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "embedded-hal"
+version = "1.0.0-alpha.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c3babfc7fd332142a0b11aebf592992f211f4e01b6222fb04b03aba1bd80018d"
+dependencies = [
+ "nb 1.0.0",
+]
+
+[[package]]
 name = "embedded-sdmmc"
 version = "0.3.0"
 source = "git+https://github.com/gauteh/embedded-sdmmc-rs?branch=more-defmt#ad9ca603ada5c87e6bbaafbc1b29b85e33131eb9"
 dependencies = [
  "byteorder",
  "defmt",
- "embedded-hal",
+ "embedded-hal 0.2.7",
 ]
 
 [[package]]
@@ -708,7 +729,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d053e9ef08facdec80d7af77c133fe42088b79e3c0becf8fa99d70f04df58d70"
 dependencies = [
  "defmt",
- "embedded-hal",
+ "embedded-hal 0.2.7",
 ]
 
 [[package]]
@@ -1195,7 +1216,7 @@ dependencies = [
  "chrono",
  "cortex-m",
  "defmt",
- "embedded-hal",
+ "embedded-hal 0.2.7",
  "embedded-sdmmc",
  "half",
  "heapless",
@@ -1222,7 +1243,8 @@ dependencies = [
  "cortex-m-rt",
  "defmt",
  "defmt-rtt",
- "embedded-hal",
+ "defmt-serial",
+ "embedded-hal 0.2.7",
  "git-version",
  "half",
  "heapless",
@@ -1312,7 +1334,7 @@ dependencies = [
  "defmt",
  "defmt-rtt",
  "defmt-test",
- "embedded-hal",
+ "embedded-hal 0.2.7",
  "embedded-sdmmc",
  "half",
  "heapless",

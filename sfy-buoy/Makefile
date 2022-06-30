@@ -1,24 +1,23 @@
 .DEFAULT_GOAL := build
 
 build:
-	cd sfy-artemis && cargo build --release
+	cd sfy-artemis && cargo build $(CARGO_FLAGS) --release
 
 objcopy: build
-	cd sfy-artemis && cargo objcopy --release -- -O binary ../target/sby-buoy.bin
+	cd sfy-artemis && cargo objcopy $(CARGO_FLAGS) --release -- -O binary ../target/sby-buoy.bin
 
 flash: objcopy
 	python3 ../tools/svl/svl.py -f target/sby-buoy.bin /dev/ttyUSB0 -v
 
 deploy:
-	cd sfy-artemis && DEFMT_LOG=warn,sfy=debug,sfy::note=trace cargo objcopy --features deploy -- -O binary target/sby-buoy.bin
+	cd sfy-artemis && DEFMT_LOG=warn,sfy=debug,sfy::note=trace cargo objcopy --features deploy $(CARGO_FLAGS) -- -O binary target/sby-buoy.bin
 	python3 ../tools/svl/svl.py -f target/sby-buoy.bin /dev/ttyUSB0 -v
 
 com:
 	picocom -e c -b 115200 /dev/ttyUSB0
 
-defmt:
-	cat /dev/ttyUSB0 > /dev/null
-	tail -f /dev/ttyUSB0 | defmt-print -e target/thumbv7em-none-eabihf/release/sfy-buoy
+defmt-serial:
+	socat /dev/ttyUSB0,raw,echo=0 STDOUT | defmt-print -e target/thumbv7em-none-eabihf/release/sfy-artemis
 
 gdb-server:
 	JLinkGDBServer -select USB -device AMA3B1KK-KBR -endian little -if SWD -noir -noLocalhostOnly -nohalt
