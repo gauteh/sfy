@@ -286,7 +286,7 @@ fn main() -> ! {
 
                     // Notecard might be in WrongState.
                     delay.delay_ms(100u16);
-                    unsafe { note.reset(&mut delay).ok() };
+                    note.reset(&mut delay).ok();
                     delay.delay_ms(100u16);
 
                     let mut msg = heapless::String::<512>::new();
@@ -295,7 +295,7 @@ fn main() -> ! {
                         .ok();
 
                     debug!("notecard: consuming any remaining response.");
-                    unsafe { note.reset(&mut delay).ok() };
+                    note.reset(&mut delay).ok();
 
                     warn!("Trying to send log message..");
                     note.hub()
@@ -333,7 +333,7 @@ fn reset<I: Read + Write>(note: &mut Notecarrier<I>, delay: &mut impl DelayMs<u1
     warn!("Resetting device!");
 
     debug!("notecard: consuming any remaining response.");
-    unsafe { note.reset(delay).ok() };
+    note.reset(delay).ok();
 
     info!("Trying to send any remaining log messages..");
     sfy::log::drain_log(note, delay).ok();
