@@ -93,7 +93,9 @@ impl Database {
             .create_if_missing(true)
             .journal_mode(SqliteJournalMode::Wal)
             .synchronous(SqliteSynchronous::Normal)
+            .shared_cache(true)
             .page_size(10 * 1024)
+            .pragma("cache_size", "-20000") // multiple of page_size
             .pragma("mmap_size", "3000000000")
             .pragma("temp_store", "memory");
         let db = SqlitePoolOptions::new().connect_with(db).await?;
