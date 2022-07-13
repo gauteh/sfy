@@ -45,20 +45,25 @@ class AxlCollection(AxlTimeseries):
 
             o = next((o for o in self.pcks if p.duplicate(o)), None)
             if o is not None:
-                logger.warn("duplicate package found, skipping this.")
+                logger.warning("duplicate package found, skipping this.")
             else:
                 pcks.append(p)
         self.pcks = pcks
 
     @staticmethod
     def from_storage_file(name, dev, file):
+        """
+        Load all packages from a binary storage file (SD-card) into a collection of Axl packages.
+        """
         logger.info(f"Parsing collection from {file} ({name} - {dev})..")
         assert os.path.exists(file), "file does not exist"
         collection = subprocess.check_output(["sfypack", "--note", file])
         collection = json.loads(collection)
         logger.info(f"Read {len(collection)} packages.")
 
-        collection = [ Axl.from_storage_json(name, dev, event) for event in collection ]
+        collection = [
+            Axl.from_storage_json(name, dev, event) for event in collection
+        ]
         return AxlCollection(collection)
 
     def clip(self, start, end):
@@ -99,6 +104,9 @@ class AxlCollection(AxlTimeseries):
         for i, _s in enumerate(self.pcks[:-1]):
             d.append(self.pcks[i + 1].start - self.pcks[i].end)
         return max(d)
+
+    def __add__(self, other):
+        return AxlCollection(self.pcks + other.pcks)
 
     def __len__(self):
         return len(self.pcks)
@@ -292,7 +300,8 @@ class Axl(AxlTimeseries):
             try:
                 return datetime.fromtimestamp(self.position_time, pytz.utc)
             except ValueError as ex:
-                return datetime.fromtimestamp(self.position_time / 1000., pytz.utc)
+                return datetime.fromtimestamp(self.position_time / 1000.,
+                                              pytz.utc)
         else:
             return self.start
 
@@ -464,8 +473,11 @@ class Axl(AxlTimeseries):
 
     @staticmethod
     def from_storage_json(name, dev, event):
+        """
+        Parse an Axl dictionary obtained from a binary storage file (from SD card).
+        """
         time, lat, lon = event['body']['timestamp'], event['body'][
-                'lat'], event['body']['lon']
+            'lat'], event['body']['lon']
         time_s = time / 1.e3
 
         event['device'] = "dev:" + dev[3:]
@@ -488,7 +500,6 @@ class Axl(AxlTimeseries):
             if event['body'].get(key) == 0:
                 del event['body'][key]
 
-
         # make event id
         hash = hashlib.shake_256()
         hash.update(str(event['body']).encode('utf-8'))
@@ -500,4 +511,3 @@ class Axl(AxlTimeseries):
         # uri = f"{int(time):013d}-{event['event']}_axl.qo.json"
 
         return Axl.parse(json.dumps(event))
-
