@@ -1,10 +1,13 @@
 from dataclasses import dataclass
 import json
+import os
 import numpy as np
 import base64
 import sys
 import logging
 import pytz
+import hashlib
+import subprocess
 from datetime import datetime
 
 from .timeseries import AxlTimeseries
@@ -46,6 +49,17 @@ class AxlCollection(AxlTimeseries):
             else:
                 pcks.append(p)
         self.pcks = pcks
+
+    @staticmethod
+    def from_storage_file(name, dev, file):
+        logger.info(f"Parsing collection from {file} ({name} - {dev})..")
+        assert os.path.exists(file), "file does not exist"
+        collection = subprocess.check_output(["sfypack", "--note", file])
+        collection = json.loads(collection)
+        logger.info(f"Read {len(collection)} packages.")
+
+        collection = [ Axl.from_storage_json(name, dev, event) for event in collection ]
+        return AxlCollection(collection)
 
     def clip(self, start, end):
         """
@@ -447,3 +461,43 @@ class Axl(AxlTimeseries):
     def from_file(path) -> 'Axl':
         with open(path, 'r') as fd:
             return Axl.parse(fd.read())
+
+    @staticmethod
+    def from_storage_json(name, dev, event):
+        time, lat, lon = event['body']['timestamp'], event['body'][
+                'lat'], event['body']['lon']
+        time_s = time / 1.e3
+
+        event['device'] = "dev:" + dev[3:]
+        event['sn'] = name
+        event['received'] = time_s
+        event['when'] = int(time_s)
+        event['from_store'] = True
+        event['file'] = "axl.qo"
+        event['where_when'] = int(time_s)
+        event['where_lat'] = lat
+        event['where_lon'] = lon
+        event['where_timezone'] = 'UTC'
+        event['tower_when'] = int(time_s)
+        event['tower_lat'] = lat
+        event['tower_lon'] = lon
+        event['tower_timezone'] = 'UTC'
+
+        # simulate blues notecard JSON where default value is removed
+        for key in ['lon', 'lat', 'timestamp', 'position_time']:
+            if event['body'].get(key) == 0:
+                del event['body'][key]
+
+
+        # make event id
+        hash = hashlib.shake_256()
+        hash.update(str(event['body']).encode('utf-8'))
+        hash.update(event['payload'].encode('utf-8'))
+        hash = hash.hexdigest(length=int((36 - 4) / 2))
+        hash = f"{hash[:8]}-{hash[8:12]}-{hash[12:16]}-{hash[16:20]}-{hash[20:]}"
+        event['event'] = hash
+
+        # uri = f"{int(time):013d}-{event['event']}_axl.qo.json"
+
+        return Axl.parse(json.dumps(event))
+
