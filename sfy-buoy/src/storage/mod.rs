@@ -11,8 +11,8 @@
 //!
 //! At 52 Hz and 1024 length data-package, there is 4389 packages per day. Each collection will last about 2 days. See tests for more details.
 
-use core::ops::DerefMut;
 use core::fmt::Debug;
+use core::ops::DerefMut;
 use cortex_m::interrupt::free;
 use embedded_hal::{blocking::spi::Transfer, digital::v2::OutputPin};
 use embedded_sdmmc::{
@@ -56,7 +56,8 @@ impl From<embedded_sdmmc::Error<SdMmcError>> for StorageErr {
 }
 
 pub struct Storage<Spi: Transfer<u8>, CS: OutputPin>
-where <Spi as Transfer<u8>>::Error: Debug
+where
+    <Spi as Transfer<u8>>::Error: Debug,
 {
     sd: SdMmcSpi<Spi, CS>,
     /// Next free ID.
@@ -65,9 +66,15 @@ where <Spi as Transfer<u8>>::Error: Debug
 }
 
 impl<Spi: Transfer<u8>, CS: OutputPin> Storage<Spi, CS>
-where <Spi as Transfer<u8>>::Error: Debug
+where
+    <Spi as Transfer<u8>>::Error: Debug,
 {
-    pub fn open(spi: Spi, cs: CS, clock: CountClock, reclock_cb: fn(&mut Spi) -> ()) -> Result<Storage<Spi, CS>, StorageErr> {
+    pub fn open(
+        spi: Spi,
+        cs: CS,
+        clock: CountClock,
+        reclock_cb: fn(&mut Spi) -> (),
+    ) -> Result<Storage<Spi, CS>, StorageErr> {
         defmt::info!("Opening SD card..");
 
         let mut sd = SdMmcSpi::new(spi, cs);
@@ -141,20 +148,21 @@ where <Spi as Transfer<u8>>::Error: Debug
             offset
         );
 
+        let block = self.sd.acquire()?;
+        let mut c = Controller::new(block, &self.clock);
+        let mut v = c.get_volume(VolumeIdx(0))?;
+        let mut root = DirHandle::open_root(&mut c, &mut v)?;
+        let mut f = root.open_file(&collection, Mode::ReadOnly)?;
+
+        if f.length() < (offset + AXL_POSTCARD_SZ) as u32 {
+            defmt::debug!("Collection is not long enough, no such file in it.");
+            return Err(GenericSdMmcError::FileNotFound.into());
+        }
+
+        f.seek_from_start(offset as u32)
+            .map_err(|_| StorageErr::ReadPackageError)?;
+
         free(|_| {
-            let block = self.sd.acquire()?;
-            let mut c = Controller::new(block, &self.clock);
-            let mut v = c.get_volume(VolumeIdx(0))?;
-            let mut root = DirHandle::open_root(&mut c, &mut v)?;
-            let mut f = root.open_file(&collection, Mode::ReadOnly)?;
-
-            if f.length() < (offset + AXL_POSTCARD_SZ) as u32 {
-                defmt::debug!("Collection is not long enough, no such file in it.");
-                return Err(GenericSdMmcError::FileNotFound.into());
-            }
-
-            f.seek_from_start(offset as u32)
-                .map_err(|_| StorageErr::ReadPackageError)?;
             let sz = f.read(&mut buf)?;
             defmt::trace!("Read {} bytes.", sz);
 
@@ -194,16 +202,16 @@ where <Spi as Transfer<u8>>::Error: Debug
             offset
         );
 
+        let block = self.sd.acquire()?;
+        let mut c = Controller::new(block, &self.clock);
+        let mut v = c.get_volume(VolumeIdx(0))?;
+        let mut root = DirHandle::open_root(&mut c, &mut v)?;
+        let mut f = root.open_file(&collection, Mode::ReadWriteCreateOrAppend)?;
+        f.seek_from_end(0)
+            .inspect_err(|e| defmt::error!("File seek error: {}", e))
+            .map_err(|_| StorageErr::WriteError)?; // We should already be at the
+                                                   // end.
         free(|_| {
-            let block = self.sd.acquire()?;
-            let mut c = Controller::new(block, &self.clock);
-            let mut v = c.get_volume(VolumeIdx(0))?;
-            let mut root = DirHandle::open_root(&mut c, &mut v)?;
-            let mut f = root.open_file(&collection, Mode::ReadWriteCreateOrAppend)?;
-            f.seek_from_end(0)
-                .inspect_err(|e| defmt::error!("File seek error: {}", e))
-                .map_err(|_| StorageErr::WriteError)?; // We should already be at the
-                                                       // end.
             f.write(&buf)?;
 
             Ok::<(), StorageErr>(())
