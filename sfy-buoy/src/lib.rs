@@ -290,6 +290,7 @@ impl<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> Imu<E
         self.waves.reset(delay)?;
         self.waves.take_buf(now, position_time, lon, lat)?; // buf is empty, this sets time and offset.
         self.waves.enable_fifo(delay)?;
+        self.last_read = now; // prevent TooFewSamples to be triggered.
 
         Ok(())
     }
