@@ -98,5 +98,33 @@ def json(dev, file):
     print(str(ax.json()))
 
 
+@sfy.command(help='Show log messages')
+@click.argument('dev')
+@click.option('--start',
+              default=None,
+              help='Filter packages after this time',
+              type=click.DateTime())
+@click.option('--end',
+              default=None,
+              help='Filter packages before this time',
+              type=click.DateTime())
+def log(dev, start, end):
+    import json
+
+    hub = Hub.from_env()
+    buoy = hub.buoy(dev)
+    logger.info(f'Fetching log entries for {buoy}')
+
+    pcks = buoy.packages_range(start, end)
+    pcks = [p for p in pcks if 'health.qo' in p[1]]
+    pcks = [buoy.fetch_package(p[1]) for p in tqdm(pcks)]
+
+    pcks = [json.load(open(p)) for p in pcks]
+    pcks.sort(key=lambda p: p['when'])
+    pcks = [[datetime.utcfromtimestamp(p['when']), p['body']['text']]
+            for p in pcks]
+    print(tabulate(pcks, headers=['Time', 'Message']))
+
+
 if __name__ == '__main__':
     sfy()

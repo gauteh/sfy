@@ -266,12 +266,10 @@ class Buoy:
         except requests.exceptions.HTTPError:
             return StorageInfo.empty()
 
-    def cache_exists(self, pck):
-        dev_path = self.hub.cache / self.dev
-        pckf: Path = dev_path / pck
-        return pckf.exists()
-
-    def package(self, pck):
+    def fetch_package(self, pck):
+        """
+        Fetch a package if it does not exist in the cache.
+        """
         dev_path = self.hub.cache / self.dev
         os.makedirs(dev_path, exist_ok=True)
 
@@ -284,6 +282,13 @@ class Buoy:
                 os.remove(pckf)
                 raise
 
+        return pckf
+
+    def package(self, pck):
+        """
+        Fetch and parse an Axl package.
+        """
+        pckf = self.fetch_package(pck)
         try:
             return Axl.from_file(pckf)
         except (KeyError, json.decoder.JSONDecodeError) as e:
