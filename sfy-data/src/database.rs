@@ -137,7 +137,7 @@ impl Database {
     }
 
     /// Get list of buoys.
-    pub async fn buoys(&self) -> eyre::Result<Vec<(String, String, String, String)>> {
+    pub async fn buoys(&self) -> eyre::Result<Vec<(String, String, String, String, Option<StorageInfo>)>> {
         let buoys: Vec<_> = sqlx::query!("SELECT dev, name, buoy_type FROM buoys ORDER BY dev")
             .fetch_all(&self.db)
             .await?
@@ -158,7 +158,15 @@ impl Database {
             last.push(e);
         }
 
-        let buoys = buoys.into_iter().zip(last).map(|(b, l)| (b.0, b.1, b.2, l)).collect();
+        let mut storage_info = Vec::new();
+
+        for r in &buoys {
+            let b = self.buoy(&r.0).await?;
+            let s = b.storage_info().await.ok();
+            storage_info.push(s);
+        }
+
+        let buoys = buoys.into_iter().zip(last).zip(storage_info).map(|((b, l), s)| (b.0, b.1, b.2, l, s)).collect();
 
         Ok(buoys)
     }
@@ -534,7 +542,7 @@ mod tests {
         b.append(None, "entry-1", 0, "data-1").await.unwrap();
 
         let devs = db.buoys().await.unwrap();
-        let devs: Vec<_> = devs.iter().map(|(dev, _, _, _)| dev).collect();
+        let devs: Vec<_> = devs.iter().map(|(dev, _, _, _, _)| dev).collect();
 
         assert_eq!(devs, ["buoy-01", "buoy-02"]);
     }
