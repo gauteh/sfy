@@ -115,6 +115,8 @@ def log(dev, start, end):
     buoy = hub.buoy(dev)
     logger.info(f'Fetching log entries for {buoy}')
 
+    # pcks = buoy.fetch_packages_range(start, end)
+    # print(pcks[0])
     pcks = buoy.packages_range(start, end)
     pcks = [p for p in pcks if 'health.qo' in p[1]]
     pcks = [buoy.fetch_package(p[1]) for p in tqdm(pcks)]

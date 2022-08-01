@@ -8,6 +8,7 @@ from tqdm import tqdm
 import json
 import math
 import tempfile
+import base64
 
 logger = logging.getLogger(__name__)
 
@@ -143,6 +144,8 @@ class Buoy:
     dev: str
     name: str
     buoy_type: str
+    __last__: str
+    __storage_info: str
 
     def __init__(self, hub, dev):
         self.hub = hub
@@ -151,10 +154,26 @@ class Buoy:
             self.dev = dev[0]
             self.name = dev[1]
             self.buoy_type = dev[2]
+            if len(dev[3]) > 0:
+                if self.buoy_type == 'sfy':
+                    self.__last__ = Axl.parse(base64.b64decode(dev[3]))
+                else:
+                    self.__last__ = json.loads(base64.b64decode(dev[3]))
+            else:
+                self.__last__ = None
+
+            if dev[4] is not None:
+                if self.buoy_type == 'sfy':
+                    self.__storage_info__ = StorageInfo(dev[4])
+                else:
+                    self.__storage_info__ = dev[4]
+            else:
+                self.__storage_info__ = StorageInfo.empty()
         else:
             self.dev = dev
             self.name = None
             self.buoy_type = 'sfy'
+            self.__last__ = None
 
     def __repr__(self):
         return f"Buoy <{self.dev}>"
@@ -207,9 +226,9 @@ class Buoy:
 
         return list(pcks)
 
-    def fetch_axl_packages_range(self, start=None, end=None):
+    def fetch_packages_range(self, start=None, end=None):
         """
-        Batch fetch axl packages in range.
+        Batch fetch packages in range.
         """
         if start is None:
             start = 0
@@ -248,23 +267,14 @@ class Buoy:
     def last(self):
         if self.buoy_type == 'omb':
             return None
-
-        try:
-            p = self.hub.__request__(f'{self.dev}/last').text
-
-            return Axl.parse(p)
-        except requests.exceptions.HTTPError:
-            return None
+        else:
+            return self.__last__
 
     def storage_info(self):
         if self.buoy_type == 'omb':
             return StorageInfo.empty()
-
-        try:
-            p = self.hub.__json_request__(f'{self.dev}/storage_info')
-            return StorageInfo(p)
-        except requests.exceptions.HTTPError:
-            return StorageInfo.empty()
+        else:
+            return self.__storage_info__
 
     def fetch_package(self, pck):
         """

@@ -50,3 +50,9 @@ def test_fetch_raw_range(sfyhub):
     start = datetime(2022, 1, 21, tzinfo=timezone.utc)
     pcks = b.packages_range(start=start)
     assert all((pck[0] > start for pck in pcks))
+
+# def test_fetch_packages_range(sfyhub):
+#     b = sfyhub.buoy("867730051260788")
+#     start = datetime(2022, 1, 21, tzinfo=timezone.utc)
+#     pcks = b.fetch_packages_range(start=start)
+#     print(pcks)
