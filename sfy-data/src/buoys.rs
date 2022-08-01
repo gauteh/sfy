@@ -1,6 +1,7 @@
 //! End-points for buoys.
 
 use crate::State;
+use serde::{Deserialize, Serialize};
 use futures_util::future;
 use sanitize_filename::sanitize;
 use serde_json as json;
@@ -220,6 +221,14 @@ struct Event {
     body: json::Value,
 }
 
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+pub struct B64Event {
+    pub received: i64,
+    pub event: String,
+    pub data: Option<String>,
+}
+
 fn parse_data(body: &[u8]) -> eyre::Result<Event> {
     let body: json::Value = json::from_slice(&body)?;
 
@@ -380,7 +389,7 @@ pub mod handlers {
     ) -> Result<impl warp::Reply, warp::Rejection> {
         let buoy = sanitize(buoy);
 
-        let entries = state
+        let entries: Vec<_> = state
             .db
             .write()
             .await
@@ -389,7 +398,10 @@ pub mod handlers {
             .map_err(|_| reject::custom(AppendErrors::Internal))?
             .get_range(from, to)
             .await
-            .map_err(|_| reject::custom(AppendErrors::Internal))?;
+            .map_err(|_| reject::custom(AppendErrors::Internal))?
+            .into_iter()
+            .map(|e| B64Event { event: e.event, received: e.received, data: e.data.map(base64::encode) })
+            .collect();
 
         Ok(warp::reply::json(&entries))
     }
@@ -804,8 +816,6 @@ mod tests {
 
     #[tokio::test]
     async fn range() {
-        use crate::database::Event;
-
         let state = crate::test_state().await;
 
         let f = filters(state);
@@ -841,7 +851,7 @@ mod tests {
 
         assert_eq!(res.status(), 200);
 
-        let revents: Vec<Event> = json::from_slice(res.body()).unwrap();
+        let revents: Vec<B64Event> = json::from_slice(res.body()).unwrap();
         println!("{:?}", revents);
 
         assert_eq!(revents.len(), 3);
@@ -862,7 +872,7 @@ mod tests {
 
         assert_eq!(res.status(), 200);
 
-        let revents: Vec<Event> = json::from_slice(res.body()).unwrap();
+        let revents: Vec<B64Event> = json::from_slice(res.body()).unwrap();
         println!("{:?}", revents);
 
         assert_eq!(revents.len(), 2);
