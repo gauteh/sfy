@@ -60,3 +60,44 @@ def test_fetch_packages_range(sfyhub):
     pcks = b.fetch_packages_range(start=start, end=end)
     print(pcks)
     print(len(pcks))
+
+def test_fetch_packages_range_caching(sfyhub):
+    b = sfyhub.buoy("867730051260788")
+    start = datetime(2022, 3, 29, tzinfo=timezone.utc)
+    end = datetime(2022, 3, 29, 1, tzinfo=timezone.utc)
+    fpcks = b.fetch_packages_range(start=start, end=end)
+
+    pcks = b.packages_range(start, end)
+
+    assert len(pcks) == len(fpcks)
+    assert len(pcks) == 211
+
+    assert all((a[1] == b[1] for (a, b) in zip(fpcks, pcks)))
+
+    # these should be partially uncached
+    start = datetime(2022, 3, 29, tzinfo=timezone.utc)
+    end = datetime(2022, 3, 29, 4, tzinfo=timezone.utc)
+    pcks = b.packages_range(start=start, end=end)
+    assert len(pcks) == 726
+
+    fpcks = b.fetch_packages_range(start, end)
+    assert len(fpcks) == len(pcks)
+    assert all((a[1] == b[1] for (a, b) in zip(fpcks, pcks)))
+
+    # create caching gap
+    start = datetime(2022, 3, 29, 6, tzinfo=timezone.utc)
+    end = datetime(2022, 3, 29, 7, tzinfo=timezone.utc)
+    pcks = b.packages_range(start=start, end=end)
+    assert len(pcks) == 132
+    fpcks = b.fetch_packages_range(start, end)
+    assert len(fpcks) == len(pcks)
+    assert all((a[1] == b[1] for (a, b) in zip(fpcks, pcks)))
+
+    # get everything, including gap
+    start = datetime(2022, 3, 29, tzinfo=timezone.utc)
+    end = datetime(2022, 3, 29, 7, tzinfo=timezone.utc)
+    pcks = b.packages_range(start=start, end=end)
+    assert len(pcks) == 1244
+    fpcks = b.fetch_packages_range(start, end)
+    assert len(fpcks) == len(pcks)
+    assert all((a[1] == b[1] for (a, b) in zip(fpcks, pcks)))
