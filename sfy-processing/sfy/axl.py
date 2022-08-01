@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 import json
+import math
 import os
 import numpy as np
 import base64
@@ -284,6 +285,10 @@ class Axl(AxlTimeseries):
             return False
 
     @property
+    def fname(self) -> str:
+        return f'{math.floor(self.received * 1000.)}-{self.event}_{self.file}.json'
+
+    @property
     def dt(self) -> float:
         """
         Sample rate
@@ -388,6 +393,15 @@ class Axl(AxlTimeseries):
 
     def __repr__(self):
         return f"[Axl received={self.received} storage_id={self.storage_id} t={self.start} -> {'%.2f' % self.duration}s sz={len(self.x)}x3 @ f={self.freq}Hz, lon={self.lon}E lat={self.lat}N]"
+
+    @staticmethod
+    def try_parse(d) -> 'Axl':
+        try:
+            return Axl.parse(d)
+        except (KeyError, json.decoder.JSONDecodeError) as e:
+            # logger.exception(e)
+            logger.error(f"failed to parse file: {d}: {e}")
+            return None
 
     @staticmethod
     def parse(d) -> 'Axl':

@@ -229,7 +229,22 @@ class Buoy:
     def fetch_packages_range(self, start=None, end=None):
         """
         Batch fetch packages in range.
+
+        Returns a list of lists with:
+
+            [ received(ms), event, payload(text) ]
         """
+        # find first un-cached package
+        logger.debug('Fetching list of packages..')
+        list_pcks = self.packages_range(start, end)
+        try:
+            fu_i, first_uncached = next(
+                filter(lambda p: not self.cache_path(p[1][1]).exists(),
+                       enumerate(list_pcks)))
+        except StopIteration:
+            logger.debug('All packages already cached.')
+            fu_i, first_uncached = len(list_pcks), None
+
         if start is None:
             start = 0
         else:
@@ -246,21 +261,53 @@ class Buoy:
         start = math.floor(start)
         end = math.ceil(end)
 
-        path = f"{self.dev}/from/{start}/to/{end}"
-        logger.info(f"Downloading packages between {start} and {end}..")
-        return self.hub.__json_request__(path)
+        if first_uncached is not None:
+            start = math.floor(first_uncached[0].timestamp() * 1000.)
+            logger.debug(f'Packages before {start} already cached.')
+
+            path = f"{self.dev}/from/{start}/to/{end}"
+            logger.info(f"Downloading packages between {start} and {end}..")
+
+            pcks = self.hub.__json_request__(path)
+            pcks = [[
+                p['received'], f"{p['received']}-{p['event']}",
+                base64.b64decode(p['data'])
+            ] for p in pcks]
+
+            logger.info(f'Downloaded {len(pcks)} packages..')
+
+            # write to cache
+            dev_path = self.hub.cache / self.dev
+            os.makedirs(dev_path, exist_ok=True)
+
+            for pck in pcks:
+                pckf: Path = dev_path / pck[1]
+                if not pckf.exists():
+                    with open(pckf, 'wb') as fd:
+                        fd.write(pck[2])
+        else:
+            pcks = []
+
+        # prepend already cached packages
+        np = [[p[0].timestamp() * 1000., p[1],
+               self.fetch_package(p[1])] for p in list_pcks[:fu_i]]
+        logger.debug(f'Prepending cached packages: {len(np)}')
+        np.extend(pcks)
+        pcks = np
+
+        return pcks
 
     def axl_packages_range(self, start=None, end=None):
         logger.debug(f"fetching axl packages between {start} and {end}")
 
-        pcks = self.packages_range(start, end)
+        pcks = self.fetch_packages_range(start, end)
         pcks = [pck for pck in pcks if 'axl.qo.json' in pck[1]]
         logger.debug(f"found {len(pcks)} packages, downloading..")
 
         # download or fetch from cache
-        pcks = [self.package(pck[1]) for pck in tqdm(pcks)]
+        pcks = [Axl.try_parse(pck[2]) for pck in tqdm(pcks)]
         pcks = [pck for pck in pcks if pck is not None]
-        logger.debug(f"dowloaded {len(pcks)} packages.")
+        logger.debug(f"loaded {len(pcks)} packages.")
 
         return pcks
 
@@ -276,6 +323,12 @@ class Buoy:
         else:
             return self.__storage_info__
 
+    def cache_path(self, event):
+        dev_path = self.hub.cache / self.dev
+        os.makedirs(dev_path, exist_ok=True)
+        pckf: Path = dev_path / event
+        return pckf
+
     def fetch_package(self, pck):
         """
         Fetch a package if it does not exist in the cache.
@@ -287,21 +340,19 @@ class Buoy:
         if not pckf.exists():
             try:
                 with open(pckf, 'w') as fd:
-                    fd.write(self.hub.__request__(f'{self.dev}/{pck}').text)
+                    pck = self.hub.__request__(f'{self.dev}/{pck}').text
+                    fd.write(pck)
             except:
                 os.remove(pckf)
                 raise
+        else:
+            pck = open(pckf).read()
 
-        return pckf
+        return pck
 
     def package(self, pck):
         """
         Fetch and parse an Axl package.
         """
-        pckf = self.fetch_package(pck)
-        try:
-            return Axl.from_file(pckf)
-        except (KeyError, json.decoder.JSONDecodeError) as e:
-            # logger.exception(e)
-            logger.error(f"failed to parse file: {pckf}: {e}")
-            return None
+        pck = self.fetch_package(pck)
+        return Axl.try_parse(pck)

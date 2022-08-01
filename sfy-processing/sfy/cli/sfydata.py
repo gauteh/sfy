@@ -68,20 +68,13 @@ def list(dev, start, end):
     else:
         buoy = hub.buoy(dev)
         logger.info(f"Listing packages for {buoy}")
-        pcks = buoy.packages_range(start, end)
-        pcks = [pck for pck in pcks if 'axl.qo.json' in pck[1]]
-
-        # download or fetch from cache
-        pcks = [(pck[1], buoy.package(pck[1])) for pck in tqdm(pcks)]
+        pcks = buoy.axl_packages_range(start, end)
 
         pcks = [[
-            ax[1].start.strftime("%Y-%m-%d %H:%M:%S UTC"), ax[1].lon,
-            ax[1].lat,
-            datetime.fromtimestamp(
-                float(ax[0].split('-')[0]) / 1000.,
-                tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
-            ax[1].storage_id, ax[0]
-        ] for ax in pcks if ax[1] is not None]
+            ax.start.strftime("%Y-%m-%d %H:%M:%S UTC"), ax.lon, ax.lat,
+            ax.received_datetime.strftime("%Y-%m-%d %H:%M:%S UTC"),
+            ax.storage_id, ax.fname
+        ] for ax in pcks]
         print(
             tabulate(
                 pcks,
@@ -115,15 +108,14 @@ def log(dev, start, end):
     buoy = hub.buoy(dev)
     logger.info(f'Fetching log entries for {buoy}')
 
-    # pcks = buoy.fetch_packages_range(start, end)
-    # print(pcks[0])
-    pcks = buoy.packages_range(start, end)
+    pcks = buoy.fetch_packages_range(start, end)
+    # pcks = buoy.packages_range(start, end)
     pcks = [p for p in pcks if 'health.qo' in p[1]]
-    pcks = [buoy.fetch_package(p[1]) for p in tqdm(pcks)]
+    pcks = [p[2] for p in tqdm(pcks)]
 
-    pcks = [json.load(open(p)) for p in pcks]
-    pcks.sort(key=lambda p: p['when'])
-    pcks = [[datetime.utcfromtimestamp(p['when']), p['body']['text']]
+    pcks = [json.loads(p) for p in pcks]
+    pcks.sort(key=lambda p: p.get('when', 0))
+    pcks = [[datetime.utcfromtimestamp(p.get('when', 0)), p['body']['text']]
             for p in pcks]
     print(tabulate(pcks, headers=['Time', 'Message']))
 
