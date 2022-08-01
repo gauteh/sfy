@@ -658,7 +658,7 @@ mod tests {
             .await;
 
         assert_eq!(res.status(), 200);
-        assert_eq!(res.body(), "[[\"dev864475044203262\",\"cain\",\"sfy\"]]");
+        assert_eq!(res.body(), "[[\"dev864475044203262\",\"cain\",\"sfy\",\"\"]]");
     }
 
     #[tokio::test]

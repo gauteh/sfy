@@ -108,7 +108,9 @@ impl Database {
 
     /// Open buoy for writing.
     pub async fn buoy(&self, dev: &str) -> eyre::Result<Buoy> {
-        let dev = percent_encoding::percent_decode_str(dev).decode_utf8_lossy().to_string();
+        let dev = percent_encoding::percent_decode_str(dev)
+            .decode_utf8_lossy()
+            .to_string();
         let buoy = sqlx::query!("SELECT dev, name, buoy_type FROM buoys where dev = ?1", dev)
             .fetch_optional(&self.db)
             .await?;
@@ -135,19 +137,28 @@ impl Database {
     }
 
     /// Get list of buoys.
-    pub async fn buoys(&self) -> eyre::Result<Vec<(String, String, String)>> {
-        let buoys = sqlx::query!("SELECT dev, name, buoy_type FROM buoys ORDER BY dev")
+    pub async fn buoys(&self) -> eyre::Result<Vec<(String, String, String, String)>> {
+        let buoys: Vec<_> = sqlx::query!("SELECT dev, name, buoy_type FROM buoys ORDER BY dev")
             .fetch_all(&self.db)
             .await?
             .iter()
-            .map(|r| {
+            .map(move |r| {
                 (
                     r.dev.clone(),
                     r.name.clone().unwrap_or(String::new()),
                     r.buoy_type.clone(),
                 )
-            })
-            .collect();
+            }).collect();
+
+        let mut last = Vec::new();
+
+        for r in &buoys {
+            let b = self.buoy(&r.0).await?;
+            let e = b.last().await.map_or(String::new(), base64::encode);
+            last.push(e);
+        }
+
+        let buoys = buoys.into_iter().zip(last).map(|(b, l)| (b.0, b.1, b.2, l)).collect();
 
         Ok(buoys)
     }
@@ -523,7 +534,7 @@ mod tests {
         b.append(None, "entry-1", 0, "data-1").await.unwrap();
 
         let devs = db.buoys().await.unwrap();
-        let devs: Vec<_> = devs.iter().map(|(dev, _, _)| dev).collect();
+        let devs: Vec<_> = devs.iter().map(|(dev, _, _, _)| dev).collect();
 
         assert_eq!(devs, ["buoy-01", "buoy-02"]);
     }
@@ -620,7 +631,9 @@ mod tests {
     async fn append_omb_last() {
         let db = Database::temporary().await;
         let mut b = db.buoy("buoy 01-omb").await.unwrap();
-        b.append_omb("testacc".into(), 0, OmbMessageType::GPS, "data-0").await.unwrap();
+        b.append_omb("testacc".into(), 0, OmbMessageType::GPS, "data-0")
+            .await
+            .unwrap();
         b.append_omb("testacc".into(), 0, OmbMessageType::GPS, "data-1")
             .await
             .unwrap();
