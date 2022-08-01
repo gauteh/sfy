@@ -292,8 +292,6 @@ pub mod handlers {
     pub async fn list(state: State) -> Result<impl warp::Reply, warp::Rejection> {
         let buoys = state
             .db
-            .read()
-            .await
             .buoys()
             .await
             .map_err(|_| reject::custom(AppendErrors::Internal))?;
@@ -305,8 +303,6 @@ pub mod handlers {
 
         let entries = state
             .db
-            .write()
-            .await
             .buoy(&buoy)
             .await
             .map_err(|_| reject::custom(AppendErrors::Internal))?
@@ -326,8 +322,6 @@ pub mod handlers {
 
         let entry = state
             .db
-            .write()
-            .await
             .buoy(&buoy)
             .await
             .map_err(|_| reject::custom(AppendErrors::Internal))?
@@ -346,8 +340,6 @@ pub mod handlers {
 
         let entry = state
             .db
-            .write()
-            .await
             .buoy(&buoy)
             .await
             .map_err(|_| reject::custom(AppendErrors::Internal))?
@@ -369,8 +361,6 @@ pub mod handlers {
 
         let entry = state
             .db
-            .write()
-            .await
             .buoy(&buoy)
             .await
             .map_err(|_| reject::custom(AppendErrors::Internal))?
@@ -391,8 +381,6 @@ pub mod handlers {
 
         let entries: Vec<_> = state
             .db
-            .write()
-            .await
             .buoy(&buoy)
             .await
             .map_err(|_| reject::custom(AppendErrors::Internal))?
@@ -416,8 +404,6 @@ pub mod handlers {
 
         let entries = state
             .db
-            .write()
-            .await
             .buoy(&buoy)
             .await
             .map_err(|_| reject::custom(AppendErrors::Internal))?
@@ -447,8 +433,7 @@ pub mod handlers {
                 event.event, event.device, device, event.file
             );
 
-            let db = state.db.write().await;
-            let mut b = db.buoy(&device).await.map_err(|e| {
+            let mut b = state.db.buoy(&device).await.map_err(|e| {
                 error!("failed to open database for device: {}: {:?}", &device, e);
                 reject::custom(AppendErrors::Database)
             })?;
@@ -472,8 +457,7 @@ pub mod handlers {
         } else {
             warn!("could not parse event, storing event in lost+found");
 
-            let db = state.db.write().await;
-            let mut b = db.buoy("lost+found").await.map_err(|e| {
+            let mut b = state.db.buoy("lost+found").await.map_err(|e| {
                 error!("failed to open database for lost+found: {:?}", e);
                 reject::custom(AppendErrors::Database)
             })?;
@@ -511,8 +495,7 @@ pub mod handlers {
 
             info!("omb event: {:?}", event);
 
-            let db = state.db.write().await;
-            let mut b = db.buoy(&device).await.map_err(|e| {
+            let mut b = state.db.buoy(&device).await.map_err(|e| {
                 error!("failed to open database for device: {}: {:?}", &device, e);
                 reject::custom(AppendErrors::Database)
             })?;
@@ -606,8 +589,6 @@ mod tests {
 
         let e = state
             .db
-            .read()
-            .await
             .buoy("dev864475044203262")
             .await
             .unwrap()

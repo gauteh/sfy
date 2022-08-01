@@ -106,7 +106,7 @@ impl Database {
         Ok(Database { db })
     }
 
-    /// Open buoy for writing.
+    /// Open buoy.
     pub async fn buoy(&self, dev: &str) -> eyre::Result<Buoy> {
         let dev = percent_encoding::percent_decode_str(dev)
             .decode_utf8_lossy()

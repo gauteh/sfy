@@ -26,7 +26,7 @@ mod config;
 mod database;
 
 pub struct SfyState {
-    pub db: tokio::sync::RwLock<database::Database>,
+    pub db: database::Database,
     pub config: config::Config,
 }
 
@@ -46,7 +46,6 @@ async fn main() -> eyre::Result<()> {
 
     let database = config.database.clone().expect("no database path specified");
     let database = database::Database::open(database).await?;
-    let database = tokio::sync::RwLock::new(database);
 
     let state = Arc::new(SfyState {
         db: database,
@@ -93,7 +92,6 @@ async fn main() -> eyre::Result<()> {
 async fn test_state() -> State {
     let config = config::Config::test_config();
     let db = database::Database::temporary().await;
-    let db = tokio::sync::RwLock::new(db);
 
     let state = SfyState { config, db };
     let state = Arc::new(state);
