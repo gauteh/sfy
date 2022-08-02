@@ -88,9 +88,9 @@ fn main() -> ! {
 
     // set up serial as defmt target.
     #[cfg(feature = "defmt-serial")]
-    let mut serial = hal::uart::Uart0::new(dp.UART0, pins.tx0, pins.rx0);
+    let serial = hal::uart::Uart0::new(dp.UART0, pins.tx0, pins.rx0);
     #[cfg(feature = "defmt-serial")]
-    defmt_serial::defmt_serial!(serial, hal::uart::Uart0);
+    defmt_serial::defmt_serial(serial);
 
     println!(
         "hello from sfy (v{}) (sn: {})!",
