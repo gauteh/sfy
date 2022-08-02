@@ -59,6 +59,12 @@ def ts(dev, tx_start, tx_end, start, end, file):
     if end is None:
         end = tx_end
 
+    if tx_start > start:
+        tx_start = start
+
+    if tx_end < end:
+        tx_end = end
+
     tx_start = utcify(tx_start)
     tx_end = utcify(tx_end)
     start = utcify(start)
