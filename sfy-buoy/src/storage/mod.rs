@@ -162,12 +162,8 @@ where
         f.seek_from_start(offset as u32)
             .map_err(|_| StorageErr::ReadPackageError)?;
 
-        free(|_| {
-            let sz = f.read(&mut buf)?;
-            defmt::trace!("Read {} bytes.", sz);
-
-            Ok::<(), StorageErr>(())
-        })?;
+        let sz = free(|_| f.read(&mut buf))?;
+        defmt::trace!("Read {} bytes.", sz);
 
         // De-serialize
         let pck: AxlPacket =
@@ -211,11 +207,7 @@ where
             .inspect_err(|e| defmt::error!("File seek error: {}", e))
             .map_err(|_| StorageErr::WriteError)?; // We should already be at the
                                                    // end.
-        free(|_| {
-            f.write(&buf)?;
-
-            Ok::<(), StorageErr>(())
-        })?;
+        free(|_| f.write(&buf))?;
 
         Ok(id)
     }
