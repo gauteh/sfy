@@ -81,7 +81,7 @@ def ts(dev, tx_start, tx_end, start, end, file):
 
     # filter packages between start and end
     pcks.clip(start, end)
-    logger.info(f"{len(pcks)} in start <-> end range")
+    logger.info(f"{len(pcks)} in start <-> end range, splitting into segments..")
 
     segments = list(pcks.segments())
     logger.info(f"Collection consists of: {len(segments)} segments")

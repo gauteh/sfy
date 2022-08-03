@@ -289,6 +289,7 @@ class Buoy:
             pcks = []
 
         # prepend already cached packages
+        logger.debug(f'Loading {fu_i} cached packages from disk..')
         np = [[p[0].timestamp() * 1000., p[1],
                self.fetch_package(p[1])] for p in list_pcks[:fu_i]]
         logger.debug(f'Prepending cached packages: {len(np)}')
@@ -302,12 +303,11 @@ class Buoy:
 
         pcks = self.fetch_packages_range(start, end)
         pcks = [pck for pck in pcks if 'axl.qo.json' in pck[1]]
-        logger.debug(f"found {len(pcks)} packages, downloading..")
+        logger.debug(f"Found {len(pcks)} axl packages")
 
-        # download or fetch from cache
         pcks = [Axl.try_parse(pck[2]) for pck in tqdm(pcks)]
         pcks = [pck for pck in pcks if pck is not None]
-        logger.debug(f"loaded {len(pcks)} packages.")
+        logger.debug(f"Loaded {len(pcks)} packages.")
 
         return pcks
 

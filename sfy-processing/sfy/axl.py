@@ -21,14 +21,13 @@ class AxlCollection(AxlTimeseries):
 
     pcks: ['Axl']
 
-    def __init__(self, pcks: ['Axl']):
+    def __init__(self, pcks: ['Axl'], duplicates_removed=False):
         assert len(pcks) > 0, "must be at least one package"
-
-        self.pcks = pcks.copy()
-        self.pcks.sort(key=lambda pck: pck.start)
 
         assert all(pck.frequency == pcks[0].frequency
                    for pck in pcks), "all packages must be the same frequency"
+
+        self.pcks = pcks.copy()
 
         # Remove duplicates:
         #
@@ -40,16 +39,14 @@ class AxlCollection(AxlTimeseries):
         # identify these packages.
         #
 
-        pcks = []
-        while not len(self.pcks) == 0:
-            p = self.pcks.pop(0)
+        if not duplicates_removed:
+            p = len(self.pcks)
+            logger.debug("Removing duplicates..")
+            self.pcks = list(frozenset(self.pcks))
+            if p > len(self.pcks):
+                logger.warning(f"Removed {p - len(self.pcks)} duplicates.")
 
-            o = next((o for o in self.pcks if p.duplicate(o)), None)
-            if o is not None:
-                logger.warning("duplicate package found, skipping this.")
-            else:
-                pcks.append(p)
-        self.pcks = pcks
+        self.pcks.sort(key=lambda pck: pck.start)
 
     @staticmethod
     def from_storage_file(name, dev, file):
@@ -91,11 +88,11 @@ class AxlCollection(AxlTimeseries):
                         pcks[0].start.timestamp()) <= eps_gap:
                 segment.append(pcks.pop(0))
             else:
-                yield AxlCollection(segment)
+                yield AxlCollection(segment, duplicates_removed=True)
                 segment = []
 
         if len(segment) > 0:
-            yield AxlCollection(segment)
+            yield AxlCollection(segment, duplicates_removed=True)
 
     def max_gap(self):
         if len(self.pcks) == 1:
@@ -255,32 +252,24 @@ class Axl(AxlTimeseries):
     from_store: bool = False
 
     def __eq__(self, o: 'Axl'):
-        eq = self.__dict__.keys() == o.__dict__.keys()
-        if eq:
-            for k in self.__dict__.keys():
-                if isinstance(self.__dict__[k], np.ndarray):
-                    eq &= all(self.__dict__[k] == o.__dict__[k])
-                else:
-                    eq &= self.__dict__[k] == o.__dict__[k]
+        return self.duplicate(o)
 
-                if not eq:
-                    return False
-        else:
-            return False
-
-        return True
+    def __hash__(self):
+        # Packages created with the default timestamp, no storage id, and without GPS location may cause a hash collision. Typically these packages are useless anyway, so we ignore the collision. The other fields are also not considered since they may be different if the same data is uploaded from the SD-card later.
+        return hash((self.timestamp, self.storage_id, self.lon, self.lat,
+                     self.offset, self.storage_id))
 
     def duplicate(self, o):
-        if self.timestamp == o.timestamp:
-            if self.storage_id == o.storage_id and self.lon == o.lon and self.lat == o.lat and self.offset == o.offset and all(
-                    self.x == o.x) and all(self.y == o.y) and all(
-                        self.z == o.z):
+        if self.timestamp == o.timestamp and self.storage_id == o.storage_id and self.lon == o.lon and self.lat == o.lat and self.offset == o.offset:
+            if all(self.x == o.x) and all(self.y == o.y) and all(
+                    self.z == o.z):
                 return True
-            else:
-                logger.warn(
-                    f"duplicate timestamp {self.start}, but other fields mismatch."
-                )
-                return False
+
+            logger.warn(
+                f"duplicate timestamp {self.start}, but other fields mismatch."
+            )
+            return False
+
         else:
             return False
 
