@@ -188,7 +188,7 @@ where
         buf.resize_default(buf.capacity()).unwrap();
 
         // And write..
-        defmt::debug!(
+        defmt::info!(
             "Writing package to card id: {}, size: {}, timestamp: {}, collection: {}, fileid: {}, offset: {}",
             id,
             buf.len(),

@@ -207,8 +207,8 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             )?
             .wait(delay)?;
 
-        defmt::debug!(
-            "sent data package: {}, bytes: {} (note: {:?})",
+        defmt::info!(
+            "Sent data package: {}, bytes: {} (note: {:?})",
             pck.storage_id,
             b64.len(),
             r
@@ -254,8 +254,6 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             .map(|r| r.body)
             .unwrap_or(None);
 
-        defmt::debug!("Storage info: {:?}, Request data: {:?}", r, d);
-
         Ok((r, d))
     }
 
@@ -266,13 +264,6 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         mut sent_id: Option<u32>,
         clear_request: bool,
     ) -> Result<(), NoteError> {
-        defmt::trace!(
-            "Updating last written ID to: {}, sent_id: {}, clear request: {}",
-            current_id,
-            sent_id,
-            clear_request,
-        );
-
         if clear_request {
             defmt::info!("Clearing data-request..");
             self.note
@@ -282,7 +273,6 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                 .inspect_err(|e| defmt::error!("Failed to delete request-data: {:?}", e))
                 .ok();
 
-            defmt::debug!("Clearing sent-id when data-request is complete.");
             sent_id = None;
         }
 
@@ -294,7 +284,12 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         };
 
         if Some(&info) != current_info.as_ref() {
-            defmt::trace!("Delete current storage-info");
+            defmt::trace!(
+                "Updating last written ID to: {}, sent_id: {}, clear request: {}",
+                current_id,
+                sent_id,
+                clear_request,
+            );
             self.note
                 .note()
                 .delete(delay, "storage.dbx", "storage-info")
@@ -302,13 +297,10 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                 .inspect_err(|e| defmt::error!("Failed to delete storage-info: {:?}", e))
                 .ok();
 
-            defmt::debug!("Writing new storage-info: {:?}", info);
             self.note
                 .note()
                 .update(delay, "storage.dbx", "storage-info", Some(info), None, false)?
                 .wait(delay)?;
-        } else {
-            defmt::debug!("Storage-info unchanged, not updating.");
         }
 
         Ok(())
