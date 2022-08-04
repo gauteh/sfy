@@ -22,7 +22,7 @@ com:
 	picocom -e c -b 115200 $(USB)
 
 defmt-serial:
-	socat $(USB),raw,echo=0 STDOUT | defmt-print -e target/thumbv7em-none-eabihf/debug/sfy-artemis
+	socat $(USB),raw,echo=0,b115200 STDOUT | defmt-print -e target/thumbv7em-none-eabihf/debug/sfy-artemis
 
 gdb-server:
 	JLinkGDBServer -select USB -device AMA3B1KK-KBR -endian little -if SWD -noir -noLocalhostOnly -nohalt

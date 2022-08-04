@@ -238,16 +238,14 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         &mut self,
         delay: &mut impl DelayMs<u16>,
     ) -> Result<(Option<StorageIdInfo>, Option<RequestData>), NoteError> {
-        defmt::trace!("Read storage info..");
         let r = self
             .note
             .note()
-            .get(delay, "storage.db", "storage-info", false, false)?
+            .get(delay, "storage.dbx", "storage-info", false, false)?
             .wait(delay)
             .map(|r| r.body)
             .unwrap_or(None);
 
-        defmt::trace!("Read request-data..");
         let d: Option<RequestData> = self
             .note
             .note()
@@ -299,7 +297,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             defmt::trace!("Delete current storage-info");
             self.note
                 .note()
-                .delete(delay, "storage.db", "storage-info")
+                .delete(delay, "storage.dbx", "storage-info")
                 .and_then(|r| r.wait(delay))
                 .inspect_err(|e| defmt::error!("Failed to delete storage-info: {:?}", e))
                 .ok();
@@ -307,7 +305,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             defmt::debug!("Writing new storage-info: {:?}", info);
             self.note
                 .note()
-                .update(delay, "storage.db", "storage-info", Some(info), None, false)?
+                .update(delay, "storage.dbx", "storage-info", Some(info), None, false)?
                 .wait(delay)?;
         } else {
             defmt::debug!("Storage-info unchanged, not updating.");

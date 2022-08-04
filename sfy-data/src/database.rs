@@ -1,6 +1,5 @@
 use eyre::Result;
 use serde::{Deserialize, Serialize};
-use serde_json as json;
 use sqlx::sqlite::{
     SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqlitePoolOptions, SqliteSynchronous,
 };
@@ -10,12 +9,6 @@ use std::str::FromStr;
 #[derive(Debug)]
 pub struct Database {
     db: SqlitePool,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct StorageInfo {
-    pub current_id: Option<u64>,
-    pub sent_id: Option<u64>,
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -137,7 +130,7 @@ impl Database {
     }
 
     /// Get list of buoys.
-    pub async fn buoys(&self) -> eyre::Result<Vec<(String, String, String, String, Option<StorageInfo>)>> {
+    pub async fn buoys(&self) -> eyre::Result<Vec<(String, String, String, String)>> {
         let buoys: Vec<_> = sqlx::query!("SELECT dev, name, buoy_type FROM buoys ORDER BY dev")
             .fetch_all(&self.db)
             .await?
@@ -158,15 +151,7 @@ impl Database {
             last.push(e);
         }
 
-        let mut storage_info = Vec::new();
-
-        for r in &buoys {
-            let b = self.buoy(&r.0).await?;
-            let s = b.storage_info().await.ok();
-            storage_info.push(s);
-        }
-
-        let buoys = buoys.into_iter().zip(last).zip(storage_info).map(|((b, l), s)| (b.0, b.1, b.2, l, s)).collect();
+        let buoys = buoys.into_iter().zip(last).map(|(b, l)| (b.0, b.1, b.2, l)).collect();
 
         Ok(buoys)
     }
@@ -355,35 +340,6 @@ impl Buoy {
         }
     }
 
-    pub async fn storage_info(&self) -> Result<StorageInfo> {
-        ensure!(self.known, "No such buoy");
-        ensure!(
-            matches!(self.buoy_type, BuoyType::SFY),
-            "Only storage info for SFY"
-        );
-
-        let event = sqlx::query!("SELECT data FROM events WHERE dev = ?1 AND instr(event, 'storage.db') ORDER BY received DESC LIMIT 1", self.dev)
-            .fetch_one(&self.db)
-            .await?;
-
-        match &event.data {
-            Some(event) => {
-                let body: json::Value = json::from_slice(&event)?;
-
-                let info = body.get("body").ok_or(eyre!("no event field"))?;
-
-                let current_id = info.get("current_id").and_then(json::Value::as_u64);
-                let sent_id = info.get("sent_id").and_then(json::Value::as_u64);
-
-                Ok(StorageInfo {
-                    current_id,
-                    sent_id,
-                })
-            }
-            None => Err(eyre!("No storage entry found.")),
-        }
-    }
-
     pub async fn get(&self, file: impl AsRef<Path>) -> Result<Vec<u8>> {
         ensure!(self.known, "No such buoy");
 
@@ -542,7 +498,7 @@ mod tests {
         b.append(None, "entry-1", 0, "data-1").await.unwrap();
 
         let devs = db.buoys().await.unwrap();
-        let devs: Vec<_> = devs.iter().map(|(dev, _, _, _, _)| dev).collect();
+        let devs: Vec<_> = devs.iter().map(|(dev, _, _, _)| dev).collect();
 
         assert_eq!(devs, ["buoy-01", "buoy-02"]);
     }
@@ -647,31 +603,5 @@ mod tests {
             .unwrap();
 
         assert_eq!(b.last().await.unwrap(), b"data-0");
-    }
-
-    #[tokio::test]
-    async fn append_get_storage_info() {
-        let db = Database::temporary().await;
-        let mut b = db.buoy("buoy-01").await.unwrap();
-
-        let data = std::fs::read(
-            "tests/events/1653994017660-ae50c1e9-0800-4fd9-9cb6-cdd6a6d08eb3_storage.db.json",
-        )
-        .unwrap();
-
-        b.append(
-            None,
-            "ae50c1e9-0800-4fd9-9cb6-cdd6a6d08eb3_storage.db",
-            1653994017660,
-            &data,
-        )
-        .await
-        .unwrap();
-
-        let info = b.storage_info().await.unwrap();
-        println!("{:?}", info);
-
-        assert_eq!(info.current_id, Some(40002));
-        assert_eq!(info.sent_id, None);
     }
 }
