@@ -8,7 +8,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from sfy.hub import Hub, StorageInfo
+from sfy.hub import Hub
 from sfy.cli.track import track
 from sfy.cli.axl import axl
 from sfy.cli.ctrl import ctrl
@@ -44,15 +44,12 @@ def list(dev, start, end):
         buoys = hub.buoys()
 
         last = [b.last() if 'lost+found' not in b.dev else None for b in buoys]
+
+        storage_info = [ l.storage_id if l else None for l in last ]
+
         last = [l.received_datetime if l else None for l in last]
 
-        storage_info = [
-            b.storage_info()
-            if 'lost+found' not in b.dev else StorageInfo.empty()
-            for b in buoys
-        ]
-
-        buoys = [[b.dev, b.name, l, si.current_id, si.sent_id]
+        buoys = [[b.dev, b.name, l, si]
                  for b, l, si in zip(buoys, last, storage_info)]
         buoys.sort(key=lambda b: b[2].timestamp() if b[2] else 0)
 
@@ -62,8 +59,7 @@ def list(dev, start, end):
                          'Buoys',
                          'Name',
                          'Last contact',
-                         'Current ID',
-                         'Sent ID',
+                         'Last SD-card ID',
                      ]))
     else:
         buoy = hub.buoy(dev)

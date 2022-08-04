@@ -26,9 +26,8 @@ def get_pcks(dev, start, end):
 
     hub = Hub.from_env()
     b = hub.buoy(dev)
-    info = b.storage_info()
 
-    logger.info(f"Requesting packages from {b}: {info}")
+    logger.info(f"Requesting packages from {b}")
 
     token = hub.login()
 
@@ -70,8 +69,7 @@ def get_pcks(dev, start, end):
 def clear_get(dev):
     hub = Hub.from_env()
     b = hub.buoy(dev)
-    info = b.storage_info()
-    logger.info(f"Clearing request for buoy: {b}: {info}")
+    logger.info(f"Clearing request for buoy: {b}")
 
     token = hub.login()
 
@@ -122,20 +120,6 @@ def status(dev):
     logger.debug(f"Response: {rd}: {rd.text}")
     rd.raise_for_status()
 
-    logger.debug("Getting storage-info..")
-    rs = requests.post(
-        f'https://api.notefile.net/req?product={product}&device=dev:{b.dev[3:]}',
-        json={
-            'req': 'note.get',
-            'file': 'storage.db',
-            'note': 'storage-info',
-        },
-        headers={'X-SESSION-TOKEN': token})
-    logger.debug(f"Response: {rs}: {rs.text}")
-    rs.raise_for_status()
-
-    time = datetime.utcfromtimestamp(rs.json().get('time'))
-
     request_start = None
     request_end = None
     request_time = None
@@ -147,11 +131,6 @@ def status(dev):
         request_time = datetime.utcfromtimestamp(rd.json().get('time'))
 
     print(f"Buoy: {b.name} / {b.dev}")
-    print()
-    print(f"Storage-info:")
-    print("current_id .......: %s" % rs.json().get('body').get('current_id'))
-    print("sent_id ..........: %s" % rs.json().get('body').get('sent_id'))
-    print("time .............: %s" % time)
     print()
     print("Request-data:")
     print("request_start ....: %s" % request_start)

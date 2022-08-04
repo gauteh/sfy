@@ -16,22 +16,6 @@ from .axl import Axl
 from .timeutil import utcify
 
 
-class StorageInfo:
-    current_id = None
-    sent_id = None
-
-    def __init__(self, p):
-        self.current_id = p.get('current_id')
-        self.sent_id = p.get('sent_id')
-
-    @staticmethod
-    def empty():
-        return StorageInfo({})
-
-    def __repr__(self):
-        return f"StorageInfo <current: {self.current_id}, sent_id: {self.sent_id}>"
-
-
 class Hub:
     endpoint: str
     key: str
@@ -145,7 +129,6 @@ class Buoy:
     name: str
     buoy_type: str
     __last__: str
-    __storage_info: str
 
     def __init__(self, hub, dev):
         self.hub = hub
@@ -161,14 +144,6 @@ class Buoy:
                     self.__last__ = json.loads(base64.b64decode(dev[3]))
             else:
                 self.__last__ = None
-
-            if dev[4] is not None:
-                if self.buoy_type == 'sfy':
-                    self.__storage_info__ = StorageInfo(dev[4])
-                else:
-                    self.__storage_info__ = dev[4]
-            else:
-                self.__storage_info__ = StorageInfo.empty()
         else:
             self.dev = dev
             self.name = None
@@ -316,12 +291,6 @@ class Buoy:
             return None
         else:
             return self.__last__
-
-    def storage_info(self):
-        if self.buoy_type == 'omb':
-            return StorageInfo.empty()
-        else:
-            return self.__storage_info__
 
     def cache_path(self, event):
         dev_path = self.hub.cache / self.dev
