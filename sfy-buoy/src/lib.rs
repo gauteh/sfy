@@ -381,7 +381,7 @@ where
 
                 if sent_id < request_end {
                     defmt::info!("Request, sending range: {} -> {}", sent_id, request_end);
-                    for id in (sent_id..request_end).take(100) {
+                    for id in (sent_id..=request_end).take(100) {
                         let pck = storage.get(id);
 
                         defmt::debug!("Sending stored package: {:?}", pck);
@@ -435,6 +435,10 @@ where
                                 break;
                             }
                             Err(e) => {
+                                defmt::error!("Failed to read from SD-card: {:?}, clearing request.", e);
+                                note.write_storage_info(delay, last_id, None, true)
+                                    .inspect_err(|e| defmt::error!("Failed to set storageinfo: {:?}", e))
+                                    .ok();
                                 return Err(e);
                             }
                         }
