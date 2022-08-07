@@ -28,8 +28,11 @@ mod handles;
 use clock::CountClock;
 use handles::*;
 
-pub const COLLECTION_SIZE: u32 = 10_000;
-pub const STORAGE_VERSION_STR: &'static str = "1";
+/// Writing to a file seems to take longer time when it has more packages, this can cause timeouts
+/// in the interrupt that drains the IMU FIFO. See https://github.com/gauteh/sfy/issues/77.
+pub const COLLECTION_SIZE: u32 = 100;
+pub const STORAGE_VERSION_STR: &'static str = "2";
+pub const STORAGE_VERSION: u32 = 2;
 
 #[derive(Debug, defmt::Format)]
 pub enum StorageErr {
@@ -255,14 +258,14 @@ mod tests {
     #[test]
     fn test_id_to_parts() {
         let (c, file, o) = id_to_parts(0);
-        assert_eq!(c, "0.1");
+        assert_eq!(c, "0.2");
         assert_eq!(file, 0);
         assert_eq!(o, 0);
 
-        let (c, file, o) = id_to_parts(1234567);
-        assert_eq!(c, "123.1");
-        assert_eq!(file, 4567);
-        assert_eq!(o, 4567 * AXL_POSTCARD_SZ);
+        let (c, file, o) = id_to_parts(1231255);
+        assert_eq!(c, "12312.2");
+        assert_eq!(file, 55);
+        assert_eq!(o, 55 * AXL_POSTCARD_SZ);
     }
 
     #[test]
@@ -280,6 +283,7 @@ mod tests {
         let collections_per_year = (pcks_per_day * 365) as f32 / COLLECTION_SIZE as f32;
         println!("Collections per day: {}", collections_per_day);
         println!("Collections per year: {}", collections_per_year);
+        println!("Years of collections possible (FAT32 file limit): {}", 65536.0 / collections_per_year);
 
         // max files in directory (should last at least a year)
         assert!(collections_per_year < 65536 as f32);
@@ -311,6 +315,7 @@ mod tests {
             freq: 53.0,
             offset: 15,
             storage_id: Some(0),
+            storage_version: Some(STORAGE_VERSION),
             data: (6..3078)
                 .map(|v| f16::from_f32(v as f32))
                 .collect::<Vec<_, { AXL_SZ }>>(),
@@ -323,6 +328,7 @@ mod tests {
             freq: 53.0,
             offset: 15,
             storage_id: Some(1),
+            storage_version: Some(STORAGE_VERSION),
             data: (6..3078)
                 .map(|v| f16::from_f32(v as f32))
                 .collect::<Vec<_, { AXL_SZ }>>(),
@@ -335,6 +341,7 @@ mod tests {
             freq: 53.0,
             offset: 15,
             storage_id: Some(2),
+            storage_version: Some(STORAGE_VERSION),
             data: (9..3081)
                 .map(|v| f16::from_f32(v as f32))
                 .collect::<Vec<_, { AXL_SZ }>>(),

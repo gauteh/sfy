@@ -8,7 +8,7 @@ import numpy as np
 import os
 
 from sfy.hub import Hub
-from sfy.axl import AxlCollection
+from sfy.axl import Axl, AxlCollection
 from sfy import signal
 from sfy.timeutil import utcify
 import logging
@@ -43,7 +43,11 @@ def axl():
               default=None,
               help='Store to this file',
               type=click.Path())
-def ts(dev, tx_start, tx_end, start, end, file):
+@click.option('--gap',
+              default=None,
+              help='Maximum gap allowed between packages before splitting into new segment (seconds).',
+              type=float)
+def ts(dev, tx_start, tx_end, start, end, file, gap):
     hub = Hub.from_env()
     buoy = hub.buoy(dev)
 
@@ -83,7 +87,9 @@ def ts(dev, tx_start, tx_end, start, end, file):
     pcks.clip(start, end)
     logger.info(f"{len(pcks)} in start <-> end range, splitting into segments..")
 
-    segments = list(pcks.segments())
+    gap = gap if gap is not None else AxlCollection.GAP_LIMIT
+
+    segments = list(pcks.segments(eps_gap=gap))
     logger.info(f"Collection consists of: {len(segments)} segments")
 
     assert len(pcks) == sum(len(s) for s in segments)

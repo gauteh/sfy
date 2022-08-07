@@ -86,7 +86,8 @@ def put(dev, file, really, cont, start_id, stop_id):
 
         # check if store id already exists on server
         storage_id = event['body']['storage_id']
-        existing_p = next(filter(lambda p: p.storage_id == storage_id, packages), None)
+        storage_version = event['body'].get('storage_id', 1)
+        existing_p = next(filter(lambda p: p.storage_id == storage_id and p.storage_version == storage_version, packages), None)
 
         if existing_p is not None:
             duplicate = new_p.duplicate(existing_p)

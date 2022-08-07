@@ -18,7 +18,6 @@ logger = logging.getLogger(__name__)
 
 class AxlCollection(AxlTimeseries):
     GAP_LIMIT = 10.  # limit in seconds before data is not considered continuous
-
     pcks: ['Axl']
 
     def __init__(self, pcks: ['Axl'], duplicates_removed=False):
@@ -209,6 +208,7 @@ class Axl(AxlTimeseries):
     offset: int
     timestamp: int  # milliseconds, i64
     storage_id: int  # ID of package on SD card (if applicable), may not be unique.
+    storage_version: int
     position_time: int  # time of location fix, u32
     lon: float
     lat: float
@@ -256,11 +256,11 @@ class Axl(AxlTimeseries):
 
     def __hash__(self):
         # Packages created with the default timestamp, no storage id, and without GPS location may cause a hash collision. Typically these packages are useless anyway, so we ignore the collision. The other fields are also not considered since they may be different if the same data is uploaded from the SD-card later.
-        return hash((self.timestamp, self.storage_id, self.lon, self.lat,
-                     self.offset, self.storage_id))
+        return hash((self.timestamp, self.storage_id, self.storage_version, self.lon, self.lat,
+                     self.offset))
 
     def duplicate(self, o):
-        if self.timestamp == o.timestamp and self.storage_id == o.storage_id and self.lon == o.lon and self.lat == o.lat and self.offset == o.offset:
+        if self.timestamp == o.timestamp and self.storage_id == o.storage_id and self.storage_version == o.storage_version and self.lon == o.lon and self.lat == o.lat and self.offset == o.offset:
             if all(self.x == o.x) and all(self.y == o.y) and all(
                     self.z == o.z):
                 return True
@@ -407,6 +407,7 @@ class Axl(AxlTimeseries):
         data['offset'] = data['body'].get('offset', 0)
         data['timestamp'] = data['body']['timestamp']
         data['storage_id'] = data['body'].get('storage_id', None)
+        data['storage_version'] = data['body'].get('storage_version', 1)
         data['position_time'] = data['body'].get('position_time',
                                                  data['body']['timestamp'])
         data['lon'] = data['body'].get('lon')

@@ -23,6 +23,7 @@ pub struct AxlPacket {
     /// ID on SD-card. This one is not necessarily unique. Will not be set
     /// before package has been written to SD-card.
     pub storage_id: Option<u32>,
+    pub storage_version: Option<u32>,
 
     /// Time of position in seconds.
     pub position_time: u32,
@@ -100,6 +101,7 @@ pub struct AxlPacketMeta {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::storage::STORAGE_VERSION;
 
     #[test]
     fn base64_data_package() {
@@ -111,6 +113,7 @@ mod tests {
             freq: 100.0,
             offset: 0,
             storage_id: Some(0),
+            storage_version: Some(STORAGE_VERSION),
             data: (0..3072)
                 .map(|v| f16::from_f32(v as f32))
                 .collect::<Vec<_, { AXL_SZ }>>(),
@@ -130,6 +133,7 @@ mod tests {
             freq: 53.0,
             offset: 0,
             storage_id: Some(1489),
+            storage_version: Some(STORAGE_VERSION),
             data: (6..3078)
                 .map(|v| f16::from_f32(v as f32))
                 .collect::<Vec<_, { AXL_SZ }>>(),
