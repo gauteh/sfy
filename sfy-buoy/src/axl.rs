@@ -1,4 +1,5 @@
 use defmt::{write, Format, Formatter};
+use postcard::experimental::max_size::MaxSize;
 use half::f16;
 use heapless::Vec;
 
@@ -10,7 +11,7 @@ pub const AXL_OUTN: usize = { AXL_SZ * 2 } * 4 / 3 + 4;
 
 /// Max size of `AxlPacket` serialized using postcard with COBS. Set with some margin since
 /// postcard messages are not fixed size.
-pub const AXL_POSTCARD_SZ: usize = 1024 * 8;
+pub const AXL_POSTCARD_SZ: usize = 1024 * 10;
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct AxlPacket {
@@ -145,5 +146,8 @@ mod tests {
         println!("{}", v.len());
 
         assert!(v.len() < AXL_POSTCARD_SZ);
+
+        // This does not include the additional size used by COBS.
+        // assert!(AXL_POSTCARD_SZ >= AxlPacket::POSTCARD_MAX_SIZE);
     }
 }
