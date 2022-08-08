@@ -56,6 +56,7 @@ mod tests {
         let pck = sfy::axl::AxlPacket {
             timestamp: 1000,
             storage_id: None,
+            storage_version: None,
             position_time: 0,
             offset: 1,
             freq: 100.,

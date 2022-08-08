@@ -315,8 +315,8 @@ mod tests {
     }
 
     #[test]
-    fn read_collection() {
-        let mut c = std::fs::read("tests/data/0.1").unwrap();
+    fn read_synth_collection() {
+        let mut c = std::fs::read("tests/data/0.2").unwrap();
         assert_eq!(c.len(), AXL_POSTCARD_SZ * 4);
 
         let buf = c.as_mut_slice();
@@ -379,17 +379,17 @@ mod tests {
 
     #[test]
     fn read_real_data() {
-        let mut c = std::fs::read("tests/data/1.1").unwrap();
-        assert_eq!(c.len(), AXL_POSTCARD_SZ * 7);
+        let mut c = std::fs::read("tests/data/2.2").unwrap();
+        assert_eq!(c.len(), AXL_POSTCARD_SZ * 12);
 
         let buf = c.as_mut_slice();
 
-        for p in 0..7 {
+        for p in 0..12 {
             let slice = &mut buf[(AXL_POSTCARD_SZ * p)..(AXL_POSTCARD_SZ * (p + 1))];
             let pck: AxlPacket = postcard::from_bytes_cobs(slice).unwrap();
             println!("Deserialized data package: {:?}", pck);
 
-            assert_eq!(pck.storage_id, Some(10000 + p as u32));
+            assert_eq!(pck.storage_id, Some(200 + p as u32));
         }
     }
 }
