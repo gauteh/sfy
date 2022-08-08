@@ -363,11 +363,10 @@ where
 
         // Send additional requested packages from SD-card.
         if let Some(storage) = &mut self.storage {
-            let last_id = storage.current_id().unwrap();
+            let last_id = storage.next_id().unwrap();
 
             if let Ok((
                 Some(note::StorageIdInfo {
-                    current_id: _,
                     sent_id,
                 }),
                 Some(note::RequestData {
@@ -393,7 +392,6 @@ where
                                         // Update range of sent packages.
                                         note.write_storage_info(
                                             delay,
-                                            last_id,
                                             Some(id),
                                             if id >= request_end { true } else { false },
                                         )
@@ -423,7 +421,6 @@ where
 
                                 note.write_storage_info(
                                     delay,
-                                    last_id,
                                     Some(new_id),
                                     if new_id >= request_end { true } else { false },
                                 )
@@ -436,7 +433,7 @@ where
                             }
                             Err(e) => {
                                 defmt::error!("Failed to read from SD-card: {:?}, clearing request.", e);
-                                note.write_storage_info(delay, last_id, None, true)
+                                note.write_storage_info(delay, None, true)
                                     .inspect_err(|e| defmt::error!("Failed to set storageinfo: {:?}", e))
                                     .ok();
                                 return Err(e);
@@ -446,15 +443,10 @@ where
                 } else {
                     // Request done, clearing.
                     defmt::info!("Request complete, deleting request.");
-                    note.write_storage_info(delay, last_id, None, true)
+                    note.write_storage_info(delay, None, true)
                         .inspect_err(|e| defmt::error!("Failed to set storageinfo: {:?}", e))
                         .ok();
                 }
-            } else {
-                // No data-request, updating last_id
-                note.write_storage_info(delay, last_id, None, false)
-                    .inspect_err(|e| defmt::error!("Failed to set storageinfo: {:?}", e))
-                    .ok();
             }
         }
 

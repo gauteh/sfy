@@ -18,9 +18,6 @@ pub struct Notecarrier<I2C: Read + Write> {
 #[derive(serde::Serialize, serde::Deserialize, Default, defmt::Format, PartialEq)]
 pub struct StorageIdInfo {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub current_id: Option<u32>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub sent_id: Option<u32>,
 }
 
@@ -260,7 +257,6 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
     pub fn write_storage_info(
         &mut self,
         delay: &mut impl DelayMs<u16>,
-        current_id: u32,
         mut sent_id: Option<u32>,
         clear_request: bool,
     ) -> Result<(), NoteError> {
@@ -279,14 +275,12 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         let current_info = self.read_storage_info(delay).ok().map(|(c, _)| c).flatten();
 
         let info = StorageIdInfo {
-            current_id: Some(current_id),
             sent_id,
         };
 
         if Some(&info) != current_info.as_ref() {
             defmt::trace!(
-                "Updating last written ID to: {}, sent_id: {}, clear request: {}",
-                current_id,
+                "Updating sent_id: {}, clear request: {}",
                 sent_id,
                 clear_request,
             );

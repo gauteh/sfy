@@ -64,7 +64,7 @@ where
 {
     sd: SdMmcSpi<Spi, CS>,
     /// Next free ID.
-    current_id: Option<u32>,
+    next_id: Option<u32>,
     clock: CountClock,
 }
 
@@ -91,13 +91,13 @@ where
 
         let mut storage = Storage {
             sd,
-            current_id: None,
+            next_id: None,
             clock,
         };
 
-        let c = storage.find_first_free_collection()?;
+        let c = storage.find_first_free_collection(None)?;
         defmt::info!("Starting new collection: {}", c);
-        storage.current_id = Some(c * COLLECTION_SIZE);
+        storage.set_id(c * COLLECTION_SIZE);
 
         Ok(storage)
     }
@@ -105,14 +105,14 @@ where
     /// Find the first free collection. Every time the buoy starts up a new collection will be used
     /// to prevent offset mismatch between file id. The ID will be set to the first entry in that
     /// collection.
-    pub fn find_first_free_collection(&mut self) -> Result<u32, StorageErr> {
+    pub fn find_first_free_collection(&mut self, start: Option<u32>) -> Result<u32, StorageErr> {
         let block = self.sd.acquire()?;
         let mut c = Controller::new(block, &self.clock);
         let mut v = c.get_volume(VolumeIdx(0))?;
 
         let mut root = DirHandle::open_root(&mut c, &mut v)?;
 
-        for c in 0..65536u32 {
+        for c in start.unwrap_or(0)..65536u32 {
             let f = collection_fname(c);
             defmt::debug!("Searching for free collection, testing: {}", f);
             match root.find_directory_entry(&f) {
@@ -125,14 +125,14 @@ where
         Err(StorageErr::DiskFull)
     }
 
-    /// Returns the current (next free ID).
-    pub fn current_id(&self) -> Option<u32> {
-        self.current_id
+    /// Returns the next free ID.
+    pub fn next_id(&self) -> Option<u32> {
+        self.next_id
     }
 
     /// Set the current ID, but do not write to card.
     pub fn set_id(&mut self, id: u32) {
-        self.current_id = Some(id);
+        self.next_id = Some(id);
     }
 
     /// Deserialize and return AxlPacket.
@@ -175,14 +175,39 @@ where
         Ok(pck)
     }
 
+    /// Get the next free ID (and advance to new collection if necessary).
+    pub fn advance_id(&mut self) -> Result<u32, StorageErr> {
+        let id = self.next_id.unwrap();
+
+        let mut next_id = id + 1;
+
+        // Check that the next collection is free, if rolling over.
+        if next_id % COLLECTION_SIZE == 0 {
+            let c = next_id / COLLECTION_SIZE;
+            let nc = self.find_first_free_collection(Some(c))?;
+
+            if nc > c {
+                next_id = nc * COLLECTION_SIZE;
+            }
+        }
+
+        self.set_id(next_id);
+
+        Ok(id)
+    }
+
     /// Store a new package.
     pub fn store(&mut self, pck: &mut AxlPacket) -> Result<u32, StorageErr> {
-        let id = self.current_id.unwrap();
+        // Next ID: If writing fails further down this function, and later succeeds in the same
+        // collection, the file-id and offset will no longer be correctly calculated. The buoy will
+        // fail to read (and skip) those messages from the SD-card if requested. However, they will
+        // be able to be read from the SD-card from a computer.
+        let id = self.advance_id()?;
         let (collection, fid, offset) = id_to_parts(id);
 
         // Package now has a storage ID.
         pck.storage_id = Some(id);
-        self.current_id = Some(id + 1);
+        pck.storage_version = Some(STORAGE_VERSION);
 
         // Serialize
         let mut buf: Vec<u8, { AXL_POSTCARD_SZ }> = postcard::to_vec_cobs(pck)

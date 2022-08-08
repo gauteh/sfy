@@ -1,5 +1,4 @@
 use defmt::{write, Format, Formatter};
-use postcard::experimental::max_size::MaxSize;
 use half::f16;
 use heapless::Vec;
 
@@ -40,10 +39,11 @@ pub struct AxlPacket {
 
 impl core::fmt::Debug for AxlPacket {
     fn fmt(&self, fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        core::write!(fmt, "AxlPacket(timestamp: {}, offset: {}, storage_id: {:?}, position_time: {}, lon: {}, lat: {}, freq: {}, data (length): {}))",
+        core::write!(fmt, "AxlPacket(timestamp: {}, offset: {}, storage_id: {:?} (v: {:?}), position_time: {}, lon: {}, lat: {}, freq: {}, data (length): {}))",
             self.timestamp,
             self.offset,
             self.storage_id,
+            self.storage_version,
             self.position_time,
             self.lon,
             self.lat,

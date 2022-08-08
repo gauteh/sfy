@@ -164,7 +164,7 @@ mod tests {
 
     #[test]
     fn read_and_filter(s: &mut State) {
-        s.waves.disable_fifo().unwrap();
+        s.waves.reset(&mut s.delay).unwrap();
         let mut samples = s.waves.imu.fifostatus.diff_fifo(&mut s.waves.i2c).unwrap();
         assert_eq!(samples, 0);
 
@@ -178,6 +178,7 @@ mod tests {
 
             samples = s.waves.imu.fifostatus.diff_fifo(&mut s.waves.i2c).unwrap();
             defmt::debug!("values in FIFO before collecting: {}", samples);
+            assert!(samples >= 0);
 
             defmt::debug!("read and filter..");
             s.waves.read_and_filter().unwrap();
