@@ -219,8 +219,8 @@ fn main() -> ! {
 
     let imu = sfy::Imu::new(waves, imu_p);
 
-    //  And IMU into temporary variable for moving it into the `RTC` interrupt
-    //  routine, _before_ we enable interrupts.
+    // Move IMU into temporary variable for moving it into the `RTC` interrupt
+    // routine, _before_ we enable interrupts.
     free(|_| {
         unsafe { IMU = Some(imu) };
     });
@@ -231,7 +231,7 @@ fn main() -> ! {
     }
 
     info!("Entering main loop");
-    const GOOD_TRIES: u32 = 5;
+    const GOOD_TRIES: u32 = 15;
 
     let mut last: i64 = 0;
     let mut good_tries: u32 = GOOD_TRIES;
@@ -292,9 +292,6 @@ fn main() -> ! {
                     write!(&mut msg, "Fatal error in main loop: location: {:?}, note/drain_queue: {:?}, note/check_and_sync: {:?}. Tries left: {}", l, dq, cs, good_tries)
                         .inspect_err(|e| defmt::error!("failed to format error: {:?}", defmt::Debug2Format(e)))
                         .ok();
-
-                    debug!("notecard: consuming any remaining response.");
-                    note.reset(&mut delay).ok();
 
                     warn!("Trying to send log message..");
                     note.hub()
