@@ -245,8 +245,8 @@ fn main() -> ! {
         #[cfg(not(feature = "storage"))]
         let drdy = imu_queue.ready();
 
-        if drdy || ((now - last) > 500) {
-            defmt::debug!("iteration, now: {}..", now);
+        if drdy || ((now - last) > 5000) {
+            defmt::debug!("iteration, now: {}, drdy: {}", now, drdy);
 
             sfy::log::drain_log(&mut note, &mut delay)
                 .inspect_err(|e| defmt::error!("drain log: {:?}", e))
