@@ -1,8 +1,8 @@
 use crate::axl::{AxlPacket, AxlPacketMeta, AXL_OUTN};
+use blues_notecard::{self as notecard, NoteError, Notecard};
 use core::ops::{Deref, DerefMut};
 use embedded_hal::blocking::delay::DelayMs;
 use embedded_hal::blocking::i2c::{Read, Write};
-use blues_notecard::{self as notecard, NoteError, Notecard};
 
 use crate::NOTEQ_SZ;
 
@@ -274,9 +274,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
 
         let current_info = self.read_storage_info(delay).ok().map(|(c, _)| c).flatten();
 
-        let info = StorageIdInfo {
-            sent_id,
-        };
+        let info = StorageIdInfo { sent_id };
 
         if Some(&info) != current_info.as_ref() {
             defmt::trace!(
@@ -293,7 +291,14 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
 
             self.note
                 .note()
-                .update(delay, "storage.dbx", "storage-info", Some(info), None, false)?
+                .update(
+                    delay,
+                    "storage.dbx",
+                    "storage-info",
+                    Some(info),
+                    None,
+                    false,
+                )?
                 .wait(delay)?;
         }
 
@@ -306,15 +311,11 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         queue: &mut heapless::spsc::Consumer<'static, AxlPacket, NOTEQ_SZ>,
         delay: &mut impl DelayMs<u16>,
     ) -> Result<usize, NoteError> {
-        let mut sz = 0;
-
-        // Sending packages takes a long time. Only `MAX_SEND` is sent at a time before
-        // running main-loop again and letting other tasks run. The main-loop will keep
+        // Sending packages takes a long time (16-17 seconds). Only 1 package is sent at a time
+        // before running main-loop again and letting other tasks run. The main-loop will keep
         // going immediately again if there are more data in the queue.
-        const MAX_SEND: usize = 3;
-        let mut sent = 0;
 
-        while let Some(pck) = queue.peek() && sent <= MAX_SEND {
+        if let Some(pck) = queue.peek() {
             // #[cfg(not(feature = "continuous"))]
             // {
             //     let sync_status = self.note.hub().sync_status(delay)?.wait(delay)?;
@@ -333,20 +334,21 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             if status.storage > 75 {
                 // wait until notecard has synced.
                 defmt::warn!("notecard is more than 75% full, not adding more notes until sync is done: queue sz: {}", queue.len());
-                return Ok(sz);
+                return Ok(0);
             }
 
             defmt::debug!("sending package: queue sz: {}", queue.len());
 
-            sz += self.send(pck, delay).inspect_err(|e| {
+            let sz = self.send(pck, delay).inspect_err(|e| {
                 defmt::error!("Error while sending package to notecard: {:?}", e)
             })?;
-            sent += 1;
 
-            queue.dequeue();
+            queue.dequeue(); // dequeue package after successfully sent to notecard.
+
+            Ok(sz)
+        } else {
+            Ok(0)
         }
-
-        Ok(sz)
     }
 
     /// Check if notecard is filling up, and initiate sync in that case.
