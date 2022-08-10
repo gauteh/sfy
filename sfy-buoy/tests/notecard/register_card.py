@@ -9,7 +9,7 @@ project = 'no.met.gauteh:sfy'
 buoy = 'cain'
 
 if len(sys.argv) > 1:
-    project = sys.argv[1]
+    buoy = sys.argv[1]
 
 if len(sys.argv) > 2:
     project = sys.argv[2]

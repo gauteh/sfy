@@ -330,12 +330,6 @@ where
     ) -> Result<Option<u32>, storage::StorageErr> {
         let mut e: Result<Option<u32>, storage::StorageErr> = Ok(None);
 
-        // TODO:
-        //
-        // * Try to reset or re-initialize in case of errors.
-        // * Log to disk
-        // * Store raw accel & gyro
-
         while let Some(mut pck) = self.storage_queue.dequeue() {
             defmt::debug!(
                 "Storing package: {:?} (queue length: {})",

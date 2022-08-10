@@ -300,7 +300,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         Ok(())
     }
 
-    /// Send all available packages to the notecard.
+    /// Send queued packages to the notecard.
     pub fn drain_queue(
         &mut self,
         queue: &mut heapless::spsc::Consumer<'static, AxlPacket, NOTEQ_SZ>,
@@ -308,7 +308,13 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
     ) -> Result<usize, NoteError> {
         let mut sz = 0;
 
-        while let Some(pck) = queue.peek() {
+        // Sending packages takes a long time. Only `MAX_SEND` is sent at a time before
+        // running main-loop again and letting other tasks run. The main-loop will keep
+        // going immediately again if there are more data in the queue.
+        const MAX_SEND: usize = 3;
+        let mut sent = 0;
+
+        while let Some(pck) = queue.peek() && sent <= MAX_SEND {
             // #[cfg(not(feature = "continuous"))]
             // {
             //     let sync_status = self.note.hub().sync_status(delay)?.wait(delay)?;
@@ -335,6 +341,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             sz += self.send(pck, delay).inspect_err(|e| {
                 defmt::error!("Error while sending package to notecard: {:?}", e)
             })?;
+            sent += 1;
 
             queue.dequeue();
         }

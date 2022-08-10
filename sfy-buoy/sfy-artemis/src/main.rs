@@ -239,7 +239,13 @@ fn main() -> ! {
     loop {
         let now = STATE.now().timestamp_millis();
 
-        if (now - last) > 2000 {
+        #[cfg(feature = "storage")]
+        let drdy = storage_manager.storage_queue.ready() || imu_queue.ready();
+
+        #[cfg(not(feature = "storage"))]
+        let drdy = imu_queue.ready();
+
+        if drdy || ((now - last) > 500) {
             defmt::debug!("iteration, now: {}..", now);
 
             sfy::log::drain_log(&mut note, &mut delay)
