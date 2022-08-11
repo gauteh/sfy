@@ -4,10 +4,10 @@ T ?= debug
 
 ifeq "$(T)" "release"
     ELF:= target/thumbv7em-none-eabihf/release/sfy-artemis
-		override CARGO_FLAGS+=--release
+    override CARGO_FLAGS+=--release
 else ifeq "$(T)" "r"
     ELF:= target/thumbv7em-none-eabihf/release/sfy-artemis
-		override CARGO_FLAGS+=--release
+    override CARGO_FLAGS+=--release
 else
     ELF:= target/thumbv7em-none-eabihf/debug/sfy-artemis
 endif
@@ -28,8 +28,7 @@ flash: objcopy
 jlink-flash: objcopy bump-jlink
 	sh jlink-flash.sh
 
-deploy:
-	cd sfy-artemis && cargo objcopy $(CARGO_FLAGS) -- -O binary target/sfy-buoy.bin
+deploy: objcopy
 	python3 ../tools/svl/svl.py -f target/sfy-buoy.bin $(USB) -v
 
 com:
