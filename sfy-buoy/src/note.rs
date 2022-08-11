@@ -1,5 +1,5 @@
 use crate::axl::{AxlPacket, AxlPacketMeta, AXL_OUTN};
-use blues_notecard::{self as notecard, NoteError, Notecard};
+use blues_notecard::{self as notecard, NoteError, Notecard, NotecardConfig};
 use core::ops::{Deref, DerefMut};
 use embedded_hal::blocking::delay::DelayMs;
 use embedded_hal::blocking::i2c::{Read, Write};
@@ -32,7 +32,7 @@ pub struct RequestData {
 
 impl<I2C: Read + Write> Notecarrier<I2C> {
     pub fn new(i2c: I2C, delay: &mut impl DelayMs<u16>) -> Result<Notecarrier<I2C>, NoteError> {
-        let mut note = Notecard::new(i2c);
+        let mut note = Notecard::new_with_config(i2c, NotecardConfig { chunk_delay: 0, segment_delay: 10, ..Default::default() });
         note.initialize(delay)?;
 
         #[cfg(feature = "continuous")]

@@ -79,9 +79,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.60"
+version = "1.0.61"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c794e162a5eff65c72ef524dfe393eb923c354e350bb78b9c7383df13f3bc142"
+checksum = "508b352bb5c066aac251f6daf6b36eccd03e8a88e8081cd44959ea277a3af9a8"
 
 [[package]]
 name = "argh"
@@ -232,7 +232,7 @@ checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 [[package]]
 name = "blues-notecard"
 version = "0.2.0"
-source = "git+https://github.com/gauteh/notecard-rs#8735abcae3f353af0aa0c425df0c9f8310d8fcd9"
+source = "git+https://github.com/gauteh/notecard-rs#ad4069143d8463dae0193d8b65694c1a62dac04a"
 dependencies = [
  "defmt",
  "embedded-hal",
@@ -1444,9 +1444,9 @@ checksum = "dcf81ac59edc17cc8697ff311e8f5ef2d99fcbd9817b34cec66f90b6c3dfd987"
 
 [[package]]
 name = "ufmt"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a06b52713d05516d73fce72ce746cf810fd186e4d2ce9f0dd1108262799b52d2"
+checksum = "31d3c0c63312dfc9d8e5c71114d617018a19f6058674003c0da29ee8d8036cdd"
 dependencies = [
  "proc-macro-hack",
  "ufmt-macros",
@@ -1455,9 +1455,9 @@ dependencies = [
 
 [[package]]
 name = "ufmt-macros"
-version = "0.1.2"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "de07ac24d8d2d44782f52ab9b0e8195e0b75861a29f8007278272e1b26a8c62b"
+checksum = "e4ab6c92f30c996394a8bd525aef9f03ce01d0d7ac82d81902968057e37dd7d9"
 dependencies = [
  "proc-macro-hack",
  "proc-macro2",

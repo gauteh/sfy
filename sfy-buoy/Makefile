@@ -5,6 +5,9 @@ T ?= debug
 ifeq "$(T)" "release"
     ELF:= target/thumbv7em-none-eabihf/release/sfy-artemis
 		override CARGO_FLAGS+=--release
+else ifeq "$(T)" "r"
+    ELF:= target/thumbv7em-none-eabihf/release/sfy-artemis
+		override CARGO_FLAGS+=--release
 else
     ELF:= target/thumbv7em-none-eabihf/debug/sfy-artemis
 endif
