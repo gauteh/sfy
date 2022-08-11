@@ -128,7 +128,7 @@ fn main() -> ! {
         );
         let cs = pins.a14.into_push_pull_output();
         Storage::open(spi, cs, sfy::storage::clock::CountClock(&COUNT), |spi| {
-            spi.set_freq(Freq::F48mHz)
+            spi.set_freq(Freq::F12mHz)
         })
     }
     .inspect_err(|e| {
