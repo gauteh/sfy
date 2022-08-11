@@ -1,6 +1,9 @@
 .DEFAULT_GOAL := build
 USB ?= /dev/ttyUSB0
 
+bump-jlink:
+	python3 ../tools/bump-jlink
+
 build:
 	cd sfy-artemis && cargo build $(CARGO_FLAGS)
 
@@ -11,7 +14,7 @@ objcopy: build
 flash: objcopy
 	python3 ../tools/svl/svl.py -f target/sfy-buoy.bin $(USB) -v
 
-jlink-flash: objcopy
+jlink-flash: objcopy bump-jlink
 	sh jlink-flash.sh
 
 deploy:
@@ -24,7 +27,7 @@ com:
 defmt-serial:
 	socat $(USB),raw,echo=0,b115200 STDOUT | defmt-print -e target/thumbv7em-none-eabihf/debug/sfy-artemis
 
-gdb-server:
+gdb-server: bump-jlink
 	JLinkGDBServer -select USB -device AMA3B1KK-KBR -endian little -if SWD -noir -noLocalhostOnly -nohalt
 
 gdb-flash:
