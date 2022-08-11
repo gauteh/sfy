@@ -151,7 +151,7 @@ class Buoy:
             self.__last__ = None
 
     def __repr__(self):
-        return f"Buoy <{self.dev}>"
+        return f"Buoy {self.name} <{self.dev}> ({self.buoy_type})"
 
     def matches(self, key):
         key = key.lower()
