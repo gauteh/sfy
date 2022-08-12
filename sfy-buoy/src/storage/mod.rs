@@ -29,7 +29,7 @@ use clock::CountClock;
 use handles::*;
 
 /// Writing to a file seems to take longer time when it has more packages, this can cause timeouts
-/// in the interrupt that drains the IMU FIFO. See https://github.com/gauteh/sfy/issues/77.
+/// in the interrupt that drains the IMU FIFO. See <https://github.com/gauteh/sfy/issues/77>.
 pub const COLLECTION_SIZE: u32 = 100;
 pub const STORAGE_VERSION_STR: &'static str = "2";
 pub const STORAGE_VERSION: u32 = 2;
