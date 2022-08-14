@@ -24,8 +24,9 @@ export class BuoyMap
 {
 
   public state = {};
-  map = {};
+  map: any = {};
   myselfMarker: L.Marker;
+  markers: [string, any][];
 
   constructor(props: Props, context) {
     super(props, context);
@@ -53,10 +54,17 @@ export class BuoyMap
   }
 
   componentDidUpdate = (lastprops) => {
-    for (const buoy of this.props.buoys) {
-      let marker = L.marker([buoy.any_lat(), buoy.any_lon()]).addTo(this.map);
-      marker.bindTooltip(`${buoy.sn} (${buoy.dev})`);
+    if (this.markers !== undefined) {
+      for (const m of this.markers) {
+        this.map.removeLayer(m[1]);
+      }
     }
+
+    this.markers = this.props.buoys.map((buoy) => {
+        let marker = L.marker([buoy.any_lat(), buoy.any_lon()]).addTo(this.map);
+        marker.bindTooltip(`${buoy.sn} (${buoy.dev})`);
+        return [buoy.dev, marker];
+      });
   }
 
   public updateMyPosition = (position) => {
@@ -81,6 +89,8 @@ export class BuoyMap
 
   public focus = (buoy) => {
     console.log("Focusing: " + buoy);
+
+    this.map.flyTo([buoy.any_lat(), buoy.any_lon()], 11);
   }
 
   public render() {
