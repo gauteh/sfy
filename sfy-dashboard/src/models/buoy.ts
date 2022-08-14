@@ -12,10 +12,16 @@ export class Buoy {
 
   public package: any;
 
-  constructor(dev: string, sn: string) {
+  constructor(dev: string, sn: string, last: any) {
     console.log("SFY: " + dev + ", " + sn);
     this.dev = dev;
     this.sn = sn;
+
+    try {
+      this.setPackage(JSON.parse(atob(last)));
+    } catch(err) {
+      console.log("failed to load buoy: " + dev + ":" + err);
+    }
   }
 
   public hasGps(): boolean {

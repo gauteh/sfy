@@ -1,4 +1,4 @@
-import {Component} from 'inferno';
+import {linkEvent, createRef, Component} from 'inferno';
 
 import moment from 'moment';
 import cx from 'classnames';
@@ -27,8 +27,12 @@ export class BuoyIndex
     buoys: new Array<Buoy | OmbBuoy>(),
   };
 
+  public bmap: any;
+
   constructor(props: Props, context: any) {
     super(props, context);
+
+    this.bmap = createRef();
   }
 
   componentDidMount() {
@@ -36,35 +40,30 @@ export class BuoyIndex
   }
 
   public loadBuoys = async () => {
-    this.state.buoys.length = 0;
-    this.setState({buoys: []});
-
     const devs = await hub.get_buoys(hub.API_CONF);
-    for (const devsn of devs) {
+    const buoys = devs.map(devsn => {
       if (devsn[0] !== "lost+found") {
         let b = undefined;
 
         if (devsn[2] === "sfy") {
-          b = new Buoy(devsn[0], devsn[1]);
+          b = new Buoy(devsn[0], devsn[1], devsn[3]);
         } else if (devsn[2] === "omb") {
-          b = new OmbBuoy(devsn[0]);
+          b = new OmbBuoy(devsn[0], devsn[3]);
         } else {
           console.log("Unknown buoy:" + devsn);
         }
 
-        try {
-          await b.setLast();
-          this.state.buoys.push(b);
-          this.state.buoys.sort((a, b) => b.lastContact().getTime() - a.lastContact().getTime());
-          this.setState({buoys: this.state.buoys});
-        } catch(err) {
-          console.log("failed to load buoy: " + err);
-        }
+        return b;
+      } else {
+        return undefined;
       }
-    }
+      }).filter(b => b !== undefined);
+
+    buoys.sort((a, b) => b.lastContact().getTime() - a.lastContact().getTime());
+    this.setState({buoys: buoys});
   }
 
-  public Row(buoy) {
+  public Row = (buoy) => {
     const formatDate = (date: number): JSX.Element => {
       return (<span> - </span>);
     };
@@ -73,13 +72,12 @@ export class BuoyIndex
       <tr id={"t" + buoy.dev}
         key={buoy.dev}>
         <td>
-          <span title={buoy.dev}>{buoy.sn}</span>
+          <a href="#" title={buoy.dev} onClick={linkEvent(buoy, this.focus)}>{buoy.sn}</a>
         </td>
         <td>
-          {buoy.any_lat().toFixed(9)}
-        </td>
-        <td>
-          {buoy.any_lon().toFixed(9)}
+          <a href="#" onClick={ linkEvent(buoy, this.copyPosition) }>
+            {buoy.any_lat().toFixed(9)},{buoy.any_lon().toFixed(9)}
+          </a>
         </td>
         <td>
           {buoy.hasGps() ? 'GPS' : 'Cel/Ird'}
@@ -93,17 +91,25 @@ export class BuoyIndex
     );
   }
 
+  public focus = (buoy) => {
+    this.bmap.current.focus(buoy);
+  }
+
+  public copyPosition = (buoy) => {
+    const position = `${buoy.any_lat().toFixed(9)},${buoy.any_lon().toFixed(9)}`;
+    navigator.clipboard.writeText(position);
+  }
+
   public render() {
     return (
       <div>
-        <BuoyMap buoys={this.state.buoys} />
+        <BuoyMap buoys={this.state.buoys} ref={this.bmap}/>
 
         <div class="container-fluid no-margin">
           <table class="ti table table-striped">
             <thead>
               <th scope="col">Device</th>
-              <th scope="col">Latitude (°N)</th>
-              <th scope="col">Longitude (°E)</th>
+              <th scope="col">Latitude (°N), Longitude (°E)</th>
               <th scope="col">Source</th>
               <th scope="col">Last contact</th>
             </thead>

@@ -53,6 +53,10 @@ export class BuoyMap
     }
   }
 
+  public focus = (buoy) => {
+    console.log("Focusing: " + buoy);
+  }
+
   public render() {
     return (
       <div id="map" class="container-fluid">

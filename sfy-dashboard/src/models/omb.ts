@@ -12,10 +12,16 @@ export class OmbBuoy {
 
   public package = undefined;
 
-  constructor(dev: string) {
+  constructor(dev: string, last: any) {
     console.log("Omb: " + dev);
     this.dev = dev;
     this.sn = dev;
+
+    try {
+      this.setPackage(JSON.parse(atob(last)));
+    } catch(err) {
+      console.log("failed to load buoy: " + dev + ":" + err);
+    }
   }
 
   public hasGps(): boolean {
@@ -41,7 +47,6 @@ export class OmbBuoy {
     this.iridium_lat = p.body.iridium_pos.lat;
     this.iridium_lon = p.body.iridium_pos.lon;
 
-    console.log(p);
     if (p.type === "gps" && p.body.messages.length > 0) {
       let pos = p.body.messages[p.body.messages.length - 1];
       this.latitude = pos.latitude;
