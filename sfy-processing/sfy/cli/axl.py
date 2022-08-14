@@ -102,6 +102,8 @@ def ts(dev, tx_start, tx_end, start, end, file, gap):
         s.max_gap(),
         np.nan,
         len(s),
+        s.pcks[0].storage_id,
+        s.pcks[-1].storage_id,
     ] for s in segments]
 
     for i, _ in enumerate(stable[1:]):
@@ -111,7 +113,8 @@ def ts(dev, tx_start, tx_end, start, end, file, gap):
         tabulate(stable,
                  headers=[
                      'Start', 'End', 'Duration (s)', 'Duration',
-                     'Max Internal Gap', 'Segment Gap', 'Packages'
+                     'Max Internal Gap', 'Segment Gap', 'Packages',
+                     'Start ID', 'End ID',
                  ]))
 
     if file:
