@@ -3,6 +3,7 @@ import L from 'leaflet';
 
 import {Buoy, OmbBuoy} from 'models';
 
+import './marker-me.png';
 import './BuoyIndex.scss';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet/dist/images/marker-icon-2x.png';
@@ -24,9 +25,14 @@ export class BuoyMap
 
   public state = {};
   map = {};
+  myselfMarker: L.Marker;
 
   constructor(props: Props, context) {
     super(props, context);
+
+    if (navigator.geolocation) {
+      navigator.geolocation.watchPosition(this.updateMyPosition);
+    }
   }
 
   componentDidMount() {
@@ -46,10 +52,30 @@ export class BuoyMap
     L.tileLayer('https://t1.openseamap.org/seamark/{z}/{x}/{y}.png').addTo(this.map);
   }
 
-  componentDidUpdate(props) {
-    for (const buoy of props.buoys) {
+  componentDidUpdate = (lastprops) => {
+    for (const buoy of this.props.buoys) {
       let marker = L.marker([buoy.any_lat(), buoy.any_lon()]).addTo(this.map);
       marker.bindTooltip(`${buoy.sn} (${buoy.dev})`);
+    }
+  }
+
+  public updateMyPosition = (position) => {
+    console.log("Got new position:" + position);
+    if (this.myselfMarker === undefined) {
+      const icon = L.icon({
+        iconUrl: 'public/icons/marker-me.png',
+
+        iconSize:     [30, 38], // size of the icon
+        // shadowSize:   [50, 64], // size of the shadow
+        iconAnchor:   [15, 38], // point of the icon which will correspond to marker's location
+        // shadowAnchor: [4, 62],  // the same for the shadow
+        // popupAnchor:  [-3, -76] // point from which the popup should open relative to the iconAnchor
+      });
+
+      this.myselfMarker = L.marker([position.coords.latitude, position.coords.longitude], {icon: icon}).addTo(this.map);
+      this.myselfMarker.bindTooltip('Your position');
+    } else {
+      this.myselfMarker.setLatLng([position.coords.latitude, position.coords.longitude]);
     }
   }
 

@@ -60,7 +60,8 @@ export class BuoyIndex
       }).filter(b => b !== undefined);
 
     buoys.sort((a, b) => b.lastContact().getTime() - a.lastContact().getTime());
-    this.setState({buoys: buoys});
+    this.state.buoys = buoys;
+    this.setState({buoys: this.state.buoys});
   }
 
   public Row = (buoy) => {
@@ -75,7 +76,7 @@ export class BuoyIndex
           <a href="#" title={buoy.dev} onClick={linkEvent(buoy, this.focus)}>{buoy.sn}</a>
         </td>
         <td>
-          <a href="#" onClick={ linkEvent(buoy, this.copyPosition) }>
+          <a href="#" title="Copy to clipboard" onClick={ linkEvent(buoy, this.copyPosition) }>
             {buoy.any_lat().toFixed(9)},{buoy.any_lon().toFixed(9)}
           </a>
         </td>
