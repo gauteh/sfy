@@ -14,7 +14,8 @@ download:
 	[ -f $(FW) ] || curl https://dev.blues.io/firmware/notecard-$(VERSION).bin --output $(FW)
 
 enter-bootload: download
-	echo bootloader > $(USB)
+	echo bootloader > $(USB) || true
+	sleep 3
 
-flash:
-	$(FLASH) --connect port=$(USB) --write $(FW) 0x08000000 --verify --go 0x08000000
+flash: enter-bootload
+	$(FLASH) --connect port=$(STUSB) --write $(FW) 0x08000000 --verify --go 0x08000000
