@@ -1,0 +1,35 @@
+{
+  "name": "sfy-dashboard",
+  "version": "0.1.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gauteh/sfy"
+  },
+  "source": "src/index.html",
+  "scripts": {
+    "start": "parcel",
+    "build": "parcel build"
+  },
+  "description": "SFY-dashboard",
+  "author": "Gaute Hope",
+  "license": "GPL-3.0-or-later",
+  "devDependencies": {
+    "@parcel/transformer-sass": "2.7.0",
+    "@types/react": "^18.0.17",
+    "@types/react-dom": "^18.0.6",
+    "parcel": "^2.7.0",
+    "process": "^0.11.10"
+  },
+  "dependencies": {
+    "@types/js-cookie": "^3.0.2",
+    "bootstrap": "^5.2.0",
+    "classnames": "^2.3.1",
+    "js-cookie": "^3.0.1",
+    "leaflet": "^1.8.0",
+    "moment": "^2.29.4",
+    "react": "^18.2.0",
+    "react-bootstrap": "^2.5.0",
+    "react-dom": "^18.2.0",
+    "rxjs": "^7.5.6"
+  }
+}
