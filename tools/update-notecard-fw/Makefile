@@ -1,6 +1,8 @@
-VERSION=3.4.1.15117
+VERSION=3.5.1.15259
 FW=fw/notecard-$(VERSION).bin
-stc=/home/gauteh/.bin/STM32_Programmer_CLI/
+FLASH=/home/gauteh/dev/embedded/STMicroelectronics/STM32Cube/STM32CubeProgrammer/bin/STM32_Programmer_CLI
+USB ?= /dev/ttyACM0
+STUSB ?= USB1
 
 download-stcube:
 	mkdir -p st
@@ -12,7 +14,7 @@ download:
 	[ -f $(FW) ] || curl https://dev.blues.io/firmware/notecard-$(VERSION).bin --output $(FW)
 
 enter-bootload: download
-	echo bootloader > /dev/ttyACM0
+	echo bootloader > $(USB)
 
-boot: enter-bootload
-	STM32_Programmer_CLI --connect port=ACM0 --write $(FW) 0x08000000 --verify --go 0x08000000
+flash:
+	$(FLASH) --connect port=$(USB) --write $(FW) 0x08000000 --verify --go 0x08000000
