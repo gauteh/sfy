@@ -41,8 +41,8 @@ git = "https://github.com/gauteh/ambiq-rs"
 
 [features]
 default = [ "deploy", "storage" ]
-continuous = []
-20Hz = []
+continuous = [ "sfy/continuous" ]
+20Hz = [ "sfy/20Hz" ]
 storage = [ "sfy/storage" ]
 deploy = []
 defmt-serial = [ "dep:ufmt", "dep:defmt-serial" ]
