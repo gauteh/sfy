@@ -438,6 +438,7 @@ class Axl(AxlTimeseries):
             'offset': self.offset,
             'timestamp': self.timestamp,
             'storage_id': self.storage_id,
+            'storage_version': self.storage_version,
             'position_time': self.position_time,
             'lon': self.lon,
             'lat': self.lat,
