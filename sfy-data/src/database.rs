@@ -39,7 +39,7 @@ impl From<&str> for BuoyType {
 }
 
 impl Into<String> for BuoyType {
-    fn into(self: Self) -> String {
+    fn into(self) -> String {
         self.to_str().into()
     }
 }
@@ -188,6 +188,7 @@ impl Buoy {
         name: Option<String>,
         event: impl AsRef<Path>,
         received: u64,
+        file: Option<String>,
         data: impl AsRef<[u8]>,
     ) -> eyre::Result<()> {
         let data = data.as_ref();
@@ -229,11 +230,13 @@ impl Buoy {
         );
 
         let r = received as i64;
+        let file = file.unwrap_or_else(|| "unknown".into());
         sqlx::query!(
-            "INSERT INTO events (dev, received, event, data) VALUES ( ?1, ?2, ?3, ?4 )",
+            "INSERT INTO events (dev, received, event, message_type, data) VALUES ( ?1, ?2, ?3, ?4, ?5 )",
             self.dev,
             r,
             event,
+            file,
             data
         )
         .execute(&self.db)
@@ -290,16 +293,16 @@ impl Buoy {
         Ok(())
     }
 
-    pub async fn entries(&self) -> Result<Vec<String>> {
+    pub async fn entries(&self) -> Result<Vec<(String, String)>> {
         ensure!(self.known, "No such buoy");
 
         let events = match self.buoy_type {
             BuoyType::SFY => {
                 sqlx::query!(
-                    "SELECT received, event FROM events where dev = ?1 ORDER BY received",
+                    "SELECT received, event, message_type FROM events where dev = ?1 ORDER BY received",
                     self.dev
                 )
-                .map(|r| format!("{}-{}", r.received, r.event))
+                .map(|r| (format!("{}-{}", r.received, r.event), r.message_type))
                 .fetch_all(&self.db)
                 .await?
             }
@@ -308,7 +311,7 @@ impl Buoy {
                     "SELECT received, event, message_type FROM omb_events where dev = ?1 ORDER BY received",
                     self.dev
                 )
-                .map(|r| format!("{}-{}-{}", r.received, r.event, r.message_type))
+                .map(|r| (format!("{}-{}-{}", r.received, r.event, r.message_type), r.message_type))
                 .fetch_all(&self.db)
                 .await?
             }
@@ -323,7 +326,7 @@ impl Buoy {
         ensure!(self.known, "No such buoy");
 
         let data = match self.buoy_type {
-            BuoyType::SFY => sqlx::query!("SELECT data FROM events WHERE dev = ?1 AND instr(event, 'axl.qo') ORDER BY received DESC LIMIT 1", self.dev)
+            BuoyType::SFY => sqlx::query!("SELECT data FROM events WHERE dev = ?1 AND message_type = 'axl.qo' ORDER BY received DESC LIMIT 1", self.dev)
                 .fetch_one(&self.db)
                 .await?.data,
 
@@ -387,18 +390,18 @@ impl Buoy {
         }
     }
 
-    pub async fn list_range(&self, start: i64, end: i64) -> Result<Vec<(i64, String)>> {
+    pub async fn list_range(&self, start: i64, end: i64) -> Result<Vec<(i64, String, String)>> {
         ensure!(self.known, "No such buoy");
 
         let events = match self.buoy_type {
             BuoyType::SFY => {
                 sqlx::query!(
-                    "SELECT event, received FROM events WHERE dev = ?1 AND received >= ?2 AND received <= ?3 ORDER BY received",
+                    "SELECT event, received, message_type FROM events WHERE dev = ?1 AND received >= ?2 AND received <= ?3 ORDER BY received",
                     self.dev,
                     start,
                     end,
                 )
-                .map(|r| (r.received, r.event))
+                .map(|r| (r.received, r.event, r.message_type))
                 .fetch_all(&self.db)
                 .await?
             },
@@ -409,7 +412,7 @@ impl Buoy {
                     start,
                     end,
                 )
-                .map(|r| (r.received, format!("{}-{}", r.event, r.message_type)))
+                .map(|r| (r.received, format!("{}-{}", r.event, r.message_type), r.message_type))
                 .fetch_all(&self.db)
                 .await?
             },
@@ -472,8 +475,8 @@ mod tests {
         let db = Database::temporary().await;
         let mut b = db.buoy("buoy-01").await.unwrap();
 
-        b.append(None, "entry-0", 0, "data-0").await.unwrap();
-        b.append(None, "entry-1", 0, "data-1").await.unwrap();
+        b.append(None, "entry-0", 0, None, "data-0").await.unwrap();
+        b.append(None, "entry-1", 0, None, "data-1").await.unwrap();
 
         assert_eq!(b.get("0-entry-0").await.unwrap(), b"data-0");
     }
@@ -483,8 +486,8 @@ mod tests {
         let db = Database::temporary().await;
         let mut b = db.buoy("buoy-01").await.unwrap();
 
-        b.append(None, "entry-0", 0, "data-0").await.unwrap();
-        assert!(b.append(None, "entry-0", 0, "data-1").await.is_err());
+        b.append(None, "entry-0", 0, None, "data-0").await.unwrap();
+        assert!(b.append(None, "entry-0", 0, None, "data-1").await.is_err());
     }
 
     #[tokio::test]
@@ -492,10 +495,10 @@ mod tests {
         let db = Database::temporary().await;
 
         let mut b = db.buoy("buoy-01").await.unwrap();
-        b.append(None, "entry-0", 0, "data-0").await.unwrap();
+        b.append(None, "entry-0", 0, None, "data-0").await.unwrap();
 
         let mut b = db.buoy("buoy-02").await.unwrap();
-        b.append(None, "entry-1", 0, "data-1").await.unwrap();
+        b.append(None, "entry-1", 0, None, "data-1").await.unwrap();
 
         let devs = db.buoys().await.unwrap();
         let devs: Vec<_> = devs.iter().map(|(dev, _, _, _)| dev).collect();
@@ -507,12 +510,12 @@ mod tests {
     async fn list_entries() {
         let db = Database::temporary().await;
         let mut b = db.buoy("buoy-01").await.unwrap();
-        b.append(None, "entry-0", 0, "data-0").await.unwrap();
-        b.append(None, "entry-1", 0, "data-1").await.unwrap();
+        b.append(None, "entry-0", 0, None, "data-0").await.unwrap();
+        b.append(None, "entry-1", 0, None, "data-1").await.unwrap();
 
         assert_eq!(
             db.buoy("buoy-01").await.unwrap().entries().await.unwrap(),
-            ["0-entry-0", "0-entry-1"]
+            [("0-entry-0".into(), "unknown".into()), ("0-entry-1".into(), "unknown".into())]
         );
     }
 
@@ -520,7 +523,7 @@ mod tests {
     async fn append_get() {
         let db = Database::temporary().await;
         let mut b = db.buoy("buoy-01").await.unwrap();
-        b.append(None, "entry-0", 0, "data-0").await.unwrap();
+        b.append(None, "entry-0", 0, None, "data-0").await.unwrap();
 
         assert_eq!(b.get("0-entry-0").await.unwrap(), b"data-0");
     }
@@ -529,10 +532,10 @@ mod tests {
     async fn append_get_range() {
         let db = Database::temporary().await;
         let mut b = db.buoy("buoy-01").await.unwrap();
-        b.append(None, "entry-0", 0, "data-0").await.unwrap();
-        b.append(None, "entry-1", 1, "data-1").await.unwrap();
-        b.append(None, "entry-2", 2, "data-2").await.unwrap();
-        b.append(None, "entry-3", 3, "data-3").await.unwrap();
+        b.append(None, "entry-0", 0, None, "data-0").await.unwrap();
+        b.append(None, "entry-1", 1, None, "data-1").await.unwrap();
+        b.append(None, "entry-2", 2, None, "data-2").await.unwrap();
+        b.append(None, "entry-3", 3, None, "data-3").await.unwrap();
 
         assert_eq!(b.get("0-entry-0").await.unwrap(), b"data-0");
 
@@ -583,8 +586,8 @@ mod tests {
     async fn append_last() {
         let db = Database::temporary().await;
         let mut b = db.buoy("buoy-01").await.unwrap();
-        b.append(None, "entry-0-axl.qo", 0, "data-0").await.unwrap();
-        b.append(None, "entry-1-sessi.qo", 0, "data-1")
+        b.append(None, "entry-0-axl.qo", 0, Some("axl.qo".into()), "data-0").await.unwrap();
+        b.append(None, "entry-1-sessi.qo", 0, None, "data-1")
             .await
             .unwrap();
 
@@ -598,10 +601,10 @@ mod tests {
         b.append_omb("testacc".into(), 0, OmbMessageType::GPS, "data-0")
             .await
             .unwrap();
-        b.append_omb("testacc".into(), 0, OmbMessageType::GPS, "data-1")
+        b.append_omb("testacc".into(), 1, OmbMessageType::GPS, "data-1")
             .await
             .unwrap();
 
-        assert_eq!(b.last().await.unwrap(), b"data-0");
+        assert_eq!(b.last().await.unwrap(), b"data-1");
     }
 }

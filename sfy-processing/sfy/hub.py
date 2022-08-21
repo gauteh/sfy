@@ -194,7 +194,7 @@ class Buoy:
         path = f"list/{self.dev}/from/{start}/to/{end}"
         pcks = self.hub.__json_request__(path)
 
-        pcks = ((pck.split('-')[0], pck) for pck in pcks)
+        pcks = ((pck[0].split('-')[0], *pck) for pck in pcks)
         pcks = ((datetime.fromtimestamp(float(pck[0]) / 1000.,
                                         tz=timezone.utc), pck[1])
                 for pck in pcks)

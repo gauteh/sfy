@@ -380,9 +380,9 @@ pub mod handlers {
             .await
             .map_err(|_| reject::custom(AppendErrors::Internal))?;
 
-        let entries: Vec<String> = entries
+        let entries: Vec<(String, String)> = entries
             .into_iter()
-            .map(|e| format!("{}-{}", e.0, e.1))
+            .map(|e| (format!("{}-{}", e.0, e.1), e.2))
             .collect();
 
         Ok(warp::reply::json(&entries))
@@ -410,12 +410,12 @@ pub mod handlers {
             let file = &format!(
                 "{}_{}.json",
                 event.event,
-                event.file.unwrap_or("__unnamed__".into())
+                event.file.clone().unwrap_or_else(|| "__unnamed__".into())
             );
             let file = sanitize(&file);
             debug!("writing to: {}", file);
 
-            b.append(event.name, &file, event.received, &body)
+            b.append(event.name, &file, event.received, event.file, &body)
                 .await
                 .map_err(|e| {
                     error!("failed to write file: {:?}", e);
@@ -442,7 +442,7 @@ pub mod handlers {
             let file = sanitize(&file);
             debug!("writing to: {}", file);
 
-            b.append(None, &file, now as u64, &body)
+            b.append(None, &file, now as u64, None, &body)
                 .await
                 .map_err(|e| {
                     error!("failed to write file: {:?}", e);
@@ -663,7 +663,7 @@ mod tests {
         assert_eq!(res.status(), 200);
         assert_eq!(
             res.body(),
-            "[\"1639059643089-9ef2e080-f0b4-4036-8ccc-ec4206553537_sensor.db.json\"]"
+            "[[\"1639059643089-9ef2e080-f0b4-4036-8ccc-ec4206553537_sensor.db.json\",\"sensor.db\"]]"
         );
     }
 
@@ -844,7 +844,7 @@ mod tests {
 
         assert_eq!(res.status(), 200);
 
-        let revents: Vec<String> = json::from_slice(res.body()).unwrap();
+        let revents: Vec<(String, String)> = json::from_slice(res.body()).unwrap();
 
         assert_eq!(revents.len(), 2);
 
@@ -856,7 +856,7 @@ mod tests {
         println!("{revents:?}");
         assert_eq!(
             &revents,
-            &["2000-event-2_axl.qo.json", "3000-event-3_axl.qo.json"]
+            &[("2000-event-2_axl.qo.json".into(), "axl.qo".into()), ("3000-event-3_axl.qo.json".into(), "axl.qo".into())]
         );
     }
 }

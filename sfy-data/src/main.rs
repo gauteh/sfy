@@ -65,7 +65,7 @@ async fn main() -> eyre::Result<()> {
             .and(warp::path::end())
             .and(warp::path::full())
             .and_then(move |p: warp::path::FullPath| async move {
-                if p.as_str().ends_with("/") {
+                if p.as_str().ends_with('/') {
                     Err(warp::reject())
                 } else {
                     Ok(warp::redirect(Uri::from_static("/sfy/")))

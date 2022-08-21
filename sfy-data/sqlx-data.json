@@ -1,5 +1,23 @@
 {
   "db": "SQLite",
+  "014fd4e85be61a4d2a984684a6a0c0f2a331033217b7e14d350999dba1188de0": {
+    "describe": {
+      "columns": [
+        {
+          "name": "data",
+          "ordinal": 0,
+          "type_info": "Blob"
+        }
+      ],
+      "nullable": [
+        true
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT data FROM events WHERE dev = ?1 AND message_type = 'axl.qo' ORDER BY received DESC LIMIT 1"
+  },
   "09d56aab3e5e4e95222fdcd2d9581657cb147f14ccaf602de325f4e80039f6b8": {
     "describe": {
       "columns": [],
@@ -9,6 +27,16 @@
       }
     },
     "query": "INSERT OR REPLACE INTO buoys (dev, name, buoy_type) VALUES ( ?1, ?2, 'sfy' )"
+  },
+  "0cff5ef55d049de1fa0b206f36b149f8b4afb8dde8a1f8d9a5550e62ec33d832": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 5
+      }
+    },
+    "query": "INSERT INTO events (dev, received, event, message_type, data) VALUES ( ?1, ?2, ?3, ?4, ?5 )"
   },
   "29827c4bb027d29f7fd1697f498c2c6a2be91a159467c79e7ac777318f39f9f3": {
     "describe": {
@@ -40,23 +68,35 @@
     },
     "query": "SELECT received, event, message_type FROM omb_events where dev = ?1 ORDER BY received"
   },
-  "53d67d23159f966ff62d72b43d8f7573c5971f48c9a4e51d220c187fe76955d1": {
+  "512252eeb9063833d58b0106cf65920fa2074a8ce4ff71fce361cb2c3e5291a9": {
     "describe": {
       "columns": [
         {
-          "name": "data",
+          "name": "event",
           "ordinal": 0,
-          "type_info": "Blob"
+          "type_info": "Text"
+        },
+        {
+          "name": "received",
+          "ordinal": 1,
+          "type_info": "Int64"
+        },
+        {
+          "name": "message_type",
+          "ordinal": 2,
+          "type_info": "Text"
         }
       ],
       "nullable": [
-        true
+        false,
+        false,
+        false
       ],
       "parameters": {
-        "Right": 1
+        "Right": 3
       }
     },
-    "query": "SELECT data FROM events WHERE dev = ?1 AND instr(event, 'axl.qo') ORDER BY received DESC LIMIT 1"
+    "query": "SELECT event, received, message_type FROM events WHERE dev = ?1 AND received >= ?2 AND received <= ?3 ORDER BY received"
   },
   "5681f98a3810297bd33c0aa8067ffcb98fb9b71679c7ad2f1da489a1b846a073": {
     "describe": {
@@ -76,33 +116,35 @@
     },
     "query": "SELECT data FROM omb_events WHERE dev = ?1 AND received = ?2 AND event = ?3 AND message_type = ?4"
   },
-  "59b0b4b0c673cf93d7ff4f68c4a16af9f8522c7c113350d08728e16e2031a837": {
+  "630299a0d4be768c469d4fa54940c348656a04b7f90f23abc503e7bb3e6377f0": {
     "describe": {
       "columns": [
         {
-          "name": "data",
+          "name": "received",
           "ordinal": 0,
-          "type_info": "Blob"
+          "type_info": "Int64"
+        },
+        {
+          "name": "event",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "message_type",
+          "ordinal": 2,
+          "type_info": "Text"
         }
       ],
       "nullable": [
-        true
+        false,
+        false,
+        false
       ],
       "parameters": {
         "Right": 1
       }
     },
-    "query": "SELECT data FROM events WHERE dev = ?1 AND instr(event, 'storage.db') ORDER BY received DESC LIMIT 1"
-  },
-  "64709d16319456285630b5d8a42712a126259fe648f55b8900f9e3fbf17f2e91": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Right": 4
-      }
-    },
-    "query": "INSERT INTO events (dev, received, event, data) VALUES ( ?1, ?2, ?3, ?4 )"
+    "query": "SELECT received, event, message_type FROM events where dev = ?1 ORDER BY received"
   },
   "75bcaae3f860aeb6ae1c2403fa4117ddd7dfc18b8bbc3443d5a3c984c6969361": {
     "describe": {
@@ -149,30 +191,6 @@
       }
     },
     "query": "SELECT event, message_type, received, data FROM omb_events WHERE dev = ?1 AND received >= ?2 AND received <= ?3 ORDER BY received"
-  },
-  "7e72b8662af7ccb98295210627b9bafe1212ffb9184f268fd8d46bf23900c521": {
-    "describe": {
-      "columns": [
-        {
-          "name": "event",
-          "ordinal": 0,
-          "type_info": "Text"
-        },
-        {
-          "name": "received",
-          "ordinal": 1,
-          "type_info": "Int64"
-        }
-      ],
-      "nullable": [
-        false,
-        false
-      ],
-      "parameters": {
-        "Right": 3
-      }
-    },
-    "query": "SELECT event, received FROM events WHERE dev = ?1 AND received >= ?2 AND received <= ?3 ORDER BY received"
   },
   "9264349646da070d063ffd2dc8021871a92dd0e0350bbcb98f41f45b7e1f1350": {
     "describe": {
@@ -251,30 +269,6 @@
       }
     },
     "query": "SELECT dev, name, buoy_type FROM buoys where dev = ?1"
-  },
-  "d096f1531e856fc7ed9bfb75a0dcf3519bef3a536391a35b5c3a9ec37432c316": {
-    "describe": {
-      "columns": [
-        {
-          "name": "received",
-          "ordinal": 0,
-          "type_info": "Int64"
-        },
-        {
-          "name": "event",
-          "ordinal": 1,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false,
-        false
-      ],
-      "parameters": {
-        "Right": 1
-      }
-    },
-    "query": "SELECT received, event FROM events where dev = ?1 ORDER BY received"
   },
   "d38a5ff42574316a2dee2765d4151866f3deb4e22cee4d630f16864c4aa028fc": {
     "describe": {
