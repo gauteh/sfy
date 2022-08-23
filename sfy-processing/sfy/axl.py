@@ -199,8 +199,6 @@ class Axl(AxlTimeseries):
     sn: str
 
     tower_when: int
-    tower_lon: float
-    tower_lat: float
     tower_timezone: str
 
     ## Payload and body
@@ -217,6 +215,9 @@ class Axl(AxlTimeseries):
     x: np.ndarray
     y: np.ndarray
     z: np.ndarray
+
+    tower_lon: float = None
+    tower_lat: float = None
 
     # These are either new or deprecated, only present in some packages.
     best_id: str = None
