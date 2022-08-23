@@ -58,10 +58,14 @@ class AxlCollection(AxlTimeseries):
         collection = json.loads(collection)
         logger.info(f"Read {len(collection)} packages.")
 
-        collection = [
-            Axl.from_storage_json(name, dev, event) for event in collection
-        ]
-        return AxlCollection(collection)
+        if len(collection) > 0:
+            collection = [
+                Axl.from_storage_json(name, dev, event) for event in collection
+            ]
+            return AxlCollection(collection)
+        else:
+            logger.error(f"No packages in {file}")
+            return None
 
     def clip(self, start, end):
         """
@@ -406,11 +410,11 @@ class Axl(AxlTimeseries):
 
         data['length'] = data['body']['length']
         data['offset'] = data['body'].get('offset', 0)
-        data['timestamp'] = data['body']['timestamp']
+        data['timestamp'] = data['body'].get('timestamp', 0)
         data['storage_id'] = data['body'].get('storage_id', None)
         data['storage_version'] = data['body'].get('storage_version', 1)
         data['position_time'] = data['body'].get('position_time',
-                                                 data['body']['timestamp'])
+                                                 data['timestamp'])
         data['lon'] = data['body'].get('lon')
         data['lat'] = data['body'].get('lat')
         data['freq'] = data['body'].get('freq', 208.)

@@ -20,7 +20,7 @@ def store():
 
 @store.command()
 @click.argument('dev')
-@click.argument('file', type=click.Path())
+@click.argument('file', type=click.Path(), nargs=-1)
 @click.option(
     '--really',
     default=False,
@@ -57,7 +57,9 @@ def put(dev, file, really, cont, start_id, stop_id):
     b = hub.buoy(dev)
     logger.info(f"Putting packages in {file} to {b}")
 
-    collection = AxlCollection.from_storage_file(b.name, b.dev, file).pcks
+    collection = [ AxlCollection.from_storage_file(b.name, b.dev, f) for f in file ]
+    collection = [ p.pcks for p in collection if p is not None ]
+    collection = [ p for li in collection for p in li ]
 
     packages = b.axl_packages_range()
 
@@ -82,7 +84,7 @@ def put(dev, file, really, cont, start_id, stop_id):
         time = event['body']['timestamp']
 
         uri = f"{int(time):013d}-{event['event']}_axl.qo.json"
-        logger.info(f"Event: {uri}, package: {new_p}")
+        logger.debug(f"Event: {uri}, package: {new_p}")
 
         # check if store id already exists on server
         storage_id = event['body']['storage_id']
@@ -92,10 +94,10 @@ def put(dev, file, really, cont, start_id, stop_id):
         if existing_p is not None:
             duplicate = new_p.duplicate(existing_p)
 
-            logger.error(f"found package with same storage_id: {storage_id} already on server, package duplicate: {duplicate}")
+            logger.info(f"Existing storage_id: {storage_id} (duplicate: {duplicate}) (skipping)")
 
-            logger.info(f"Existing: {existing_p}")
-            logger.info(f"New: {new_p}")
+            logger.debug(f"Existing: {existing_p}")
+            logger.debug(f"New: {new_p}")
 
             if cont:
                 continue
@@ -105,7 +107,7 @@ def put(dev, file, really, cont, start_id, stop_id):
         # check if event exists
         try:
             p = b.package(uri)
-            logger.error(f"package {p} already exists on server.")
+            logger.info(f"Existing package: {p} (skipping)")
             if cont:
                 continue
             else:
@@ -113,7 +115,6 @@ def put(dev, file, really, cont, start_id, stop_id):
 
         except requests.exceptions.HTTPError as e:
             # does not exist
-            logger.debug("package is new, posting to server..")
             url = urljoin(hub.endpoint, "../buoy")
 
             logger.info(f"Posting package: {new_p}..")
