@@ -77,7 +77,7 @@ export class BuoyIndex
         </td>
         <td>
           <a href="#" title="Copy to clipboard" onClick={ linkEvent(buoy, this.copyPosition) }>
-            { (buoy.any_lat() !== null) ? `{buoy.any_lat().toFixed(9)},{buoy.any_lon().toFixed(9)}` : null }
+            { (buoy.any_lat() !== null) ? `${buoy.any_lat().toFixed(9)},${buoy.any_lon().toFixed(9)}` : null }
           </a>
         </td>
         <td>
