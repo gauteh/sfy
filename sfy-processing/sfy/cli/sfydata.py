@@ -27,54 +27,27 @@ sfy.add_command(ctrl)
 sfy.add_command(store)
 
 
-@sfy.command(help='List available buoys or data')
-@click.argument('dev', default=None, required=False)
-@click.option('--start',
-              default=None,
-              help='Filter packages after this time',
-              type=click.DateTime())
-@click.option('--end',
-              default=None,
-              help='Filter packages before this time',
-              type=click.DateTime())
+@sfy.command(help='List available buoys')
 def list(dev, start, end):
     hub = Hub.from_env()
+    buoys = hub.buoys()
 
-    if dev is None:
-        buoys = hub.buoys()
+    last = [b.last() if 'lost+found' not in b.dev else None for b in buoys]
+    storage_info = [ l.storage_id if l else None for l in last ]
+    last = [l.received_datetime if l else None for l in last]
 
-        last = [b.last() if 'lost+found' not in b.dev else None for b in buoys]
+    buoys = [[b.dev, b.name, l, si]
+                for b, l, si in zip(buoys, last, storage_info)]
+    buoys.sort(key=lambda b: b[2].timestamp() if b[2] else 0)
 
-        storage_info = [ l.storage_id if l else None for l in last ]
-
-        last = [l.received_datetime if l else None for l in last]
-
-        buoys = [[b.dev, b.name, l, si]
-                 for b, l, si in zip(buoys, last, storage_info)]
-        buoys.sort(key=lambda b: b[2].timestamp() if b[2] else 0)
-
-        print(
-            tabulate(buoys,
-                     headers=[
-                         'Buoys',
-                         'Name',
-                         'Last contact',
-                         'Last SD-card ID',
-                     ]))
-    else:
-        buoy = hub.buoy(dev)
-        logger.info(f"Listing packages for {buoy}")
-        pcks = buoy.axl_packages_range(start, end)
-
-        pcks = [[
-            ax.start.strftime("%Y-%m-%d %H:%M:%S UTC"), ax.lon, ax.lat,
-            ax.received_datetime.strftime("%Y-%m-%d %H:%M:%S UTC"),
-            ax.storage_id, ax.fname
-        ] for ax in pcks]
-        print(
-            tabulate(
-                pcks,
-                headers=['DataTime', 'Lon', 'Lat', 'TxTime', 'StID', 'File']))
+    print(
+        tabulate(buoys,
+                    headers=[
+                        'Buoys',
+                        'Name',
+                        'Last contact',
+                        'Last SD-card ID',
+                    ]))
 
 
 @sfy.command(help='Print JSON')

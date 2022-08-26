@@ -20,6 +20,31 @@ logger = logging.getLogger(__name__)
 def axl():
     pass
 
+@axl.command(name='list', help='List axl packages')
+@click.argument('dev', default=None, required=False)
+@click.option('--tx-start',
+              default=None,
+              help='Filter packages sent after this time',
+              type=click.DateTime())
+@click.option('--tx-end',
+              default=None,
+              help='Filter packages sent before this time',
+              type=click.DateTime())
+def list_buoys(dev, tx_start, tx_end):
+    hub = Hub.from_env()
+    buoy = hub.buoy(dev)
+    logger.info(f"Listing packages for {buoy}")
+    pcks = buoy.axl_packages_range(tx_start, tx_end)
+
+    pcks = [[
+        ax.start.strftime("%Y-%m-%d %H:%M:%S UTC"), ax.lon, ax.lat,
+        ax.received_datetime.strftime("%Y-%m-%d %H:%M:%S UTC"),
+        ax.storage_id, ax.fname
+    ] for ax in pcks]
+    print(
+        tabulate(
+            pcks,
+            headers=['DataTime', 'Lon', 'Lat', 'TxTime', 'StID', 'File']))
 
 @axl.command()
 @click.argument('dev')
