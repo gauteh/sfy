@@ -9,7 +9,7 @@ import logging
 import pytz
 import hashlib
 import subprocess
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from .timeseries import AxlTimeseries
 
@@ -82,8 +82,6 @@ class AxlCollection(AxlTimeseries):
         pcks = self.pcks.copy()
         segment = []
 
-        assert len(pcks) > 0
-
         while len(pcks) > 0:
             if len(segment) == 0:
                 segment.append(pcks.pop(0))
@@ -99,7 +97,7 @@ class AxlCollection(AxlTimeseries):
 
     def max_gap(self):
         if len(self.pcks) == 1:
-            return np.nan
+            return timedelta(seconds=0)
 
         d = []
         for i, _s in enumerate(self.pcks[:-1]):
