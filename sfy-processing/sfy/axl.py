@@ -342,7 +342,7 @@ class Axl(AxlTimeseries):
         """
         UTC Datetime of time added to notecard.
         """
-        return datetime.fromtimestamp(self.when, pytz.utc)
+        return datetime.fromtimestamp(self.when, pytz.utc) if self.when else None
 
     @property
     def duration(self):
