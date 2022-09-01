@@ -273,6 +273,18 @@ class Buoy:
 
         return pcks
 
+    def position_packages_range(self, start=None, end=None, only_axl=False):
+        """
+        Get all packages that contain position information.
+
+            only_axl: Only include positions from `axl` packages. Useful for determining where data has been collected.
+        """
+        logger.debug(f"fetching position packages between {start} and {end}")
+        pcks = self.fetch_packages_range(start, end)
+        pcks = [pck for pck in pcks if 'axl.qo.json' in pck[1] or '_track.qo.json' in pck[1]]
+        logger.debug(f"Found {len(pcks)} position packages")
+
+
     def axl_packages_range(self, start=None, end=None):
         logger.debug(f"fetching axl packages between {start} and {end}")
 

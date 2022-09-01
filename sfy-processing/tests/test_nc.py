@@ -29,7 +29,7 @@ def test_buggy_data(sfyhub, tmpdir):
     # sfydata axl ts --start 2022-07-25 --end 2022-08-15 bug08 --file bug08UnstadJuly.nc
     b = sfyhub.buoy('bug08')
     pcks = b.axl_packages_range(
-        datetime(2022, 7, 25, 00, 00, tzinfo=timezone.utc),
+        datetime(2022, 8, 14, 00, 00, tzinfo=timezone.utc),
         datetime(2022, 8, 15, 23, 59, tzinfo=timezone.utc))
     print(pcks)
     c = AxlCollection(pcks)

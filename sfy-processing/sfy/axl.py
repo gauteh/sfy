@@ -1,7 +1,6 @@
 from dataclasses import dataclass
-import json
-import math
 import os
+import json
 import numpy as np
 import base64
 import sys
@@ -12,6 +11,7 @@ import subprocess
 from datetime import datetime, timedelta
 
 from .timeseries import AxlTimeseries
+from .event import Event
 
 logger = logging.getLogger(__name__)
 
@@ -192,66 +192,22 @@ class AxlCollection(AxlTimeseries):
 
 
 @dataclass(frozen=True)
-class Axl(AxlTimeseries):
-    received: float
-    event: str
-    file: str
-
-    device: str
-    sn: str
-
-    tower_when: int
-    tower_timezone: str
-
+class Axl(Event, AxlTimeseries):
     ## Payload and body
-    length: int
-    offset: int
-    timestamp: int  # milliseconds, i64
-    storage_id: int  # ID of package on SD card (if applicable), may not be unique.
-    storage_version: int
-    position_time: int  # time of location fix, u32
-    lon: float
-    lat: float
-    freq: float
+    length: int = None
+    offset: int = None
+    timestamp: int = None  # milliseconds, i64
+    storage_id: int = None # ID of package on SD card (if applicable), may not be unique.
+    storage_version: int = None
+    position_time: int = None # time of location fix, u32
+    lon: float = None
+    lat: float = None
+    freq: float = None
 
-    x: np.ndarray
-    y: np.ndarray
-    z: np.ndarray
+    x: np.ndarray = None
+    y: np.ndarray = None
+    z: np.ndarray = None
 
-    tower_lon: float = None
-    tower_lat: float = None
-
-    # These are either new or deprecated, only present in some packages.
-    best_id: str = None
-    best_location_type: str = None
-    best_location_when: str = None
-    best_location: str = None
-    best_country: str = None
-    best_timezone: str = None
-    best_lat: str = None
-    best_lon: str = None
-
-    routed: float = None
-    session: str = None
-    product: str = None
-    req: str = None
-    updates: int = None
-
-    project: dict = None
-
-    tower_country: str = None
-    tower_location: str = None
-    tower_id: str = None
-
-    when: int = None
-
-    where_when: int = None
-    where_olc: float = None
-    where_lat: float = None
-    where_lon: float = None
-    where_location: str = None
-    where_country: str = None
-    where_timezone: str = None
     from_store: bool = False
 
     def __eq__(self, o: 'Axl'):
@@ -277,10 +233,6 @@ class Axl(AxlTimeseries):
             return False
 
     @property
-    def fname(self) -> str:
-        return f'{math.floor(self.received * 1000.)}-{self.event}_{self.file}.json'
-
-    @property
     def dt(self) -> float:
         """
         Sample rate
@@ -293,6 +245,9 @@ class Axl(AxlTimeseries):
 
     @property
     def best_position_time(self):
+        """
+        Gets the time of the position acquired at the start of the acceleration data.
+        """
         if self.position_time:
             try:
                 return datetime.fromtimestamp(self.position_time, pytz.utc)
@@ -329,20 +284,6 @@ class Axl(AxlTimeseries):
             for s in self.mseconds
         ])
         return t
-
-    @property
-    def received_datetime(self):
-        """
-        UTC Datetime of time received or uploaded from notecard.
-        """
-        return datetime.fromtimestamp(self.received, pytz.utc)
-
-    @property
-    def added_datetime(self):
-        """
-        UTC Datetime of time added to notecard.
-        """
-        return datetime.fromtimestamp(self.when, pytz.utc) if self.when else None
 
     @property
     def duration(self):
@@ -385,15 +326,6 @@ class Axl(AxlTimeseries):
 
     def __repr__(self):
         return f"[Axl received={self.received} storage_id={self.storage_id} t={self.start} -> {'%.2f' % self.duration}s sz={len(self.x)}x3 @ f={self.freq}Hz, lon={self.lon}E lat={self.lat}N]"
-
-    @staticmethod
-    def try_parse(d) -> 'Axl':
-        try:
-            return Axl.parse(d)
-        except (KeyError, json.decoder.JSONDecodeError) as e:
-            # logger.exception(e)
-            logger.error(f"failed to parse file: {d}: {e}")
-            return None
 
     @staticmethod
     def parse(d) -> 'Axl':
@@ -470,11 +402,6 @@ class Axl(AxlTimeseries):
         data['body'] = body
 
         return json.dumps(data)
-
-    def save(self, path):
-        data = self.json()
-        with open(path, 'w') as fd:
-            fd.write(data)
 
     @staticmethod
     def from_file(path) -> 'Axl':
