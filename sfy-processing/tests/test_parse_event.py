@@ -1,4 +1,6 @@
 from sfy import event
+from datetime import datetime, timezone
+from . import sfyhub
 
 
 def test_parse_track():
@@ -16,4 +18,11 @@ def test_parse_log():
     ).read()
     a = event.Event.parse(d)
     print(a)
+
+def test_position_range(sfyhub, tmpdir):
+    b = sfyhub.buoy('bug08')
+    pcks = b.position_packages_range(
+        datetime(2022, 8, 14, 00, 00, tzinfo=timezone.utc),
+        datetime(2022, 8, 15, 23, 59, tzinfo=timezone.utc))
+    print(pcks)
 

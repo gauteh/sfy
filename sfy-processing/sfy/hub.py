@@ -13,6 +13,7 @@ import base64
 logger = logging.getLogger(__name__)
 
 from .axl import Axl
+from .event import Event
 from .timeutil import utcify
 
 
@@ -281,8 +282,19 @@ class Buoy:
         """
         logger.debug(f"fetching position packages between {start} and {end}")
         pcks = self.fetch_packages_range(start, end)
-        pcks = [pck for pck in pcks if 'axl.qo.json' in pck[1] or '_track.qo.json' in pck[1]]
+
+        pcks = (pck for pck in pcks if 'axl.qo.json' in pck[1] or '_track.qo.json' in pck[1])
+        if only_axl:
+            pcks = (pck for pck in pcks if 'axl.qo.json' in pck[1])
+
+        pcks = list(pcks)
         logger.debug(f"Found {len(pcks)} position packages")
+
+        pcks = [Event.try_parse(pck[2]) for pck in tqdm(pcks)]
+        pcks = [pck for pck in pcks if pck is not None]
+        logger.debug(f"Loaded {len(pcks)} packages.")
+
+        return pcks
 
 
     def axl_packages_range(self, start=None, end=None):
