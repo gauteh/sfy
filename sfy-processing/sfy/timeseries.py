@@ -70,7 +70,7 @@ class AxlTimeseries:
                     }),
                 'added':
                 xr.Variable(('received'), [
-                    np.datetime64(int(s.timestamp() * 1000.), 'ms')
+                    np.datetime64(int(s.timestamp() * 1000.), 'ms') if s else None
                     for s in self.added_times
                 ],
                             attrs={

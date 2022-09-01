@@ -411,6 +411,7 @@ class Axl(AxlTimeseries):
         data['timestamp'] = data['body'].get('timestamp', 0)
         data['storage_id'] = data['body'].get('storage_id', None)
         data['storage_version'] = data['body'].get('storage_version', 1)
+        data['from_store'] = data['body'].get('from_store', False)
         data['position_time'] = data['body'].get('position_time',
                                                  data['timestamp'])
         data['lon'] = data['body'].get('lon')
@@ -442,6 +443,7 @@ class Axl(AxlTimeseries):
             'timestamp': self.timestamp,
             'storage_id': self.storage_id,
             'storage_version': self.storage_version,
+            'from_store' : self.from_store,
             'position_time': self.position_time,
             'lon': self.lon,
             'lat': self.lat,
