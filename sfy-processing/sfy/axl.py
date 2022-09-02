@@ -258,6 +258,18 @@ class Axl(Event, AxlTimeseries):
             return self.start
 
     @property
+    def longitude(self):
+        return self.lon
+
+    @property
+    def latitude(self):
+        return self.lat
+
+    @property
+    def position_type(self):
+        return 'gps'
+
+    @property
     def start(self):
         """
         UTC Datetime of start of samples. Taking `offset` into account.

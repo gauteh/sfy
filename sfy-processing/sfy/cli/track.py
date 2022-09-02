@@ -95,8 +95,8 @@ def csv(dev, start, end):
     pcks = buoy.axl_packages_range(start, end)
 
     tm  = [pck.best_position_time for pck in pcks]
-    lon = [pck.lon for pck in pcks]
-    lat = [pck.lat for pck in pcks]
+    lon = [pck.longitude for pck in pcks]
+    lat = [pck.latitude for pck in pcks]
 
     df = pd.DataFrame({ 'Device': buoy.dev, 'Time': tm, 'Longitude': lon, 'Latitude': lat})
     buf = io.StringIO()

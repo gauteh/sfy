@@ -25,12 +25,12 @@ class Event:
     # These are either new or deprecated, only present in some packages.
     best_id: str = None
     best_location_type: str = None
-    best_location_when: str = None
+    best_location_when: float = None
     best_location: str = None
     best_country: str = None
     best_timezone: str = None
-    best_lat: str = None
-    best_lon: str = None
+    best_lat: float = None
+    best_lon: float = None
 
     routed: float = None
     session: str = None
@@ -56,6 +56,27 @@ class Event:
 
     body: Any = None
     payload: Any = None
+
+    @property
+    def longitude(self):
+        return self.best_lon
+
+    @property
+    def latitude(self):
+        return self.best_lat
+
+    @property
+    def best_position_time(self):
+        return datetime.fromtimestamp(self.best_location_when, pytz.utc)
+
+    @property
+    def position_type(self):
+        """
+        Returns whether the position is determined from gps or from the cell tower.
+
+        Values: 'gps' or 'tower'.
+        """
+        return self.best_location_type
 
     @property
     def fname(self) -> str:
