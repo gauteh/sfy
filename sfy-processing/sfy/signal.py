@@ -7,9 +7,12 @@ def bandpass(s, dt, low, high):
     s = sc.signal.sosfilt(sos, s)
     return s
 
-def integrate(s, dt, detrend=True, filter=True, order=1):
+def integrate(s, dt, detrend=True, filter=True, order=1, freqs=None):
     if order > 1:
-        s = integrate(s, dt, detrend, filter, order - 1)
+        s = integrate(s, dt, detrend, filter, order - 1, freqs)
+
+    if freqs is None:
+        freqs = [.08, 25.]
 
     fs = 1. / dt
 
@@ -24,8 +27,10 @@ def integrate(s, dt, detrend=True, filter=True, order=1):
     # (b, a) = sc.signal.butter(8, 0.05, 'highpass', fs=fs)
     # s = sc.signal.filtfilt(b, a, s)
 
+    print(f"{freqs=}")
+
     if filter:
-        sos = sc.signal.butter(10, [.08, 25.], 'bandpass', fs=fs, output='sos')
+        sos = sc.signal.butter(10, freqs, 'bandpass', fs=fs, output='sos')
         s = sc.signal.sosfilt(sos, s)
 
     ## Integrate
