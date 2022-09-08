@@ -18,17 +18,17 @@ bump-jlink:
 build:
 	cd sfy-artemis && cargo build $(CARGO_FLAGS)
 
-objcopy: build
+bin: build
 	arm-none-eabi-objcopy -S -O binary $(ELF) target/sfy-buoy.bin
 	# cd sfy-artemis && cargo objcopy $(CARGO_FLAGS) -- -O binary ../target/sfy-buoy.bin
 
-flash: objcopy
+flash: bin
 	python3 ../tools/svl/svl.py -f target/sfy-buoy.bin $(USB) -v
 
-jlink-flash: objcopy bump-jlink
+jlink-flash: bin bump-jlink
 	sh jlink-flash.sh
 
-deploy: objcopy
+deploy: bin
 	python3 ../tools/svl/svl.py -f target/sfy-buoy.bin $(USB) -v
 
 com:
