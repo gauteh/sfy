@@ -182,6 +182,10 @@ class AxlCollection(AxlTimeseries):
     def added_times(self):
         return np.concatenate([pck.added_times for pck in self.pcks])
 
+    @property
+    def start_times(self):
+        return np.concatenate([pck.start_times for pck in self.pcks])
+
     def extra_attrs(self):
         return {
             'collection': 'yes',
@@ -319,6 +323,10 @@ class Axl(Event, AxlTimeseries):
     @property
     def added_times(self):
         return np.array([self.added_datetime])
+
+    @property
+    def start_times(self):
+        return np.array([self.start])
 
     @property
     def storage_ids(self):

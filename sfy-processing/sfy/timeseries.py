@@ -68,6 +68,15 @@ class AxlTimeseries:
                         'standard_name': "latitude",
                         'long_name': "latitude"
                     }),
+                'package_start':
+                xr.Variable(('received'), [
+                    np.datetime64(int(s.timestamp() * 1000.), 'ms') if s else None
+                    for s in self.start_times
+                ],
+                            attrs={
+                                'description':
+                                'Timestamp at start of each batch (package) of samples.'
+                            }),
                 'added':
                 xr.Variable(('received'), [
                     np.datetime64(int(s.timestamp() * 1000.), 'ms') if s else None
