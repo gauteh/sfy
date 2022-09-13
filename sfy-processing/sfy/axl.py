@@ -249,11 +249,7 @@ class Axl(Event, AxlTimeseries):
         Gets the time of the position acquired at the start of the acceleration data.
         """
         if self.position_time:
-            try:
-                return datetime.fromtimestamp(self.position_time, pytz.utc)
-            except ValueError as ex:
-                return datetime.fromtimestamp(self.position_time / 1000.,
-                                              pytz.utc)
+            return datetime.fromtimestamp(self.position_time, pytz.utc)
         else:
             return self.start
 
@@ -356,9 +352,9 @@ class Axl(Event, AxlTimeseries):
         data['storage_id'] = data['body'].get('storage_id', None)
         data['storage_version'] = data['body'].get('storage_version', 1)
         data['from_store'] = data['body'].get('from_store', False)
-        data['position_time'] = data['body'].get('position_time')
         data['lon'] = data['body'].get('lon')
         data['lat'] = data['body'].get('lat')
+        data['position_time'] = data['body'].get('position_time')
         data['freq'] = data['body'].get('freq', 208.)
         del data['body']
 
