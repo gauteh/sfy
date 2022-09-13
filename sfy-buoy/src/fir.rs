@@ -53,7 +53,7 @@ impl FIR {
     pub fn new() -> FIR {
         let mut samples = Deque::new();
 
-        while let Ok(_) = samples.push_back(0.0) {}
+        while samples.push_back(0.0).is_ok() {}
 
         FIR { samples }
     }
@@ -79,7 +79,7 @@ impl FIR {
 
     pub fn reset(&mut self) {
         self.samples.clear();
-        while let Ok(_) = self.samples.push_back(0.0) {}
+        while self.samples.push_back(0.0).is_err() {}
     }
 
     pub fn into_decimator(self) -> Decimator {
