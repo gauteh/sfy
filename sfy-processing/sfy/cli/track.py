@@ -38,7 +38,7 @@ def map(dev, fast, start, end, margins, save):
     buoy = hub.buoy(dev)
     print(buoy)
 
-    pcks = buoy.axl_packages_range(start, end)
+    pcks = buoy.position_packages_range(start, end)
 
     lon = [pck.lon for pck in pcks]
     lat = [pck.lat for pck in pcks]
@@ -92,13 +92,14 @@ def csv(dev, start, end):
     hub = Hub.from_env()
     buoy = hub.buoy(dev)
 
-    pcks = buoy.axl_packages_range(start, end)
+    pcks = buoy.position_packages_range(start, end)
 
     tm  = [pck.best_position_time for pck in pcks]
     lon = [pck.longitude for pck in pcks]
     lat = [pck.latitude for pck in pcks]
+    file = [pck.file for pck in pcks]
 
-    df = pd.DataFrame({ 'Device': buoy.dev, 'Time': tm, 'Longitude': lon, 'Latitude': lat})
+    df = pd.DataFrame({ 'Device': buoy.dev, 'Time': tm, 'Longitude': lon, 'Latitude': lat, 'File': file })
     buf = io.StringIO()
     df.to_csv(buf, index=False)
     print(buf.getvalue())
