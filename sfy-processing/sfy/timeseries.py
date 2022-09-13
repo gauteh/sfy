@@ -94,7 +94,7 @@ class AxlTimeseries:
                 'position_time':
                 xr.Variable(
                     'position_time',
-                    [np.datetime64(int(s), 'ms') for s in self.position_times],
+                    [np.datetime64(int(s), 's') if s else np.nan for s in self.position_times],
                     attrs={
                         'description': 'Time of position fix for each package'
                     }),
