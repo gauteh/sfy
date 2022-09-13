@@ -8,6 +8,9 @@ def bandpass(s, dt, low, high):
     return s
 
 def integrate(s, dt, detrend=True, filter=True, order=1, freqs=None):
+    """
+    Integrate a signal, first removing mean and detrending.
+    """
     if order > 1:
         s = integrate(s, dt, detrend, filter, order - 1, freqs)
 
@@ -59,3 +62,43 @@ def displacement(a: 'Axl'):
     z = integrate(a.z, a.dt, order=2)
 
     return x, y, z
+
+def integrate_dft(x, fs):
+    """
+    Integrate in the Fourier domain. See Brandt & Brincker (2014) for a comparsion with the trapezoidal rule.
+    """
+
+    L = len(x)
+    N = 2 * L # x should be padded to avoid cyclic aliasing, achieved through taking the DFT at 2*L.
+
+    X = np.fft.rfft(x, N)
+
+    f = np.fft.rfftfreq(N, d = 1. / fs)
+    w = 2. * np.pi * f
+    H = np.empty(shape=w.shape, dtype=complex)
+    H[1:] = 1. / (1j * w[1:])
+    H[0] = 0.
+
+
+    Y = X * H  # integrate
+
+    y = np.fft.irfft(Y)
+    y = y[:L]
+
+    return y
+
+def detrend_tp_2021(y, k=0.9995):
+    """
+    Detrend signal using algorithm from Tucker and Pitt (2001), `k` from Kohout et. al. (2015).
+
+    Apparently this should be equivalen to a highpass RC-filter.
+
+    .. math::
+
+        y^{*}_{n} = y_n - (1 - k) * s_n
+        s_n = y_n + k * s_{n-1}
+
+        y_n is the raw signal
+        y^{*}_{n} is the detrended signal
+    """
+    pass

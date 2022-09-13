@@ -7,3 +7,4 @@ def sfyhub(tmpdir):
     h = hub.Hub.from_env()
     h.cache = tmpdir
     return h
+
