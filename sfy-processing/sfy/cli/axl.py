@@ -72,7 +72,11 @@ def list_buoys(dev, tx_start, tx_end):
               default=None,
               help='Maximum gap allowed between packages before splitting into new segment (seconds).',
               type=float)
-def ts(dev, tx_start, tx_end, start, end, file, gap):
+@click.option('--freq',
+              default=None,
+              help='Only use packages with this frequency (usually 52 or 20.8, within 2 Hz)',
+              type=float)
+def ts(dev, tx_start, tx_end, start, end, file, gap, freq):
     hub = Hub.from_env()
     buoy = hub.buoy(dev)
 
@@ -105,6 +109,10 @@ def ts(dev, tx_start, tx_end, start, end, file, gap):
 
     pcks = buoy.axl_packages_range(tx_start, tx_end)
     logger.info(f"{len(pcks)} packages in tx range")
+
+    if freq:
+        pcks = list(filter(lambda p: abs(p.frequency - freq) <= 2, pcks))
+        logger.info(f"Filtering packages on frequency: {freq}, {len(pcks)} packages matching.")
 
     pcks = AxlCollection(pcks)
 
