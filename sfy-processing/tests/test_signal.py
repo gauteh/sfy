@@ -32,12 +32,18 @@ def test_integration_dft(plot):
     z = z - np.mean(z)
     z = sc.signal.detrend(z)
 
-    zz = signal.integrate_dft(z, a.frequency)
+    zz = signal.dft_integrate(z, a.frequency)
+    zc = sc.integrate.cumtrapz(z, dx=a.dt)
 
     assert len(zz) == len(z)
 
     if plot:
         plt.figure()
-        plt.plot(a.time, z)
-        plt.plot(a.time, zz)
+        plt.plot(a.time, z, label='accel')
+        plt.plot(a.time, zz, label='integrate (dft)')
+        plt.plot(a.time[1:], zc, label='integrate (cumtrapz)')
+        plt.legend()
         plt.show()
+
+    np.testing.assert_array_almost_equal(zz[1:], zc, decimal=5)
+

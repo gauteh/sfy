@@ -1,15 +1,42 @@
 import numpy as np
 import scipy as sc, scipy.signal, scipy.integrate
 
-def bandpass(s, dt, low, high):
+def bandpass(s, dt, low=None, high=None):
     fs = 1. / dt
+
+    if low is None:
+        low = 0.08
+
+    if high is None:
+        high = 25.
+
     sos = sc.signal.butter(10, [low, high], 'bandpass', fs=fs, output='sos')
     s = sc.signal.sosfilt(sos, s)
     return s
 
-def integrate(s, dt, detrend=True, filter=True, order=1, freqs=None):
+def integrate(s, dt, detrend=True, filter=True, order=1, freqs=None, method='trapz'):
     """
     Integrate a signal, first removing mean and detrending.
+
+    Args:
+
+        s: signal
+
+        dt: sample rate, 1 / Fs.
+
+        detrend: remove mean and detrend before integrating.
+
+        filter: filter before integrating.
+
+        order: number of times to perform integration recursively.
+
+        freqs: list with upper and lower bound for filter.
+
+        method: numerical integration method: 'trapz', 'dft'.
+
+    Returns:
+
+        s: integrated signal.
     """
     if order > 1:
         s = integrate(s, dt, detrend, filter, order - 1, freqs)
@@ -30,14 +57,16 @@ def integrate(s, dt, detrend=True, filter=True, order=1, freqs=None):
     # (b, a) = sc.signal.butter(8, 0.05, 'highpass', fs=fs)
     # s = sc.signal.filtfilt(b, a, s)
 
-    print(f"{freqs=}")
-
     if filter:
-        sos = sc.signal.butter(10, freqs, 'bandpass', fs=fs, output='sos')
-        s = sc.signal.sosfilt(sos, s)
+        s = bandpass(s, dt, *freqs)
 
     ## Integrate
-    s = sc.integrate.cumtrapz(s, dx=dt)
+    if method == 'trapz':
+        s = sc.integrate.cumtrapz(s, dx=dt)
+    elif method == 'dft':
+        s = dft_integrate(s, fs)
+    else:
+        raise ValueError("Unknown integration method")
 
     return s
 
@@ -63,7 +92,7 @@ def displacement(a: 'Axl'):
 
     return x, y, z
 
-def integrate_dft(x, fs):
+def dft_integrate(x, fs):
     """
     Integrate in the Fourier domain. See Brandt & Brincker (2014) for a comparsion with the trapezoidal rule.
     """
@@ -73,14 +102,15 @@ def integrate_dft(x, fs):
 
     X = np.fft.rfft(x, N)
 
+    ## Integrator operator
     f = np.fft.rfftfreq(N, d = 1. / fs)
     w = 2. * np.pi * f
     H = np.empty(shape=w.shape, dtype=complex)
     H[1:] = 1. / (1j * w[1:])
     H[0] = 0.
 
-
-    Y = X * H  # integrate
+    ## Integrate
+    Y = X * H
 
     y = np.fft.irfft(Y)
     y = y[:L]
