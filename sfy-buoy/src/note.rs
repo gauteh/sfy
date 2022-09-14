@@ -6,7 +6,9 @@ use embedded_hal::blocking::i2c::{Read, Write};
 
 use crate::NOTEQ_SZ;
 
-pub const BUOYSN: &'static str = const { option_env!("BUOYSN").unwrap_or("cain") };
+pub const BUOYSN: &str = const { option_env!("BUOYSN").unwrap_or("cain") };
+// pub const GPS_PERIOD: u32 =  10 * 60;
+pub const GPS_PERIOD: u32 =  60;
 
 /// Initialize sync when storage use is above this percentage.
 pub const NOTECARD_STORAGE_INIT_SYNC: u32 = 50;
@@ -60,7 +62,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                 } else {
                     Some(notecard::hub::req::HubMode::Periodic)
                 },
-                Some(&BUOYSN),
+                Some(BUOYSN),
                 Some(20), // max time between out-going sync in minutes.
                 None,
                 None,
@@ -76,7 +78,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             .location_mode(
                 delay,
                 Some("periodic"),
-                Some(10 * 60),
+                Some(GPS_PERIOD),
                 None,
                 None,
                 None,
