@@ -28,7 +28,7 @@ sfy.add_command(store)
 
 
 @sfy.command(help='List available buoys')
-def list(dev, start, end):
+def list():
     hub = Hub.from_env()
     buoys = hub.buoys()
 
