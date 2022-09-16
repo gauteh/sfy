@@ -21,7 +21,7 @@ def axl():
     pass
 
 @axl.command(name='list', help='List axl packages')
-@click.argument('dev', default=None, required=False)
+@click.argument('dev')
 @click.option('--tx-start',
               default=None,
               help='Filter packages sent after this time',
