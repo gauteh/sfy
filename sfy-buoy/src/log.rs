@@ -12,7 +12,11 @@ static LOGQ: Queue<String<256>> = Queue::new();
 
 pub fn log(msg: &str) {
     defmt::debug!("logq: {}", msg);
-    let (msg, _) = msg.split_at(256);
+    let msg = if msg.len() > 256 {
+        &msg[..256]
+    } else {
+        msg
+    };
     LOGQ.enqueue(String::from(msg))
         .inspect_err(|e| defmt::error!("failed to queue message: {:?}", e))
         .ok();
