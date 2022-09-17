@@ -140,7 +140,7 @@ class Buoy:
             self.buoy_type = dev[2]
             if len(dev[3]) > 0:
                 if self.buoy_type == 'sfy':
-                    self.__last__ = Axl.parse(base64.b64decode(dev[3]))
+                    self.__last__ = Event.parse(base64.b64decode(dev[3]))
                 else:
                     self.__last__ = json.loads(base64.b64decode(dev[3]))
             else:

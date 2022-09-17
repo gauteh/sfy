@@ -33,7 +33,7 @@ def list():
     buoys = hub.buoys()
 
     last = [b.last() if 'lost+found' not in b.dev else None for b in buoys]
-    storage_info = [ l.storage_id if l else None for l in last ]
+    storage_info = [ l.body.get('storage_id', None) if l and l.body else None for l in last ]
     last = [l.received_datetime if l else None for l in last]
 
     buoys = [[b.dev, b.name, l, si]

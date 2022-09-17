@@ -1,3 +1,4 @@
 .eggs
 sfy_processing.egg-info
 .env
+build
