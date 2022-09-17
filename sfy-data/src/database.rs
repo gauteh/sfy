@@ -326,7 +326,7 @@ impl Buoy {
         ensure!(self.known, "No such buoy");
 
         let data = match self.buoy_type {
-            BuoyType::SFY => sqlx::query!("SELECT data FROM events WHERE dev = ?1 AND message_type = 'axl.qo' ORDER BY received DESC LIMIT 1", self.dev)
+            BuoyType::SFY => sqlx::query!("SELECT data FROM events WHERE dev = ?1 AND (message_type = 'axl.qo' or message_type = '_track.qo') ORDER BY received DESC LIMIT 1", self.dev)
                 .fetch_one(&self.db)
                 .await?.data,
 

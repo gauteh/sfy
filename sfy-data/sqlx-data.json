@@ -1,23 +1,5 @@
 {
   "db": "SQLite",
-  "014fd4e85be61a4d2a984684a6a0c0f2a331033217b7e14d350999dba1188de0": {
-    "describe": {
-      "columns": [
-        {
-          "name": "data",
-          "ordinal": 0,
-          "type_info": "Blob"
-        }
-      ],
-      "nullable": [
-        true
-      ],
-      "parameters": {
-        "Right": 1
-      }
-    },
-    "query": "SELECT data FROM events WHERE dev = ?1 AND message_type = 'axl.qo' ORDER BY received DESC LIMIT 1"
-  },
   "09d56aab3e5e4e95222fdcd2d9581657cb147f14ccaf602de325f4e80039f6b8": {
     "describe": {
       "columns": [],
@@ -269,6 +251,24 @@
       }
     },
     "query": "SELECT dev, name, buoy_type FROM buoys where dev = ?1"
+  },
+  "bca93f305115fc0c9f1fba54b2a187af792f1bb3ec67e93f8f69d29538b70f78": {
+    "describe": {
+      "columns": [
+        {
+          "name": "data",
+          "ordinal": 0,
+          "type_info": "Blob"
+        }
+      ],
+      "nullable": [
+        true
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT data FROM events WHERE dev = ?1 AND (message_type = 'axl.qo' or message_type = '_track.qo') ORDER BY received DESC LIMIT 1"
   },
   "d38a5ff42574316a2dee2765d4151866f3deb4e22cee4d630f16864c4aa028fc": {
     "describe": {
