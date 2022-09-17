@@ -60,7 +60,7 @@ export class BuoyMap
       }
     }
 
-    this.markers = this.props.buoys.map((buoy) => {
+    this.markers = this.props.buoys.filter((buoy) => buoy.any_lat() != null).map((buoy) => {
         let marker = L.marker([buoy.any_lat(), buoy.any_lon()]).addTo(this.map);
         marker.bindTooltip(`${buoy.sn} (${buoy.dev})`);
         return [buoy.dev, marker];

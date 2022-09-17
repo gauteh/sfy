@@ -37,7 +37,7 @@ export class Buoy {
     if (this.package) {
       return new Date(this.package.received * 1000.);
     } else {
-      return null;
+      return new Date(0);
     }
   }
 
@@ -57,5 +57,13 @@ export class Buoy {
 
   public any_lon(): number {
     return this.longitude !== undefined ? this.longitude : this.tower_lon;
+  }
+
+  public formatted_position(): string {
+    if (this.any_lat() != null) {
+      return `${this.any_lat().toFixed(9)},${this.any_lon().toFixed(9)}`;
+    } else {
+      return "";
+    }
   }
 }

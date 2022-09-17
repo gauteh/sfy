@@ -1,14 +1,14 @@
-import {linkEvent, createRef, Component} from 'inferno';
+import { linkEvent, createRef, Component } from 'inferno';
 
 import moment from 'moment';
 import cx from 'classnames';
 
-import {of} from 'rxjs';
-import {finalize, tap, concatMap, mergeMap, switchMap, map} from 'rxjs/operators';
-import {Buoy, OmbBuoy} from 'models';
+import { of } from 'rxjs';
+import { finalize, tap, concatMap, mergeMap, switchMap, map } from 'rxjs/operators';
+import { Buoy, OmbBuoy } from 'models';
 import * as hub from 'hub';
 
-import {BuoyMap} from './BuoyMap';
+import { BuoyMap } from './BuoyMap';
 
 import './BuoyIndex.scss';
 
@@ -16,7 +16,7 @@ interface Props {
 }
 
 interface State {
-  buoys: Array<Buoy|OmbBuoy>;
+  buoys: Array<Buoy | OmbBuoy>;
 }
 
 export class BuoyIndex
@@ -57,11 +57,11 @@ export class BuoyIndex
       } else {
         return undefined;
       }
-      }).filter(b => b !== undefined);
+    }).filter(b => b !== undefined);
 
     buoys.sort((a, b) => b.lastContact().getTime() - a.lastContact().getTime());
     this.state.buoys = buoys;
-    this.setState({buoys: this.state.buoys});
+    this.setState({ buoys: this.state.buoys });
   }
 
   public Row = (buoy) => {
@@ -76,8 +76,8 @@ export class BuoyIndex
           <a href="#" title={buoy.dev} onClick={linkEvent(buoy, this.focus)}>{buoy.sn}</a>
         </td>
         <td>
-          <a href="#" title="Copy to clipboard" onClick={ linkEvent(buoy, this.copyPosition) }>
-            { (buoy.any_lat() !== null) ? `${buoy.any_lat().toFixed(9)},${buoy.any_lon().toFixed(9)}` : null }
+          <a href="#" title="Copy to clipboard" onClick={linkEvent(buoy, this.copyPosition)}>
+            {buoy.formatted_position()}
           </a>
         </td>
         <td>
@@ -104,7 +104,7 @@ export class BuoyIndex
   public render() {
     return (
       <div>
-        <BuoyMap buoys={this.state.buoys} ref={this.bmap}/>
+        <BuoyMap buoys={this.state.buoys} ref={this.bmap} />
 
         <div class="container-fluid no-margin">
           <table class="ti table table-striped">

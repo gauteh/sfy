@@ -61,5 +61,13 @@ export class OmbBuoy {
   public any_lon = (): number => {
     return this.longitude !== undefined ? this.longitude : this.iridium_lon;
   }
+
+  public formatted_position(): string {
+    if (this.any_lat() != null) {
+      return `${this.any_lat().toFixed(9)},${this.any_lon().toFixed(9)}`;
+    } else {
+      return "";
+    }
+  }
 }
 
