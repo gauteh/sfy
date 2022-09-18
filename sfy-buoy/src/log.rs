@@ -81,5 +81,12 @@ mod tests {
         let mut s = String::<256>::new();
         write!(&mut s, "test: {}", "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr").ok();
     }
+
+    #[test]
+    fn exhaust_queue() {
+        for _ in 0..256 {
+            log("asdfasdf");
+        }
+    }
 }
 
