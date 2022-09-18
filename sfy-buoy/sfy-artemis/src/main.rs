@@ -420,14 +420,7 @@ fn RTC() {
 #[allow(non_snake_case)]
 #[exception]
 unsafe fn HardFault(ef: &ExceptionFrame) -> ! {
-    error!("hard fault exception: {:#?}", defmt::Debug2Format(ef));
-
-    let mut delay = hal::delay::FlashDelay;
-
-    log("hard fault exception.");
-    free(|_| sfy::log::panic_drain_log(log::NOTE, &mut delay));
-
-    warn!("resetting system..");
+    error!("hard fault exception: {:#?}. resetting system.", defmt::Debug2Format(ef));
     cortex_m::peripheral::SCB::sys_reset()
 }
 
