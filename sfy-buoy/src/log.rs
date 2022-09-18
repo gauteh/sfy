@@ -10,11 +10,13 @@ use crate::note::Notecarrier;
 /// Log message queue for messages to be sent back over notecard.
 static LOGQ: Queue<String<256>> = Queue::new();
 
+#[allow(unused)]
 pub fn log(msg: &str) {
     #[cfg(not(test))]
     defmt::debug!("logq: {}", msg);
     let mut s = String::new();
     s.push_str(msg).ok();
+
     LOGQ.enqueue(s)
         .inspect_err(|e| {
             #[cfg(not(test))]
@@ -71,6 +73,13 @@ mod tests {
     #[test]
     fn log_exactly_256_mesg() {
         log("rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr");
+    }
+
+    #[test]
+    fn write_exceed_str() {
+        use core::fmt::Write;
+        let mut s = String::<256>::new();
+        write!(&mut s, "test: {}", "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr").ok();
     }
 }
 
