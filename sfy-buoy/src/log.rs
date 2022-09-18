@@ -11,11 +11,15 @@ use crate::note::Notecarrier;
 static LOGQ: Queue<String<256>> = Queue::new();
 
 pub fn log(msg: &str) {
+    #[cfg(not(test))]
     defmt::debug!("logq: {}", msg);
     let mut s = String::new();
     s.push_str(msg).ok();
     LOGQ.enqueue(s)
-        .inspect_err(|e| defmt::error!("failed to queue message: {:?}", e))
+        .inspect_err(|e| {
+            #[cfg(not(test))]
+            defmt::error!("failed to queue message: {:?}", e)
+        })
         .ok();
 }
 
@@ -49,3 +53,24 @@ pub unsafe fn panic_drain_log<IOM: Read + Write>(
         defmt::error!("NOTE is not set.");
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn log_short_mesg() {
+        log("asdfasdf");
+    }
+
+    #[test]
+    fn log_too_long_mesg() {
+        log("asdfasdfrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr");
+    }
+
+    #[test]
+    fn log_exactly_256_mesg() {
+        log("rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr");
+    }
+}
+
