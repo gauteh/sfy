@@ -40,8 +40,8 @@ def map(dev, fast, start, end, margins, save):
 
     pcks = buoy.position_packages_range(start, end)
 
-    lon = [pck.lon for pck in pcks]
-    lat = [pck.lat for pck in pcks]
+    lon = [pck.longitude for pck in pcks]
+    lat = [pck.latitude for pck in pcks]
 
     print('plotting..')
     fig = plt.figure()

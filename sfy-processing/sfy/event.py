@@ -67,7 +67,7 @@ class Event:
 
     @property
     def best_position_time(self):
-        return datetime.fromtimestamp(self.best_location_when, pytz.utc)
+        return datetime.fromtimestamp(self.best_location_when, pytz.utc) if self.best_location_when else None
 
     @property
     def position_type(self):
