@@ -26,8 +26,8 @@ mod tests {
     use super::*;
     #[allow(unused)]
     use defmt::{assert, assert_eq, info};
-    use embedded_hal::spi;
-    use hal::spi::{Freq, Spi};
+    use embedded_hal::{prelude::*, spi};
+    use hal::{spi::{Freq, Spi}, prelude::*};
     use half::f16;
     use heapless::Vec;
 
@@ -52,7 +52,15 @@ mod tests {
         let pins = hal::gpio::Pins::new(dp.GPIO);
 
         let rtc = hal::rtc::Rtc::new(dp.RTC, &mut dp.CLKGEN);
-        let delay = hal::delay::Delay::new(core.SYST, &mut dp.CLKGEN);
+        let mut delay = hal::delay::Delay::new(core.SYST, &mut dp.CLKGEN);
+
+        let mut cs = pins.a14;
+        // cs.set_drive_strength(hal::gpio::pin::DriveStrength::D12mA);
+        let mut cs = cs.into_push_pull_output();
+        cs.internal_pull_up(true);
+        // cs.set_high();
+
+        delay.delay_ms(300_u32);
 
         defmt::info!("Setting up SPI");
         let spi = Spi::new(
@@ -64,7 +72,8 @@ mod tests {
             spi::MODE_0,
         );
 
-        let cs = pins.a14.into_push_pull_output();
+        delay.delay_ms(300_u32);
+
         let storage = Storage::open(spi, cs, sfy::storage::clock::CountClock(&COUNT), |spi| {
             spi.set_freq(Freq::F48mHz)
         })
