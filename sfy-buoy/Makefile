@@ -26,7 +26,7 @@ flash: bin
 	python3 ../tools/svl/svl.py -f target/sfy-buoy.bin $(USB) -v
 
 jlink-flash: bin bump-jlink
-	sh jlink-flash.sh
+	sh jlink-flash.sh target/sfy-buoy.bin
 
 deploy: bin
 	python3 ../tools/svl/svl.py -f target/sfy-buoy.bin $(USB) -v
