@@ -4,12 +4,12 @@
 //! possible to request a range of old packages.
 //!
 //! The maximum number of files in a FAT32 directory is 65536. If a data package has ID
-//! `1234567` it is put in the file: `123.X` where `X` is the version of the storage format
+//! `1234567` it is put in the file: `12345.X` where `X` is the version of the storage format
 //! starting with 1. The packages are serialized using the `postcard` format and separated with
-//! `COBS`es. The collection file is the full ID stripped of the last 4 digits. Each collection
-//! file holds 10.000 packages.
+//! `COBS`es. The collection file is the full ID stripped of the last 2 digits. Each collection
+//! file holds 100 packages.
 //!
-//! At 52 Hz and 1024 length data-package, there is 4389 packages per day. Each collection will last about 2 days. See tests for more details.
+//! At 52 Hz and 1024 length data-package, there is 4389 packages per day. That is about 44 collections per day. See tests for more details.
 
 use core::fmt::Debug;
 use core::ops::DerefMut;
