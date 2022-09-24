@@ -20,6 +20,8 @@ class Event:
     tower_when: int
     tower_timezone: str
     app: str = None
+    note: str = None
+    deleted: any = None
     tower_lon: float = None
     tower_lat: float = None
 
