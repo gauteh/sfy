@@ -130,22 +130,28 @@ fn main() -> ! {
             spi::MODE_0,
         );
         let cs = pins.a14.into_push_pull_output();
-        Storage::open(spi, cs, sfy::storage::clock::CountClock(&COUNT), |spi| {
-            spi.set_freq(Freq::F12mHz)
-        })
-    }
-    .inspect_err(|e| {
-        defmt::error!("Failed to setup storage: {}", e);
 
-        let mut msg = heapless::String::<256>::new();
-        write!(&mut msg, "storage setup err: {:?}", e)
+        let mut storage = Storage::open(spi, cs, sfy::storage::clock::CountClock(&COUNT), |spi| {
+            spi.set_freq(Freq::F12mHz)
+        });
+
+        storage
+            .init()
             .inspect_err(|e| {
-                defmt::error!("failed to format storage-err: {:?}", defmt::Debug2Format(e))
+                defmt::error!("Failed to setup storage: {}", e);
+
+                let mut msg = heapless::String::<256>::new();
+                write!(&mut msg, "storage setup err: {:?}", e)
+                    .inspect_err(|e| {
+                        defmt::error!("failed to format storage-err: {:?}", defmt::Debug2Format(e))
+                    })
+                    .ok();
+                log(&msg);
             })
             .ok();
-        log(&msg);
-    })
-    .ok();
+
+        storage
+    };
 
     #[cfg(not(feature = "storage"))]
     let (imu_p, mut imu_queue) = unsafe { NOTEQ.split() };
@@ -423,7 +429,10 @@ fn RTC() {
 #[allow(non_snake_case)]
 #[exception]
 unsafe fn HardFault(ef: &ExceptionFrame) -> ! {
-    error!("hard fault exception: {:#?}. resetting system.", defmt::Debug2Format(ef));
+    error!(
+        "hard fault exception: {:#?}. resetting system.",
+        defmt::Debug2Format(ef)
+    );
     cortex_m::peripheral::SCB::sys_reset()
 }
 

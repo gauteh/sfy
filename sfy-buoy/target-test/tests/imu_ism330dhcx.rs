@@ -172,7 +172,7 @@ mod tests {
 
         s.waves.enable_fifo(&mut s.delay).unwrap();
 
-        while !s.waves.is_full()  {
+        while !s.waves.is_full() {
             defmt::debug!("wait for some samples..");
             s.delay.delay_ms(200u16);
 
@@ -191,6 +191,5 @@ mod tests {
         defmt::debug!("taking buf..");
         let p = s.waves.take_buf(100031231, 1231231, 34.0, 23.2).unwrap();
         defmt::debug!("pck: {:?}", p);
-
     }
 }

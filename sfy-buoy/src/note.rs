@@ -13,7 +13,7 @@ pub const BUOYSN: &str = const { option_env!("BUOYSN").unwrap_or("cain") };
 /// drifting in fjords and similar 10 minutes is sufficient. However, for experiments on beaches a
 /// higher sample rate is useful.
 // pub const GPS_PERIOD: u32 =  10 * 60;
-pub const GPS_PERIOD: u32 =  60;
+pub const GPS_PERIOD: u32 = 60;
 
 /// Initialize sync when storage use is above this percentage.
 pub const NOTECARD_STORAGE_INIT_SYNC: u32 = 50;
@@ -39,7 +39,14 @@ pub struct RequestData {
 
 impl<I2C: Read + Write> Notecarrier<I2C> {
     pub fn new(i2c: I2C, delay: &mut impl DelayMs<u16>) -> Result<Notecarrier<I2C>, NoteError> {
-        let mut note = Notecard::new_with_config(i2c, NotecardConfig { chunk_delay: 5, segment_delay: 20, ..Default::default() });
+        let mut note = Notecard::new_with_config(
+            i2c,
+            NotecardConfig {
+                chunk_delay: 5,
+                segment_delay: 20,
+                ..Default::default()
+            },
+        );
         note.initialize(delay)?;
 
         #[cfg(feature = "continuous")]

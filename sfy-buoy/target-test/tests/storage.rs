@@ -27,11 +27,14 @@ mod tests {
     #[allow(unused)]
     use defmt::{assert, assert_eq, info};
     use embedded_hal::{prelude::*, spi};
-    use hal::{spi::{Freq, Spi}, prelude::*};
+    use hal::{
+        prelude::*,
+        spi::{Freq, Spi},
+    };
     use half::f16;
     use heapless::Vec;
 
-    use sfy::axl::{AxlPacket, AXL_SZ, AXL_POSTCARD_SZ};
+    use sfy::axl::{AxlPacket, AXL_POSTCARD_SZ, AXL_SZ};
     use sfy::storage::Storage;
 
     struct State {
@@ -89,11 +92,7 @@ mod tests {
     #[test]
     fn initialize_storage(s: &mut State) {
         defmt::info!("next id: {:?}", s.storage.next_id());
-        assert_eq!(
-            s.storage.next_id(),
-            Some(0),
-            "tests run on card with data"
-        );
+        assert_eq!(s.storage.next_id(), Some(0), "tests run on card with data");
     }
 
     #[test]

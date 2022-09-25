@@ -231,7 +231,11 @@ impl<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> Imu<E
         waves: waves::Waves<I>,
         queue: heapless::spsc::Producer<'static, AxlPacket, IMUQ_SZ>,
     ) -> Imu<E, I> {
-        Imu { queue, waves, last_read: 0 }
+        Imu {
+            queue,
+            waves,
+            last_read: 0,
+        }
     }
 
     /// Read samples and check for full buffers. Return number of sample pairs consumed from IMU.
@@ -274,7 +278,6 @@ impl<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> Imu<E
         } else {
             self.last_read = now;
         }
-
 
         Ok(samples)
     }
@@ -360,9 +363,7 @@ where
             let last_id = storage.next_id().unwrap();
 
             if let Ok((
-                Some(note::StorageIdInfo {
-                    sent_id,
-                }),
+                Some(note::StorageIdInfo { sent_id }),
                 Some(note::RequestData {
                     request_start: Some(request_start),
                     request_end: Some(request_end),
@@ -426,9 +427,14 @@ where
                                 break;
                             }
                             Err(e) => {
-                                defmt::error!("Failed to read from SD-card: {:?}, clearing request.", e);
+                                defmt::error!(
+                                    "Failed to read from SD-card: {:?}, clearing request.",
+                                    e
+                                );
                                 note.write_storage_info(delay, None, true)
-                                    .inspect_err(|e| defmt::error!("Failed to set storageinfo: {:?}", e))
+                                    .inspect_err(|e| {
+                                        defmt::error!("Failed to set storageinfo: {:?}", e)
+                                    })
                                     .ok();
                                 return Err(e);
                             }

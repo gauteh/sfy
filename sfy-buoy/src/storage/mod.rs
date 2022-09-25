@@ -58,6 +58,11 @@ impl From<embedded_sdmmc::Error<SdMmcError>> for StorageErr {
     }
 }
 
+enum SdState {
+    Uninitialized,
+    Initialized,
+}
+
 pub struct Storage<Spi: Transfer<u8>, CS: OutputPin>
 where
     <Spi as Transfer<u8>>::Error: Debug,
@@ -65,47 +70,65 @@ where
     sd: SdMmcSpi<Spi, CS>,
     /// Next free ID.
     next_id: Option<u32>,
+    reclock_cb: fn(&mut Spi) -> (),
     clock: CountClock,
+    state: SdState,
 }
 
 impl<Spi: Transfer<u8>, CS: OutputPin> Storage<Spi, CS>
 where
     <Spi as Transfer<u8>>::Error: Debug,
 {
+    /// Returns an un-initialized storage module.
     pub fn open(
         spi: Spi,
         cs: CS,
         clock: CountClock,
         reclock_cb: fn(&mut Spi) -> (),
-    ) -> Result<Storage<Spi, CS>, StorageErr> {
+    ) -> Storage<Spi, CS> {
         defmt::info!("Opening SD card..");
 
-        let mut sd = SdMmcSpi::new(spi, cs);
+        let sd = SdMmcSpi::new(spi, cs);
+
+        Storage {
+            sd,
+            next_id: None,
+            reclock_cb,
+            clock,
+            state: SdState::Uninitialized,
+        }
+    }
+
+    pub fn init(&mut self) -> Result<(), StorageErr> {
         defmt::info!("Initialize SD-card (re-clock SPI)..");
         {
-            let mut block = sd.acquire()?;
-            reclock_cb(block.spi().deref_mut());
+            // XXX: This method should ideally run at 100kHz to 400kHz according to some sources.
+            //      We only do that the first time. However we always do acquire, and it seems to
+            //      work fine, we're not going to worry about that now.
+            //
+            //      Secondly; this method takes a long time to time-out if there is something wrong
+            //      with the SD-card, e.g. it is missing. Maybe it is so long that it is run on
+            //      every store package that it causes problems?
+            let mut block = self.sd.acquire()?;
+            (self.reclock_cb)(block.spi().deref_mut());
             let sz = block.card_size_bytes()? / 1024_u64.pow(2);
             defmt::info!("SD card size: {} mb", sz);
         }
 
-        let mut storage = Storage {
-            sd,
-            next_id: None,
-            clock,
-        };
-
-        let c = storage.find_first_free_collection(None)?;
+        let c = self.find_first_free_collection(None)?;
         defmt::info!("Starting new collection: {}", c);
-        storage.set_id(c * COLLECTION_SIZE);
+        self.set_id(c * COLLECTION_SIZE);
 
-        Ok(storage)
+        self.state = SdState::Initialized;
+
+        Ok(())
     }
 
     /// Find the first free collection. Every time the buoy starts up a new collection will be used
     /// to prevent offset mismatch between file id. The ID will be set to the first entry in that
     /// collection.
     pub fn find_first_free_collection(&mut self, start: Option<u32>) -> Result<u32, StorageErr> {
+        // XXX: Do not check for init here, since this function is called from init.
         let block = self.sd.acquire()?;
         let mut c = Controller::new(block, &self.clock);
         let mut v = c.get_volume(VolumeIdx(0))?;
@@ -137,6 +160,10 @@ where
 
     /// Deserialize and return AxlPacket.
     pub fn get(&mut self, id: u32) -> Result<AxlPacket, StorageErr> {
+        if matches!(self.state, SdState::Uninitialized) {
+            self.init()?;
+        }
+
         defmt::debug!("Reading file: {}", id);
         let (collection, file, offset) = id_to_parts(id);
 
@@ -177,6 +204,10 @@ where
 
     /// Get the next free ID (and advance to new collection if necessary).
     pub fn advance_id(&mut self) -> Result<u32, StorageErr> {
+        if matches!(self.state, SdState::Uninitialized) {
+            self.init()?;
+        }
+
         let id = self.next_id.unwrap();
 
         let mut next_id = id + 1;
@@ -198,6 +229,10 @@ where
 
     /// Store a new package.
     pub fn store(&mut self, pck: &mut AxlPacket) -> Result<u32, StorageErr> {
+        if matches!(self.state, SdState::Uninitialized) {
+            self.init()?;
+        }
+
         // Next ID: If writing fails further down this function, and later succeeds in the same
         // collection, the file-id and offset will no longer be correctly calculated. The buoy will
         // fail to read (and skip) those messages from the SD-card if requested. However, they will
@@ -308,7 +343,10 @@ mod tests {
         let collections_per_year = (pcks_per_day * 365) as f32 / COLLECTION_SIZE as f32;
         println!("Collections per day: {}", collections_per_day);
         println!("Collections per year: {}", collections_per_year);
-        println!("Years of collections possible (FAT32 file limit): {}", 65536.0 / collections_per_year);
+        println!(
+            "Years of collections possible (FAT32 file limit): {}",
+            65536.0 / collections_per_year
+        );
 
         // max files in directory (should last at least a year)
         assert!(collections_per_year < 65536 as f32);

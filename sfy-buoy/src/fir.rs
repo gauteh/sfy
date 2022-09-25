@@ -43,7 +43,6 @@ pub const OUT_FREQ: f32 = FREQ / DECIMATE as f32;
 /// The delay (in seconds) introduced by the filter: half the length of the filter.
 pub const DELAY: f32 = (NTAP / 2) as f32 / FREQ;
 
-
 /// A running FIR filter with pre-computed coefficients.
 pub struct FIR {
     samples: Deque<f32, NTAP>,

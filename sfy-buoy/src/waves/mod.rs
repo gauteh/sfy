@@ -9,8 +9,8 @@ use embedded_hal::blocking::{
 use ism330dhcx::{ctrl1xl, ctrl2g, fifo, fifoctrl, Ism330Dhcx};
 use static_assertions as sa;
 
-use crate::{axl::AxlPacket, fir};
 use crate::storage::STORAGE_VERSION;
+use crate::{axl::AxlPacket, fir};
 
 mod buf;
 
@@ -291,7 +291,13 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
     }
 
     /// Take buf and reset timestamp.
-    pub fn take_buf(&mut self, now: i64, position_time: u32, lon: f64, lat: f64) -> Result<AxlPacket, E> {
+    pub fn take_buf(
+        &mut self,
+        now: i64,
+        position_time: u32,
+        lon: f64,
+        lat: f64,
+    ) -> Result<AxlPacket, E> {
         defmt::trace!("axl: taking buffer");
         let pck = AxlPacket {
             timestamp: self.timestamp,
@@ -394,4 +400,3 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         Ok(samples)
     }
 }
-
