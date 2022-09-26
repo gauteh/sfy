@@ -564,7 +564,6 @@ dependencies = [
 [[package]]
 name = "embedded-sdmmc"
 version = "0.4.0"
-source = "git+https://github.com/rust-embedded-community/embedded-sdmmc-rs?branch=develop#aa1d3c289e90b6e134c9781c12c53168aebd4b1c"
 dependencies = [
  "byteorder",
  "defmt",
