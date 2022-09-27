@@ -19,6 +19,7 @@ impl TimeSource for NullClock {
 
 /// Accesses `core::COUNT` to get globally updated timestamp from RTC interrupt, which is set by
 /// the GPS.
+#[derive(Clone, Copy)]
 pub struct CountClock(pub &'static AtomicI32);
 
 impl TimeSource for &CountClock {
