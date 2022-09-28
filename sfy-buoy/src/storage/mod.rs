@@ -107,31 +107,6 @@ where
         BlockSpiHandle::acquire(self)
     }
 
-    //    pub fn init(&mut self) -> Result<(), StorageErr> {
-    //        defmt::info!("Initialize SD-card (re-clock SPI)..");
-    //        {
-    //            // XXX: This method should ideally run at 100kHz to 400kHz according to some sources.
-    //            //      We only do that the first time. However we always do acquire, and it seems to
-    //            //      work fine, we're not going to worry about that now.
-    //            //
-    //            //      Secondly; this method takes a long time to time-out if there is something wrong
-    //            //      with the SD-card, e.g. it is missing. Maybe it is so long that it is run on
-    //            //      every store package that it causes problems?
-    //            let mut block = self.sd.acquire()?;
-    //            (self.reclock_cb)(block.spi().deref_mut());
-    //            let sz = block.card_size_bytes()? / 1024_u64.pow(2);
-    //            defmt::info!("SD card size: {} mb", sz);
-    //        }
-
-    //        let c = self.find_first_free_collection(None)?;
-    //        defmt::info!("Starting new collection: {}", c);
-    //        self.set_id(c * COLLECTION_SIZE);
-
-    //        self.state = SdState::Initialized;
-
-    //        Ok(())
-    //    }
-
     /// Returns the next free ID.
     pub fn next_id(&self) -> Option<u32> {
         match self.state {
@@ -177,10 +152,8 @@ where
     pub fn store(&mut self, pck: &mut AxlPacket) -> Result<u32, StorageErr> {
         let mut block = self.acquire()?;
 
-        // Next ID: If writing fails further down this function, and later succeeds in the same
-        // collection, the file-id and offset will no longer be correctly calculated. The buoy will
-        // fail to read (and skip) those messages from the SD-card if requested. However, they will
-        // be able to be read from the SD-card from a computer.
+        // If writing fails we will always start a new collection, so ID's should not get out of
+        // sync within one collection file.
         let id = block.advance_id()?;
         let (collection, fid, offset) = id_to_parts(id);
 
@@ -232,6 +205,8 @@ where
                 defmt::info!("Initializing SD-card (low-speed)..");
                 (storage.reclock_cb)(storage.sd.spi().deref_mut(), SdSpiSpeed::Low);
 
+                // XXX: This is slow if it fails (time-out), hopefully not too slow, but if so
+                // needs to only be attempted seldomly.
                 let mut block = storage.sd.acquire()?;
 
                 defmt::debug!("Increasing SPI speed.");
@@ -240,6 +215,9 @@ where
                 let sz = block.card_size_bytes()? / 1024_u64.pow(2);
                 defmt::info!("SD card size: {} mb", sz);
 
+                // XXX: This is a slow operation which is likely to cause trouble if it is done on
+                // every send to notecard loop. Hopefully we will fail above (quickly
+                // enough), otherwise this can only be attempted seldomly.
                 let next_id = Self::find_first_free_collection(&mut block, &storage.clock, None)?
                     * COLLECTION_SIZE;
                 defmt::info!("Next free ID: {}", next_id);
