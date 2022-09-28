@@ -16,9 +16,9 @@ type CS = hal::gpio::pin::P35<{ hal::gpio::Mode::Output }>;
 
 fn clean_up_collection(s: &mut Storage<Spi0, CS>) {
     defmt::info!("cleaning up test collection");
-    s.remove_collection(0).ok();
-    s.remove_collection(1).ok();
-    s.set_id(0);
+    s.acquire().unwrap().remove_collection(0).ok();
+    s.acquire().unwrap().remove_collection(1).ok();
+    s.deinit();
 }
 
 #[defmt_test::tests]
@@ -28,14 +28,13 @@ mod tests {
     use defmt::{assert, assert_eq, info};
     use embedded_hal::{prelude::*, spi};
     use hal::{
-        prelude::*,
         spi::{Freq, Spi},
     };
     use half::f16;
     use heapless::Vec;
 
     use sfy::axl::{AxlPacket, AXL_POSTCARD_SZ, AXL_SZ};
-    use sfy::storage::Storage;
+    use sfy::storage::{Storage, SdSpiSpeed};
 
     struct State {
         // note: Notecarrier<hal::i2c::Iom2>,
@@ -57,8 +56,7 @@ mod tests {
         let rtc = hal::rtc::Rtc::new(dp.RTC, &mut dp.CLKGEN);
         let mut delay = hal::delay::Delay::new(core.SYST, &mut dp.CLKGEN);
 
-        let mut cs = pins.a14;
-        // cs.set_drive_strength(hal::gpio::pin::DriveStrength::D12mA);
+        let cs = pins.a14;
         let mut cs = cs.into_push_pull_output();
         cs.internal_pull_up(true);
         // cs.set_high();
@@ -77,10 +75,12 @@ mod tests {
 
         delay.delay_ms(300_u32);
 
-        let storage = Storage::open(spi, cs, sfy::storage::clock::CountClock(&COUNT), |spi| {
-            spi.set_freq(Freq::F48mHz)
-        })
-        .unwrap();
+        let storage = Storage::open(spi, cs, sfy::storage::clock::CountClock(&COUNT),
+            |spi, speed| match speed {
+                SdSpiSpeed::Low => spi.set_freq(Freq::F100kHz),
+                SdSpiSpeed::High => spi.set_freq(Freq::F12mHz),
+            }
+        );
 
         State {
             delay,
@@ -91,6 +91,7 @@ mod tests {
 
     #[test]
     fn initialize_storage(s: &mut State) {
+        s.storage.acquire().unwrap();
         defmt::info!("next id: {:?}", s.storage.next_id());
         assert_eq!(s.storage.next_id(), Some(0), "tests run on card with data");
     }

@@ -140,11 +140,9 @@ where
         }
     }
 
-    // /// Set the current ID, but do not write to card.
-    // #[cfg(test)]
-    // pub fn set_id(&mut self, id: u32) {
-    //     self.next_id = Some(id);
-    // }
+    pub fn deinit(&mut self) {
+        self.state = SdState::Uninitialized;
+    }
 
     /// Deserialize and return AxlPacket.
     pub fn get(&mut self, id: u32) -> Result<AxlPacket, StorageErr> {
@@ -362,8 +360,7 @@ where
         Err(StorageErr::DiskFull)
     }
 
-    #[cfg(test)]
-    fn remove_collection(&mut self, collection: u32) -> Result<(), StorageErr> {
+    pub fn remove_collection(&mut self, collection: u32) -> Result<(), StorageErr> {
         defmt::info!("Removing collection: {}", collection);
 
         let f = collection_fname(collection);
