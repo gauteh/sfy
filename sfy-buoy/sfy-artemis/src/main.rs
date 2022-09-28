@@ -44,7 +44,10 @@ use sfy::log::log;
 use sfy::note::Notecarrier;
 use sfy::waves::Waves;
 #[cfg(feature = "storage")]
-use sfy::{storage::Storage, STORAGEQ};
+use sfy::{
+    storage::{SdSpiSpeed, Storage},
+    STORAGEQ,
+};
 use sfy::{Imu, Location, SharedState, State, NOTEQ};
 
 mod log;
@@ -131,12 +134,18 @@ fn main() -> ! {
         );
         let cs = pins.a14.into_push_pull_output();
 
-        let mut storage = Storage::open(spi, cs, sfy::storage::clock::CountClock(&COUNT), |spi| {
-            spi.set_freq(Freq::F12mHz)
-        });
+        let mut storage = Storage::open(
+            spi,
+            cs,
+            sfy::storage::clock::CountClock(&COUNT),
+            |spi, speed| match speed {
+                SdSpiSpeed::Low => spi.set_freq(Freq::F100kHz),
+                SdSpiSpeed::High => spi.set_freq(Freq::F12mHz),
+            },
+        );
 
         storage
-            .init()
+            .acquire()
             .inspect_err(|e| {
                 defmt::error!("Failed to setup storage: {}", e);
 

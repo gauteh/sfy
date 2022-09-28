@@ -50,7 +50,8 @@ default = [ "storage", "build-bin" ]
 # ism330dhcx = { git = "https://github.com/gauteh/ism330dhcx", branch = "fifo" }
 cmsis_dsp = { git = "https://github.com/samcrow/cmsis_dsp.rs" }
 # embedded-sdmmc = { git = "https://github.com/rust-embedded-community/embedded-sdmmc-rs", branch = "develop" }
-embedded-sdmmc = { path = "../../../../dev/embedded/embedded-sdmmc-rs" }
+embedded-sdmmc = { git = "https://github.com/gauteh/embedded-sdmmc-rs", branch = "sdmmc-spi-borrow" }
+# embedded-sdmmc = { path = "../../../../dev/embedded/embedded-sdmmc-rs" }
 
 # [patch.'https://github.com/gauteh/ahrs-fusion']
 # ahrs-fusion = { path = "../../../../dev/embedded/imu/ahrs-fusion" }

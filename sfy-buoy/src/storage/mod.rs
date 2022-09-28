@@ -12,7 +12,7 @@
 //! At 52 Hz and 1024 length data-package, there is 4389 packages per day. That is about 44 collections per day. See tests for more details.
 
 use core::fmt::Debug;
-use core::ops::{Deref, DerefMut};
+use core::ops::DerefMut;
 use cortex_m::interrupt::free;
 use embedded_hal::{blocking::spi::Transfer, digital::v2::OutputPin};
 use embedded_sdmmc::{
@@ -44,6 +44,7 @@ pub enum StorageErr {
     ReadPackageError,
     SerializationError,
     DiskFull,
+    Uninitialized,
 }
 
 impl From<SdMmcError> for StorageErr {
@@ -60,7 +61,12 @@ impl From<embedded_sdmmc::Error<SdMmcError>> for StorageErr {
 
 enum SdState {
     Uninitialized,
-    Initialized,
+    Initialized { next_id: u32 },
+}
+
+pub enum SdSpiSpeed {
+    Low,
+    High,
 }
 
 pub struct Storage<Spi: Transfer<u8>, CS: OutputPin>
@@ -69,9 +75,7 @@ where
 {
     sd: SdMmcSpi<Spi, CS>,
 
-    /// Next free ID.
-    next_id: Option<u32>,
-    reclock_cb: fn(&mut Spi) -> (),
+    reclock_cb: fn(&mut Spi, SdSpiSpeed) -> (),
     clock: CountClock,
     state: SdState,
 }
@@ -85,7 +89,7 @@ where
         spi: Spi,
         cs: CS,
         clock: CountClock,
-        reclock_cb: fn(&mut Spi) -> (),
+        reclock_cb: fn(&mut Spi, SdSpiSpeed) -> (),
     ) -> Storage<Spi, CS> {
         defmt::info!("Opening SD card..");
 
@@ -93,14 +97,13 @@ where
 
         Storage {
             sd,
-            next_id: None,
             reclock_cb,
             clock,
             state: SdState::Uninitialized,
         }
     }
 
-    fn acquire(&mut self) -> Result<BlockSpiHandle<'_, Spi, CS>, StorageErr> {
+    pub fn acquire(&mut self) -> Result<BlockSpiHandle<'_, Spi, CS>, StorageErr> {
         BlockSpiHandle::acquire(self)
     }
 
@@ -131,14 +134,17 @@ where
 
     /// Returns the next free ID.
     pub fn next_id(&self) -> Option<u32> {
-        self.next_id
+        match self.state {
+            SdState::Initialized { next_id } => Some(next_id),
+            _ => None,
+        }
     }
 
-    /// Set the current ID, but do not write to card.
-    #[cfg(test)]
-    pub fn set_id(&mut self, id: u32) {
-        self.next_id = Some(id);
-    }
+    // /// Set the current ID, but do not write to card.
+    // #[cfg(test)]
+    // pub fn set_id(&mut self, id: u32) {
+    //     self.next_id = Some(id);
+    // }
 
     /// Deserialize and return AxlPacket.
     pub fn get(&mut self, id: u32) -> Result<AxlPacket, StorageErr> {
@@ -158,8 +164,7 @@ where
 
         let sz = self
             .acquire()
-            .and_then(|mut block| block.read(&collection, offset, &mut buf))
-            .inspect_err(|_| self.state = SdState::Uninitialized)?;
+            .and_then(|mut block| block.read(&collection, offset, &mut buf))?;
 
         defmt::trace!("Read {:?} bytes.", sz);
 
@@ -208,53 +213,74 @@ where
     }
 }
 
-struct BlockSpiHandle<'a, Spi: Transfer<u8>, CS: OutputPin>
+pub struct BlockSpiHandle<'a, Spi: Transfer<u8>, CS: OutputPin>
 where
     <Spi as Transfer<u8>>::Error: Debug,
 {
     block: BlockSpi<'a, Spi, CS>,
     clock: &'a CountClock,
-    next_id: &'a mut Option<u32>,
+    state: &'a mut SdState,
 }
 
-impl<'a, Spi: Transfer<u8>, CS: OutputPin> Deref for BlockSpiHandle<'a, Spi, CS>
-where
-    <Spi as Transfer<u8>>::Error: Debug,
-{
-    type Target = BlockSpi<'a, Spi, CS>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.block
-    }
-}
-
-impl<Spi: Transfer<u8>, CS: OutputPin> BlockSpiHandle<'_, Spi, CS>
+impl<'spi, Spi: Transfer<u8> + 'spi, CS: OutputPin + 'spi> BlockSpiHandle<'spi, Spi, CS>
 where
     <Spi as Transfer<u8>>::Error: Debug,
 {
     fn acquire<'a>(
         storage: &'a mut Storage<Spi, CS>,
     ) -> Result<BlockSpiHandle<'a, Spi, CS>, StorageErr> {
-        let block = storage.sd.acquire()?;
+        let block = match storage.state {
+            SdState::Uninitialized => {
+                defmt::info!("Initializing SD-card (low-speed)..");
+                (storage.reclock_cb)(storage.sd.spi().deref_mut(), SdSpiSpeed::Low);
+
+                let mut block = storage.sd.acquire()?;
+
+                defmt::debug!("Increasing SPI speed.");
+                (storage.reclock_cb)(block.spi().deref_mut(), SdSpiSpeed::High);
+
+                let sz = block.card_size_bytes()? / 1024_u64.pow(2);
+                defmt::info!("SD card size: {} mb", sz);
+
+                let next_id = Self::find_first_free_collection(&mut block, &storage.clock, None)?
+                    * COLLECTION_SIZE;
+                defmt::info!("Next free ID: {}", next_id);
+
+                storage.state = SdState::Initialized { next_id };
+
+                block
+            }
+            SdState::Initialized { next_id: _ } => storage
+                .sd
+                .acquire()
+                .inspect_err(|_| storage.state = SdState::Uninitialized)?,
+        };
+
         Ok(BlockSpiHandle {
             block,
             clock: &storage.clock,
-            next_id: &mut storage.next_id,
+            state: &mut storage.state,
         })
     }
 
-    pub fn write(&mut self, collection: &str, buf: &[u8]) -> Result<(), StorageErr> {
-        let mut c = Controller::new(&self.block, self.clock);
-        let mut v = c.get_volume(VolumeIdx(0))?;
-        let mut root = DirHandle::open_root(&mut c, &mut v)?;
-        let mut f = root.open_file(&collection, Mode::ReadWriteCreateOrAppend)?;
-        f.seek_from_end(0)
-            .inspect_err(|e| defmt::error!("File seek error: {}", e))
-            .map_err(|_| StorageErr::WriteError)?; // We should already be at the
-                                                   // end.
-        free(|_| f.write(&buf))?;
+    pub fn write(&mut self, collection: &str, buf: &[u8]) -> Result<usize, StorageErr> {
+        let sz: Result<usize, StorageErr> = try {
+            let mut c = Controller::new(&self.block, self.clock);
+            let mut v = c.get_volume(VolumeIdx(0))?;
+            let mut root = DirHandle::open_root(&mut c, &mut v)?;
+            let mut f = root.open_file(&collection, Mode::ReadWriteCreateOrAppend)?;
+            f.seek_from_end(0)
+                .inspect_err(|e| defmt::error!("File seek error: {}", e))
+                .map_err(|_| StorageErr::WriteError)?; // We should already be at the
+                                                       // end.
+            free(|_| f.write(&buf))?
+        };
 
-        Ok(())
+        if sz.is_err() {
+            *self.state = SdState::Uninitialized;
+        }
+
+        sz
     }
 
     pub fn read(
@@ -263,53 +289,62 @@ where
         offset: usize,
         buf: &mut [u8],
     ) -> Result<usize, StorageErr> {
-        let mut c = Controller::new(&self.block, self.clock);
-        let mut v = c.get_volume(VolumeIdx(0))?;
-        let mut root = DirHandle::open_root(&mut c, &mut v)?;
-        let mut f = root.open_file(collection, Mode::ReadOnly)?;
+        let sz: Result<usize, StorageErr> = try {
+            let mut c = Controller::new(&self.block, self.clock);
+            let mut v = c.get_volume(VolumeIdx(0))?;
+            let mut root = DirHandle::open_root(&mut c, &mut v)?;
+            let mut f = root.open_file(collection, Mode::ReadOnly)?;
 
-        if f.length() < (offset + AXL_POSTCARD_SZ) as u32 {
-            defmt::debug!("Collection is not long enough, no such file in it.");
-            return Err(GenericSdMmcError::FileNotFound.into());
+            if f.length() < (offset + AXL_POSTCARD_SZ) as u32 {
+                defmt::debug!("Collection is not long enough, no such file in it.");
+                return Err(GenericSdMmcError::FileNotFound.into());
+            }
+
+            f.seek_from_start(offset as u32)
+                .map_err(|_| StorageErr::ReadPackageError)?;
+            free(|_| f.read(buf))?
+        };
+
+        if sz.is_err() {
+            *self.state = SdState::Uninitialized;
         }
 
-        f.seek_from_start(offset as u32)
-            .map_err(|_| StorageErr::ReadPackageError)?;
-
-        let sz = free(|_| f.read(buf))?;
-
-        Ok(sz)
+        sz
     }
 
     /// Get the next free ID (and advance to new collection if necessary).
     fn advance_id(&mut self) -> Result<u32, StorageErr> {
-        if let Some(next_id) = self.next_id {
-            let mut next_id = *next_id + 1;
+        if let SdState::Initialized { next_id: id } = &mut self.state {
+            let current = *id;
+            let mut next_id = *id + 1;
 
             // Check that the next collection is free, if rolling over.
             if next_id % COLLECTION_SIZE == 0 {
                 let c = next_id / COLLECTION_SIZE;
-                let nc = self.find_first_free_collection(Some(c))?;
+                let nc = Self::find_first_free_collection(&mut self.block, self.clock, Some(c))?;
 
                 if nc > c {
+                    defmt::info!("Starting new collection: {}", c);
                     next_id = nc * COLLECTION_SIZE;
                 }
             }
 
-            *self.next_id = Some(next_id);
-            Ok(next_id)
+            *id = next_id;
+            Ok(current)
         } else {
-            let next_id = self.find_first_free_collection(None)? * COLLECTION_SIZE;
-            *self.next_id = Some(next_id);
-            Ok(next_id)
+            Err(StorageErr::Uninitialized)
         }
     }
 
     /// Find the first free collection. Every time the buoy starts up a new collection will be used
     /// to prevent offset mismatch between file id. The ID will be set to the first entry in that
     /// collection.
-    pub fn find_first_free_collection(&mut self, start: Option<u32>) -> Result<u32, StorageErr> {
-        let mut c = Controller::new(&self.block, self.clock);
+    pub fn find_first_free_collection<'a>(
+        block: &mut BlockSpi<'a, Spi, CS>,
+        clock: &CountClock,
+        start: Option<u32>,
+    ) -> Result<u32, StorageErr> {
+        let mut c = Controller::new(&block, clock);
         let mut v = c.get_volume(VolumeIdx(0))?;
 
         let mut root = DirHandle::open_root(&mut c, &mut v)?;
@@ -327,6 +362,7 @@ where
         Err(StorageErr::DiskFull)
     }
 
+    #[cfg(test)]
     fn remove_collection(&mut self, collection: u32) -> Result<(), StorageErr> {
         defmt::info!("Removing collection: {}", collection);
 

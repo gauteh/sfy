@@ -2,6 +2,7 @@
 #![feature(inline_const)]
 #![feature(const_option_ext)]
 #![feature(result_option_inspect)]
+#![feature(try_blocks)]
 #![cfg_attr(not(test), no_std)]
 
 #[cfg(test)]
@@ -304,7 +305,7 @@ pub struct StorageManager<Spi: Transfer<u8>, CS: OutputPin>
 where
     <Spi as Transfer<u8>>::Error: Debug,
 {
-    storage: Option<Storage<Spi, CS>>,
+    storage: Storage<Spi, CS>,
     pub storage_queue: heapless::spsc::Consumer<'static, AxlPacket, STORAGEQ_SZ>,
     pub note_queue: heapless::spsc::Producer<'static, AxlPacket, NOTEQ_SZ>,
 }
@@ -315,7 +316,7 @@ where
     <Spi as Transfer<u8>>::Error: Debug,
 {
     pub fn new(
-        storage: Option<Storage<Spi, CS>>,
+        storage: Storage<Spi, CS>,
         storage_queue: heapless::spsc::Consumer<'static, AxlPacket, STORAGEQ_SZ>,
         note_queue: heapless::spsc::Producer<'static, AxlPacket, NOTEQ_SZ>,
     ) -> StorageManager<Spi, CS> {
@@ -339,16 +340,13 @@ where
                 pck,
                 self.storage_queue.len()
             );
-            if let Some(storage) = self.storage.as_mut() {
-                e = storage
-                    .store(&mut pck)
-                    .inspect_err(|err| {
-                        defmt::error!("Failed to save package: {}", err);
-                    })
-                    .map(|id| Some(id));
-            } else {
-                defmt::error!("Storage has failed to initialize, forwarding to notecard.");
-            }
+            e = self
+                .storage
+                .store(&mut pck)
+                .inspect_err(|err| {
+                    defmt::error!("Failed to save package: {}", err);
+                })
+                .map(|id| Some(id));
 
             self.note_queue
                 .enqueue(pck)
@@ -359,9 +357,7 @@ where
         }
 
         // Send additional requested packages from SD-card.
-        if let Some(storage) = &mut self.storage {
-            let last_id = storage.next_id().unwrap();
-
+        if let Some(next_id) = self.storage.next_id() {
             if let Ok((
                 Some(note::StorageIdInfo { sent_id }),
                 Some(note::RequestData {
@@ -371,12 +367,12 @@ where
             )) = note.read_storage_info(delay)
             {
                 let sent_id = sent_id.unwrap_or(request_start);
-                let request_end = request_end.min(last_id);
+                let request_end = request_end.min(next_id.saturating_sub(1));
 
                 if sent_id < request_end {
                     defmt::info!("Request, sending range: {} -> {}", sent_id, request_end);
                     for id in (sent_id..=request_end).take(100) {
-                        let pck = storage.get(id);
+                        let pck = self.storage.get(id);
 
                         defmt::debug!("Sending stored package: {:?}", pck);
 
