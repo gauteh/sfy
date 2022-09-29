@@ -253,6 +253,7 @@ fn main() -> ! {
 
     let mut last: i64 = 0;
     let mut good_tries: u32 = GOOD_TRIES;
+    let mut sd_good: bool = true; // Do not spam with log messags.
 
     loop {
         let now = STATE.now().timestamp_millis();
@@ -275,23 +276,30 @@ fn main() -> ! {
             let l = location.check_retrieve(&STATE, &mut delay, &mut note);
 
             #[cfg(feature = "storage")]
-            storage_manager
-                .drain_queue(&mut note, &mut delay)
-                .inspect_err(|e| {
+            match storage_manager.drain_queue(&mut note, &mut delay) {
+                Err(e) => {
                     error!("Failed to write to SD card: {:?}", e);
 
-                    let mut msg = heapless::String::<256>::new();
-                    write!(&mut msg, "storage-err-l: {:?}", e)
-                        .inspect_err(|e| {
-                            defmt::error!(
-                                "failed to format storage-err: {:?}",
-                                defmt::Debug2Format(e)
-                            )
-                        })
-                        .ok();
-                    log(&msg);
-                })
-                .ok();
+                    if sd_good {
+                        let mut msg = heapless::String::<256>::new();
+                        write!(&mut msg, "storage-err-l: {:?}", e)
+                            .inspect_err(|e| {
+                                defmt::error!(
+                                    "failed to format storage-err: {:?}",
+                                    defmt::Debug2Format(e)
+                                )
+                            })
+                            .ok();
+                        log(&msg);
+                    }
+
+                    sd_good = false;
+                },
+                Ok(Some(_)) => {
+                    sd_good = true;
+                },
+                _ => {},
+            };
 
             let nd = note.drain_queue(&mut imu_queue, &mut delay);
             let ns = note.check_and_sync(&mut delay);

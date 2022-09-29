@@ -206,12 +206,13 @@ where
     ) -> Result<BlockSpiHandle<'a, Spi, CS>, StorageErr> {
         match storage.state {
             SdState::Retry { last_try } => {
-                if (storage.clock.0.load(Ordering::Relaxed) - last_try) > SD_RETRY_DELAY {
+                let now = storage.clock.0.load(Ordering::Relaxed);
+                if (now - last_try) > SD_RETRY_DELAY {
                     defmt::info!("Ready to re-try SD-card initialization.");
                     storage.state = SdState::Uninitialized;
                     Self::acquire(storage)
                 } else {
-                    defmt::debug!("Waiting to re-try sd-card..");
+                    defmt::debug!("Waiting to re-try sd-card ({} - {} = {})..", now, last_try, (now - last_try));
                     Err(StorageErr::Uninitialized)
                 }
             }
