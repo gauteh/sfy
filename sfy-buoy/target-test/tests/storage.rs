@@ -27,14 +27,12 @@ mod tests {
     #[allow(unused)]
     use defmt::{assert, assert_eq, info};
     use embedded_hal::{prelude::*, spi};
-    use hal::{
-        spi::{Freq, Spi},
-    };
+    use hal::spi::{Freq, Spi};
     use half::f16;
     use heapless::Vec;
 
     use sfy::axl::{AxlPacket, AXL_POSTCARD_SZ, AXL_SZ};
-    use sfy::storage::{Storage, SdSpiSpeed};
+    use sfy::storage::{SdSpiSpeed, Storage};
 
     struct State {
         // note: Notecarrier<hal::i2c::Iom2>,
@@ -75,11 +73,14 @@ mod tests {
 
         delay.delay_ms(300_u32);
 
-        let storage = Storage::open(spi, cs, sfy::storage::clock::CountClock(&COUNT),
+        let storage = Storage::open(
+            spi,
+            cs,
+            sfy::storage::clock::CountClock(&COUNT),
             |spi, speed| match speed {
                 SdSpiSpeed::Low => spi.set_freq(Freq::F100kHz),
                 SdSpiSpeed::High => spi.set_freq(Freq::F12mHz),
-            }
+            },
         );
 
         State {

@@ -13,6 +13,7 @@
 
 use core::fmt::Debug;
 use core::ops::DerefMut;
+use core::sync::atomic::Ordering;
 use cortex_m::interrupt::free;
 use embedded_hal::{blocking::spi::Transfer, digital::v2::OutputPin};
 use embedded_sdmmc::{
@@ -59,8 +60,11 @@ impl From<embedded_sdmmc::Error<SdMmcError>> for StorageErr {
     }
 }
 
+const SD_RETRY_DELAY: i32 = 10 * 60;
+
 enum SdState {
     Uninitialized,
+    Retry { last_try: i32 },
     Initialized { next_id: u32 },
 }
 
@@ -200,9 +204,22 @@ where
     fn acquire<'a>(
         storage: &'a mut Storage<Spi, CS>,
     ) -> Result<BlockSpiHandle<'a, Spi, CS>, StorageErr> {
-        let block = match storage.state {
+        match storage.state {
+            SdState::Retry { last_try } => {
+                if (storage.clock.0.load(Ordering::Relaxed) - last_try) > SD_RETRY_DELAY {
+                    defmt::info!("Ready to re-try SD-card initialization.");
+                    storage.state = SdState::Uninitialized;
+                    Self::acquire(storage)
+                } else {
+                    defmt::debug!("Waiting to re-try sd-card..");
+                    Err(StorageErr::Uninitialized)
+                }
+            }
             SdState::Uninitialized => {
                 defmt::info!("Initializing SD-card (low-speed)..");
+                storage.state = SdState::Retry {
+                    last_try: storage.clock.0.load(Ordering::Relaxed),
+                };
                 (storage.reclock_cb)(storage.sd.spi().deref_mut(), SdSpiSpeed::Low);
 
                 // XXX: This is slow if it fails (time-out), hopefully not too slow, but if so
@@ -224,19 +241,25 @@ where
 
                 storage.state = SdState::Initialized { next_id };
 
-                block
+                Ok(BlockSpiHandle {
+                    block,
+                    clock: &storage.clock,
+                    state: &mut storage.state,
+                })
             }
-            SdState::Initialized { next_id: _ } => storage
-                .sd
-                .acquire()
-                .inspect_err(|_| storage.state = SdState::Uninitialized)?,
-        };
+            SdState::Initialized { next_id: _ } => {
+                let block = storage
+                    .sd
+                    .acquire()
+                    .inspect_err(|_| storage.state = SdState::Uninitialized)?;
 
-        Ok(BlockSpiHandle {
-            block,
-            clock: &storage.clock,
-            state: &mut storage.state,
-        })
+                Ok(BlockSpiHandle {
+                    block,
+                    clock: &storage.clock,
+                    state: &mut storage.state,
+                })
+            }
+        }
     }
 
     pub fn write(&mut self, collection: &str, buf: &[u8]) -> Result<usize, StorageErr> {
