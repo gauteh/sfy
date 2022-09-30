@@ -42,7 +42,7 @@ def integrate(s, dt, detrend=True, filter=True, order=1, freqs=None, method='tra
         s = integrate(s, dt, detrend, filter, order - 1, freqs)
 
     if freqs is None:
-        freqs = [.08, 25.]
+        freqs = [.05, 26.]
 
     fs = 1. / dt
 

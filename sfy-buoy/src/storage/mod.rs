@@ -212,7 +212,12 @@ where
                     storage.state = SdState::Uninitialized;
                     Self::acquire(storage)
                 } else {
-                    defmt::debug!("Waiting to re-try sd-card ({} - {} = {})..", now, last_try, (now - last_try));
+                    defmt::debug!(
+                        "Waiting to re-try sd-card ({} - {} = {})..",
+                        now,
+                        last_try,
+                        (now - last_try)
+                    );
                     Err(StorageErr::Uninitialized)
                 }
             }

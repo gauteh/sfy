@@ -97,9 +97,10 @@ def csv(dev, start, end):
     tm  = [pck.best_position_time for pck in pcks]
     lon = [pck.longitude for pck in pcks]
     lat = [pck.latitude for pck in pcks]
+    typ = [pck.position_type for pck in pcks]
     file = [pck.file for pck in pcks]
 
-    df = pd.DataFrame({ 'Device': buoy.dev, 'Time': tm, 'Longitude': lon, 'Latitude': lat, 'File': file })
+    df = pd.DataFrame({ 'Device': buoy.dev, 'Time': tm, 'Type': typ, 'Longitude': lon, 'Latitude': lat, 'File': file })
     buf = io.StringIO()
     df.to_csv(buf, index=False)
     print(buf.getvalue())

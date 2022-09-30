@@ -294,11 +294,11 @@ fn main() -> ! {
                     }
 
                     sd_good = false;
-                },
+                }
                 Ok(Some(_)) => {
                     sd_good = true;
-                },
-                _ => {},
+                }
+                _ => {}
             };
 
             let nd = note.drain_queue(&mut imu_queue, &mut delay);
