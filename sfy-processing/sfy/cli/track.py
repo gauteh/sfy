@@ -29,10 +29,7 @@ def track():
               help='Map limits margins, format: 0.5,0.5',
               default=None,
               type=str)
-@click.option('--save',
-              help='Save to file',
-              default=None,
-              type=click.File())
+@click.option('--save', help='Save to file', default=None, type=click.File())
 def map(dev, fast, start, end, margins, save):
     hub = Hub.from_env()
     buoy = hub.buoy(dev)
@@ -78,6 +75,7 @@ def map(dev, fast, start, end, margins, save):
     else:
         plt.show()
 
+
 @track.command(help='Output CSV of position')
 @click.argument('dev')
 @click.option('--start',
@@ -88,19 +86,35 @@ def map(dev, fast, start, end, margins, save):
               default=None,
               help='Filter packages before this time',
               type=click.DateTime())
-def csv(dev, start, end):
+@click.option('--tower',
+              default=False,
+              is_flag=True,
+              help='Include positions based on cell tower',
+              type=bool)
+def csv(dev, start, end, tower):
     hub = Hub.from_env()
     buoy = hub.buoy(dev)
 
     pcks = buoy.position_packages_range(start, end)
 
-    tm  = [pck.best_position_time for pck in pcks]
+    tm = [pck.best_position_time for pck in pcks]
     lon = [pck.longitude for pck in pcks]
     lat = [pck.latitude for pck in pcks]
     typ = [pck.position_type for pck in pcks]
     file = [pck.file for pck in pcks]
 
-    df = pd.DataFrame({ 'Device': buoy.dev, 'Time': tm, 'Type': typ, 'Longitude': lon, 'Latitude': lat, 'File': file })
+    df = pd.DataFrame({
+        'Device': buoy.dev,
+        'Time': tm,
+        'Type': typ,
+        'Longitude': lon,
+        'Latitude': lat,
+        'File': file
+    })
+
+    if not tower:
+        df = df[df['Type'] == 'gps']
+
     buf = io.StringIO()
     df.to_csv(buf, index=False)
     print(buf.getvalue())
