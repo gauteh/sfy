@@ -3,6 +3,7 @@
 #![feature(const_option_ext)]
 #![feature(result_option_inspect)]
 #![feature(try_blocks)]
+#![feature(portable_simd)]
 #![cfg_attr(not(test), no_std)]
 
 #[cfg(test)]
