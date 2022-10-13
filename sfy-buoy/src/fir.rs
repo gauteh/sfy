@@ -228,6 +228,25 @@ mod tests {
     }
 
     #[bench]
+    fn decimate_many(b: &mut Bencher) {
+        let mut d = FIR::new().into_decimator();
+        let fs = 833.;
+        let dt = 1. / fs;
+
+        let t = (0..4096).map(|i| i as f32 * dt).collect::<Vec<_>>();
+        let s = t
+            .iter()
+            .map(|t| 2. * (2. * t * 2. * std::f32::consts::PI).sin())
+            .collect::<Vec<_>>();
+
+        b.iter(|| {
+            for v in &s {
+                test::black_box(d.decimate(*v));
+            }
+        });
+    }
+
+    #[bench]
     fn fir_cycle(b: &mut Bencher) {
         let mut f = FIR::new();
         let fs = 833.;
