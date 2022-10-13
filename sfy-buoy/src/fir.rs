@@ -239,6 +239,18 @@ mod tests {
             .map(|t| 2. * (2. * t * 2. * std::f32::consts::PI).sin())
             .collect::<Vec<_>>();
 
+
+        // for v in &s {
+        //     if let Some(v) = d.decimate(*v) {
+        //         println!("v: {}", v);
+        //     }
+        // }
+
+        let sum: f32 = s.iter().filter_map(|v| d.decimate(*v)).sum();
+        println!("sum: {}", sum);
+
+        assert!((sum - 47.805008).abs() < 0.0001);
+
         b.iter(|| {
             for v in &s {
                 test::black_box(d.decimate(*v));
