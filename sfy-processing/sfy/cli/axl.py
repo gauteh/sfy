@@ -193,7 +193,7 @@ def file(dev, file):
               help='Time to sleep between update',
               default=5.0,
               type=float)
-@click.option('--window', help='Time window to show', default=None, type=float)
+@click.option('--window', help='Time window to show', default=60.0, type=float)
 def monitor(dev, sleep, window):
     hub = Hub.from_env()
     buoy = hub.buoy(dev)
@@ -204,63 +204,81 @@ def monitor(dev, sleep, window):
 
     axl = None
 
+    plt.ion()
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    plt.grid()
+    plt.legend()
+    plt.xlabel('Time')
+    plt.ylabel('Vertical movement $m$, $m/s$, $m/s^2$')
+
     while True:
-        naxl = buoy.last()
-        print(naxl.time[0])
+        # Get packages from time-window
+        end = datetime.utcnow()
+        start = end - timedelta(seconds=window)
+        start, end = utcify(start), utcify(end)
 
-        if axl is None:
-            plt.ion()
-            fig = plt.figure()
-            ax = fig.add_subplot(111)
-            plt.grid()
-            plt.legend()
-            plt.xlabel('Time')
-            plt.ylabel('Vertical movement $m$, $m/s$, $m/s^2$')
+        logger.info("Getting packages in window and up to now.")
+        pcks = buoy.axl_packages_range(start - timedelta(minutes=20), None)
+        pcks = AxlCollection(pcks)
+        logger.debug(f"{len(pcks)} packages in tx range")
 
-            print("new data package")
-            axl = naxl
+        pcks.clip(start, end)
+        logger.info(f"{len(pcks)} in start <-> end range")
 
-            plt.title(
-                f"Buoy: {buoy.dev}\n{axl.start} / {axl.received_datetime} length: {axl.duration}s f={axl.freq}Hz"
-            )
+        plt.title(
+            f"Buoy: {buoy.dev}\n{pcks.start} -> {pcks.end} length: {pcks.duration}s f={pcks.frequency}Hz"
+        )
 
-            a = signal.detrend(axl.z)
-            _, _, w = signal.velocity(axl)
-            _, _, u = signal.displacement(axl)
+        logger.debug("Integrating to displacement..")
+        wz = signal.integrate(pcks.z, pcks.dt, order=2, method='dft')
 
-            la, = ax.plot(axl.time[:],
-                          a,
-                          'k--',
-                          alpha=.5,
-                          label='acceleration ($m/s^2$)')
-            lv, = ax.plot(axl.time[:-1],
-                          w,
-                          'g--',
-                          alpha=.5,
-                          label='velocity ($m/s$)')
-            lu, = ax.plot(axl.time[:-2], u, 'b', label='displacement ($m$)')
-        else:
-            if (axl != naxl):
-                print('Update...')
-            axl = naxl
-            a = signal.detrend(axl.z)
-            _, _, w = signal.velocity(axl)
-            _, _, u = signal.displacement(axl)
+        la, = ax.plot(pcks.time[:-1], wz)
 
-            la.set_ydata(a)
-            lv.set_ydata(w)
-            lu.set_ydata(u)
 
-            la.set_xdata(axl.time[:])
-            lv.set_xdata(axl.time[:-1])
-            lu.set_xdata(axl.time[:-2])
 
-            fig.canvas.draw()
-            fig.canvas.flush_events()
+        # if axl is None:
+        #     print("new data package")
+        #     axl = naxl
+
+
+        #     a = signal.detrend(axl.z)
+        #     _, _, w = signal.velocity(axl)
+        #     _, _, u = signal.displacement(axl)
+
+        #     la, = ax.plot(axl.time[:],
+        #                   a,
+        #                   'k--',
+        #                   alpha=.5,
+        #                   label='acceleration ($m/s^2$)')
+        #     lv, = ax.plot(axl.time[:-1],
+        #                   w,
+        #                   'g--',
+        #                   alpha=.5,
+        #                   label='velocity ($m/s$)')
+        #     lu, = ax.plot(axl.time[:-2], u, 'b', label='displacement ($m$)')
+        # else:
+        #     if (axl != naxl):
+        #         print('Update...')
+        #     axl = naxl
+        #     a = signal.detrend(axl.z)
+        #     _, _, w = signal.velocity(axl)
+        #     _, _, u = signal.displacement(axl)
+
+        #     la.set_ydata(a)
+        #     lv.set_ydata(w)
+        #     lu.set_ydata(u)
+
+        #     la.set_xdata(axl.time[:])
+        #     lv.set_xdata(axl.time[:-1])
+        #     lu.set_xdata(axl.time[:-2])
+
+        fig.canvas.draw()
+        fig.canvas.flush_events()
 
         plt.legend()
 
-        if window is not None:
-            plt.xlim([axl.end - timedelta(seconds=window), axl.end])
+        # if window is not None:
+        #     plt.xlim([axl.end - timedelta(seconds=window), axl.end])
 
         plt.pause(sleep)
