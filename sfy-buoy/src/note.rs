@@ -49,12 +49,13 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         );
         note.initialize(delay)?;
 
+        // Location mode is not supported when in continuous mode.
         #[cfg(feature = "continuous")]
         note.card()
             .location_mode(
                 delay,
-                Some("continuous"),
-                Some(360), // https://discuss.blues.io/t/gps-in-continuous-hub-mode/788/4
+                Some("off"),
+                None,
                 None,
                 None,
                 None,
