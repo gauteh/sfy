@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 def axl():
     pass
 
+
 @axl.command(name='list', help='List axl packages')
 @click.argument('dev')
 @click.option('--tx-start',
@@ -38,13 +39,13 @@ def list_buoys(dev, tx_start, tx_end):
 
     pcks = [[
         ax.start.strftime("%Y-%m-%d %H:%M:%S UTC"), ax.lon, ax.lat,
-        ax.received_datetime.strftime("%Y-%m-%d %H:%M:%S UTC"),
-        ax.storage_id, ax.fname
+        ax.received_datetime.strftime("%Y-%m-%d %H:%M:%S UTC"), ax.storage_id,
+        ax.fname
     ] for ax in pcks]
     print(
-        tabulate(
-            pcks,
-            headers=['DataTime', 'Lon', 'Lat', 'TxTime', 'StID', 'File']))
+        tabulate(pcks,
+                 headers=['DataTime', 'Lon', 'Lat', 'TxTime', 'StID', 'File']))
+
 
 @axl.command()
 @click.argument('dev')
@@ -68,14 +69,18 @@ def list_buoys(dev, tx_start, tx_end):
               default=None,
               help='Store to this file',
               type=click.Path())
-@click.option('--gap',
-              default=None,
-              help='Maximum gap allowed between packages before splitting into new segment (seconds).',
-              type=float)
-@click.option('--freq',
-              default=None,
-              help='Only use packages with this frequency (usually 52 or 20.8, within 2 Hz)',
-              type=float)
+@click.option(
+    '--gap',
+    default=None,
+    help=
+    'Maximum gap allowed between packages before splitting into new segment (seconds).',
+    type=float)
+@click.option(
+    '--freq',
+    default=None,
+    help=
+    'Only use packages with this frequency (usually 52 or 20.8, within 2 Hz)',
+    type=float)
 def ts(dev, tx_start, tx_end, start, end, file, gap, freq):
     hub = Hub.from_env()
     buoy = hub.buoy(dev)
@@ -112,13 +117,16 @@ def ts(dev, tx_start, tx_end, start, end, file, gap, freq):
 
     if freq:
         pcks = list(filter(lambda p: abs(p.frequency - freq) <= 2, pcks))
-        logger.info(f"Filtering packages on frequency: {freq}, {len(pcks)} packages matching.")
+        logger.info(
+            f"Filtering packages on frequency: {freq}, {len(pcks)} packages matching."
+        )
 
     pcks = AxlCollection(pcks)
 
     # filter packages between start and end
     pcks.clip(start, end)
-    logger.info(f"{len(pcks)} in start <-> end range, splitting into segments..")
+    logger.info(
+        f"{len(pcks)} in start <-> end range, splitting into segments..")
 
     gap = gap if gap is not None else AxlCollection.GAP_LIMIT
 
@@ -145,9 +153,15 @@ def ts(dev, tx_start, tx_end, start, end, file, gap, freq):
     print(
         tabulate(stable,
                  headers=[
-                     'Start', 'End', 'Duration (s)', 'Duration',
-                     'Max Internal Gap', 'Segment Gap', 'Packages',
-                     'Start ID', 'End ID',
+                     'Start',
+                     'End',
+                     'Duration (s)',
+                     'Duration',
+                     'Max Internal Gap',
+                     'Segment Gap',
+                     'Packages',
+                     'Start ID',
+                     'End ID',
                  ]))
 
     if file:
@@ -155,6 +169,7 @@ def ts(dev, tx_start, tx_end, start, end, file, gap, freq):
 
         assert not os.path.exists(file), "file exists"
         pcks.to_netcdf(file)
+
 
 @axl.command(help='Plot package')
 @click.argument('dev')
@@ -193,16 +208,17 @@ def file(dev, file):
               help='Time to sleep between update',
               default=5.0,
               type=float)
-@click.option('--window', help='Time window to show', default=60.0, type=float)
-def monitor(dev, sleep, window):
+@click.option('--window',
+              help='Time window to show (seconds).',
+              default=60.0,
+              type=float)
+@click.option('--delay',
+              help='Delay in data, use to re-play data in the past (seconds).',
+              default=0.0,
+              type=float)
+def monitor(dev, sleep, window, delay):
     hub = Hub.from_env()
     buoy = hub.buoy(dev)
-
-    la = None
-    lv = None
-    lu = None
-
-    axl = None
 
     plt.ion()
     fig = plt.figure()
@@ -210,75 +226,38 @@ def monitor(dev, sleep, window):
     plt.grid()
     plt.legend()
     plt.xlabel('Time')
-    plt.ylabel('Vertical movement $m$, $m/s$, $m/s^2$')
+    plt.ylabel('Vertical movement $m$')
+
+    la, = ax.plot([], [])
 
     while True:
         # Get packages from time-window
-        end = datetime.utcnow()
+        end = datetime.utcnow() - timedelta(seconds=delay)
         start = end - timedelta(seconds=window)
         start, end = utcify(start), utcify(end)
 
         logger.info("Getting packages in window and up to now.")
         pcks = buoy.axl_packages_range(start - timedelta(minutes=20), None)
-        pcks = AxlCollection(pcks)
-        logger.debug(f"{len(pcks)} packages in tx range")
+        if len(pcks) > 0:
+            pcks = AxlCollection(pcks)
+            logger.debug(f"{len(pcks)} packages in tx range")
 
-        pcks.clip(start, end)
-        logger.info(f"{len(pcks)} in start <-> end range")
+            pcks.clip(start, end)
+            logger.info(f"{len(pcks)} in start <-> end range")
 
-        plt.title(
-            f"Buoy: {buoy.dev}\n{pcks.start} -> {pcks.end} length: {pcks.duration}s f={pcks.frequency}Hz"
-        )
+            plt.title(
+                f"Buoy: {buoy.dev}\n{pcks.start} -> {pcks.end} length: {pcks.duration}s f={pcks.frequency}Hz"
+            )
 
-        logger.debug("Integrating to displacement..")
-        wz = signal.integrate(pcks.z, pcks.dt, order=2, method='dft')
+            logger.debug("Integrating to displacement..")
+            wz = signal.integrate(pcks.z, pcks.dt, order=2, method='dft')
 
-        la, = ax.plot(pcks.time[:-1], wz)
-
-
-
-        # if axl is None:
-        #     print("new data package")
-        #     axl = naxl
-
-
-        #     a = signal.detrend(axl.z)
-        #     _, _, w = signal.velocity(axl)
-        #     _, _, u = signal.displacement(axl)
-
-        #     la, = ax.plot(axl.time[:],
-        #                   a,
-        #                   'k--',
-        #                   alpha=.5,
-        #                   label='acceleration ($m/s^2$)')
-        #     lv, = ax.plot(axl.time[:-1],
-        #                   w,
-        #                   'g--',
-        #                   alpha=.5,
-        #                   label='velocity ($m/s$)')
-        #     lu, = ax.plot(axl.time[:-2], u, 'b', label='displacement ($m$)')
-        # else:
-        #     if (axl != naxl):
-        #         print('Update...')
-        #     axl = naxl
-        #     a = signal.detrend(axl.z)
-        #     _, _, w = signal.velocity(axl)
-        #     _, _, u = signal.displacement(axl)
-
-        #     la.set_ydata(a)
-        #     lv.set_ydata(w)
-        #     lu.set_ydata(u)
-
-        #     la.set_xdata(axl.time[:])
-        #     lv.set_xdata(axl.time[:-1])
-        #     lu.set_xdata(axl.time[:-2])
+            la.set_data(pcks.time[:-1], wz)
 
         fig.canvas.draw()
         fig.canvas.flush_events()
 
-        plt.legend()
-
-        # if window is not None:
-        #     plt.xlim([axl.end - timedelta(seconds=window), axl.end])
+        if window is not None:
+            plt.xlim([start, end])
 
         plt.pause(sleep)
