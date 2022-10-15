@@ -131,7 +131,7 @@ impl FIR {
 
     pub fn reset(&mut self) {
         self.samples.clear();
-        while self.samples.push_back(0.0).is_err() {}
+        while self.samples.push_back(0.0).is_ok() {}
     }
 
     pub fn into_decimator(self) -> Decimator {
@@ -175,7 +175,8 @@ mod tests {
 
     #[test]
     fn setup_filter() {
-        let _f = FIR::new();
+        let f = FIR::new();
+        assert_eq!(f.samples.len(), NTAP);
     }
 
     #[test]
@@ -184,7 +185,9 @@ mod tests {
 
         for v in 0..256 {
             f.filter(v as f32);
+            assert_eq!(f.samples.len(), NTAP);
         }
+        assert_eq!(f.samples.len(), NTAP);
     }
 
     #[test]
@@ -194,21 +197,27 @@ mod tests {
         for _ in 0..256 {
             let o = f.filter(0.0);
             assert_eq!(o, 0.0);
+            assert_eq!(f.samples.len(), NTAP);
         }
+        assert_eq!(f.samples.len(), NTAP);
     }
 
     #[test]
     fn reset() {
         let mut f = FIR::new();
+        assert_eq!(f.samples.len(), NTAP);
 
         for _ in 0..256 {
             let o = f.filter(1.0);
             assert_ne!(o, 0.0);
+            assert_eq!(f.samples.len(), NTAP);
         }
 
         f.reset();
+        assert_eq!(f.samples.len(), NTAP);
         let o = f.filter(0.0);
         assert_eq!(o, 0.0);
+        assert_eq!(f.samples.len(), NTAP);
     }
 
     #[test]
