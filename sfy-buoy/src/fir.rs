@@ -1,4 +1,4 @@
-use core::simd::{SimdFloat, f32x4};
+use core::simd::{f32x4, SimdFloat};
 use heapless::Deque;
 
 pub mod hz50 {
@@ -75,36 +75,19 @@ impl FIR {
         //     .iter()
         //     .zip(&COEFFS)
         //     .fold(0.0, |a, (s, c)| a + (s * c))
-        // let (_, coeffs, _) = COEFFS.as_simd();
-        // debug_assert_eq!(coeffs.len() * 4, COEFFS.len());
 
-        let (f, b) = self.samples.as_slices();
-        let (cf, cb) = COEFFS.split_at(f.len());
+        let sums = f32x4::from_array([0.0, 0.0, 0.0, 0.0]);
+        let sums = self
+            .samples
+            .iter()
+            .cloned()
+            .array_chunks()
+            .zip(COEFFS.array_chunks())
+            .fold(sums, |a, (s, c)| {
+                a + (f32x4::from_array(s) * f32x4::from_array(*c))
+            });
 
-        assert_eq!(f.len(), cf.len());
-        assert_eq!(b.len(), cb.len());
-
-        // First half of dequeue
-        let (p, m, s) = f.as_simd::<4>();
-        let (cp, cm, cs) = cf.as_simd::<4>();
-
-        let sp = p.iter().zip(cp).fold(0.0, |a, (s, c)| a + (s * c));
-        let ss = s.iter().zip(cs).fold(0.0, |a, (s, c)| a + (s * c));
-
-        let fsums = f32x4::from_array([sp, 0.0, 0.0, ss]);
-        let fsums = m.iter().zip(cm).fold(fsums, |a, (s, c)| a + (s * c));
-
-        // Second half of dequeue
-        let (p, m, s) = b.as_simd::<4>();
-        let (cp, cm, cs) = cb.as_simd::<4>();
-
-        let sp = p.iter().zip(cp).fold(0.0, |a, (s, c)| a + (s * c));
-        let ss = s.iter().zip(cs).fold(0.0, |a, (s, c)| a + (s * c));
-
-        let bsums = f32x4::from_array([sp, 0.0, 0.0, ss]);
-        let bsums = m.iter().zip(cm).fold(bsums, |a, (s, c)| a + (s * c));
-
-        (fsums + bsums).reduce_sum()
+        sums.reduce_sum()
     }
 
     pub fn reset(&mut self) {
@@ -269,7 +252,6 @@ mod tests {
             .iter()
             .map(|t| 2. * (2. * t * 2. * std::f32::consts::PI).sin())
             .collect::<Vec<_>>();
-
 
         // for v in &s {
         //     if let Some(v) = d.decimate(*v) {
