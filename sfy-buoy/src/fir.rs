@@ -71,23 +71,62 @@ impl FIR {
 
     fn value(&self) -> f32 {
         // Convolve filter with samples.
+
         // self.samples
         //     .iter()
         //     .zip(&COEFFS)
         //     .fold(0.0, |a, (s, c)| a + (s * c))
 
-        let sums = f32x4::from_array([0.0, 0.0, 0.0, 0.0]);
-        let sums = self
-            .samples
-            .iter()
-            .cloned()
-            .array_chunks()
-            .zip(COEFFS.array_chunks())
-            .fold(sums, |a, (s, c)| {
-                a + (f32x4::from_array(s) * f32x4::from_array(*c))
-            });
+        debug_assert_eq!(self.samples.len() % 4, 0);
+        debug_assert_eq!(COEFFS.len() % 4, 0);
+        debug_assert_eq!(COEFFS.len(), self.samples.len());
 
-        sums.reduce_sum()
+        let (f, b) = self.samples.as_slices();
+        let (cf, cb) = COEFFS.split_at(f.len());
+
+        debug_assert_eq!(f.len(), cf.len());
+        debug_assert_eq!(b.len(), cb.len());
+
+        // First half of dequeue
+        let (p, m, s) = f.as_simd::<4>();
+        let me = p.len() + m.len() * 4;
+        let cp = &cf[..p.len()];
+        let cm = cf[p.len()..me].array_chunks();
+        let cs = &cf[me..];
+
+        debug_assert_eq!(cp.len(), p.len());
+        debug_assert_eq!(cm.len(), m.len());
+        debug_assert_eq!(cs.len(), s.len());
+
+        let sp = p.iter().zip(cp).fold(0.0, |a, (s, c)| a + (s * c));
+        let ss = s.iter().zip(cs).fold(0.0, |a, (s, c)| a + (s * c));
+
+        let fsums = f32x4::from_array([sp, 0.0, 0.0, ss]);
+        let fsums = m
+            .iter()
+            .zip(cm)
+            .fold(fsums, |a, (s, c)| a + (s * f32x4::from_array(*c)));
+
+        // Second half of dequeue
+        let (p, m, s) = b.as_simd::<4>();
+        let me = p.len() + m.len() * 4;
+        let cp = &cb[..p.len()];
+        let cm = cb[p.len()..me].array_chunks();
+        let cs = &cb[me..];
+        debug_assert_eq!(cp.len(), p.len());
+        debug_assert_eq!(cm.len(), m.len());
+        debug_assert_eq!(cs.len(), s.len());
+
+        let sp = p.iter().zip(cp).fold(0.0, |a, (s, c)| a + (s * c));
+        let ss = s.iter().zip(cs).fold(0.0, |a, (s, c)| a + (s * c));
+
+        let bsums = f32x4::from_array([sp, 0.0, 0.0, ss]);
+        let bsums = m
+            .iter()
+            .zip(cm)
+            .fold(bsums, |a, (s, c)| a + (s * f32x4::from_array(*c)));
+
+        (fsums + bsums).reduce_sum()
     }
 
     pub fn reset(&mut self) {
