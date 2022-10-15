@@ -4,7 +4,6 @@
 #![feature(result_option_inspect)]
 #![feature(try_blocks)]
 #![feature(portable_simd)]
-#![feature(iter_array_chunks)]
 #![feature(array_chunks)]
 #![cfg_attr(not(test), no_std)]
 
