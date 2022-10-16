@@ -4,11 +4,11 @@ export class Buoy {
   public dev: string = '';
   public sn: string = '';
 
-  public latitude: number;
-  public longitude: number;
+  public latitude: number | undefined;
+  public longitude: number | undefined;
 
-  public tower_lat: number;
-  public tower_lon: number;
+  public tower_lat: number | undefined;
+  public tower_lon: number | undefined;
 
   public package: any;
 
@@ -55,7 +55,7 @@ export class Buoy {
     this.tower_lon = p.tower_lon;
   }
 
-  public position_time(): Date {
+  public position_time(): Date | undefined {
     if (this.package != null) {
       return new Date(this.package.best_location_when * 1000.);
     } else {
@@ -63,7 +63,7 @@ export class Buoy {
     }
   }
 
-  public any_lat(): number {
+  public any_lat(): number | undefined {
     if (this.package != null) {
       return this.package.best_lat;
     } else {
@@ -71,7 +71,7 @@ export class Buoy {
     }
   }
 
-  public any_lon(): number {
+  public any_lon(): number | undefined {
     if (this.package != null) {
       return this.package.best_lon;
     } else {
@@ -81,7 +81,7 @@ export class Buoy {
 
   public formatted_position(): string {
     if (this.any_lat() != null) {
-      return `${this.any_lat().toFixed(9)},${this.any_lon().toFixed(9)}`;
+      return `${this.any_lat()?.toFixed(9)},${this.any_lon()?.toFixed(9)}`;
     } else {
       return "";
     }

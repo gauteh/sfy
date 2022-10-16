@@ -4,13 +4,13 @@ export class OmbBuoy {
   public dev: string = '';
   public sn: string = '';
 
-  public latitude: number = undefined;
-  public longitude: number = undefined;
+  public latitude: number | undefined = undefined;
+  public longitude: number | undefined = undefined;
 
-  public iridium_lat: number = undefined;
-  public iridium_lon: number = undefined;
+  public iridium_lat: number | undefined = undefined;
+  public iridium_lon: number | undefined = undefined;
 
-  public package = undefined;
+  public package: any | undefined;
 
   constructor(dev: string, last: any) {
     console.log("Omb: " + dev);
@@ -33,11 +33,11 @@ export class OmbBuoy {
     this.setPackage(last);
   }
 
-  public lastContact(): Date | null {
+  public lastContact(): Date | undefined {
     if (this.package) {
       return new Date(this.package.datetime);
     } else {
-      return null;
+      return undefined;
     }
   }
 
@@ -54,17 +54,17 @@ export class OmbBuoy {
     }
   }
 
-  public any_lat = (): number => {
+  public any_lat = (): number | undefined => {
     return this.latitude !== undefined ? this.latitude : this.iridium_lat;
   }
 
-  public any_lon = (): number => {
+  public any_lon = (): number | undefined => {
     return this.longitude !== undefined ? this.longitude : this.iridium_lon;
   }
 
   public formatted_position(): string {
-    if (this.any_lat() != null) {
-      return `${this.any_lat().toFixed(9)},${this.any_lon().toFixed(9)}`;
+    if (this.any_lat() != undefined) {
+      return `${this.any_lat()?.toFixed(9)},${this.any_lon()?.toFixed(9)}`;
     } else {
       return "";
     }

@@ -1,25 +1,32 @@
 {
   "compilerOptions": {
-		"baseUrl": "./src",
-    "paths": {
-      "*": ["*"]
-    },
-    "module": "esnext",
+  "baseUrl": "./src",
+  "paths": {
+    "*" : [ "*" ]
+  },
     "target": "esnext",
-		"allowSyntheticDefaultImports": true,
+    "lib": [
+      "es2017",
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
+    "skipLibCheck": true,
     "esModuleInterop": true,
-		"moduleResolution": "node",
-		"lib": ["es2017", "dom"],
-		"types": [
-			"inferno", "jest", "node",
-		],
-    "sourceMap": true,
-    "inlineSources": true,
-    "jsx": "preserve",
-    "importHelpers": true,
-		"skipLibCheck": true,
-    "emitDecoratorMetadata": true,
-    "experimentalDecorators": true,
-    "noEmit": true
-  }
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": true,
+    "module": "esnext",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "importHelpers": true
+  },
+  "include": [
+    "src"
+  ]
 }
