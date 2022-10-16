@@ -61,10 +61,10 @@ export class BuoyIndex
       <tr id={"t" + buoy.dev}
         key={buoy.dev}>
         <td>
-          <a href="#" title={buoy.dev} onClick={this.focus}>{buoy.sn}</a>
+          <a href="#" title={buoy.dev} onClick={() => this.focus(buoy)}>{buoy.sn}</a>
         </td>
         <td>
-          <a href="#" title="Copy to clipboard" onClick={this.copyPosition}>
+          <a href="#" title="Copy to clipboard" onClick={() => this.copyPosition(buoy)}>
             {buoy.formatted_position()}
           </a>
         </td>
