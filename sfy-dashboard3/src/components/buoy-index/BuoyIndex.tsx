@@ -1,7 +1,6 @@
 import { createRef, Component } from 'react';
 
 import moment from 'moment';
-
 import { Buoy, OmbBuoy } from 'models';
 import * as hub from 'hub';
 
@@ -25,6 +24,7 @@ export class BuoyIndex
   };
 
   public bmap: any;
+  loaded = false;
 
   constructor(props: Props) {
     super(props);
@@ -32,30 +32,31 @@ export class BuoyIndex
     this.bmap = createRef();
   }
 
-  componentDidMount() {
-    (async () => await this.loadBuoys())();
+  async componentDidMount() {
+    if (!this.loaded) {
+      this.loaded = true;
+      await this.loadBuoys();
+    }
   }
 
-  public loadBuoys = async () => {
+  public async loadBuoys() {
     const devs = await hub.get_buoys(hub.API_CONF);
-    const buoys = devs
-      .filter(devsn => devsn[0] !== "lost+found")
-      .map(devsn => {
+    const buoys: Array<OmbBuoy | Buoy> = devs
+    .filter(devsn => devsn[0] !== "lost+found" && (devsn[2] === "sfy" || devsn[2] === "omb"))
+    .map(devsn => {
         if (devsn[2] === "sfy") {
           return new Buoy(devsn[0], devsn[1], devsn[3]);
         } else if (devsn[2] === "omb") {
           return new OmbBuoy(devsn[0], devsn[3]);
-        } else {
-          throw new Error("Unkonwn buoy: " + devsn);
         }
-      });
+        }) as Array<OmbBuoy | Buoy>;
 
-    buoys.sort((a, b) => b.lastContact().getTime() - a.lastContact().getTime());
+    buoys.sort((a, b) => (b.lastContact()?.getTime() || 0) - (a.lastContact()?.getTime() || 0));
     this.state.buoys = buoys;
     this.setState({ buoys: this.state.buoys });
   }
 
-  public Row = (buoy) => {
+  public Row = (buoy: any) => {
     return (
       <tr id={"t" + buoy.dev}
         key={buoy.dev}>
@@ -64,7 +65,7 @@ export class BuoyIndex
         </td>
         <td>
           <a href="#" title="Copy to clipboard" onClick={this.copyPosition}>
-            {buoy.any_lat().toFixed(9)},{buoy.any_lon().toFixed(9)}
+            {buoy.formatted_position()}
           </a>
         </td>
         <td>
@@ -79,11 +80,11 @@ export class BuoyIndex
     );
   }
 
-  public focus = (buoy) => {
+  public focus = (buoy: any) => {
     this.bmap.current.focus(buoy);
   }
 
-  public copyPosition = (buoy) => {
+  public copyPosition = (buoy: any) => {
     const position = `${buoy.any_lat().toFixed(9)},${buoy.any_lon().toFixed(9)}`;
     navigator.clipboard.writeText(position);
   }
@@ -93,13 +94,15 @@ export class BuoyIndex
       <div>
         <BuoyMap buoys={this.state.buoys} ref={this.bmap} />
 
-        <div class="container-fluid no-margin">
-          <table class="ti table table-striped">
+        <div className="container-fluid no-margin">
+          <table className="ti table table-striped">
             <thead>
-              <th scope="col">Device</th>
-              <th scope="col">Latitude (°N), Longitude (°E)</th>
-              <th scope="col">Source</th>
-              <th scope="col">Last contact</th>
+              <tr>
+                <th scope="col">Device</th>
+                <th scope="col">Latitude (°N), Longitude (°E)</th>
+                <th scope="col">Source</th>
+                <th scope="col">Last contact</th>
+              </tr>
             </thead>
             <tbody>
               {this.state.buoys.map(this.Row)}
@@ -110,4 +113,3 @@ export class BuoyIndex
     );
   }
 }
-

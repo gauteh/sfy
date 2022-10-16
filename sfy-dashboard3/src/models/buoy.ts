@@ -25,7 +25,11 @@ export class Buoy {
   }
 
   public hasGps(): boolean {
-    return this.latitude !== undefined;
+    if (this.package != null) {
+      return this.package.best_location_type === 'gps';
+    } else {
+      return false;
+    }
   }
 
   public async setLast() {
@@ -37,7 +41,7 @@ export class Buoy {
     if (this.package) {
       return new Date(this.package.received * 1000.);
     } else {
-      return null;
+      return new Date(0);
     }
   }
 
@@ -51,11 +55,35 @@ export class Buoy {
     this.tower_lon = p.tower_lon;
   }
 
+  public position_time(): Date | undefined {
+    if (this.package != null) {
+      return new Date(this.package.best_location_when * 1000.);
+    } else {
+      return undefined;
+    }
+  }
+
   public any_lat(): number | undefined {
-    return this.latitude !== undefined ? this.latitude : this.tower_lat;
+    if (this.package != null) {
+      return this.package.best_lat;
+    } else {
+      return undefined;
+    }
   }
 
   public any_lon(): number | undefined {
-    return this.longitude !== undefined ? this.longitude : this.tower_lon;
+    if (this.package != null) {
+      return this.package.best_lon;
+    } else {
+      return undefined;
+    }
+  }
+
+  public formatted_position(): string {
+    if (this.any_lat() != null) {
+      return `${this.any_lat()?.toFixed(9)},${this.any_lon()?.toFixed(9)}`;
+    } else {
+      return "";
+    }
   }
 }

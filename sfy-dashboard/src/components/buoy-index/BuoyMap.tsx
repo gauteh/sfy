@@ -67,7 +67,7 @@ export class BuoyMap
       });
   }
 
-  public updateMyPosition = (position) => {
+  public updateMyPosition = (position: any) => {
     console.log("Got new position:" + position);
     if (this.myselfMarker === undefined) {
       const icon = L.icon({
@@ -87,7 +87,7 @@ export class BuoyMap
     }
   }
 
-  public focus = (buoy) => {
+  public focus = (buoy: any) => {
     console.log("Focusing: " + buoy);
 
     this.map.flyTo([buoy.any_lat(), buoy.any_lon()], 11);
@@ -95,7 +95,7 @@ export class BuoyMap
 
   public render() {
     return (
-      <div id="map" class="container-fluid">
+      <div id="map" className="container-fluid">
       </div>
     );
   }

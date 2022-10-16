@@ -33,11 +33,11 @@ export class OmbBuoy {
     this.setPackage(last);
   }
 
-  public lastContact(): Date | null {
+  public lastContact(): Date | undefined {
     if (this.package) {
       return new Date(this.package.datetime);
     } else {
-      return null;
+      return undefined;
     }
   }
 
@@ -60,6 +60,14 @@ export class OmbBuoy {
 
   public any_lon = (): number | undefined => {
     return this.longitude !== undefined ? this.longitude : this.iridium_lon;
+  }
+
+  public formatted_position(): string {
+    if (this.any_lat() != undefined) {
+      return `${this.any_lat()?.toFixed(9)},${this.any_lon()?.toFixed(9)}`;
+    } else {
+      return "";
+    }
   }
 }
 
