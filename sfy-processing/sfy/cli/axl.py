@@ -229,7 +229,6 @@ def monitor(dev, sleep, window, delay, ylim):
     fig = plt.figure()
     ax = fig.add_subplot(111)
     plt.grid()
-    plt.legend()
     plt.xlabel('Time')
     plt.ylabel('Vertical displacement ($m$)')
 
