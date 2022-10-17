@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from datetime import timedelta, datetime
 from tabulate import tabulate
 import numpy as np
+import time
 import os
 
 from sfy.hub import Hub
@@ -216,7 +217,11 @@ def file(dev, file):
               help='Delay in data, use to re-play data in the past (seconds).',
               default=0.0,
               type=float)
-def monitor(dev, sleep, window, delay):
+@click.option('--ylim',
+              help='Height of y-axis (m)',
+              default=1.0,
+              type=float)
+def monitor(dev, sleep, window, delay, ylim):
     hub = Hub.from_env()
     buoy = hub.buoy(dev)
 
@@ -226,7 +231,7 @@ def monitor(dev, sleep, window, delay):
     plt.grid()
     plt.legend()
     plt.xlabel('Time')
-    plt.ylabel('Vertical movement $m$')
+    plt.ylabel('Vertical displacement ($m$)')
 
     la, = ax.plot([], [])
 
@@ -236,28 +241,34 @@ def monitor(dev, sleep, window, delay):
         start = end - timedelta(seconds=window)
         start, end = utcify(start), utcify(end)
 
-        logger.info("Getting packages in window and up to now.")
-        pcks = buoy.axl_packages_range(start - timedelta(minutes=20), None)
+        logger.info(f"Getting packages in window.. {start} -> {end}")
+        pcks = buoy.axl_packages_range(start - timedelta(minutes=20), end)
         if len(pcks) > 0:
+            logger.info(f"Last package: {pcks[-1]}")
+
             pcks = AxlCollection(pcks)
             logger.debug(f"{len(pcks)} packages in tx range")
 
-            pcks.clip(start, end)
+            pcks.clip(start - timedelta(seconds=window), end)  # add some margin to start, so that we get a full trace for the window.
             logger.info(f"{len(pcks)} in start <-> end range")
 
-            plt.title(
-                f"Buoy: {buoy.dev}\n{pcks.start} -> {pcks.end} length: {pcks.duration}s f={pcks.frequency}Hz"
-            )
+            if len(pcks) > 0:
+                plt.title(
+                    f"Buoy: {buoy.dev}\n{pcks.start} -> {pcks.end} length: {pcks.duration}s f={pcks.frequency}Hz"
+                )
 
-            logger.debug("Integrating to displacement..")
-            wz = signal.integrate(pcks.z, pcks.dt, order=2, method='dft')
+                for p in pcks.pcks:
+                    logger.debug(f"{p}")
 
-            la.set_data(pcks.time[:-1], wz)
+                logger.debug("Integrating to displacement..")
+                wz = signal.integrate(pcks.z, pcks.dt, order=2, method='dft', freqs=[0.1, 25])
 
-        fig.canvas.draw()
-        fig.canvas.flush_events()
+                logger.debug("Plotting..")
+                la.set_data(pcks.time[:-1], wz)
 
-        if window is not None:
-            plt.xlim([start, end])
+                x1 = pcks.time[-2]
+                x0 = x1 - timedelta(seconds=window)
+                plt.xlim([x0, x1])
+                plt.ylim([-ylim, ylim])
 
         plt.pause(sleep)

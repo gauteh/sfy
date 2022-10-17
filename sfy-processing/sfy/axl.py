@@ -72,8 +72,9 @@ class AxlCollection(AxlTimeseries):
         Clip the collection between start and end.
         """
         self.pcks = [
-            pck for pck in self.pcks if pck.start >= start and pck.start <= end
+            pck for pck in self.pcks if pck.end >= start and pck.start <= end
         ]
+        return self
 
     def segments(self, eps_gap=GAP_LIMIT):
         """
