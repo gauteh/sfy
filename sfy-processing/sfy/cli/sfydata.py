@@ -83,7 +83,7 @@ def log(dev, start, end):
     pcks = [p[2] for p in tqdm(pcks)]
 
     pcks = [json.loads(p) for p in pcks]
-    pcks.sort(key=lambda p: p.get('when', 0))
+    pcks.sort(key=lambda p: p.get('received', 0))
     pcks = [[datetime.utcfromtimestamp(p.get('when', 0)), p['body']['text']]
             for p in pcks]
     print(tabulate(pcks, headers=['Time', 'Message']))
