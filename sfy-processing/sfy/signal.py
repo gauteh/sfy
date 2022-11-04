@@ -10,8 +10,9 @@ def bandpass(s, dt, low=None, high=None):
     if high is None:
         high = 25.
 
-    sos = sc.signal.butter(10, [low, high], 'bandpass', fs=fs, output='sos')
-    s = sc.signal.sosfilt(sos, s)
+    # Filtering once each direction, doubling the order with 0 phase shift.
+    sos = sc.signal.butter(5, [low, high], 'bandpass', fs=fs, output='sos')
+    s = sc.signal.sosfiltfilt(sos, s)
     return s
 
 def integrate(s, dt, detrend=True, filter=True, order=1, freqs=None, method='trapz'):
@@ -131,4 +132,4 @@ def detrend_tp_2021(y, k=0.9995):
         y_n is the raw signal
         y^{*}_{n} is the detrended signal
     """
-    pass
+    raise NotImplemented()
