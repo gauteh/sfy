@@ -102,6 +102,10 @@ def csv(dev, start, end, tower):
     lat = [pck.latitude for pck in pcks]
     typ = [pck.position_type for pck in pcks]
     file = [pck.file for pck in pcks]
+    bearing = [pck.body.get('bearing', None) for pck in pcks]
+    velocity = [pck.body.get('velocity', None) for pck in pcks]
+    distance = [pck.body.get('distance', None) for pck in pcks]
+    temperature = [pck.body.get('temperature', None) for pck in pcks]
 
     df = pd.DataFrame({
         'Device': buoy.dev,
@@ -109,7 +113,11 @@ def csv(dev, start, end, tower):
         'Type': typ,
         'Longitude': lon,
         'Latitude': lat,
-        'File': file
+        'File': file,
+        'Bearing': bearing,
+        'Velocity': velocity,
+        'Distance': distance,
+        'Temperature': temperature,
     })
 
     if not tower:
