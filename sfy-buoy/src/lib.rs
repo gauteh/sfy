@@ -38,6 +38,7 @@ pub mod storage;
 pub mod waves;
 
 use axl::AxlPacket;
+use waves::VecRawAxl;
 #[cfg(feature = "storage")]
 use storage::Storage;
 
@@ -58,7 +59,7 @@ pub const IMUQ_SZ: usize = NOTEQ_SZ;
 /// These queues are filled up by the IMU interrupt in read batches of time-series. It is then consumed
 /// the main thread and first drained to the SD storage (if enabled), and then queued for the notecard.
 #[cfg(feature = "storage")]
-pub static mut STORAGEQ: heapless::spsc::Queue<AxlPacket, STORAGEQ_SZ> =
+pub static mut STORAGEQ: heapless::spsc::Queue<(AxlPacket, VecRawAxl), STORAGEQ_SZ> =
     heapless::spsc::Queue::new();
 
 pub static mut NOTEQ: heapless::spsc::Queue<AxlPacket, NOTEQ_SZ> = heapless::spsc::Queue::new();

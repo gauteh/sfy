@@ -15,7 +15,7 @@ use crate::{axl::AxlPacket, fir};
 mod buf;
 
 use buf::ImuBuf;
-pub use buf::VecAxl;
+pub use buf::{VecAxl, VecRawAxl};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Freq {
@@ -302,12 +302,14 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         position_time: u32,
         lon: f64,
         lat: f64,
-    ) -> Result<AxlPacket, E> {
+    ) -> Result<(AxlPacket, VecRawAxl), E> {
         defmt::trace!("axl: taking buffer");
+        let (data, raw) = self.buf.take_buf();
+
         let pck = AxlPacket {
             timestamp: self.timestamp,
             offset: self.fifo_offset,
-            data: self.buf.take_buf(),
+            data,
             storage_id: None,
             storage_version: Some(STORAGE_VERSION),
             position_time: self.position_time,
@@ -330,7 +332,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
             self.fifo_offset
         );
 
-        Ok(pck)
+        Ok((pck, raw))
     }
 
     pub fn is_full(&self) -> bool {

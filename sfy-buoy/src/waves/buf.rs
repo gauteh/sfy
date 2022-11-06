@@ -7,7 +7,10 @@ use crate::{
     fir,
 };
 
+const RAW_AXL_SZ: usize = 2 * AXL_SZ * fir::DECIMATE as usize;
+
 pub type VecAxl = heapless::Vec<f16, AXL_SZ>;
+pub type VecRawAxl = heapless::Vec<f32, RAW_AXL_SZ>;
 
 #[derive(Debug, Clone, defmt::Format)]
 pub enum Error {
@@ -22,6 +25,9 @@ pub struct ImuBuf {
     /// it must always grow with `SAMPLE_SZ` samples. The buf must also be a multiple of
     /// `SAMPLE_SZ`.
     pub axl: VecAxl,
+
+    /// Buffer with raw values, is emptied whenever axl is emptied.
+    pub raw_axl: VecRawAxl,
 }
 
 impl ImuBuf {
@@ -38,18 +44,24 @@ impl ImuBuf {
             fir,
             filter,
             axl: VecAxl::new(),
+            raw_axl: VecRawAxl::new(),
         }
     }
 
-    pub fn take_buf(&mut self) -> VecAxl {
+    pub fn take_buf(&mut self) -> (VecAxl, VecRawAxl) {
         let b = self.axl.clone();
-        self.axl.clear();
+        let r = self.raw_axl.clone();
 
-        b
+        self.axl.clear();
+        self.raw_axl.clear();
+
+        (b, r)
     }
 
     pub fn reset(&mut self) {
         self.axl.clear();
+        self.raw_axl.clear();
+
         self.filter.reset();
 
         for f in &mut self.fir {
@@ -85,6 +97,10 @@ impl ImuBuf {
         // From Adafruit Sensors library.
         const SENSORS_RADS_TO_DPS: f64 = 57.29577793;
         const SENSORS_GRAVITY_STANDARD: f64 = 9.80665;
+
+        // Store raw values
+        self.raw_axl.extend(g.iter().map(|g| *g as f32));
+        self.raw_axl.extend(a.iter().map(|a| *a as f32));
 
         // Feed AHRS filter
         //
