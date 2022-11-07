@@ -2,6 +2,7 @@ name: sfy
 channels:
   - conda-forge
 dependencies:
+  - pyyaml
   - pyserial
   - numpy
   - scipy
