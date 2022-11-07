@@ -13,6 +13,7 @@ from sfy.cli.track import track
 from sfy.cli.axl import axl
 from sfy.cli.ctrl import ctrl
 from sfy.cli.store import store
+from sfy.cli.collection import collection
 
 
 @click.group()
@@ -25,6 +26,7 @@ sfy.add_command(track)
 sfy.add_command(axl)
 sfy.add_command(ctrl)
 sfy.add_command(store)
+sfy.add_command(collection)
 
 
 @sfy.command(help='List available buoys')
