@@ -1,5 +1,35 @@
+import logging
 import numpy as np
 import scipy as sc, scipy.signal, scipy.integrate
+import xarray as xr
+
+logger = logging.getLogger(__name__)
+
+def adjust_fir_filter(x: xr.Dataset, inplace = True):
+    """
+    Adjust for FIR filter.
+
+    Args:
+
+        x: xarray Dataset or DataArray
+    """
+    if 'fir_adjusted' in x.attrs:
+        logger.error('Dataset already adjusted for FIR filter delay')
+        return x
+
+    if not inplace:
+        x = x.copy(deep=True)
+
+    NTAP = 128
+    Fs = 208.
+    delay = ((NTAP / 2) / Fs) * 1000
+    delay = np.timedelta64(int(delay), 'ms')
+    x['time'].values[:] = x['time'].values[:] + delay
+
+    x.attrs['fir_adjusted'] = delay
+
+    return x
+
 
 def bandpass(s, dt, low=None, high=None):
     fs = 1. / dt
@@ -11,7 +41,7 @@ def bandpass(s, dt, low=None, high=None):
         high = 25.
 
     # Filtering once each direction, doubling the order with 0 phase shift.
-    sos = sc.signal.butter(5, [low, high], 'bandpass', fs=fs, output='sos')
+    sos = sc.signal.butter(10, [low, high], 'bandpass', fs=fs, output='sos')
     s = sc.signal.sosfiltfilt(sos, s)
     return s
 

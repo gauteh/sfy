@@ -47,3 +47,19 @@ def test_integration_dft(plot):
 
     np.testing.assert_array_almost_equal(zz[1:], zc, decimal=5)
 
+def test_adjust_fir():
+    d = open(
+        'tests/data/dev864475044203262/1639855192872-3a0c5fc2-e79f-48d1-91e9-e104ac937644_axl.qo.json'
+    ).read()
+    a = axl.Axl.parse(d)
+    x = a.to_dataset()
+    print(x)
+    x1 = signal.adjust_fir_filter(x, False)
+    print(x1)
+
+    assert all(x1['time'] > x['time'])
+
+    x2 = signal.adjust_fir_filter(x1, False)
+    assert all(x2['time'] == x1['time'])
+
+
