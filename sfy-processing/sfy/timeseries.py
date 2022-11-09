@@ -1,6 +1,7 @@
 import numpy as np
 import xarray as xr
 from pathlib import Path
+from . import signal
 
 
 class AxlTimeseries:
@@ -128,6 +129,9 @@ class AxlTimeseries:
                 'buoy_name': self.sn,
                 **self.extra_attrs()
             })
+
+        # Adjust for on-board FIR filter
+        ds = signal.adjust_fir_filter(ds)
 
         return ds
 
