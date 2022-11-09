@@ -26,26 +26,28 @@ def adjust_fir_filter(x: xr.Dataset, inplace = True):
     delay = np.timedelta64(int(delay), 'ms')
     x['time'].values[:] = x['time'].values[:] + delay
 
-    x.attrs['fir_adjusted'] = delay
+    x.attrs['fir_adjusted'] = delay.item().total_seconds() * 1000
+    x.attrs['fir_adjusted:units'] = 'ms'
 
     return x
 
+DEFAULT_BANDPASS_FREQS = [0.5, 25.]
 
 def bandpass(s, dt, low=None, high=None):
     fs = 1. / dt
 
     if low is None:
-        low = 0.08
+        low = DEFAULT_BANDPASS_FREQS[0]
 
     if high is None:
-        high = 25.
+        high = DEFAULT_BANDPASS_FREQS[1]
 
     # Filtering once each direction, doubling the order with 0 phase shift.
     sos = sc.signal.butter(10, [low, high], 'bandpass', fs=fs, output='sos')
     s = sc.signal.sosfiltfilt(sos, s)
     return s
 
-def integrate(s, dt, detrend=True, filter=True, order=1, freqs=None, method='trapz'):
+def integrate(s, dt, detrend=True, filter=True, order=1, freqs=None, method='dft'):
     """
     Integrate a signal, first removing mean and detrending.
 
@@ -63,7 +65,7 @@ def integrate(s, dt, detrend=True, filter=True, order=1, freqs=None, method='tra
 
         freqs: list with upper and lower bound for filter.
 
-        method: numerical integration method: 'trapz', 'dft'.
+        method: numerical integration method: 'trapz', 'dft' (default).
 
     Returns:
 
@@ -73,7 +75,7 @@ def integrate(s, dt, detrend=True, filter=True, order=1, freqs=None, method='tra
         s = integrate(s, dt, detrend, filter, order - 1, freqs)
 
     if freqs is None:
-        freqs = [.05, 25.]
+        freqs = DEFAULT_BANDPASS_FREQS
 
     fs = 1. / dt
 

@@ -5,22 +5,30 @@ from . import signal
 
 
 class AxlTimeseries:
-    def z_spectrum(self):
+    def displacement(self):
         """
-        Calculate spectrum
+        Integrate to displacement using default parameters.
         """
-        pass
+        filter_freqs = signal.DEFAULT_BANDPASS_FREQS.copy()
+        if self.frequency < 50:
+            filter_freqs = [filter_freqs[0], 10.]
 
-    def z_spectrogram(self):
-        """
-        Calculate spectrogram
-        """
-        pass
+        u_z = signal.integrate(self.z, self.dt, order=2, freqs=filter_freqs, method='dft')
+        u_x = signal.integrate(self.x, self.dt, order=2, freqs=filter_freqs, method='dft')
+        u_y = signal.integrate(self.y, self.dt, order=2, freqs=filter_freqs, method='dft')
+
+        return (u_z, u_x, u_y, filter_freqs)
+
+    @property
+    def dt(self):
+        return 1. / self.frequency
 
     def extra_attrs(self):
         return {}
 
     def to_dataset(self):
+        u_z, u_x, u_y, filter_freqs = self.displacement()
+
         ds = xr.Dataset(
             data_vars={
                 'w_z':
@@ -50,6 +58,45 @@ class AxlTimeseries:
                         'unit': 'm/s^2',
                         'long_name': 'sea_water_wave_y_acceleration',
                         'description': 'Horizontal y-axis acceleration'
+                    }),
+                'u_z':
+                xr.Variable(
+                    ('time'),
+                    u_z.astype(np.float32),
+                    attrs={
+                        'unit': 'm',
+                        'long_name': 'sea_water_wave_z_displacement',
+                        'description': 'Horizontal z-axis displacement (integrated)',
+                        'detrended': 'yes',
+                        'filter': 'butterworth (10th order), two-ways',
+                        'filter_freqs': filter_freqs,
+                        'filter_freqs:unit': 'Hz',
+                    }),
+                'u_x':
+                xr.Variable(
+                    ('time'),
+                    u_x.astype(np.float32),
+                    attrs={
+                        'unit': 'm',
+                        'long_name': 'sea_water_wave_x_displacement',
+                        'description': 'Horizontal x-axis displacement (integrated)',
+                        'detrended': 'yes',
+                        'filter': 'butterworth (10th order), two-ways',
+                        'filter_freqs': filter_freqs,
+                        'filter_freqs:unit': 'Hz',
+                    }),
+                'u_y':
+                xr.Variable(
+                    ('time'),
+                    u_y.astype(np.float32),
+                    attrs={
+                        'unit': 'm',
+                        'long_name': 'sea_water_wave_y_displacement',
+                        'description': 'Horizontal y-axis displacement (integrated)',
+                        'detrended': 'yes',
+                        'filter': 'butterworth (10th order), two-ways',
+                        'filter_freqs': filter_freqs,
+                        'filter_freqs:unit': 'Hz',
                     }),
                 'lon':
                 xr.Variable(
