@@ -9,9 +9,10 @@ class AxlTimeseries:
         """
         Integrate to displacement using default parameters.
         """
-        filter_freqs = signal.DEFAULT_BANDPASS_FREQS.copy()
         if self.frequency < 50:
-            filter_freqs = [filter_freqs[0], 10.]
+            filter_freqs = signal.DEFAULT_BANDPASS_FREQS_20Hz
+        else:
+            filter_freqs = signal.DEFAULT_BANDPASS_FREQS_52Hz
 
         u_z = signal.integrate(self.z, self.dt, order=2, freqs=filter_freqs, method='dft')
         u_x = signal.integrate(self.x, self.dt, order=2, freqs=filter_freqs, method='dft')

@@ -11,7 +11,7 @@ def test_velocity():
     a = axl.Axl.parse(d)
 
     x, y, z = signal.velocity(a)
-    assert len(x) == (len(a.x)-1)
+    assert len(x) == len(a.x)
 
 def test_displacement():
     d = open(
@@ -20,7 +20,7 @@ def test_displacement():
     a = axl.Axl.parse(d)
 
     x, y, z = signal.displacement(a)
-    assert len(x) == (len(a.x)-2)
+    assert len(x) == len(a.x)
 
 def test_integration_dft(plot):
     d = open(
@@ -57,9 +57,6 @@ def test_adjust_fir():
     x1 = signal.adjust_fir_filter(x, False)
     print(x1)
 
-    assert all(x1['time'] > x['time'])
-
-    x2 = signal.adjust_fir_filter(x1, False)
-    assert all(x2['time'] == x1['time'])
+    assert all(x1['time'] == x['time'])
 
 

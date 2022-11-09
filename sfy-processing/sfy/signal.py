@@ -31,16 +31,23 @@ def adjust_fir_filter(x: xr.Dataset, inplace = True):
 
     return x
 
-DEFAULT_BANDPASS_FREQS = [0.5, 25.]
+DEFAULT_BANDPASS_FREQS_52Hz = [0.5, 25.]
+DEFAULT_BANDPASS_FREQS_20Hz = [0.5, 10.]
 
 def bandpass(s, dt, low=None, high=None):
     fs = 1. / dt
 
     if low is None:
-        low = DEFAULT_BANDPASS_FREQS[0]
+        if fs < 50:
+            low = DEFAULT_BANDPASS_FREQS_20Hz[0]
+        else:
+            low = DEFAULT_BANDPASS_FREQS_52Hz[0]
 
     if high is None:
-        high = DEFAULT_BANDPASS_FREQS[1]
+        if fs < 50:
+            high = DEFAULT_BANDPASS_FREQS_20Hz[1]
+        else:
+            high = DEFAULT_BANDPASS_FREQS_52Hz[1]
 
     # Filtering once each direction, doubling the order with 0 phase shift.
     sos = sc.signal.butter(10, [low, high], 'bandpass', fs=fs, output='sos')
@@ -71,13 +78,16 @@ def integrate(s, dt, detrend=True, filter=True, order=1, freqs=None, method='dft
 
         s: integrated signal.
     """
+    fs = 1. / dt
+
     if order > 1:
         s = integrate(s, dt, detrend, filter, order - 1, freqs)
 
     if freqs is None:
-        freqs = DEFAULT_BANDPASS_FREQS
-
-    fs = 1. / dt
+        if fs < 50:
+            freqs = DEFAULT_BANDPASS_FREQS_20Hz
+        else:
+            freqs = DEFAULT_BANDPASS_FREQS_52Hz
 
     ## Detrend
     if detrend:
