@@ -20,7 +20,23 @@ def collection():
 def archive(config):
     """Create CF-compatible trajectory file based on yml configuation file
 
-    Presently only works for Floatensteins
+    Presently only works for Floatensteins.
+    Three steps:
+
+    1) Make a template yml file, with the option to filter drifters on name (e.g. "cirfa"):
+
+    $ sfydata collection template cirfa2022.yml -f cirfa
+
+    2) The yml file can be edited if desired, e.g. drifters may be removed,
+       and global attribute values added
+
+    3) Create the netCDF file from given (possibly edited) yml file:
+
+    $ sfydata collection archive cirfa2022.yml
+
+    This will produce a netCDF file cirfa2022.nc which is compliant with
+    the netCDF CF-specification for trajectories
+    https://cfconventions.org/Data/cf-conventions/cf-conventions-1.10/cf-conventions.html#trajectory-data
     """
 
     logger.info(f'Reading configuration file: {config.name}')
