@@ -43,7 +43,6 @@ use hal::{i2c, pac::interrupt};
 use sfy::log::log;
 use sfy::note::Notecarrier;
 use sfy::waves::Waves;
-#[cfg(feature = "storage")]
 use sfy::{
     storage::{SdSpiSpeed, Storage},
     STORAGEQ,
@@ -119,7 +118,6 @@ fn main() -> ! {
     info!("Giving subsystems a couple of seconds to boot..");
     delay.delay_ms(5_000u32);
 
-    #[cfg(feature = "storage")]
     let storage = {
         info!("Setting up storage..");
 
@@ -162,16 +160,9 @@ fn main() -> ! {
         storage
     };
 
-    #[cfg(not(feature = "storage"))]
-    let (imu_p, mut imu_queue) = unsafe { NOTEQ.split() };
-
-    #[cfg(feature = "storage")]
     let (imu_p, storage_consumer) = unsafe { STORAGEQ.split() };
-
-    #[cfg(feature = "storage")]
     let (note_p, mut imu_queue) = unsafe { NOTEQ.split() };
 
-    #[cfg(feature = "storage")]
     let mut storage_manager = sfy::StorageManager::new(storage, storage_consumer, note_p);
 
     info!("Setting up Notecarrier..");
@@ -258,11 +249,7 @@ fn main() -> ! {
     loop {
         let now = STATE.now().timestamp_millis();
 
-        #[cfg(feature = "storage")]
         let drdy = storage_manager.storage_queue.ready() || imu_queue.ready();
-
-        #[cfg(not(feature = "storage"))]
-        let drdy = imu_queue.ready();
 
         if (drdy && ((now - last) > 500)) || ((now - last) > 5000) {
             defmt::debug!("iteration, now: {}, drdy: {}", now, drdy);
@@ -275,7 +262,6 @@ fn main() -> ! {
 
             let l = location.check_retrieve(&STATE, &mut delay, &mut note);
 
-            #[cfg(feature = "storage")]
             match storage_manager.drain_queue(&mut note, &mut delay) {
                 Err(e) => {
                     error!("Failed to write to SD card: {:?}", e);

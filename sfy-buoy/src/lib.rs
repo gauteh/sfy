@@ -33,32 +33,19 @@ pub mod axl;
 pub mod fir;
 pub mod log;
 pub mod note;
-#[cfg(feature = "storage")]
 pub mod storage;
 pub mod waves;
 
 use axl::AxlPacket;
 use waves::VecRawAxl;
-#[cfg(feature = "storage")]
 use storage::Storage;
 
 pub const STORAGEQ_SZ: usize = 12;
-
-#[cfg(feature = "storage")]
 pub const NOTEQ_SZ: usize = 24 - STORAGEQ_SZ;
-
-#[cfg(not(feature = "storage"))]
-pub const NOTEQ_SZ: usize = 24;
-
-#[cfg(feature = "storage")]
 pub const IMUQ_SZ: usize = STORAGEQ_SZ;
-
-#[cfg(not(feature = "storage"))]
-pub const IMUQ_SZ: usize = NOTEQ_SZ;
 
 /// These queues are filled up by the IMU interrupt in read batches of time-series. It is then consumed
 /// the main thread and first drained to the SD storage (if enabled), and then queued for the notecard.
-#[cfg(feature = "storage")]
 pub static mut STORAGEQ: heapless::spsc::Queue<(AxlPacket, VecRawAxl), STORAGEQ_SZ> =
     heapless::spsc::Queue::new();
 
@@ -303,7 +290,6 @@ impl<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> Imu<E
     }
 }
 
-#[cfg(feature = "storage")]
 pub struct StorageManager<Spi: Transfer<u8>, CS: OutputPin>
 where
     <Spi as Transfer<u8>>::Error: Debug,
@@ -313,7 +299,6 @@ where
     pub note_queue: heapless::spsc::Producer<'static, AxlPacket, NOTEQ_SZ>,
 }
 
-#[cfg(feature = "storage")]
 impl<Spi: Transfer<u8>, CS: OutputPin> StorageManager<Spi, CS>
 where
     <Spi as Transfer<u8>>::Error: Debug,
