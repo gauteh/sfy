@@ -78,6 +78,8 @@ def integrate(s, dt, detrend=True, filter=True, order=1, freqs=None, method='dft
 
         s: integrated signal.
     """
+    assert order > 0
+
     fs = 1. / dt
 
     if order > 1:
@@ -90,7 +92,7 @@ def integrate(s, dt, detrend=True, filter=True, order=1, freqs=None, method='dft
             freqs = DEFAULT_BANDPASS_FREQS_52Hz
 
     ## Detrend
-    if detrend:
+    if detrend and order == 1:
         s = s - np.mean(s)
         s = sc.signal.detrend(s)
 
@@ -110,6 +112,10 @@ def integrate(s, dt, detrend=True, filter=True, order=1, freqs=None, method='dft
         s = dft_integrate(s, fs)
     else:
         raise ValueError("Unknown integration method")
+
+    if detrend:
+        s = s - np.mean(s)
+        s = sc.signal.detrend(s)
 
     return s
 
