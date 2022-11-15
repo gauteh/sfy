@@ -82,7 +82,12 @@ def list_buoys(dev, tx_start, tx_end):
     help=
     'Only use packages with this frequency (usually 52 or 20.8, within 2 Hz)',
     type=float)
-def ts(dev, tx_start, tx_end, start, end, file, gap, freq):
+@click.option('--displacement',
+              default=False,
+              is_flag=True,
+              help='Include integrated displacement',
+              type=bool)
+def ts(dev, tx_start, tx_end, start, end, file, gap, freq, displacement):
     hub = Hub.from_env()
     buoy = hub.buoy(dev)
 
@@ -169,7 +174,7 @@ def ts(dev, tx_start, tx_end, start, end, file, gap, freq):
         logger.info(f"Saving to {file}..")
 
         assert not os.path.exists(file), "file exists"
-        pcks.to_netcdf(file)
+        pcks.to_netcdf(file, displacement=displacement)
 
 
 @axl.command(help='Plot package')
