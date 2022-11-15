@@ -1,9 +1,9 @@
 import numpy as np
 from datetime import datetime, timezone
 from sfy import axl
-from . import sfyhub
+from . import *
 
-
+@needs_hub
 def test_position_time_wrong(sfyhub):
     # sfydata axl ts bug04 --tx-start 2022-07-06 --tx-end 2022-07-20 --start 2022-07-06T09:00:00 --end 2022-07-07T07:55:00 --file bug04_xx.nc
     tx_start = datetime(2022, 7, 6, tzinfo=timezone.utc)

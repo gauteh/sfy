@@ -4,9 +4,9 @@ from datetime import datetime, timezone
 
 from sfy import hub
 from sfy.axl import AxlCollection
-from . import sfyhub
+from . import *
 
-
+@needs_hub
 def test_collect(sfyhub):
     b = sfyhub.buoy("dev864475044204278")
     pcks = b.axl_packages_range(
@@ -21,6 +21,7 @@ def test_collect(sfyhub):
     np.testing.assert_almost_equal(c.duration, len(pcks) * 1024 / 52.)
 
 
+@needs_hub
 def test_segment(sfyhub):
     b = sfyhub.buoy("dev864475044204278")
     pcks = b.axl_packages_range(
@@ -32,6 +33,7 @@ def test_segment(sfyhub):
     assert len(segments) == 2
     assert sum((len(s) for s in segments)) == len(c)
 
+@needs_hub
 def test_join_collections(sfyhub):
     b = sfyhub.buoy("dev864475044204278")
     pcks = b.axl_packages_range(

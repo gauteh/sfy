@@ -1,7 +1,7 @@
 import numpy as np
 from sfy import axl, signal
 from sfy.axl import AxlCollection
-from . import sfyhub
+from . import *
 from datetime import datetime, timezone
 
 
@@ -15,6 +15,7 @@ def test_pck_nc(tmpdir):
     a.to_netcdf(tmpdir / "test.nc")
 
 
+@needs_hub
 def test_collection_nc(sfyhub, tmpdir):
     b = sfyhub.buoy("dev864475044204278")
     pcks = b.axl_packages_range(
@@ -25,6 +26,7 @@ def test_collection_nc(sfyhub, tmpdir):
     print(ds)
     c.to_netcdf(tmpdir / "test.nc")
 
+@needs_hub
 def test_buggy_data(sfyhub, tmpdir):
     # sfydata axl ts --start 2022-07-25 --end 2022-08-15 bug08 --file bug08UnstadJuly.nc
     b = sfyhub.buoy('bug08')

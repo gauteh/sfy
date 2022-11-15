@@ -1,7 +1,7 @@
 import numpy as np
 from sfy import event
 from datetime import datetime, timezone
-from . import sfyhub
+from . import *
 
 
 def test_parse_track():
@@ -20,6 +20,7 @@ def test_parse_log():
     a = event.Event.parse(d)
     print(a)
 
+@needs_hub
 def test_position_range(sfyhub, tmpdir):
     b = sfyhub.buoy('bug08')
     pcks = b.position_packages_range(

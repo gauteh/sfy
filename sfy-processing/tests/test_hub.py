@@ -2,29 +2,34 @@ import pytest
 from datetime import datetime, timezone, timedelta
 
 from sfy import hub
-from . import sfyhub
+from . import *
 
 
+@needs_hub
 def test_list_buoys(sfyhub):
     print(sfyhub.buoys())
 
 
+@needs_hub
 def test_get_buoy(sfyhub):
     b = sfyhub.buoy("867730051260788")
     assert b.dev == "dev867730051260788"
 
 
+@needs_hub
 def test_list_packages(sfyhub):
     b = sfyhub.buoy("867730051260788")
     print(b.packages())
 
 
+@needs_hub
 def test_get_raw_package(sfyhub):
     b = sfyhub.buoy("dev864475044204278")
     pck = b.raw_package(
         '1650973616744-42e2549d-868b-4c46-a7ef-723c7a1e6418_axl.qo.json')
 
 
+@needs_hub
 def test_get_package(sfyhub):
     b = sfyhub.buoy("dev864475044204278")
     pck = b.package(
@@ -32,12 +37,14 @@ def test_get_package(sfyhub):
     print(pck)
 
 
+@needs_hub
 def test_get_last(sfyhub, benchmark):
     b = sfyhub.buoy("867730051260788")
     pck = benchmark(b.last)
     print(pck)
 
 
+@needs_hub
 def test_list_packages_range(sfyhub):
     b = sfyhub.buoy("867730051260788")
     start = datetime(2022, 1, 21, tzinfo=timezone.utc)
@@ -45,6 +52,7 @@ def test_list_packages_range(sfyhub):
     assert all((pck[0] > start for pck in pcks))
 
 
+@needs_hub
 def test_fetch_raw_range(sfyhub):
     b = sfyhub.buoy("867730051260788")
     start = datetime(2022, 1, 21, tzinfo=timezone.utc)
@@ -53,6 +61,7 @@ def test_fetch_raw_range(sfyhub):
     print(len(pcks))
     assert all((pck[0] > start for pck in pcks))
 
+@needs_hub
 def test_fetch_packages_range(sfyhub):
     b = sfyhub.buoy("867730051260788")
     start = datetime(2022, 3, 29, tzinfo=timezone.utc)
@@ -61,6 +70,7 @@ def test_fetch_packages_range(sfyhub):
     print(pcks)
     print(len(pcks))
 
+@needs_hub
 def test_fetch_packages_range_caching(sfyhub):
     b = sfyhub.buoy("867730051260788")
     start = datetime(2022, 3, 29, tzinfo=timezone.utc)

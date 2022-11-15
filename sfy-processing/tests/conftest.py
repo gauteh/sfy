@@ -6,3 +6,4 @@ def pytest_addoption(parser):
 @pytest.fixture
 def plot(pytestconfig):
     return pytestconfig.getoption('plot')
+

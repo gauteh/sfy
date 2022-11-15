@@ -5,7 +5,7 @@ import shutil
 
 from sfy import hub
 from sfy.axl import AxlCollection
-from . import sfyhub
+from . import *
 
 @pytest.mark.skipif(shutil.which('sfypack') is None, reason = 'sfypack not installed')
 def test_parse_collection():
