@@ -207,5 +207,11 @@ class AxlTimeseries:
         """
         Write a CF-compliant NetCDF file to filename.
         """
-        self.to_dataset(displacement=displacement).to_netcdf(filename,
-                                                             format='NETCDF4')
+        compression = { 'zlib': True }
+        encoding = {}
+
+        ds = self.to_dataset(displacement=displacement)
+        for v in ds.variables:
+            encoding[v] = compression
+
+        ds.to_netcdf(filename, format='NETCDF4', encoding=encoding)
