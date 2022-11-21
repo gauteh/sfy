@@ -6,7 +6,6 @@ import json
 import yaml
 import numpy as np
 import xarray as xr
-import trajan as ta
 from sfy.hub import Hub
 
 logger = logging.getLogger(__name__)
@@ -38,6 +37,8 @@ def archive(config):
     the netCDF CF-specification for trajectories
     https://cfconventions.org/Data/cf-conventions/cf-conventions-1.10/cf-conventions.html#trajectory-data
     """
+
+    import trajan as ta
 
     logger.info(f'Reading configuration file: {config.name}')
 
