@@ -61,6 +61,13 @@ def json(dev, file):
     ax = buoy.package(file)
     print(str(ax.json()))
 
+@sfy.command(help='List all events')
+@click.argument('dev')
+def events(dev):
+    hub = Hub.from_env()
+    buoy = hub.buoy(dev)
+    packages = buoy.packages()
+    print(packages)
 
 @sfy.command(help='Show log messages')
 @click.argument('dev')
