@@ -212,7 +212,7 @@ impl Location {
 }
 
 pub struct Imu<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> {
-    pub queue: heapless::spsc::Producer<'static, AxlPacket, IMUQ_SZ>,
+    pub queue: heapless::spsc::Producer<'static, (AxlPacket, VecRawAxl), IMUQ_SZ>,
     waves: waves::Waves<I>,
     last_read: i64,
 }
@@ -220,7 +220,7 @@ pub struct Imu<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error =
 impl<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> Imu<E, I> {
     pub fn new(
         waves: waves::Waves<I>,
-        queue: heapless::spsc::Producer<'static, AxlPacket, IMUQ_SZ>,
+        queue: heapless::spsc::Producer<'static, (AxlPacket, VecRawAxl), IMUQ_SZ>,
     ) -> Imu<E, I> {
         Imu {
             queue,
@@ -251,7 +251,7 @@ impl<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> Imu<E
             self.queue
                 .enqueue(pck)
                 .inspect_err(|pck| {
-                    error!("queue is full, discarding data: {}", pck.data.len());
+                    error!("queue is full, discarding data: {}", pck.0.data.len());
 
                     log::log("Queue is full: discarding package.");
                 })
@@ -295,7 +295,7 @@ where
     <Spi as Transfer<u8>>::Error: Debug,
 {
     storage: Storage<Spi, CS>,
-    pub storage_queue: heapless::spsc::Consumer<'static, AxlPacket, STORAGEQ_SZ>,
+    pub storage_queue: heapless::spsc::Consumer<'static, (AxlPacket, VecRawAxl), STORAGEQ_SZ>,
     pub note_queue: heapless::spsc::Producer<'static, AxlPacket, NOTEQ_SZ>,
 }
 
