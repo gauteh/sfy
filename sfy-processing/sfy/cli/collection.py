@@ -4,6 +4,7 @@ import logging
 import click
 import json
 import yaml
+from mergedeep import merge
 import numpy as np
 import xarray as xr
 from sfy.hub import Hub
@@ -132,13 +133,6 @@ def template(config, filter, userconfig):
             }
         }
 
-    if userconfig != ():
-        for uc in userconfig:
-            logger.info(f'Adding user config from {uc}')
-            with open(uc, 'r') as f:
-                usf = yaml.safe_load(f)
-                t = t | usf
-            
     # Fetch list of drifters
     hub = Hub.from_env()
     buoys = hub.buoys()
@@ -172,6 +166,13 @@ def template(config, filter, userconfig):
 
     t['start_time'] = overall_start_time
     t['end_time'] = overall_end_time
+
+    if userconfig != ():
+        for uc in userconfig:
+            logger.info(f'Adding user config from {uc}')
+            with open(uc, 'r') as f:
+                usf = yaml.safe_load(f)
+                t = merge(t, usf)  # merge without deleting what is not overwritten
 
     yaml.Dumper.ignore_aliases = lambda *args : True
     yaml.dump(t, open(config.name, 'w'), sort_keys=False)
