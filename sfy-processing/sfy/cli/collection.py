@@ -45,8 +45,14 @@ def archive(config):
     with open(config.name, 'r') as f:
         config = yaml.safe_load(f)
 
-    start_time = datetime.fromisoformat(config['start_time'])
-    end_time = datetime.fromisoformat(config['end_time'])
+    if 'start_time' in config:
+        overall_start_time = config['start_time']
+    else:
+        overall_start_time = datetime(1,1,1)
+    if 'end_time' in config:
+        overall_end_time = config['end_time']
+    else:
+        overall_end_time = datetime.now()
 
     hub = Hub.from_env()
     # Select only the buoys that are listed in config file
@@ -55,6 +61,23 @@ def archive(config):
     dicts = {}  # to hold all messages
 
     for b in buoys:
+        bname = b.dev
+        bc = config['drifters'][bname]
+
+        if 'start_time' in config:
+            start_time = config['start_time']
+        elif 'start_time' in bc:
+            start_time = bc['start_time']
+        else:
+            start_time = datetime(1,1,1)
+
+        if 'end_time' in config:
+            end_time = config['end_time']
+        elif 'end_time' in bc:
+            end_time = bc['end_time']
+        else:
+            end_time = datetime.now()
+
         dicts[b] = {}
         packages = b.fetch_packages_range(start=datetime(1, 1, 1), end=datetime.now())
         for p in packages:
@@ -69,6 +92,10 @@ def archive(config):
                         print(f'Skipping time {time}')
 
     ds = ta.trajectory_dict_to_dataset(dicts, config['attributes'])
+    comments = [config['drifters'][bname]['comment'] if 'comment' in config['drifters'][bname]
+                else '' for bname in config['drifters']]
+    if sum([len(c) for c in comments]) > 0:
+        ds = ds.assign(drifter_description = (['trajectory'], comments))
 
     ds.to_netcdf(f"{config['name']}.nc")
 
@@ -79,8 +106,13 @@ def archive(config):
               help='Filter on drifter names (case insensitive)',
               type=str,
               multiple=True)
+@click.option('-u', '--userconfig',
+              default=None,
+              help='YML file with config items to add',
+              type=str,
+              multiple=True)
 
-def template(config, filter):
+def template(config, filter, userconfig):
     """Create template yml file which can be manually edited before creating netCDF"""
 
     logger.info(f'Writing configuration file: {config.name}')
@@ -88,12 +120,11 @@ def template(config, filter):
     # Template yaml. Can add more standard attributes here, to be filled in config file by user
     t = {
         'name': f'{config.name.split(".")[0]}',
-        'start_time': '1000-01-01T00:00:00',
-        'end_time': '2100-01-01T00:00:00',
+        'drifters': {},
         'attributes': {
             'title': '',
             'summary': '',
-            'history': '',
+            'history': 'Created with sfydata.py (https://github.com/gauteh/sfy)',
             'creator_name': '',
             'creator_email': '',
             'creator_url': '',
@@ -101,14 +132,46 @@ def template(config, filter):
             }
         }
 
+    if userconfig != ():
+        for uc in userconfig:
+            logger.info(f'Adding user config from {uc}')
+            with open(uc, 'r') as f:
+                usf = yaml.safe_load(f)
+                t = t | usf
+            
     # Fetch list of drifters
     hub = Hub.from_env()
-    b0 = hub.buoys()[0]
-    t['drifters'] = [b.dev for b in hub.buoys()]
+    buoys = hub.buoys()
+
+    drifters = [b.dev for b in hub.buoys()]
     if filter != ():
         for filterstring in filter:
-            t['drifters'] = [b for b in t['drifters'] if filterstring.lower() in b.lower()]
+            drifters = [b for b in drifters if filterstring.lower() in b.lower()]
 
-    # Unfortunately order is not preserved, as OrderedDict is not supported:
-    # https://stackoverflow.com/questions/5121931/in-python-how-can-you-load-yaml-mappings-as-ordereddicts)
-    yaml.dump(t, open(config.name, 'w'))
+    overall_end_time = datetime(1, 1, 1)
+    overall_start_time = datetime.now()
+    for b in hub.buoys():
+        bname = b.dev
+        if bname not in drifters:
+            continue
+
+        end_time = datetime(1, 1, 1)
+        start_time = datetime.now()
+        packages = b.fetch_packages_range(start=end_time, end=start_time)
+        for p in packages:
+            j = json.loads(p[2])
+            for m in j['body']['messages']:
+                if 'latitude' in m:
+                    time = datetime.fromtimestamp(m['datetime_fix'])
+                    start_time  = np.minimum(start_time, time)
+                    end_time = np.maximum(end_time, time)
+        t['drifters'][bname] = {'start_time': start_time, 'end_time': end_time, 'comment': ''}
+
+        overall_start_time  = np.minimum(overall_start_time, start_time)
+        overall_end_time = np.maximum(overall_end_time, end_time)
+
+    t['start_time'] = overall_start_time
+    t['end_time'] = overall_end_time
+
+    yaml.Dumper.ignore_aliases = lambda *args : True
+    yaml.dump(t, open(config.name, 'w'), sort_keys=False)
