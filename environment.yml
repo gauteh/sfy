@@ -18,3 +18,5 @@ dependencies:
   - xarray
   - netcdf4
   - pytest
+  - trajan
+  - pytest-benchmark
