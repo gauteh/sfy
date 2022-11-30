@@ -62,7 +62,7 @@ def test_fir_within_sin():
     # sf = sf[:]
     s = s[64:-64]
 
-    np.testing.assert_almost_equal(sf, s, 4)
+    np.testing.assert_almost_equal(sf, s, 2)
 
 def test_fir_outside_sin():
     NTAP = 129      # Length of filter
