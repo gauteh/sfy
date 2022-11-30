@@ -5,7 +5,6 @@ from . import signal
 
 
 class AxlTimeseries:
-
     def displacement(self):
         """
         Integrate to displacement using default parameters.

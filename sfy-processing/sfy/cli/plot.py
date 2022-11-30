@@ -89,8 +89,7 @@ def plot(ctx, dev, tx_start, tx_end, start, end, gap, freq):
 
     # filter packages between start and end
     pcks.clip(start, end)
-    logger.info(
-        f"{len(pcks)} in start <-> end range, splitting into segments..")
+    logger.info(f"{len(pcks)} in {pcks.start} <-> {pcks.end} range, splitting into segments..")
 
     gap = gap if gap is not None else AxlCollection.GAP_LIMIT
 
@@ -134,6 +133,25 @@ def plot(ctx, dev, tx_start, tx_end, start, end, gap, freq):
 @plot.command(help='Plot timeseries')
 @click.pass_context
 def ts(ctx):
-    print(ctx.obj)
+    logger.info('Making dataset..')
+    ds = ctx.obj['pcks'].to_dataset(displacement=True)
+
+    logger.info('Plotting..')
+
+    plt.figure()
+    ds.u_z.plot()
+    plt.show()
 
 
+@plot.command(help='Plot Hs')
+@click.pass_context
+def hs(ctx):
+    logger.info('Making dataset..')
+    ds = ctx.obj['pcks'].to_dataset(displacement=True)
+
+    hs = signal.hs(ds)
+
+    logger.info('Plotting..')
+    plt.figure()
+    hs.plot()
+    plt.show()

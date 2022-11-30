@@ -5,7 +5,8 @@ import xarray as xr
 
 logger = logging.getLogger(__name__)
 
-def adjust_fir_filter(x: xr.Dataset, inplace = True):
+
+def adjust_fir_filter(x: xr.Dataset, inplace=True):
     """
     Adjust for FIR filter.
 
@@ -31,8 +32,10 @@ def adjust_fir_filter(x: xr.Dataset, inplace = True):
 
     return x
 
-DEFAULT_BANDPASS_FREQS_52Hz = [0.5, 25.]
-DEFAULT_BANDPASS_FREQS_20Hz = [0.5, 10.]
+
+DEFAULT_BANDPASS_FREQS_52Hz = [0.09, 25.]
+DEFAULT_BANDPASS_FREQS_20Hz = [0.09, 10.]
+
 
 def bandpass(s, dt, low=None, high=None):
     fs = 1. / dt
@@ -54,7 +57,14 @@ def bandpass(s, dt, low=None, high=None):
     s = sc.signal.sosfiltfilt(sos, s)
     return s
 
-def integrate(s, dt, detrend=True, filter=True, order=1, freqs=None, method='dft'):
+
+def integrate(s,
+              dt,
+              detrend=True,
+              filter=True,
+              order=1,
+              freqs=None,
+              method='dft'):
     """
     Integrate a signal, first removing mean and detrending.
 
@@ -141,18 +151,19 @@ def displacement(a: 'Axl'):
 
     return x, y, z
 
+
 def dft_integrate(x, fs):
     """
     Integrate in the Fourier domain. See Brandt & Brincker (2014) for a comparsion with the trapezoidal rule.
     """
 
     L = len(x)
-    N = 2 * L # x should be padded to avoid cyclic aliasing, achieved through taking the DFT at 2*L.
+    N = 2 * L  # x should be padded to avoid cyclic aliasing, achieved through taking the DFT at 2*L.
 
     X = np.fft.rfft(x, N)
 
     ## Integrator operator
-    f = np.fft.rfftfreq(N, d = 1. / fs)
+    f = np.fft.rfftfreq(N, d=1. / fs)
     w = 2. * np.pi * f
     H = np.empty(shape=w.shape, dtype=complex)
     H[1:] = 1. / (1j * w[1:])
@@ -165,6 +176,7 @@ def dft_integrate(x, fs):
     y = y[:L]
 
     return y
+
 
 def detrend_tp_2021(y, k=0.9995):
     """
@@ -181,3 +193,29 @@ def detrend_tp_2021(y, k=0.9995):
         y^{*}_{n} is the detrended signal
     """
     raise NotImplemented()
+
+
+def hs(ds: xr.Dataset, window=(20 * 60)):
+    """
+    Calculate Hs for dataset.
+    """
+    from numpy.lib.stride_tricks import sliding_window_view
+
+    N = int(window * ds.frequency)
+    N = np.min([len(ds.u_z.values), N])
+    logger.info(f'Calculating Hs.. ({window=} s => {N} samples)')
+
+    print(ds.u_z)
+
+    ti = 0
+    hs = sliding_window_view(ds.u_z.values, N, ti)
+    hs = 4*np.nanstd(hs, axis=len(hs.shape)-1)
+
+    T = ds.u_z.time[:len(hs)]
+
+    hsv = xr.DataArray(hs, coords={'time': T})
+    hsv.name = 'hs'
+    hsv.attrs['long_name'] = 'sea_surface_wave_significant_height'
+    hsv.attrs['description'] = 'Total significant wave height (4 * std)'
+
+    return hsv

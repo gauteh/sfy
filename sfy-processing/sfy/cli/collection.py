@@ -55,6 +55,8 @@ def archive(config):
     else:
         overall_end_time = datetime.now()
 
+    assert end_time > start_time, "end time must be greater than start time"
+
     hub = Hub.from_env()
     # Select only the buoys that are listed in config file
     buoys = [b for b in hub.buoys() if b.dev in config['drifters']]
@@ -98,7 +100,13 @@ def archive(config):
     if sum([len(c) for c in comments]) > 0:
         ds = ds.assign(drifter_description = (['trajectory'], comments))
 
-    ds.to_netcdf(f"{config['name']}.nc")
+    compression = { 'zlib': True }
+    encoding = {}
+
+    for v in ds.variables:
+        encoding[v] = compression
+
+    ds.to_netcdf(f"{config['name']}.nc", encoding=encoding)
 
 @collection.command()
 @click.argument('config', type=click.File('w'))
