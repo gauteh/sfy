@@ -3,7 +3,7 @@ use heapless::Deque;
 
 pub mod hz50 {
     /// Filter order, length or number of taps.
-    pub const NTAP: usize = 128;
+    pub const NTAP: usize = 129;
 
     /// Filter coefficients. Generated with Pythons `scipy.signal.firwin(...)`.
     pub const COEFFS: [f32; NTAP] = include!("firwin.25_208_coeff");
@@ -17,7 +17,7 @@ pub mod hz50 {
 
 pub mod hz20 {
     /// Filter order, length or number of taps.
-    pub const NTAP: usize = 128;
+    pub const NTAP: usize = 129;
 
     /// Filter coefficients. Generated with Pythons `scipy.signal.firwin(...)`.
     pub const COEFFS: [f32; NTAP] = include!("firwin.10_208_coeff");
@@ -77,8 +77,8 @@ impl FIR {
         //     .zip(&COEFFS)
         //     .fold(0.0, |a, (s, c)| a + (s * c))
 
-        debug_assert_eq!(self.samples.len() % 4, 0);
-        debug_assert_eq!(COEFFS.len() % 4, 0);
+        // debug_assert_eq!(self.samples.len() % 4, 0);
+        // debug_assert_eq!(COEFFS.len() % 4, 0);
         debug_assert_eq!(COEFFS.len(), self.samples.len());
 
         let (f, b) = self.samples.as_slices();
@@ -224,7 +224,30 @@ mod tests {
     fn sin_within_cutoff() {
         let mut f = FIR::new();
 
-        let fs = 833.;
+        let fs = FREQ;
+        let dt = 1. / fs;
+
+        let t = (0..4096).map(|i| i as f32 * dt).collect::<Vec<_>>();
+        let s = t
+            .iter()
+            .map(|t| 2. * (2. * t * 2. * std::f32::consts::PI).sin())
+            .collect::<Vec<_>>();
+
+        let sf = s.iter().map(|s| f.filter(*s)).collect::<Vec<_>>();
+
+        println!("sf: {:?}", sf);
+        for (s, sf) in s.iter().zip(sf.iter().skip(128 / 2)).skip(128) {
+            let diff = (s - sf).abs();
+            println!("diff: {}", diff);
+            assert!(diff < 0.02);
+        }
+    }
+
+    #[test]
+    fn sin_outside_cutoff() {
+        let mut f = FIR::new();
+
+        let fs = 208.;
         let dt = 1. / fs;
 
         let t = (0..4096).map(|i| i as f32 * dt).collect::<Vec<_>>();
@@ -248,7 +271,7 @@ mod tests {
         let mut f = FIR::new();
         let mut d = FIR::new().into_decimator();
 
-        let fs = 833.;
+        let fs = FREQ;
         let dt = 1. / fs;
 
         let t = (0..4096).map(|i| i as f32 * dt).collect::<Vec<_>>();
@@ -273,7 +296,7 @@ mod tests {
     #[bench]
     fn decimate_cycle(b: &mut Bencher) {
         let mut d = FIR::new().into_decimator();
-        let fs = 833.;
+        let fs = FREQ;
         let dt = 1. / fs;
 
         let t = (0..4096).map(|i| i as f32 * dt).collect::<Vec<_>>();
@@ -292,7 +315,7 @@ mod tests {
     #[bench]
     fn decimate_many(b: &mut Bencher) {
         let mut d = FIR::new().into_decimator();
-        let fs = 833.;
+        let fs = FREQ;
         let dt = 1. / fs;
 
         let t = (0..4096).map(|i| i as f32 * dt).collect::<Vec<_>>();
@@ -300,17 +323,6 @@ mod tests {
             .iter()
             .map(|t| 2. * (2. * t * 2. * std::f32::consts::PI).sin())
             .collect::<Vec<_>>();
-
-        // for v in &s {
-        //     if let Some(v) = d.decimate(*v) {
-        //         println!("v: {}", v);
-        //     }
-        // }
-
-        let sum: f32 = s.iter().filter_map(|v| d.decimate(*v)).sum();
-        println!("sum: {}", sum);
-
-        assert!((sum - 47.805008).abs() < 0.0001);
 
         b.iter(|| {
             for v in &s {
@@ -322,7 +334,7 @@ mod tests {
     #[bench]
     fn fir_cycle(b: &mut Bencher) {
         let mut f = FIR::new();
-        let fs = 833.;
+        let fs = FREQ;
         let dt = 1. / fs;
 
         let t = (0..4096).map(|i| i as f32 * dt).collect::<Vec<_>>();

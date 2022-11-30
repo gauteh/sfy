@@ -1,7 +1,7 @@
 import scipy as sc, scipy.signal
 
 # 50 Hz
-NTAP = 128      # Length of filter
+NTAP = 129      # Length of filter
 CUTOFF = 25.    # Cut-off frequency for output
 FREQ = 208.     # Input frequency
 
@@ -14,7 +14,7 @@ with open('firwin.25_208_coeff', 'w') as fd:
     fd.write(']')
 
 # 20 Hz
-NTAP = 128      # Length of filter
+NTAP = 129      # Length of filter
 CUTOFF = 10.    # Cut-off frequency for output
 FREQ = 208.     # Input frequency
 
