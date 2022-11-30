@@ -221,7 +221,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
 
         sensor
             .ctrl1xl
-            .set_chain_full_scale(i2c, ctrl1xl::Fs_Xl::G4)?;
+            .set_chain_full_scale(i2c, ctrl1xl::Fs_Xl::G2)?;
         sensor.ctrl1xl.set_lpf2_xl_en(i2c, true)?;
 
         // CTRL2_G
@@ -231,7 +231,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
 
         sensor
             .ctrl2g
-            .set_chain_full_scale(i2c, ctrl2g::Fs::Dps500)?;
+            .set_chain_full_scale(i2c, ctrl2g::Fs::Dps125)?;
 
         // CTRL7_G
         sensor.ctrl7g.set_g_hm_mode(i2c, true)?;
