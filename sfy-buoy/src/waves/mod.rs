@@ -236,6 +236,11 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         // CTRL7_G
         sensor.ctrl7g.set_g_hm_mode(i2c, true)?;
 
+        // Both the gyro and accelerometer is low-pass filtered on-board:
+        //
+        // Gyro: LPF2 at 66.8 Hz when ODR = 208 Hz (not configurable)
+        // Accel: default is ODR/2 => 104 Hz.
+
         Ok(())
     }
 
