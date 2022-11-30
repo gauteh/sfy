@@ -13,6 +13,10 @@ pub mod hz50 {
 
     /// Cut-off frequency of filter.
     pub const CUTOFF: f32 = 25.0;
+
+    /// True cut-off frequency as generated with `firwin`. Must have some margin to sufficiently
+    /// attenuate frequencies close to Nyquist.
+    pub const TRUE_CUTOFF: f32 = 20.0;
 }
 
 pub mod hz20 {
@@ -27,6 +31,10 @@ pub mod hz20 {
 
     /// Cut-off frequency of filter.
     pub const CUTOFF: f32 = 10.0;
+
+    /// True cut-off frequency as generated with `firwin`. Must have some margin to sufficiently
+    /// attenuate frequencies close to Nyquist.
+    pub const TRUE_CUTOFF: f32 = 8.0;
 }
 
 #[cfg(feature = "20Hz")]

@@ -24,7 +24,7 @@ def test_filter_coeffs():
     f50 = np.array(f50)
 
     NTAP = 129      # Length of filter
-    CUTOFF = 25.    # Cut-off frequency for output
+    CUTOFF = 20.    # Cut-off frequency for output
     FREQ = 208.     # Input frequency
     fir = sc.signal.firwin(NTAP, cutoff=CUTOFF, pass_zero='lowpass', fs = FREQ)
 
@@ -34,7 +34,7 @@ def test_filter_coeffs():
     f20 = np.array(f20)
 
     NTAP = 129      # Length of filter
-    CUTOFF = 10.    # Cut-off frequency for output
+    CUTOFF = 8.    # Cut-off frequency for output
     FREQ = 208.     # Input frequency
     fir = sc.signal.firwin(NTAP, cutoff=CUTOFF, pass_zero='lowpass', fs = FREQ)
 
@@ -42,7 +42,7 @@ def test_filter_coeffs():
 
 def test_fir_within_sin():
     NTAP = 129      # Length of filter
-    CUTOFF = 25.    # Cut-off frequency for output
+    CUTOFF = 20.    # Cut-off frequency for output
     FREQ = 208.     # Input frequency
     fir = sc.signal.firwin(NTAP, cutoff=CUTOFF, pass_zero='lowpass', fs = FREQ)
 
