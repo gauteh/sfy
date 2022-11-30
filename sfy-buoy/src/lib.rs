@@ -40,15 +40,18 @@ use axl::AxlPacket;
 use waves::VecRawAxl;
 use storage::Storage;
 
-pub const STORAGEQ_SZ: usize = 12;
-pub const NOTEQ_SZ: usize = 24 - STORAGEQ_SZ;
+pub const STORAGEQ_SZ: usize = 2;
+pub const NOTEQ_SZ: usize = 2;
 pub const IMUQ_SZ: usize = STORAGEQ_SZ;
 
 /// These queues are filled up by the IMU interrupt in read batches of time-series. It is then consumed
 /// the main thread and first drained to the SD storage (if enabled), and then queued for the notecard.
+
+/// Queue from IMU to Storage
 pub static mut STORAGEQ: heapless::spsc::Queue<(AxlPacket, VecRawAxl), STORAGEQ_SZ> =
     heapless::spsc::Queue::new();
 
+/// Queue from Storage to Notecard
 pub static mut NOTEQ: heapless::spsc::Queue<AxlPacket, NOTEQ_SZ> = heapless::spsc::Queue::new();
 
 pub struct SharedState<D: DateTimeAccess> {
@@ -305,7 +308,7 @@ where
 {
     pub fn new(
         storage: Storage<Spi, CS>,
-        storage_queue: heapless::spsc::Consumer<'static, AxlPacket, STORAGEQ_SZ>,
+        storage_queue: heapless::spsc::Consumer<'static, (AxlPacket, VecRawAxl), STORAGEQ_SZ>,
         note_queue: heapless::spsc::Producer<'static, AxlPacket, NOTEQ_SZ>,
     ) -> StorageManager<Spi, CS> {
         StorageManager {
@@ -325,7 +328,7 @@ where
         while let Some(mut pck) = self.storage_queue.dequeue() {
             defmt::debug!(
                 "Storing package: {:?} (queue length: {})",
-                pck,
+                pck.0,
                 self.storage_queue.len()
             );
             e = self
@@ -337,7 +340,7 @@ where
                 .map(|id| Some(id));
 
             self.note_queue
-                .enqueue(pck)
+                .enqueue(pck.0)
                 .inspect_err(|pck| {
                     defmt::error!("queue is full, discarding data: {}", pck.data.len());
                 })

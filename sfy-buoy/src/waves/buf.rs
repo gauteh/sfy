@@ -7,10 +7,11 @@ use crate::{
     fir,
 };
 
-const RAW_AXL_SZ: usize = 2 * AXL_SZ * fir::DECIMATE as usize;
+pub const RAW_AXL_SZ: usize = 2 * AXL_SZ * fir::DECIMATE as usize;
+pub const RAW_AXL_BYTE_SZ: usize = 2 * AXL_SZ * fir::DECIMATE as usize * 2;
 
 pub type VecAxl = heapless::Vec<f16, AXL_SZ>;
-pub type VecRawAxl = heapless::Vec<f32, RAW_AXL_SZ>;
+pub type VecRawAxl = heapless::Vec<f16, RAW_AXL_SZ>;
 
 #[derive(Debug, Clone, defmt::Format)]
 pub enum Error {
@@ -99,8 +100,8 @@ impl ImuBuf {
         const SENSORS_GRAVITY_STANDARD: f64 = 9.80665;
 
         // Store raw values
-        self.raw_axl.extend(g.iter().map(|g| *g as f32));
-        self.raw_axl.extend(a.iter().map(|a| *a as f32));
+        self.raw_axl.extend(g.iter().map(|g| f16::from_f64(*g)));
+        self.raw_axl.extend(a.iter().map(|a| f16::from_f64(*a)));
 
         // Feed AHRS filter
         //

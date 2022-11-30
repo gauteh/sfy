@@ -15,7 +15,7 @@ use crate::{axl::AxlPacket, fir};
 mod buf;
 
 use buf::ImuBuf;
-pub use buf::{VecAxl, VecRawAxl};
+pub use buf::{VecAxl, VecRawAxl, RAW_AXL_SZ, RAW_AXL_BYTE_SZ};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Freq {
@@ -103,6 +103,7 @@ pub struct Waves<I2C: WriteRead + Write> {
     pub position_time: u32,
     pub lon: f64,
     pub lat: f64,
+    pub temperature: f32,
 
     /// Offset in FIFO _in samples_ (that is one gyro and one accel sample) when timestamp
     /// was set.
@@ -150,6 +151,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
             buf: ImuBuf::new(FREQ.value()),
             timestamp: 0,
             position_time: 0,
+            temperature: 0.0,
             lon: 0.0,
             lat: 0.0,
             fifo_offset: 0,
@@ -189,6 +191,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
 
         defmt::debug!("booting imu..");
         self.boot_imu()?;
+        defmt::debug!("imu ready.");
 
         Ok(())
     }
@@ -313,6 +316,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
             storage_id: None,
             storage_version: Some(STORAGE_VERSION),
             position_time: self.position_time,
+            temperature: self.temperature,
             lon: self.lon,
             lat: self.lat,
             freq: self.output_freq,
@@ -324,6 +328,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         self.timestamp = now;
         self.position_time = position_time;
         self.fifo_offset = self.imu.fifostatus.diff_fifo(&mut self.i2c)? / 2;
+        self.temperature = self.get_temperature()?;
 
         defmt::debug!(
             "cleared buffer: {}, new timestamp: {}, new offset: {}",

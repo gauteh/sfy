@@ -22,6 +22,9 @@ use embedded_sdmmc::{
 use heapless::{String, Vec};
 
 use crate::axl::{AxlPacket, AXL_POSTCARD_SZ};
+use crate::waves::{VecRawAxl, RAW_AXL_BYTE_SZ};
+
+const PACKAGE_SZ: usize = AXL_POSTCARD_SZ + RAW_AXL_BYTE_SZ;
 
 pub mod clock;
 mod handles;
@@ -32,8 +35,8 @@ use handles::*;
 /// Writing to a file seems to take longer time when it has more packages, this can cause timeouts
 /// in the interrupt that drains the IMU FIFO. See <https://github.com/gauteh/sfy/issues/77>.
 pub const COLLECTION_SIZE: u32 = 100;
-pub const STORAGE_VERSION_STR: &'static str = "2";
-pub const STORAGE_VERSION: u32 = 2;
+pub const STORAGE_VERSION_STR: &'static str = "3";
+pub const STORAGE_VERSION: u32 = 3;
 
 #[derive(Debug, defmt::Format)]
 pub enum StorageErr {
@@ -153,7 +156,9 @@ where
     }
 
     /// Store a new package.
-    pub fn store(&mut self, pck: &mut AxlPacket) -> Result<u32, StorageErr> {
+    pub fn store(&mut self, pck: &mut (AxlPacket, VecRawAxl)) -> Result<u32, StorageErr> {
+        let (pck, raw) = pck;
+
         let mut block = self.acquire()?;
 
         // If writing fails we will always start a new collection, so ID's should not get out of
@@ -171,18 +176,27 @@ where
             .map_err(|_| StorageErr::SerializationError)?;
         buf.resize_default(buf.capacity()).unwrap();
 
+        // Serialize raw bytes
+        #[cfg(target_endian = "big")]
+        compile_error!("serializied samples are assumed to be in little endian, target platform is big endian and no conversion is implemented.");
+        raw.resize_default(raw.capacity()).unwrap();
+        let raw_bytes: &[u8] = bytemuck::cast_slice(&raw.as_slice());
+        debug_assert_eq!(raw_bytes.len(), RAW_AXL_BYTE_SZ);
+
         // And write..
         defmt::info!(
-            "Writing package to card id: {}, size: {}, timestamp: {}, collection: {}, fileid: {}, offset: {}",
+            "Writing package to card id: {}, size: {} + {}, timestamp: {}, collection: {}, fileid: {}, offset: {}",
             id,
             buf.len(),
+            raw_bytes.len(),
             pck.timestamp,
             collection,
             fid,
             offset
         );
 
-        block.write(&collection, &buf)?;
+
+        block.write(&collection, &buf, raw_bytes)?;
 
         Ok(id)
     }
@@ -268,7 +282,12 @@ where
         }
     }
 
-    pub fn write(&mut self, collection: &str, buf: &[u8]) -> Result<usize, StorageErr> {
+    pub fn write(
+        &mut self,
+        collection: &str,
+        buf: &[u8],
+        buf_raw: &[u8],
+    ) -> Result<usize, StorageErr> {
         let sz: Result<usize, StorageErr> = try {
             let mut c = Controller::new(&self.block, self.clock);
             let mut v = c.get_volume(VolumeIdx(0))?;
@@ -278,7 +297,7 @@ where
                 .inspect_err(|e| defmt::error!("File seek error: {}", e))
                 .map_err(|_| StorageErr::WriteError)?; // We should already be at the
                                                        // end.
-            free(|_| f.write(&buf))?
+            f.write(&buf)? + f.write(&buf_raw)?
         };
 
         if sz.is_err() {
@@ -393,7 +412,7 @@ pub fn collection_fname(c: u32) -> String<32> {
 pub fn id_to_parts(id: u32) -> (String<32>, u32, usize) {
     let collection = id / COLLECTION_SIZE;
     let fileid = id % COLLECTION_SIZE;
-    let offset = fileid as usize * AXL_POSTCARD_SZ;
+    let offset = fileid as usize * PACKAGE_SZ;
 
     let collection = collection_fname(collection);
 
@@ -517,7 +536,6 @@ mod tests {
             let slice = &mut buf[(AXL_POSTCARD_SZ * p)..(AXL_POSTCARD_SZ * (p + 1))];
             let pck: AxlPacket = postcard::from_bytes_cobs(slice).unwrap();
             println!("Deserialized data package: {:?}", pck);
-
             assert_eq!(pck.storage_id, Some(200 + p as u32));
         }
     }

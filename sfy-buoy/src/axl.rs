@@ -3,14 +3,14 @@ use half::f16;
 use heapless::Vec;
 
 pub const SAMPLE_SZ: usize = 3;
-pub const AXL_SZ: usize = SAMPLE_SZ * 1024;
+pub const AXL_SZ: usize = SAMPLE_SZ * 256;
 
 /// Maximum length of base64 string from [f16; AXL_SZ]
 pub const AXL_OUTN: usize = { AXL_SZ * 2 } * 4 / 3 + 4;
 
 /// Max size of `AxlPacket` serialized using postcard with COBS. Set with some margin since
 /// postcard messages are not fixed size.
-pub const AXL_POSTCARD_SZ: usize = 1024 * 10;
+pub const AXL_POSTCARD_SZ: usize = 1024 * 4;
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct AxlPacket {
@@ -29,6 +29,7 @@ pub struct AxlPacket {
     pub position_time: u32,
     pub lon: f64,
     pub lat: f64,
+    pub temperature: f32,
 
     /// Frequency of data.
     pub freq: f32,
@@ -115,6 +116,7 @@ mod tests {
             offset: 0,
             storage_id: Some(0),
             storage_version: Some(STORAGE_VERSION),
+            temperature: 0.0,
             data: (0..3072)
                 .map(|v| f16::from_f32(v as f32))
                 .collect::<Vec<_, { AXL_SZ }>>(),
@@ -135,6 +137,7 @@ mod tests {
             offset: 0,
             storage_id: Some(1489),
             storage_version: Some(STORAGE_VERSION),
+            temperature: 0.0,
             data: (6..3078)
                 .map(|v| f16::from_f32(v as f32))
                 .collect::<Vec<_, { AXL_SZ }>>(),
