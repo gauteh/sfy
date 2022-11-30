@@ -198,7 +198,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         self.imu.get_temperature(&mut self.i2c)
     }
 
-    /// Booting the sensor accoring to Adafruit's driver
+    /// Booting the sensor according to Adafruit's driver
     fn boot_imu(&mut self) -> Result<(), E> {
         let sensor = &mut self.imu;
         let i2c = &mut self.i2c;
