@@ -28,7 +28,7 @@ def test_filter_coeffs():
     FREQ = 208.     # Input frequency
     fir = sc.signal.firwin(NTAP, cutoff=CUTOFF, pass_zero='lowpass', fs = FREQ)
 
-    np.testing.assert_array_equal(fir, f50)
+    np.testing.assert_allclose(fir, f50, rtol=1e-10)
 
     f20 = eval(open('../sfy-buoy/src/firwin.10_208_coeff').read())
     f20 = np.array(f20)
@@ -38,7 +38,7 @@ def test_filter_coeffs():
     FREQ = 208.     # Input frequency
     fir = sc.signal.firwin(NTAP, cutoff=CUTOFF, pass_zero='lowpass', fs = FREQ)
 
-    np.testing.assert_array_equal(fir, f20)
+    np.testing.assert_allclose(fir, f20, rtol=1e-10)
 
 def test_fir_within_sin():
     NTAP = 129      # Length of filter
