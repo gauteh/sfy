@@ -24,7 +24,7 @@ use heapless::{String, Vec};
 use crate::axl::{AxlPacket, AXL_POSTCARD_SZ};
 use crate::waves::{VecRawAxl, RAW_AXL_BYTE_SZ};
 
-const PACKAGE_SZ: usize = AXL_POSTCARD_SZ + RAW_AXL_BYTE_SZ;
+pub const PACKAGE_SZ: usize = AXL_POSTCARD_SZ + RAW_AXL_BYTE_SZ;
 
 pub mod clock;
 mod handles;

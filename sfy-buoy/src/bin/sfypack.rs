@@ -5,6 +5,8 @@ use std::ops::Deref;
 use std::path::{Path, PathBuf};
 
 use sfy::axl;
+use sfy::storage::PACKAGE_SZ;
+use sfy::waves::VecRawAxl;
 
 #[derive(FromArgs)]
 /// Load and print Axl package from binary collection.
@@ -26,7 +28,11 @@ fn main() -> anyhow::Result<()> {
     let pck: SfyPack = argh::from_env();
     eprintln!("Loading collection from: {:?}", pck.file);
 
-    let c = Collection::from_file(&pck.file)?;
+    let c = match pck.file.extension().map(|s| s.to_str()).flatten() {
+        Some("1") => Collection::from_file(&pck.file),
+        Some("3") => Collection::from_file_v3(&pck.file),
+        _ => Err(anyhow::anyhow!("Unknown extension."))
+    }?;
     eprintln!("Loaded {} packages.", c.len());
 
     if pck.list {
@@ -44,6 +50,9 @@ fn main() -> anyhow::Result<()> {
     match (pck.json, pck.note) {
         (true, false) => {
             println!("{}", json::to_string_pretty(&c.pcks).unwrap());
+            if let Some(raw) = c.raw {
+                println!("{}", json::to_string_pretty(&raw).unwrap());
+            }
         }
         (false, true) => {
             let pcks = c.pcks.iter().map(AxlNote::from).collect::<Vec<_>>();
@@ -86,6 +95,7 @@ impl AxlNote {
 
 struct Collection {
     pub pcks: Vec<axl::AxlPacket>,
+    pub raw: Option<Vec<sfy::waves::VecRawAxl>>,
 }
 
 impl Collection {
@@ -115,7 +125,42 @@ impl Collection {
             })
             .collect::<Vec<_>>();
 
-        Ok(Collection { pcks })
+        Ok(Collection { pcks, raw: None })
+    }
+
+    pub fn from_file_v3(p: impl AsRef<Path>) -> anyhow::Result<Collection> {
+        let p = p.as_ref();
+        let mut b = std::fs::read(p)?;
+
+        if (b.len() % PACKAGE_SZ) != 0 {
+            eprintln!("Warning, collection consists of non-integer number of packages.");
+        }
+
+        let n = b.len() / PACKAGE_SZ;
+
+        eprintln!(
+            "Parsing {} bytes of packages into {} packages..",
+            b.len(),
+            n
+        );
+        let (pcks, raw) = b
+            .chunks_exact_mut(PACKAGE_SZ)
+            .filter_map(|p| {
+                let (p, raw) = p.split_at_mut(axl::AXL_POSTCARD_SZ);
+
+                let raw = VecRawAxl::from_slice(bytemuck::cast_slice(raw)).unwrap();
+
+                match postcard::from_bytes_cobs(p) {
+                    Ok(p) => Some((p, raw)),
+                    Err(e) => {
+                        eprintln!("failed to parse package: {:?}", e);
+                        None
+                    }
+                }
+            })
+            .unzip();
+
+        Ok(Collection { pcks, raw: Some(raw) })
     }
 }
 
@@ -142,5 +187,11 @@ mod tests {
         // for p in c.pcks {
         //     println!("Package: {:?}", p);
         // }
+    }
+
+    #[test]
+    fn open_v3() {
+        let c = Collection::from_file_v3("tests/data/14.3").unwrap();
+        println!("packages: {}", c.pcks.len());
     }
 }
