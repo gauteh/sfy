@@ -49,10 +49,10 @@ fn main() -> anyhow::Result<()> {
 
     match (pck.json, pck.note) {
         (true, false) => {
-            println!("{}", json::to_string_pretty(&c.pcks).unwrap());
-            if let Some(raw) = c.raw {
-                println!("{}", json::to_string_pretty(&raw).unwrap());
-            }
+            println!("{}", json::to_string_pretty(&c).unwrap());
+            // if let Some(raw) = c.raw {
+            //     println!("{}", json::to_string_pretty(&raw).unwrap());
+            // }
         }
         (false, true) => {
             let pcks = c.pcks.iter().map(AxlNote::from).collect::<Vec<_>>();
@@ -93,9 +93,10 @@ impl AxlNote {
     }
 }
 
+#[derive(serde::Serialize)]
 struct Collection {
     pub pcks: Vec<axl::AxlPacket>,
-    pub raw: Option<Vec<sfy::waves::VecRawAxl>>,
+    pub raw: Option<Vec<Vec<f32>>>,
 }
 
 impl Collection {
@@ -149,6 +150,7 @@ impl Collection {
                 let (p, raw) = p.split_at_mut(axl::AXL_POSTCARD_SZ);
 
                 let raw = VecRawAxl::from_slice(bytemuck::cast_slice(raw)).unwrap();
+                let raw = raw.iter().map(|v| (*v).into()).collect::<Vec<f32>>();
 
                 match postcard::from_bytes_cobs(p) {
                     Ok(p) => Some((p, raw)),
@@ -193,5 +195,14 @@ mod tests {
     fn open_v3() {
         let c = Collection::from_file_v3("tests/data/14.3").unwrap();
         println!("packages: {}", c.pcks.len());
+
+        // println!("raw: {:?}", c.raw.unwrap()[0]);
+
+        let last = &c.raw.unwrap()[0];
+        println!("{}", json::to_string(&last).unwrap());
+
+        // doesn't work due to: https://github.com/starkat99/half-rs/issues/60
+        let f = half::f16::from_f32(45.0);
+        println!("{}", json::to_string(&f).unwrap());
     }
 }

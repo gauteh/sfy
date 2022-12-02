@@ -249,43 +249,43 @@ fn main() -> ! {
     loop {
         let now = STATE.now().timestamp_millis();
 
-        let drdy = storage_manager.storage_queue.ready() || imu_queue.ready();
+        let l = location.check_retrieve(&STATE, &mut delay, &mut note);
 
-        if (drdy && ((now - last) > 500)) || ((now - last) > 5000) {
-            defmt::debug!("iteration, now: {}, drdy: {}", now, drdy);
+        // Move data to SD card and enqueue for Notecard.
+        match storage_manager.drain_queue(&mut note, &mut delay) {
+            Err(e) => {
+                error!("Failed to write to SD card: {:?}", e);
+
+                if sd_good {
+                    let mut msg = heapless::String::<256>::new();
+                    write!(&mut msg, "storage-err-l: {:?}", e)
+                        .inspect_err(|e| {
+                            defmt::error!(
+                                "failed to format storage-err: {:?}",
+                                defmt::Debug2Format(e)
+                            )
+                        })
+                        .ok();
+                    log(&msg);
+                }
+
+                sd_good = false;
+            }
+            Ok(Some(_)) => {
+                sd_good = true;
+            }
+            _ => {}
+        };
+
+        // Process data and communication for the Notecard.
+        if (imu_queue.ready() && ((now - last) > 500)) || ((now - last) > 5000) {
+            defmt::debug!("notecard iteration, now: {}, imu queue: {}", now, imu_queue.len());
+            led.toggle().unwrap();
 
             sfy::log::drain_log(&mut note, &mut delay)
                 .inspect_err(|e| defmt::error!("drain log: {:?}", e))
                 .ok();
 
-            led.toggle().unwrap();
-
-            let l = location.check_retrieve(&STATE, &mut delay, &mut note);
-
-            match storage_manager.drain_queue(&mut note, &mut delay) {
-                Err(e) => {
-                    error!("Failed to write to SD card: {:?}", e);
-
-                    if sd_good {
-                        let mut msg = heapless::String::<256>::new();
-                        write!(&mut msg, "storage-err-l: {:?}", e)
-                            .inspect_err(|e| {
-                                defmt::error!(
-                                    "failed to format storage-err: {:?}",
-                                    defmt::Debug2Format(e)
-                                )
-                            })
-                            .ok();
-                        log(&msg);
-                    }
-
-                    sd_good = false;
-                }
-                Ok(Some(_)) => {
-                    sd_good = true;
-                }
-                _ => {}
-            };
 
             let nd = note.drain_queue(&mut imu_queue, &mut delay);
             let ns = note.check_and_sync(&mut delay);

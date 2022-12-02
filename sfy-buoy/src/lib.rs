@@ -40,8 +40,8 @@ use axl::AxlPacket;
 use waves::VecRawAxl;
 use storage::Storage;
 
-pub const STORAGEQ_SZ: usize = 2;
-pub const NOTEQ_SZ: usize = 2;
+pub const STORAGEQ_SZ: usize = 3;
+pub const NOTEQ_SZ: usize = 4;
 pub const IMUQ_SZ: usize = STORAGEQ_SZ;
 
 /// These queues are filled up by the IMU interrupt in read batches of time-series. It is then consumed
@@ -134,6 +134,10 @@ impl Location {
         }
     }
 
+    /// Get latest time and position.
+    ///
+    /// > NOTE: This function is called very frequently and should not communicate with the
+    /// Notecard in a non-debounced way.
     pub fn check_retrieve<T: Read + Write, D: DateTimeAccess>(
         &mut self,
         state: &Mutex<RefCell<Option<SharedState<D>>>>,
@@ -143,10 +147,9 @@ impl Location {
         use notecard::card::res::{Location, Time};
         use LocationState::*;
 
-        const LOCATION_DIFF: i64 = 1 * 60_000; // ms
+        const LOCATION_DIFF: i64 = 1 * 60_000; // [ms]: 1 minute
 
         let now = state.now().timestamp_millis();
-        defmt::trace!("now: {}", now);
 
         match self.state {
             Retrieved(t) | Trying(t) if (now - t) > LOCATION_DIFF => {
@@ -318,6 +321,9 @@ where
         }
     }
 
+    /// Drain data queue from IMU to SD card and queue the processed data for the notecard.
+    ///
+    /// > NOTE: This function is called very frequently and should not communicate with the Notecard.
     pub fn drain_queue<I2C: Read + Write>(
         &mut self,
         note: &mut note::Notecarrier<I2C>,
@@ -347,6 +353,15 @@ where
                 .ok();
         }
 
+        e
+    }
+
+    /// XXX: Currently disabled.
+    pub fn queue_requested_packages<I2C: Read + Write>(
+        &mut self,
+        note: &mut note::Notecarrier<I2C>,
+        delay: &mut impl DelayMs<u16>,
+    ) -> Result<(), storage::StorageErr> {
         // Send additional requested packages from SD-card.
         if let Some(next_id) = self.storage.next_id() {
             if let Ok((
@@ -437,6 +452,6 @@ where
             }
         }
 
-        e
+        Ok(())
     }
 }
