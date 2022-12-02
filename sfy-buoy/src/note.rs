@@ -344,6 +344,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             //     }
             // }
 
+            // TODO: if status was over 75 last time, don't spam notecard with status requests.
             let status = self.note.card().status(delay)?.wait(delay)?;
 
             if status.storage > 75 {

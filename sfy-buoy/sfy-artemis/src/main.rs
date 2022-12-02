@@ -278,7 +278,7 @@ fn main() -> ! {
         };
 
         // Process data and communication for the Notecard.
-        if (imu_queue.ready() && ((now - last) > 500)) || ((now - last) > 5000) {
+        if imu_queue.ready() || ((now - last) > 5000) {
             defmt::debug!("notecard iteration, now: {}, imu queue: {}", now, imu_queue.len());
             led.toggle().unwrap();
 
@@ -332,7 +332,9 @@ fn main() -> ! {
         delay.delay_ms(1000u16);
 
         #[cfg(feature = "deploy")]
-        asm::wfi(); // doesn't work very well with RTT + probe
+        if !(imu_queue.ready() || storage_manager.storage_queue.ready()) {
+            asm::wfi(); // doesn't work very well with RTT + probe
+        }
 
         // defmt::flush();
 
