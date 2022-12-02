@@ -67,21 +67,21 @@ def archive(config):
         bname = b.dev
         bc = config['drifters'][bname]
 
-        if 'start_time' in config:
+        if 'start_time' in config and config['start_time'] is not None:
             start_time = config['start_time']
-        elif 'start_time' in bc:
+        elif 'start_time' in bc and bc['start_time'] is not None:
             start_time = bc['start_time']
         else:
             start_time = datetime(1,1,1)
 
-        if 'end_time' in config:
+        if 'end_time' in config and config['end_time'] is not None:
             end_time = config['end_time']
-        elif 'end_time' in bc:
+        elif 'end_time' in bc and bc['end_time'] is not None:
             end_time = bc['end_time']
         else:
             end_time = datetime.now()
 
-        dicts[b] = {}
+        dicts[bname] = {}
         packages = b.fetch_packages_range(start=datetime(1, 1, 1), end=datetime.now())
         for p in packages:
             j = json.loads(p[2])
@@ -89,7 +89,7 @@ def archive(config):
                 if 'latitude' in m:
                     time = datetime.fromtimestamp(m['datetime_fix'])
                     if time >= start_time and time <= end_time:
-                        dicts[b][time] = \
+                        dicts[bname][time] = \
                             {'lon': m['longitude'], 'lat': m['latitude']}
                     else:
                         print(f'Skipping time {time}')
@@ -97,6 +97,7 @@ def archive(config):
     ds = ta.trajectory_dict_to_dataset(dicts, config['attributes'])
     comments = [config['drifters'][bname]['comment'] if 'comment' in config['drifters'][bname]
                 else '' for bname in config['drifters']]
+    comments = [c if c is not None else '' for c in comments]
     if sum([len(c) for c in comments]) > 0:
         ds = ds.assign(drifter_description = (['trajectory'], comments))
 
