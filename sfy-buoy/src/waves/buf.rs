@@ -82,13 +82,21 @@ impl ImuBuf {
             return Err(Error::BufFull);
         }
 
+        // From Adafruit Sensors library.
+        const SENSORS_RADS_TO_DPS: f64 = 57.29577793;
+        const SENSORS_GRAVITY_STANDARD: f64 = 9.80665;
+
+        // Feed AHRS filter
+        //
+        // The filter takes gyro readings in degrees per second (dps) and accelerometer in (g) for
+        // linear acceleration (can also take it in m/s^2 if not linear acceleration).
         self.filter.update(
-            g[0] as f32,
-            g[1] as f32,
-            g[2] as f32,
-            a[0] as f32,
-            a[1] as f32,
-            a[2] as f32,
+            (g[0] * SENSORS_RADS_TO_DPS) as f32,
+            (g[1] * SENSORS_RADS_TO_DPS) as f32,
+            (g[2] * SENSORS_RADS_TO_DPS) as f32,
+            (a[0] / SENSORS_GRAVITY_STANDARD) as f32,
+            (a[1] / SENSORS_GRAVITY_STANDARD) as f32,
+            (a[2] / SENSORS_GRAVITY_STANDARD) as f32,
             0., // Ignore (uncalibrated) magnetometer. This does more harm than good, ref. Jeans buoy.
             0.,
             0.,
@@ -109,6 +117,11 @@ impl ImuBuf {
             self.fir[2].decimate(axl.z),
         ) {
             (Some(x), Some(y), Some(z)) => {
+                // Convert from g's to m/s^2
+                let x = x * SENSORS_GRAVITY_STANDARD as f32;
+                let y = y * SENSORS_GRAVITY_STANDARD as f32;
+                let z = z * SENSORS_GRAVITY_STANDARD as f32;
+
                 self.axl.push(f16::from_f32(x)).unwrap();
                 self.axl.push(f16::from_f32(y)).unwrap();
                 self.axl.push(f16::from_f32(z)).unwrap();
