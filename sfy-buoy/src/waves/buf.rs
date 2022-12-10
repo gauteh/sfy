@@ -13,6 +13,13 @@ pub const RAW_AXL_BYTE_SZ: usize = 2 * AXL_SZ * fir::DECIMATE as usize * 2;
 pub type VecAxl = heapless::Vec<f16, AXL_SZ>;
 pub type VecRawAxl = heapless::Vec<f16, RAW_AXL_SZ>;
 
+
+#[cfg(feature = "raw")]
+pub type AxlBufT = (VecAxl, VecRawAxl);
+
+#[cfg(not(feature = "raw"))]
+pub type AxlBufT = (VecAxl,);
+
 #[derive(Debug, Clone, defmt::Format)]
 pub enum Error {
     BufFull,
@@ -28,6 +35,7 @@ pub struct ImuBuf {
     pub axl: VecAxl,
 
     /// Buffer with raw values, is emptied whenever axl is emptied.
+    #[cfg(feature = "raw")]
     pub raw_axl: VecRawAxl,
 }
 
@@ -45,22 +53,34 @@ impl ImuBuf {
             fir,
             filter,
             axl: VecAxl::new(),
+
+            #[cfg(feature = "raw")]
             raw_axl: VecRawAxl::new(),
         }
     }
 
-    pub fn take_buf(&mut self) -> (VecAxl, VecRawAxl) {
+    pub fn take_buf(&mut self) -> AxlBufT {
         let b = self.axl.clone();
+
+        #[cfg(feature = "raw")]
         let r = self.raw_axl.clone();
 
         self.axl.clear();
+
+        #[cfg(feature = "raw")]
         self.raw_axl.clear();
 
-        (b, r)
+        #[cfg(feature = "raw")]
+        return (b, r);
+
+        #[cfg(not(feature = "raw"))]
+        return (b,);
     }
 
     pub fn reset(&mut self) {
         self.axl.clear();
+
+        #[cfg(feature = "raw")]
         self.raw_axl.clear();
 
         self.filter.reset();
@@ -100,8 +120,11 @@ impl ImuBuf {
         const SENSORS_GRAVITY_STANDARD: f64 = 9.80665;
 
         // Store raw values
-        self.raw_axl.extend(g.iter().map(|g| f16::from_f64(*g)));
-        self.raw_axl.extend(a.iter().map(|a| f16::from_f64(*a)));
+        #[cfg(feature = "raw")]
+        {
+            self.raw_axl.extend(g.iter().map(|g| f16::from_f64(*g)));
+            self.raw_axl.extend(a.iter().map(|a| f16::from_f64(*a)));
+        }
 
         // Feed AHRS filter
         //

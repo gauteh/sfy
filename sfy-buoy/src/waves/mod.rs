@@ -16,6 +16,12 @@ mod buf;
 use buf::ImuBuf;
 pub use buf::{VecAxl, VecRawAxl, RAW_AXL_SZ, RAW_AXL_BYTE_SZ};
 
+#[cfg(feature = "raw")]
+pub type AxlPacketT = (AxlPacket, VecRawAxl);
+
+#[cfg(not(feature = "raw"))]
+pub type AxlPacketT = (AxlPacket,);
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Freq {
     Hz26,
@@ -304,9 +310,13 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         position_time: u32,
         lon: f64,
         lat: f64,
-    ) -> Result<(AxlPacket, VecRawAxl), E> {
+    ) -> Result<AxlPacketT, E> {
         defmt::trace!("axl: taking buffer");
+        #[cfg(feature = "raw")]
         let (data, raw) = self.buf.take_buf();
+
+        #[cfg(not(feature = "raw"))]
+        let (data,) = self.buf.take_buf();
 
         let pck = AxlPacket {
             timestamp: self.timestamp,
@@ -336,7 +346,11 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
             self.fifo_offset
         );
 
-        Ok((pck, raw))
+        #[cfg(feature = "raw")]
+        return Ok((pck, raw));
+
+        #[cfg(not(feature = "raw"))]
+        return Ok((pck,));
     }
 
     pub fn is_full(&self) -> bool {

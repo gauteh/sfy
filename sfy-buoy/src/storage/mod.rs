@@ -22,7 +22,7 @@ use embedded_sdmmc::{
 use heapless::{String, Vec};
 
 use crate::axl::{self, AxlPacket, AXL_POSTCARD_SZ};
-use crate::waves::{VecRawAxl, RAW_AXL_BYTE_SZ};
+use crate::waves::{AxlPacketT, RAW_AXL_BYTE_SZ};
 
 pub const PACKAGE_SZ: usize = AXL_POSTCARD_SZ + RAW_AXL_BYTE_SZ;
 
@@ -156,8 +156,12 @@ where
     }
 
     /// Store a new package.
-    pub fn store(&mut self, pck: &mut (AxlPacket, VecRawAxl)) -> Result<u32, StorageErr> {
+    pub fn store(&mut self, pck: &mut AxlPacketT) -> Result<u32, StorageErr> {
+        #[cfg(feature = "raw")]
         let (pck, raw) = pck;
+
+        #[cfg(not(feature = "raw"))]
+        let (pck,) = pck;
 
         let mut block = self.acquire()?;
 
@@ -176,11 +180,19 @@ where
         buf.resize_default(buf.capacity()).unwrap();
 
         // Serialize raw bytes
-        #[cfg(target_endian = "big")]
-        compile_error!("serializied samples are assumed to be in little endian, target platform is big endian and no conversion is implemented.");
-        raw.resize_default(raw.capacity()).unwrap();
-        let raw_bytes: &[u8] = bytemuck::cast_slice(&raw.as_slice());
-        debug_assert_eq!(raw_bytes.len(), RAW_AXL_BYTE_SZ);
+        #[cfg(feature = "raw")]
+        let raw_bytes = {
+            #[cfg(target_endian = "big")]
+            compile_error!("serializied samples are assumed to be in little endian, target platform is big endian and no conversion is implemented.");
+            raw.resize_default(raw.capacity()).unwrap();
+            let raw_bytes: &[u8] = bytemuck::cast_slice(&raw.as_slice());
+            debug_assert_eq!(raw_bytes.len(), RAW_AXL_BYTE_SZ);
+
+            raw_bytes
+        };
+
+        #[cfg(not(feature = "raw"))]
+        let raw_bytes: &[u8] = &[];
 
         // And write..
         defmt::info!(
@@ -285,6 +297,7 @@ where
         &mut self,
         collection: &str,
         buf: &[u8],
+        #[allow(unused)]
         buf_raw: &[u8],
     ) -> Result<usize, StorageErr> {
         let sz: Result<usize, StorageErr> = try {
@@ -296,7 +309,13 @@ where
                 .inspect_err(|e| defmt::error!("File seek error: {}", e))
                 .map_err(|_| StorageErr::WriteError)?; // We should already be at the
                                                        // end.
-            f.write(&buf)? + f.write(&buf_raw)?
+            #[cfg(feature = "raw")]
+            let r = f.write(&buf)? + f.write(&buf_raw)?;
+
+            #[cfg(not(feature = "raw"))]
+            let r = f.write(&buf)?;
+
+            r
         };
 
         if sz.is_err() {

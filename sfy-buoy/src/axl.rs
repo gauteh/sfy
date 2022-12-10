@@ -2,8 +2,13 @@ use defmt::{write, Format, Formatter};
 use half::f16;
 use heapless::Vec;
 
-pub const SAMPLE_SZ: usize = 3;
+#[cfg(feature = "raw")]
 pub const SAMPLE_NO: usize = 256;
+
+#[cfg(not(feature = "raw"))]
+pub const SAMPLE_NO: usize = 1024;
+
+pub const SAMPLE_SZ: usize = 3;
 pub const AXL_SZ: usize = SAMPLE_SZ * SAMPLE_NO;
 pub const VERSION: u32 = 4;
 
@@ -12,7 +17,11 @@ pub const AXL_OUTN: usize = { AXL_SZ * 2 } * 4 / 3 + 4;
 
 /// Max size of `AxlPacket` serialized using postcard with COBS. Set with some margin since
 /// postcard messages are not fixed size.
+#[cfg(feature = "raw")]
 pub const AXL_POSTCARD_SZ: usize = 1024 * 4;
+
+#[cfg(not(feature = "raw"))]
+pub const AXL_POSTCARD_SZ: usize = 1024 * 10;
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct AxlPacket {

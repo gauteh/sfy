@@ -37,7 +37,7 @@ pub mod storage;
 pub mod waves;
 
 use axl::AxlPacket;
-use waves::VecRawAxl;
+use waves::AxlPacketT;
 use storage::Storage;
 
 pub const STORAGEQ_SZ: usize = 3;
@@ -48,7 +48,7 @@ pub const IMUQ_SZ: usize = STORAGEQ_SZ;
 /// the main thread and first drained to the SD storage (if enabled), and then queued for the notecard.
 
 /// Queue from IMU to Storage
-pub static mut STORAGEQ: heapless::spsc::Queue<(AxlPacket, VecRawAxl), STORAGEQ_SZ> =
+pub static mut STORAGEQ: heapless::spsc::Queue<AxlPacketT, STORAGEQ_SZ> =
     heapless::spsc::Queue::new();
 
 /// Queue from Storage to Notecard
@@ -218,7 +218,7 @@ impl Location {
 }
 
 pub struct Imu<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> {
-    pub queue: heapless::spsc::Producer<'static, (AxlPacket, VecRawAxl), IMUQ_SZ>,
+    pub queue: heapless::spsc::Producer<'static, AxlPacketT, IMUQ_SZ>,
     waves: waves::Waves<I>,
     last_read: i64,
 }
@@ -226,7 +226,7 @@ pub struct Imu<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error =
 impl<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> Imu<E, I> {
     pub fn new(
         waves: waves::Waves<I>,
-        queue: heapless::spsc::Producer<'static, (AxlPacket, VecRawAxl), IMUQ_SZ>,
+        queue: heapless::spsc::Producer<'static, AxlPacketT, IMUQ_SZ>,
     ) -> Imu<E, I> {
         Imu {
             queue,
@@ -301,7 +301,7 @@ where
     <Spi as Transfer<u8>>::Error: Debug,
 {
     storage: Storage<Spi, CS>,
-    pub storage_queue: heapless::spsc::Consumer<'static, (AxlPacket, VecRawAxl), STORAGEQ_SZ>,
+    pub storage_queue: heapless::spsc::Consumer<'static, AxlPacketT, STORAGEQ_SZ>,
     pub note_queue: heapless::spsc::Producer<'static, AxlPacket, NOTEQ_SZ>,
 }
 
@@ -311,7 +311,7 @@ where
 {
     pub fn new(
         storage: Storage<Spi, CS>,
-        storage_queue: heapless::spsc::Consumer<'static, (AxlPacket, VecRawAxl), STORAGEQ_SZ>,
+        storage_queue: heapless::spsc::Consumer<'static, AxlPacketT, STORAGEQ_SZ>,
         note_queue: heapless::spsc::Producer<'static, AxlPacket, NOTEQ_SZ>,
     ) -> StorageManager<Spi, CS> {
         StorageManager {
