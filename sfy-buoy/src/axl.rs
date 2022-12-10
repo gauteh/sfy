@@ -3,7 +3,8 @@ use half::f16;
 use heapless::Vec;
 
 pub const SAMPLE_SZ: usize = 3;
-pub const AXL_SZ: usize = SAMPLE_SZ * 256;
+pub const SAMPLE_NO: usize = 256;
+pub const AXL_SZ: usize = SAMPLE_SZ * SAMPLE_NO;
 pub const VERSION: u32 = 4;
 
 /// Maximum length of base64 string from [f16; AXL_SZ]
@@ -142,7 +143,7 @@ mod tests {
             storage_id: Some(0),
             storage_version: VERSION,
             temperature: 0.0,
-            data: (0..3072)
+            data: (0..AXL_SZ)
                 .map(|v| f16::from_f32(v as f32))
                 .collect::<Vec<_, { AXL_SZ }>>(),
         };
@@ -163,7 +164,7 @@ mod tests {
             storage_id: Some(1489),
             storage_version: VERSION,
             temperature: 0.0,
-            data: (6..3078)
+            data: (0..AXL_SZ)
                 .map(|v| f16::from_f32(v as f32))
                 .collect::<Vec<_, { AXL_SZ }>>(),
         };

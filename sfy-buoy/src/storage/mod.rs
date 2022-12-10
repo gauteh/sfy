@@ -433,12 +433,12 @@ mod tests {
     #[test]
     fn test_id_to_parts() {
         let (c, file, o) = id_to_parts(0);
-        assert_eq!(c, "0.2");
+        assert_eq!(c, "0.4");
         assert_eq!(file, 0);
         assert_eq!(o, 0);
 
         let (c, file, o) = id_to_parts(1231255);
-        assert_eq!(c, "12312.2");
+        assert_eq!(c, "12312.4");
         assert_eq!(file, 55);
         assert_eq!(o, 55 * AXL_POSTCARD_SZ);
     }

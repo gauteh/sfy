@@ -155,20 +155,22 @@ impl ImuBuf {
 
 #[cfg(test)]
 mod tests {
+    use crate::axl::SAMPLE_NO;
+
     use super::*;
 
     #[test]
     fn filter_decimater() {
         let mut buf = ImuBuf::new(200.);
 
-        for _ in 0..1024 {
+        for _ in 0..SAMPLE_NO {
             buf.sample([0., 1., 2.], [0., 1., 2.]).unwrap();
         }
 
-        assert_eq!(buf.axl.len(), SAMPLE_SZ * 1024 / fir::DECIMATE as usize);
+        assert_eq!(buf.axl.len(), SAMPLE_SZ * SAMPLE_NO / fir::DECIMATE as usize);
         assert_eq!(
             buf.free(),
-            (AXL_SZ / SAMPLE_SZ) - (1024 / fir::DECIMATE as usize)
+            (AXL_SZ / SAMPLE_SZ) - (SAMPLE_NO / fir::DECIMATE as usize)
         );
     }
 }

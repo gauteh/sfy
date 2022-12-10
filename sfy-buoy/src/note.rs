@@ -422,7 +422,7 @@ mod tests {
     fn read_transmitted_data_package() {
         use std::fs;
 
-        let sent_data = (0..3072)
+        let sent_data = (0..AXL_SZ)
             .map(|v| f16::from_f32(v as f32))
             .collect::<heapless::Vec<_, { AXL_SZ }>>();
 
