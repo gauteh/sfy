@@ -279,13 +279,17 @@ fn main() -> ! {
 
         // Process data and communication for the Notecard.
         if imu_queue.ready() || ((now - last) > 5000) {
-            defmt::debug!("notecard iteration, now: {}, imu queue: {}", now, imu_queue.len());
+            defmt::debug!(
+                "notecard iteration, now: {}, note queue: {}, storage queue: {}",
+                now,
+                imu_queue.len(),
+                storage_manager.storage_queue.len()
+            );
             led.toggle().unwrap();
 
             sfy::log::drain_log(&mut note, &mut delay)
                 .inspect_err(|e| defmt::error!("drain log: {:?}", e))
                 .ok();
-
 
             let nd = note.drain_queue(&mut imu_queue, &mut delay);
             let ns = note.check_and_sync(&mut delay);

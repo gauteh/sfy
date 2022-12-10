@@ -352,7 +352,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                 return Ok(0);
             }
 
-            defmt::debug!("sending package: queue sz: {}", queue.len());
+            defmt::info!("sending package: note queue sz (before send): {}", queue.len());
 
             let sz = self.send(pck, delay).inspect_err(|e| {
                 defmt::error!("Error while sending package to notecard: {:?}", e)

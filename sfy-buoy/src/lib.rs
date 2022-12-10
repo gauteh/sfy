@@ -340,8 +340,8 @@ where
         let mut e: Result<Option<u32>, storage::StorageErr> = Ok(None);
 
         if let Some(mut pck) = self.storage_queue.dequeue() {
-            defmt::debug!(
-                "Storing package: {:?} (queue length: {})",
+            defmt::info!(
+                "Storing package: {:?} (sz queue length: {})",
                 pck.0,
                 self.storage_queue.len()
             );
