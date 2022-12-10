@@ -4,6 +4,7 @@ use heapless::Vec;
 
 pub const SAMPLE_SZ: usize = 3;
 pub const AXL_SZ: usize = SAMPLE_SZ * 256;
+pub const VERSION: u32 = 4;
 
 /// Maximum length of base64 string from [f16; AXL_SZ]
 pub const AXL_OUTN: usize = { AXL_SZ * 2 } * 4 / 3 + 4;
@@ -23,7 +24,7 @@ pub struct AxlPacket {
     /// ID on SD-card. This one is not necessarily unique. Will not be set
     /// before package has been written to SD-card.
     pub storage_id: Option<u32>,
-    pub storage_version: Option<u32>,
+    pub storage_version: u32,
 
     /// Time of position in seconds.
     pub position_time: u32,
@@ -36,6 +37,24 @@ pub struct AxlPacket {
 
     /// IMU data. This is moved to the payload when transmitting.
     pub data: Vec<f16, { AXL_SZ }>,
+}
+
+#[derive(serde::Serialize, Default)]
+pub struct AxlPacketMeta {
+    pub timestamp: i64,
+    pub offset: u32,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub storage_id: Option<u32>,
+    pub storage_version: u32,
+
+    pub position_time: u32,
+    pub lon: f64,
+    pub lat: f64,
+    pub temperature: f32,
+
+    pub freq: f32,
+    pub length: u32,
 }
 
 impl core::fmt::Debug for AxlPacket {
@@ -74,8 +93,7 @@ impl AxlPacket {
         let mut b64: Vec<_, AXL_OUTN> = Vec::new();
         b64.resize_default(AXL_OUTN).unwrap();
 
-        // Check endianness (TODO: use byteorder or impl in hidefix to swap order if compiled for
-        // big endian machine).
+        // Check endianness (TODO:  swap order if compiled for big endian machine).
         #[cfg(target_endian = "big")]
         compile_error!("serializied samples are assumed to be in little endian, target platform is big endian and no conversion is implemented.");
 
@@ -85,25 +103,32 @@ impl AxlPacket {
 
         b64
     }
-}
 
-#[derive(serde::Serialize, Default)]
-pub struct AxlPacketMeta {
-    pub timestamp: i64,
-    pub offset: u32,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub storage_id: Option<u32>,
-    pub length: u32,
-    pub freq: f32,
-    pub position_time: u32,
-    pub lon: f64,
-    pub lat: f64,
+    /// Split package into metadata and payload.
+    pub fn split(&self) -> (AxlPacketMeta, Vec<u8, AXL_OUTN>) {
+        let b64 = self.base64();
+
+        let meta = AxlPacketMeta {
+            timestamp: self.timestamp,
+            offset: self.offset as u32,
+            length: b64.len() as u32,
+            freq: self.freq,
+            storage_id: self.storage_id,
+            storage_version: self.storage_version,
+            position_time: self.position_time,
+            lon: self.lon,
+            lat: self.lat,
+            temperature: self.temperature,
+        };
+
+
+        (meta, b64)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::storage::STORAGE_VERSION;
 
     #[test]
     fn base64_data_package() {
@@ -115,7 +140,7 @@ mod tests {
             freq: 100.0,
             offset: 0,
             storage_id: Some(0),
-            storage_version: Some(STORAGE_VERSION),
+            storage_version: VERSION,
             temperature: 0.0,
             data: (0..3072)
                 .map(|v| f16::from_f32(v as f32))
@@ -136,7 +161,7 @@ mod tests {
             freq: 53.0,
             offset: 0,
             storage_id: Some(1489),
-            storage_version: Some(STORAGE_VERSION),
+            storage_version: VERSION,
             temperature: 0.0,
             data: (6..3078)
                 .map(|v| f16::from_f32(v as f32))

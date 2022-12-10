@@ -21,7 +21,7 @@ use embedded_sdmmc::{
 };
 use heapless::{String, Vec};
 
-use crate::axl::{AxlPacket, AXL_POSTCARD_SZ};
+use crate::axl::{self, AxlPacket, AXL_POSTCARD_SZ};
 use crate::waves::{VecRawAxl, RAW_AXL_BYTE_SZ};
 
 pub const PACKAGE_SZ: usize = AXL_POSTCARD_SZ + RAW_AXL_BYTE_SZ;
@@ -35,8 +35,8 @@ use handles::*;
 /// Writing to a file seems to take longer time when it has more packages, this can cause timeouts
 /// in the interrupt that drains the IMU FIFO. See <https://github.com/gauteh/sfy/issues/77>.
 pub const COLLECTION_SIZE: u32 = 100;
-pub const STORAGE_VERSION_STR: &'static str = "3";
-pub const STORAGE_VERSION: u32 = 3;
+pub const STORAGE_VERSION: u32 = axl::VERSION;
+pub const STORAGE_VERSION_STR: &'static str = "4";
 
 #[derive(Debug, defmt::Format)]
 pub enum StorageErr {
@@ -168,7 +168,6 @@ where
 
         // Package now has a storage ID.
         pck.storage_id = Some(id);
-        pck.storage_version = Some(STORAGE_VERSION);
 
         // Serialize
         let mut buf: Vec<u8, { AXL_POSTCARD_SZ }> = postcard::to_vec_cobs(pck)
@@ -426,6 +425,12 @@ mod tests {
     use half::f16;
 
     #[test]
+    fn version_str() {
+        let n: u32 = STORAGE_VERSION_STR.parse().unwrap();
+        assert_eq!(n, STORAGE_VERSION);
+    }
+
+    #[test]
     fn test_id_to_parts() {
         let (c, file, o) = id_to_parts(0);
         assert_eq!(c, "0.2");
@@ -483,12 +488,13 @@ mod tests {
         let p0_truth = AxlPacket {
             timestamp: 1002330,
             position_time: 123123,
+            temperature: 0.0,
             lat: 34.52341,
             lon: 54.012,
             freq: 53.0,
             offset: 15,
             storage_id: Some(0),
-            storage_version: Some(STORAGE_VERSION),
+            storage_version: STORAGE_VERSION,
             data: (6..3078)
                 .map(|v| f16::from_f32(v as f32))
                 .collect::<Vec<_, { AXL_SZ }>>(),
@@ -496,12 +502,13 @@ mod tests {
         let p1_truth = AxlPacket {
             timestamp: 1002400,
             position_time: 123123,
+            temperature: 0.0,
             lat: 34.52341,
             lon: 54.012,
             freq: 53.0,
             offset: 15,
             storage_id: Some(1),
-            storage_version: Some(STORAGE_VERSION),
+            storage_version: STORAGE_VERSION,
             data: (6..3078)
                 .map(|v| f16::from_f32(v as f32))
                 .collect::<Vec<_, { AXL_SZ }>>(),
@@ -509,12 +516,13 @@ mod tests {
         let p2_truth = AxlPacket {
             timestamp: 1002500,
             position_time: 123123,
+            temperature: 0.0,
             lat: 34.52341,
             lon: 54.012,
             freq: 53.0,
             offset: 15,
             storage_id: Some(2),
-            storage_version: Some(STORAGE_VERSION),
+            storage_version: STORAGE_VERSION,
             data: (9..3081)
                 .map(|v| f16::from_f32(v as f32))
                 .collect::<Vec<_, { AXL_SZ }>>(),

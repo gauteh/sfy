@@ -74,18 +74,7 @@ pub struct AxlNote {
 
 impl AxlNote {
     pub fn from(pck: &axl::AxlPacket) -> AxlNote {
-        let b64 = pck.base64();
-
-        let body = axl::AxlPacketMeta {
-            timestamp: pck.timestamp,
-            offset: pck.offset as u32,
-            length: b64.len() as u32,
-            freq: pck.freq,
-            storage_id: pck.storage_id,
-            position_time: pck.position_time,
-            lon: pck.lon,
-            lat: pck.lat,
-        };
+        let (body, b64) = pck.split();
 
         let payload = String::from_utf8(b64.as_slice().to_vec()).unwrap();
 

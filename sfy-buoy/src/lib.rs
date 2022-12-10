@@ -326,8 +326,8 @@ where
     /// > NOTE: This function is called very frequently and should not communicate with the Notecard.
     pub fn drain_queue<I2C: Read + Write>(
         &mut self,
-        note: &mut note::Notecarrier<I2C>,
-        delay: &mut impl DelayMs<u16>,
+        _note: &mut note::Notecarrier<I2C>,
+        _delay: &mut impl DelayMs<u16>,
     ) -> Result<Option<u32>, storage::StorageErr> {
         let mut e: Result<Option<u32>, storage::StorageErr> = Ok(None);
 

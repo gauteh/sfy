@@ -42,6 +42,7 @@ git = "https://github.com/gauteh/notecard-rs"
 [features]
 continuous = []
 20Hz = []
+raw = []
 build-bin = [ "anyhow", "argh", "serde-json-core/std", "serde_json", "chrono/std" ]
 default = [ "build-bin" ]
 

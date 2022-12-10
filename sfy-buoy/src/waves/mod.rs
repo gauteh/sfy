@@ -9,8 +9,7 @@ use embedded_hal::blocking::{
 use ism330dhcx::{ctrl1xl, ctrl2g, fifo, fifoctrl, Ism330Dhcx};
 use static_assertions as sa;
 
-use crate::storage::STORAGE_VERSION;
-use crate::{axl::AxlPacket, fir};
+use crate::{axl::AxlPacket, fir, axl::VERSION};
 
 mod buf;
 
@@ -314,7 +313,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
             offset: self.fifo_offset,
             data,
             storage_id: None,
-            storage_version: Some(STORAGE_VERSION),
+            storage_version: VERSION,
             position_time: self.position_time,
             temperature: self.temperature,
             lon: self.lon,

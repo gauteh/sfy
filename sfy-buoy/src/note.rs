@@ -1,4 +1,4 @@
-use crate::axl::{AxlPacket, AxlPacketMeta, AXL_OUTN};
+use crate::axl::{AxlPacket, AXL_OUTN};
 use blues_notecard::{self as notecard, NoteError, Notecard, NotecardConfig};
 use core::ops::{Deref, DerefMut};
 use embedded_hal::blocking::delay::DelayMs;
@@ -152,23 +152,33 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         struct AxlPacketMetaTemplate {
             timestamp: u32,
             offset: u32,
-            length: u32,
-            freq: f32,
+
             storage_id: u32,
+            storage_version: u32,
+
             position_time: u32,
             lon: f32,
             lat: f32,
+            temperature: f32,
+
+            freq: f32,
+            length: u32,
         }
 
         let meta_template = AxlPacketMetaTemplate {
             timestamp: 18,
             offset: 14,
-            length: 14,
-            freq: 14.1,
+
             storage_id: 14,
+            storage_version: 14,
+
             position_time: 14,
             lon: 18.1,
             lat: 18.1,
+            temperature: 18.1,
+
+            freq: 14.1,
+            length: 14,
         };
 
         defmt::debug!("setting up template for AxlPacketMeta");
@@ -189,18 +199,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         pck: &AxlPacket,
         delay: &mut impl DelayMs<u16>,
     ) -> Result<usize, NoteError> {
-        let b64 = pck.base64();
-
-        let meta = AxlPacketMeta {
-            timestamp: pck.timestamp,
-            offset: pck.offset as u32,
-            length: b64.len() as u32,
-            freq: pck.freq,
-            storage_id: pck.storage_id,
-            position_time: pck.position_time,
-            lon: pck.lon,
-            lat: pck.lat,
-        };
+        let (meta, b64) = pck.split();
 
         let r = self
             .note
