@@ -102,9 +102,9 @@ def integrate(s,
             freqs = DEFAULT_BANDPASS_FREQS_52Hz
 
     ## Detrend
-    if detrend and order == 1:
-        s = s - np.mean(s)
+    if detrend:
         s = sc.signal.detrend(s)
+        s = s - np.mean(s)
 
     ## Filter
     # # Use elliptic filter (https://github.com/jthomson-apluw/SWIFT-codes/blob/master/Waves/rawdisplacements.m)
@@ -122,10 +122,6 @@ def integrate(s,
         s = dft_integrate(s, fs)
     else:
         raise ValueError("Unknown integration method")
-
-    if detrend:
-        s = s - np.mean(s)
-        s = sc.signal.detrend(s)
 
     return s
 
