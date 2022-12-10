@@ -12,6 +12,7 @@ use static_assertions as sa;
 use crate::{axl::AxlPacket, fir, axl::VERSION};
 
 mod buf;
+mod wire;
 
 use buf::ImuBuf;
 pub use buf::{VecAxl, VecRawAxl, RAW_AXL_SZ, RAW_AXL_BYTE_SZ};

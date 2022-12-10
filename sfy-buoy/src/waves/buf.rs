@@ -7,6 +7,11 @@ use crate::{
     fir,
 };
 
+
+// From Adafruit Sensors library.
+pub const SENSORS_RADS_TO_DPS: f64 = 57.29577793;
+pub const SENSORS_GRAVITY_STANDARD: f64 = 9.80665;
+
 pub const RAW_AXL_SZ: usize = 2 * AXL_SZ * fir::DECIMATE as usize;
 pub const RAW_AXL_BYTE_SZ: usize = 2 * AXL_SZ * fir::DECIMATE as usize * 2;
 
@@ -114,10 +119,6 @@ impl ImuBuf {
         if self.is_full() {
             return Err(Error::BufFull);
         }
-
-        // From Adafruit Sensors library.
-        const SENSORS_RADS_TO_DPS: f64 = 57.29577793;
-        const SENSORS_GRAVITY_STANDARD: f64 = 9.80665;
 
         // Store raw values
         #[cfg(feature = "raw")]
