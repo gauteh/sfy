@@ -10,7 +10,7 @@ pub const SAMPLE_NO: usize = 1024;
 
 pub const SAMPLE_SZ: usize = 3;
 pub const AXL_SZ: usize = SAMPLE_SZ * SAMPLE_NO;
-pub const VERSION: u32 = 4;
+pub const VERSION: u32 = 5;
 
 /// Maximum length of base64 string from [f16; AXL_SZ]
 pub const AXL_OUTN: usize = { AXL_SZ * 2 } * 4 / 3 + 4;
