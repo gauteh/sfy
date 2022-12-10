@@ -40,8 +40,16 @@ use axl::AxlPacket;
 use waves::AxlPacketT;
 use storage::Storage;
 
+#[cfg(feature = "raw")]
 pub const STORAGEQ_SZ: usize = 3;
+#[cfg(feature = "raw")]
 pub const NOTEQ_SZ: usize = 4;
+
+#[cfg(not(feature = "raw"))]
+pub const STORAGEQ_SZ: usize = 12;
+#[cfg(not(feature = "raw"))]
+pub const NOTEQ_SZ: usize = 12;
+
 pub const IMUQ_SZ: usize = STORAGEQ_SZ;
 
 /// These queues are filled up by the IMU interrupt in read batches of time-series. It is then consumed
