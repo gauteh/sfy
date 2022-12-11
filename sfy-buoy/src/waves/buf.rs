@@ -142,6 +142,8 @@ impl ImuBuf {
             0.,
         );
 
+        // Rotate the instantanuous acceleration into the NED reference frame using the
+        // rotation from the Kalman filter.
         let q = self.filter.quaternion();
         let q = Quaternion::new(q[0], q[1], q[2], q[3]);
         let axl = Vector3d {
@@ -151,17 +153,15 @@ impl ImuBuf {
         };
         let axl = q.rotate(axl);
 
+        // Filter and decimate the rotated acceleration.
         match (
             self.fir[0].decimate(axl.x),
             self.fir[1].decimate(axl.y),
             self.fir[2].decimate(axl.z),
         ) {
             (Some(x), Some(y), Some(z)) => {
-                // Convert from g's to m/s^2
-                let x = x * SENSORS_GRAVITY_STANDARD as f32;
-                let y = y * SENSORS_GRAVITY_STANDARD as f32;
-                let z = z * SENSORS_GRAVITY_STANDARD as f32;
-
+                // x, y, z from axl is in m/s^2, the quaternion is only used to
+                // rotate the instantanuous acceleration.
                 self.axl.push(f16::from_f32(x)).unwrap();
                 self.axl.push(f16::from_f32(y)).unwrap();
                 self.axl.push(f16::from_f32(z)).unwrap();
