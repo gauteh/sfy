@@ -64,7 +64,7 @@ fn scale_f32_to_u16(max: f32, v: f32) -> u16 {
     // v should be in the range from [-max to max]
     let v = v + max; // v -> [0, 2*max]
     let u = v * u16::MAX as f64 / (2. * max); // v -> [0, u16::MAX]
-    return u as u16;
+    return u.round() as u16; // will maybe panic if u is out-of-bounds?
 }
 
 /// Move an u16 on given -max to max range to its real value in f32.
