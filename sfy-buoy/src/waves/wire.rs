@@ -1,16 +1,29 @@
-use super::buf::{SENSORS_GRAVITY_STANDARD, SENSORS_DPS_TO_RADS};
+use super::buf::{SENSORS_DPS_TO_RADS, SENSORS_GRAVITY_STANDARD};
 
 /// Scaling of acceleration values before they are sent or stored.
+///
+/// > Do not change without updating the storage version.
 pub const ACCEL_MAX: f32 = SENSORS_GRAVITY_STANDARD as f32 * 3.; // in g
-                                                                 //
+
 /// Scaling of gyro values before they are sent or stored.
+///
+/// > Do not change without updating the storage version.
 pub const GYRO_MAX: f32 = ((125. * SENSORS_DPS_TO_RADS) * 3.) as f32; // in rad/s
 
 /// An acceleration value packed into an u16 between pre-determined limits.
+#[repr(transparent)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct A16(u16);
 
 /// A gyro value packed into an u16 between pre-determined limits.
+#[repr(transparent)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct G16(u16);
+
+unsafe impl bytemuck::Zeroable for A16 {}
+unsafe impl bytemuck::Zeroable for G16 {}
+unsafe impl bytemuck::Pod for A16 {}
+unsafe impl bytemuck::Pod for G16 {}
 
 pub trait ScaledF32: Sized {
     const MAX: f32;
@@ -84,7 +97,7 @@ mod tests {
     #[test]
     fn scale_limits() {
         assert_eq!(scale_f32_to_u16(10., 10.), u16::MAX);
-        assert_eq!(scale_f32_to_u16(10., 0.), u16::MAX / 2);
+        assert_eq!(scale_f32_to_u16(10., 0.), u16::MAX / 2 + 1);
         assert_eq!(scale_f32_to_u16(10., -10.), 0);
 
         assert_eq!(scale_u16_to_f32(10., u16::MAX), 10.);
@@ -209,5 +222,31 @@ mod tests {
         println!("gyro half max diff: {}", max);
 
         assert!(max < 0.01);
+    }
+
+    #[test]
+    fn slice_as_u16s() {
+        let k: [A16; 1024] = core::array::from_fn(|i| A16(i as u16));
+        println!("{k:?}");
+        let kp = &k as *const _ as *const u16;
+        let u = unsafe { core::slice::from_raw_parts(kp, k.len()) };
+        println!("{u:?}");
+
+        let uk: [u16; 1024] = core::array::from_fn(|i| i as u16);
+        assert_eq!(uk, u);
+    }
+
+    #[test]
+    fn slice_as_u8() {
+        let k: [A16; 1024] = core::array::from_fn(|i| A16(i as u16));
+        let ub: &[u8] = bytemuck::cast_slice(&k);
+        println!("{ub:?}");
+
+        let kub: &[u16] = bytemuck::cast_slice(&ub);
+        let uk: [u16; 1024] = core::array::from_fn(|i| i as u16);
+        assert_eq!(&uk, kub);
+
+        let kkub: &[A16] = bytemuck::cast_slice(&ub);
+        assert_eq!(&k, kkub);
     }
 }
