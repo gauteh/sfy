@@ -10,6 +10,7 @@ use crate::{
 
 // From Adafruit Sensors library.
 pub const SENSORS_RADS_TO_DPS: f64 = 57.29577793;
+pub const SENSORS_DPS_TO_RADS: f64 = 0.017453293;
 pub const SENSORS_GRAVITY_STANDARD: f64 = 9.80665;
 
 pub const RAW_AXL_SZ: usize = 2 * AXL_SZ * fir::DECIMATE as usize;
