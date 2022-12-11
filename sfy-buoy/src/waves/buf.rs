@@ -150,7 +150,8 @@ impl ImuBuf {
         let axl = Vector3d {
             x: a[0] as f32,
             y: a[1] as f32,
-            z: a[2] as f32,
+            z: (a[2] - SENSORS_GRAVITY_STANDARD) as f32, // removing the mean should give
+                                                         // better resolution.
         };
         let axl = q.rotate(axl);
 

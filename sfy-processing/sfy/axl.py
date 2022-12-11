@@ -370,16 +370,45 @@ class Axl(Event, AxlTimeseries):
         # decode x, y, z
         payload = payload[:data['length']]
         payload = base64.b64decode(payload)
-        payload = np.frombuffer(payload, dtype=np.float16)
 
-        if sys.byteorder == 'big':
-            logger.warning(
-                'host is big-endian, swapping bytes: this is not well-tested.')
-            payload.byteswap(inplace=True)
+        if data['storage_version'] < 5:
+            payload = np.frombuffer(payload, dtype=np.float16)
 
-        x = payload[0::3]
-        y = payload[1::3]
-        z = payload[2::3]
+            if sys.byteorder == 'big':
+                logger.warning(
+                    'host is big-endian, swapping bytes: this is not well-tested.')
+                payload.byteswap(inplace=True)
+
+            x = payload[0::3]
+            y = payload[1::3]
+            z = payload[2::3]
+
+        else:
+            payload = np.frombuffer(payload, dtype=np.uint16)
+
+            if sys.byteorder == 'big':
+                logger.warning(
+                    'host is big-endian, swapping bytes: this is not well-tested.')
+                payload.byteswap(inplace=True)
+
+            SENSORS_DPS_TO_RADS = 0.017453293
+            ACCEL_MAX = 9.80665 * 3.
+            GYRO_MAX = ((125. * SENSORS_DPS_TO_RADS) * 3.)
+
+            def scale_u16_to_f32(mx, u):
+                assert mx > 0.
+                u16_max = np.iinfo(np.dtype(np.uint16)).max
+                mx = np.float64(mx)
+                v = np.float64(u)
+                v = v * (2. * mx) / np.float64(u16_max)
+                v = v - mx
+                return np.float32(v)
+
+            payload = scale_u16_to_f32(ACCEL_MAX, payload)
+
+            x = payload[0::3]
+            y = payload[1::3]
+            z = payload[2::3]
 
         return Axl(**data, x=x, y=y, z=z)
 
