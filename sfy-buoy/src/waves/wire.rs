@@ -1,11 +1,15 @@
 use super::buf::{SENSORS_GRAVITY_STANDARD, SENSORS_DPS_TO_RADS};
 
-// Scaling of values before they are sent or stored.
+/// Scaling of acceleration values before they are sent or stored.
 pub const ACCEL_MAX: f32 = SENSORS_GRAVITY_STANDARD as f32 * 3.; // in g
+                                                                 //
+/// Scaling of gyro values before they are sent or stored.
 pub const GYRO_MAX: f32 = ((125. * SENSORS_DPS_TO_RADS) * 3.) as f32; // in rad/s
 
 /// An acceleration value packed into an u16 between pre-determined limits.
 pub struct A16(u16);
+
+/// A gyro value packed into an u16 between pre-determined limits.
 pub struct G16(u16);
 
 pub trait ScaledF32: Sized {
@@ -111,6 +115,12 @@ mod tests {
             let u = scale_f32_to_u16(ACCEL_MAX, v);
             let fu = scale_u16_to_f32(ACCEL_MAX, u);
 
+            let uu = A16::from_f32(v);
+            let fuu = uu.to_f32();
+
+            assert_eq!(u, uu.to_u16());
+            assert_eq!(fu, fuu);
+
             let d = (v - fu).abs();
             max = max.max(d);
             avg = avg + d;
@@ -158,6 +168,12 @@ mod tests {
             let v = (i as f32) * GYRO_MAX / N as f32 - GYRO_MAX;
             let u = scale_f32_to_u16(GYRO_MAX, v);
             let fu = scale_u16_to_f32(GYRO_MAX, u);
+
+            let uu = G16::from_f32(v);
+            let fuu = uu.to_f32();
+
+            assert_eq!(u, uu.to_u16());
+            assert_eq!(fu, fuu);
 
             let d = (v - fu).abs();
             max = max.max(d);
