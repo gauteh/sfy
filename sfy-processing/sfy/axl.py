@@ -385,15 +385,17 @@ class Axl(Event, AxlTimeseries):
 
         else:
             payload = np.frombuffer(payload, dtype=np.uint16)
+            n = len(payload)
 
             if sys.byteorder == 'big':
                 logger.warning(
                     'host is big-endian, swapping bytes: this is not well-tested.')
                 payload.byteswap(inplace=True)
 
-            SENSORS_DPS_TO_RADS = 0.017453293
-            ACCEL_MAX = 9.80665 * 3.
-            GYRO_MAX = ((125. * SENSORS_DPS_TO_RADS) * 3.)
+            SENSORS_GRAVITY_STANDARD = 9.80665
+            ACCEL_MAX = SENSORS_GRAVITY_STANDARD * 3.
+            # SENSORS_DPS_TO_RADS = 0.017453293
+            # GYRO_MAX = ((125. * SENSORS_DPS_TO_RADS) * 3.)
 
             def scale_u16_to_f32(mx, u):
                 assert mx > 0.
@@ -406,9 +408,11 @@ class Axl(Event, AxlTimeseries):
 
             payload = scale_u16_to_f32(ACCEL_MAX, payload)
 
+            assert len(payload) == n
+
             x = payload[0::3]
             y = payload[1::3]
-            z = payload[2::3]
+            z = payload[2::3] + SENSORS_GRAVITY_STANDARD
 
         return Axl(**data, x=x, y=y, z=z)
 
