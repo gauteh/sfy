@@ -150,16 +150,17 @@ impl ImuBuf {
         let axl = Vector3d {
             x: a[0] as f32,
             y: a[1] as f32,
-            z: (a[2] - SENSORS_GRAVITY_STANDARD) as f32, // removing the mean should give
-                                                         // better resolution.
+            z: a[2] as f32,
         };
         let axl = q.rotate(axl);
 
         // Filter and decimate the rotated acceleration.
+        //
+        // Removing the mean from the z-component should give better resolution.
         match (
             self.fir[0].decimate(axl.x),
             self.fir[1].decimate(axl.y),
-            self.fir[2].decimate(axl.z),
+            self.fir[2].decimate(axl.z - SENSORS_GRAVITY_STANDARD as f32),
         ) {
             (Some(x), Some(y), Some(z)) => {
                 // x, y, z from axl is in m/s^2, the quaternion is only used to
