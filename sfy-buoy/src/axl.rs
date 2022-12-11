@@ -1,5 +1,4 @@
 use defmt::{write, Format, Formatter};
-use half::f16;
 use heapless::Vec;
 
 #[cfg(feature = "raw")]
@@ -46,7 +45,7 @@ pub struct AxlPacket {
     pub freq: f32,
 
     /// IMU data. This is moved to the payload when transmitting.
-    pub data: Vec<f16, { AXL_SZ }>,
+    pub data: Vec<u16, { AXL_SZ }>,
 }
 
 #[derive(serde::Serialize, Default)]
@@ -153,7 +152,7 @@ mod tests {
             storage_version: VERSION,
             temperature: 0.0,
             data: (0..AXL_SZ)
-                .map(|v| f16::from_f32(v as f32))
+                .map(|v| v as u16)
                 .collect::<Vec<_, { AXL_SZ }>>(),
         };
 
@@ -174,7 +173,7 @@ mod tests {
             storage_version: VERSION,
             temperature: 0.0,
             data: (0..AXL_SZ)
-                .map(|v| f16::from_f32(v as f32))
+                .map(|v| v as u16)
                 .collect::<Vec<_, { AXL_SZ }>>(),
         };
 

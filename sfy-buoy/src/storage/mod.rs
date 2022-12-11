@@ -24,7 +24,11 @@ use heapless::{String, Vec};
 use crate::axl::{self, AxlPacket, AXL_POSTCARD_SZ};
 use crate::waves::{AxlPacketT, RAW_AXL_BYTE_SZ};
 
+#[cfg(feature = "raw")]
 pub const PACKAGE_SZ: usize = AXL_POSTCARD_SZ + RAW_AXL_BYTE_SZ;
+
+#[cfg(not(feature = "raw"))]
+pub const PACKAGE_SZ: usize = AXL_POSTCARD_SZ;
 
 pub mod clock;
 mod handles;
@@ -441,7 +445,6 @@ pub fn id_to_parts(id: u32) -> (String<32>, u32, usize) {
 mod tests {
     use super::*;
     use crate::axl::AXL_SZ;
-    use half::f16;
 
     #[test]
     fn version_str() {
@@ -452,20 +455,20 @@ mod tests {
     #[test]
     fn test_id_to_parts() {
         let (c, file, o) = id_to_parts(0);
-        assert_eq!(c, "0.4");
+        assert_eq!(c, "0.5");
         assert_eq!(file, 0);
         assert_eq!(o, 0);
 
         let (c, file, o) = id_to_parts(1231255);
-        assert_eq!(c, "12312.4");
+        assert_eq!(c, "12312.5");
         assert_eq!(file, 55);
-        assert_eq!(o, 55 * AXL_POSTCARD_SZ);
+        assert_eq!(o, 55 * PACKAGE_SZ);
     }
 
     #[test]
     fn test_fat32_limits() {
         let pcks_per_day = 52 * 60 * 60 * 24 / 1024;
-        let collection_file_size = COLLECTION_SIZE * AXL_POSTCARD_SZ as u32;
+        let collection_file_size = COLLECTION_SIZE * PACKAGE_SZ as u32;
 
         // max file size.
         assert!((collection_file_size as u64) < { 4 * 1024 * 1024 * 1024 });
@@ -515,7 +518,7 @@ mod tests {
             storage_id: Some(0),
             storage_version: STORAGE_VERSION,
             data: (6..3078)
-                .map(|v| f16::from_f32(v as f32))
+                .map(|v| v as u16)
                 .collect::<Vec<_, { AXL_SZ }>>(),
         };
         let p1_truth = AxlPacket {
@@ -529,7 +532,7 @@ mod tests {
             storage_id: Some(1),
             storage_version: STORAGE_VERSION,
             data: (6..3078)
-                .map(|v| f16::from_f32(v as f32))
+                .map(|v| v as u16)
                 .collect::<Vec<_, { AXL_SZ }>>(),
         };
         let p2_truth = AxlPacket {
@@ -543,7 +546,7 @@ mod tests {
             storage_id: Some(2),
             storage_version: STORAGE_VERSION,
             data: (9..3081)
-                .map(|v| f16::from_f32(v as f32))
+                .map(|v| v as u16)
                 .collect::<Vec<_, { AXL_SZ }>>(),
         };
 

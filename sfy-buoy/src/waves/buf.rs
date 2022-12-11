@@ -1,5 +1,4 @@
 use ahrs_fusion::NxpFusion;
-use half::f16;
 use micromath::{vector::Vector3d, Quaternion};
 
 use crate::{
@@ -7,6 +6,7 @@ use crate::{
     fir,
 };
 
+use super::wire::{ScaledF32, A16, G16};
 
 // From Adafruit Sensors library.
 pub const SENSORS_RADS_TO_DPS: f64 = 57.29577793;
@@ -16,9 +16,8 @@ pub const SENSORS_GRAVITY_STANDARD: f64 = 9.80665;
 pub const RAW_AXL_SZ: usize = 2 * AXL_SZ * fir::DECIMATE as usize;
 pub const RAW_AXL_BYTE_SZ: usize = 2 * AXL_SZ * fir::DECIMATE as usize * 2;
 
-pub type VecAxl = heapless::Vec<f16, AXL_SZ>;
-pub type VecRawAxl = heapless::Vec<f16, RAW_AXL_SZ>;
-
+pub type VecAxl = heapless::Vec<u16, AXL_SZ>;
+pub type VecRawAxl = heapless::Vec<u16, RAW_AXL_SZ>;
 
 #[cfg(feature = "raw")]
 pub type AxlBufT = (VecAxl, VecRawAxl);
@@ -124,8 +123,8 @@ impl ImuBuf {
         // Store raw values
         #[cfg(feature = "raw")]
         {
-            self.raw_axl.extend(g.iter().map(|g| f16::from_f64(*g)));
-            self.raw_axl.extend(a.iter().map(|a| f16::from_f64(*a)));
+            self.raw_axl.extend(g.iter().map(|g| G16::from_f32(*g as f32).to_u16()));
+            self.raw_axl.extend(a.iter().map(|a| A16::from_f32(*a as f32).to_u16()));
         }
 
         // Feed AHRS filter
@@ -164,9 +163,9 @@ impl ImuBuf {
             (Some(x), Some(y), Some(z)) => {
                 // x, y, z from axl is in m/s^2, the quaternion is only used to
                 // rotate the instantanuous acceleration.
-                self.axl.push(f16::from_f32(x)).unwrap();
-                self.axl.push(f16::from_f32(y)).unwrap();
-                self.axl.push(f16::from_f32(z)).unwrap();
+                self.axl.push(A16::from_f32(x).to_u16()).unwrap();
+                self.axl.push(A16::from_f32(y).to_u16()).unwrap();
+                self.axl.push(A16::from_f32(z).to_u16()).unwrap();
             }
             (None, None, None) => {} // No filter output.
             _ => {
@@ -192,7 +191,10 @@ mod tests {
             buf.sample([0., 1., 2.], [0., 1., 2.]).unwrap();
         }
 
-        assert_eq!(buf.axl.len(), SAMPLE_SZ * SAMPLE_NO / fir::DECIMATE as usize);
+        assert_eq!(
+            buf.axl.len(),
+            SAMPLE_SZ * SAMPLE_NO / fir::DECIMATE as usize
+        );
         assert_eq!(
             buf.free(),
             (AXL_SZ / SAMPLE_SZ) - (SAMPLE_NO / fir::DECIMATE as usize)
