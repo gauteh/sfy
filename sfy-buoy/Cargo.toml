@@ -29,6 +29,7 @@ ism330dhcx = "0.4.0"
 static_assertions = "1.1.0"
 chrono = { version = "0.4.19", default-features = false }
 micromath = { version = "2", features = [ "quaternion", "vector" ] }
+libm = { version = "0.2", features = [ "unstable" ] }
 rtcc = "0.3.0"
 anyhow = { version = "1", optional = true }
 argh = { version = "*", optional = true }

@@ -803,6 +803,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "libm"
+version = "0.2.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "348108ab3fba42ec82ff6e9564fc4ca0247bdccdc68dd8af9764bbc79c3c8ffb"
+
+[[package]]
 name = "lock_api"
 version = "0.4.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1249,6 +1255,7 @@ dependencies = [
  "half 1.8.2",
  "heapless",
  "ism330dhcx",
+ "libm",
  "micromath",
  "postcard",
  "rtcc",

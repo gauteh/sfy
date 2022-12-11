@@ -66,9 +66,6 @@ impl ScaledF32 for G16 {
 
 /// Move an f32 on the range -max to max to 0 to u16::MAX
 fn scale_f32_to_u16(max: f32, v: f32) -> u16 {
-    #[allow(unused)]
-    use micromath::F32Ext; // f32 and f64 'round' not available on thumv7em.
-
     debug_assert!(max > 0.);
     let max = max as f64;
     let v = v as f64;
@@ -80,7 +77,7 @@ fn scale_f32_to_u16(max: f32, v: f32) -> u16 {
     // v should be in the range from [-max to max]
     let v = v + max; // v -> [0, 2*max]
     let u = v * u16::MAX as f64 / (2. * max); // v -> [0, u16::MAX]
-    return (u as f32).round() as u16; // will maybe panic if u is out-of-bounds?
+    return libm::round(u) as u16; // will maybe panic if u is out-of-bounds?
 }
 
 /// Move an u16 on given -max to max range to its real value in f32.

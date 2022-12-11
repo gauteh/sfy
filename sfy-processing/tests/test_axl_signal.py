@@ -3,12 +3,13 @@ import scipy as sc
 from datetime import datetime, timezone
 from sfy import axl, signal
 from pytest import approx
+import matplotlib.pyplot as plt
 
 from . import *
 
 
 @needs_hub
-def test_axl_v5_quiet(sfyhub):
+def test_axl_v5_quiet(sfyhub, plot):
     b = sfyhub.buoy("dev867648043595907")
     pcks = b.axl_packages_range(
         datetime(2022, 12, 11, 15, 00, tzinfo=timezone.utc),
@@ -26,6 +27,12 @@ def test_axl_v5_quiet(sfyhub):
     assert np.mean(ds.w_z) == approx(9.8, abs=0.2)
     assert np.mean(ds.w_x) == approx(0.0, abs=0.33)
     assert np.mean(ds.w_y) == approx(0.0, abs=0.2)
+
+    if plot:
+        f, P = sc.signal.welch(ds.w_z, fs=ds.frequency, nperseg=4096)
+        plt.figure()
+        plt.loglog(f, P)
+        plt.show()
 
 @needs_hub
 def test_axl_v3_quiet(sfyhub):
