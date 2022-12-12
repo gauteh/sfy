@@ -31,7 +31,7 @@ name = "cellular_sensor_data"
 harness = false
 
 [dependencies]
-sfy = { path = "../", default-features = false }
+sfy = { path = "../", default-features = false, features = [ "target-test" ] }
 heapless = { version = "0.7", features = [ "serde", "ufmt-impl", "defmt-impl" ] }
 serde = { version = "1", features = ["derive"], default-features = false }
 serde-json-core = "0.4.0"
@@ -42,10 +42,8 @@ defmt-rtt = "0.3.0"
 defmt-test = "0.3.0"
 panic-probe = { version = "0.3.0", features = ["print-defmt"] }
 ism330dhcx = "0.4.0"
-half = { version = "1.8.2", features = [ "use-intrinsics", "bytemuck" ] }
 chrono = { version = "0.4.19", default-features = false }
 embedded-hal = "0.2.6"
-embedded-sdmmc = { version = "0.4.0", default-features = false, features = ["defmt-log"] }
 cmsis_dsp = { version = "0.1.0", features = [ "micromath" ] }
 
 [dependencies.ambiq-hal]

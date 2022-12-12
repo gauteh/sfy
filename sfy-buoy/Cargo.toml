@@ -16,7 +16,6 @@ members = [ "target-test", "sfy-artemis" ]
 base64 = { version = "0.13.0", default-features = false }
 defmt = "0.3.2"
 bytemuck = "1.7.2"
-half = { version = "1.8.2", features = [ "use-intrinsics", "bytemuck", "serde" ] }
 heapless = { version = "0.7", features = [ "serde", "ufmt-impl", "defmt-impl" ] }
 embedded-sdmmc = { version = "0.4.0", default-features = false, features = ["defmt-log"] }
 postcard = { version = "1.0.1", features = [ "experimental-derive" ]}
@@ -40,10 +39,14 @@ git = "https://github.com/gauteh/ahrs-fusion"
 [dependencies.blues-notecard]
 git = "https://github.com/gauteh/notecard-rs"
 
+[dev-dependencies]
+half = { version = "1.8.2", features = [ "use-intrinsics", "bytemuck", "serde" ] }
+
 [features]
 continuous = []
 20Hz = []
 raw = []
+target-test = []
 build-bin = [ "anyhow", "argh", "serde-json-core/std", "serde_json", "chrono/std" ]
 default = [ "build-bin" ]
 

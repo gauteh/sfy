@@ -1270,8 +1270,6 @@ name = "sfy-artemis"
 version = "0.1.0"
 dependencies = [
  "ambiq-hal",
- "base64",
- "bytemuck",
  "chrono",
  "cmsis_dsp",
  "cortex-m",
@@ -1281,13 +1279,8 @@ dependencies = [
  "defmt-serial",
  "embedded-hal",
  "git-version",
- "half 1.8.2",
  "heapless",
- "ism330dhcx",
- "nb 1.0.0",
  "panic-probe",
- "serde",
- "serde-json-core",
  "sfy",
  "ufmt",
 ]
@@ -1370,8 +1363,6 @@ dependencies = [
  "defmt-rtt",
  "defmt-test",
  "embedded-hal",
- "embedded-sdmmc",
- "half 1.8.2",
  "heapless",
  "ism330dhcx",
  "panic-probe",

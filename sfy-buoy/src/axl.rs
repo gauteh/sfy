@@ -20,7 +20,7 @@ pub const AXL_OUTN: usize = { AXL_SZ * 2 } * 4 / 3 + 4;
 pub const AXL_POSTCARD_SZ: usize = 1024 * 4;
 
 #[cfg(not(feature = "raw"))]
-pub const AXL_POSTCARD_SZ: usize = 1024 * 10;
+pub const AXL_POSTCARD_SZ: usize = 512 * 20;
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct AxlPacket {

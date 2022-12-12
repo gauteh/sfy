@@ -40,7 +40,11 @@ use handles::*;
 /// in the interrupt that drains the IMU FIFO. See <https://github.com/gauteh/sfy/issues/77>.
 pub const COLLECTION_SIZE: u32 = 100;
 pub const STORAGE_VERSION: u32 = axl::VERSION;
+#[cfg(not(feature = "target-test"))]
 pub const STORAGE_VERSION_STR: &'static str = "5";
+
+#[cfg(feature = "target-test")]
+pub const STORAGE_VERSION_STR: &'static str = "t";
 
 #[derive(Debug, defmt::Format)]
 pub enum StorageErr {
