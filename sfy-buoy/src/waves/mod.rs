@@ -26,6 +26,7 @@ pub type AxlPacketT = (AxlPacket,);
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Freq {
     Hz26,
+    Hz52,
     Hz104,
     Hz208,
     Hz833,
@@ -37,6 +38,7 @@ impl Freq {
 
         match self {
             Hz26 => 26.,
+            Hz52 => 52.,
             Hz104 => 104.,
             Hz208 => 208.,
             Hz833 => 833.,
@@ -49,6 +51,7 @@ impl Freq {
 
         match self {
             Hz26 => Odr::Hz26,
+            Hz52 => Odr::Hz52,
             Hz104 => Odr::Hz104,
             Hz208 => Odr::Hz208,
             Hz833 => Odr::Hz833,
@@ -61,6 +64,7 @@ impl Freq {
 
         match self {
             Hz26 => Odr::Hz26,
+            Hz52 => Odr::Hz52,
             Hz104 => Odr::Hz104,
             Hz208 => Odr::Hz208,
             Hz833 => Odr::Hz833,
@@ -73,6 +77,7 @@ impl Freq {
 
         match self {
             Hz26 => Odr::Hz26,
+            Hz52 => Odr::Hz52,
             Hz104 => Odr::Hz104,
             Hz208 => Odr::Hz208,
             Hz833 => Odr::Hz833,
@@ -85,6 +90,7 @@ impl Freq {
 
         match self {
             Hz26 => Odr::Hz26,
+            Hz52 => Odr::Hz52,
             Hz104 => Odr::Hz104,
             Hz208 => Odr::Hz208,
             Hz833 => Odr::Hz833,
@@ -141,7 +147,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         defmt::debug!("setting up imu driver..");
         let imu = Ism330Dhcx::new_with_address(&mut i2c, 0x6a)?;
 
-        const FREQ: Freq = Freq::Hz208;
+        const FREQ: Freq = Freq::Hz52;
         let output_freq = fir::OUT_FREQ;
 
         sa::const_assert_eq!(FREQ.value(), fir::FREQ);

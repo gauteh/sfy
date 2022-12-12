@@ -752,8 +752,6 @@ dependencies = [
 [[package]]
 name = "ism330dhcx"
 version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9574fc715002016603f290bf977b2c240afaacbd760dbb0d46f4cac06856bc8f"
 dependencies = [
  "defmt",
  "embedded-hal",
