@@ -393,9 +393,9 @@ class Axl(Event, AxlTimeseries):
                 payload.byteswap(inplace=True)
 
             SENSORS_GRAVITY_STANDARD = 9.80665
-            ACCEL_MAX = SENSORS_GRAVITY_STANDARD * 3.
+            ACCEL_MAX = SENSORS_GRAVITY_STANDARD * 2.
             # SENSORS_DPS_TO_RADS = 0.017453293
-            # GYRO_MAX = ((125. * SENSORS_DPS_TO_RADS) * 3.)
+            # GYRO_MAX = ((125. * SENSORS_DPS_TO_RADS) * 2.)
 
             def scale_u16_to_f32(mx, u):
                 assert mx > 0.

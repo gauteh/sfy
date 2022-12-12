@@ -3,12 +3,12 @@ use super::buf::{SENSORS_DPS_TO_RADS, SENSORS_GRAVITY_STANDARD};
 /// Scaling of acceleration values before they are sent or stored.
 ///
 /// > Do not change without updating the storage version.
-pub const ACCEL_MAX: f32 = SENSORS_GRAVITY_STANDARD as f32 * 3.; // in g
+pub const ACCEL_MAX: f32 = SENSORS_GRAVITY_STANDARD as f32 * 2.; // in g
 
 /// Scaling of gyro values before they are sent or stored.
 ///
 /// > Do not change without updating the storage version.
-pub const GYRO_MAX: f32 = ((125. * SENSORS_DPS_TO_RADS) * 3.) as f32; // in rad/s
+pub const GYRO_MAX: f32 = ((125. * SENSORS_DPS_TO_RADS) * 2.) as f32; // in rad/s
 
 /// An acceleration value packed into an u16 between pre-determined limits.
 #[repr(transparent)]
