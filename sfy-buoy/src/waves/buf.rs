@@ -3,8 +3,9 @@ use micromath::{vector::Vector3d, Quaternion};
 
 use crate::{
     axl::{AXL_SZ, SAMPLE_SZ},
-    fir,
 };
+#[cfg(feature = "fir")]
+use crate::fir;
 
 use super::wire::{ScaledF32, A16, G16};
 
@@ -13,8 +14,18 @@ pub const SENSORS_RADS_TO_DPS: f64 = 57.29577793;
 pub const SENSORS_DPS_TO_RADS: f64 = 0.017453293;
 pub const SENSORS_GRAVITY_STANDARD: f64 = 9.80665;
 
+
+#[cfg(feature = "fir")]
 pub const RAW_AXL_SZ: usize = 2 * AXL_SZ * fir::DECIMATE as usize;
+
+#[cfg(feature = "fir")]
 pub const RAW_AXL_BYTE_SZ: usize = 2 * AXL_SZ * fir::DECIMATE as usize * 2;
+
+#[cfg(not(feature = "fir"))]
+pub const RAW_AXL_SZ: usize = 2 * AXL_SZ;
+
+#[cfg(not(feature = "fir"))]
+pub const RAW_AXL_BYTE_SZ: usize = 2 * AXL_SZ * 2;
 
 pub type VecAxl = heapless::Vec<u16, AXL_SZ>;
 pub type VecRawAxl = heapless::Vec<u16, RAW_AXL_SZ>;
@@ -31,7 +42,9 @@ pub enum Error {
 }
 
 pub struct ImuBuf {
+    #[cfg(feature = "fir")]
     fir: [fir::Decimator; SAMPLE_SZ],
+
     filter: NxpFusion,
 
     /// Buffer with values ready to be sent. Only `sample()` is allowed to grow the buf, and
@@ -46,6 +59,7 @@ pub struct ImuBuf {
 
 impl ImuBuf {
     pub fn new(freq: f32) -> ImuBuf {
+        #[cfg(feature = "fir")]
         let fir = [
             fir::FIR::new().into_decimator(),
             fir::FIR::new().into_decimator(),
@@ -55,7 +69,9 @@ impl ImuBuf {
         let filter = NxpFusion::new(freq);
 
         ImuBuf {
+            #[cfg(feature = "fir")]
             fir,
+
             filter,
             axl: VecAxl::new(),
 
@@ -90,6 +106,7 @@ impl ImuBuf {
 
         self.filter.reset();
 
+        #[cfg(feature = "fir")]
         for f in &mut self.fir {
             f.reset();
         }
@@ -154,9 +171,19 @@ impl ImuBuf {
         };
         let axl = q.rotate(axl);
 
+        #[cfg(not(feature = "fir"))]
+        {
+            // x, y, z from axl is in m/s^2, the quaternion is only used to
+            // rotate the instantanuous acceleration.
+            self.axl.push(A16::from_f32(axl.x).to_u16()).unwrap();
+            self.axl.push(A16::from_f32(axl.y).to_u16()).unwrap();
+            self.axl.push(A16::from_f32(axl.z - SENSORS_GRAVITY_STANDARD as f32).to_u16()).unwrap();
+        }
+
         // Filter and decimate the rotated acceleration.
         //
         // Removing the mean from the z-component should give better resolution.
+        #[cfg(feature = "fir")]
         match (
             self.fir[0].decimate(axl.x),
             self.fir[1].decimate(axl.y),
@@ -185,6 +212,7 @@ mod tests {
 
     use super::*;
 
+    #[cfg(feature = "fir")]
     #[test]
     fn filter_decimater() {
         let mut buf = ImuBuf::new(200.);

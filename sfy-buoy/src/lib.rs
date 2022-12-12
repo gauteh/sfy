@@ -30,6 +30,7 @@ use embedded_hal::{
 use rtcc::DateTimeAccess;
 
 pub mod axl;
+#[cfg(feature = "fir")]
 pub mod fir;
 pub mod log;
 pub mod note;
