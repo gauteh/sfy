@@ -41,10 +41,12 @@ use axl::AxlPacket;
 use waves::AxlPacketT;
 use storage::Storage;
 
+// With 'raw' enabled 3 * 2 more samples (compared to processed samples)
+// need to be queued.
 #[cfg(feature = "raw")]
-pub const STORAGEQ_SZ: usize = 3;
+pub const STORAGEQ_SZ: usize = 5;
 #[cfg(feature = "raw")]
-pub const NOTEQ_SZ: usize = 4;
+pub const NOTEQ_SZ: usize = 6;
 
 #[cfg(not(feature = "raw"))]
 pub const STORAGEQ_SZ: usize = 12;
