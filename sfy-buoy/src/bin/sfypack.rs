@@ -22,16 +22,18 @@ struct SfyPack {
 
     #[argh(switch, description = "simulate a note.add event")]
     note: bool,
+
+    #[argh(switch, description = "input file with raw-data")]
+    raw: bool,
 }
 
 fn main() -> anyhow::Result<()> {
     let pck: SfyPack = argh::from_env();
     eprintln!("Loading collection from: {:?}", pck.file);
 
-    let c = match pck.file.extension().map(|s| s.to_str()).flatten() {
-        Some("1") => Collection::from_file(&pck.file),
-        Some("3") => Collection::from_file_v3(&pck.file),
-        _ => Err(anyhow::anyhow!("Unknown extension."))
+    let c = match pck.raw {
+        false => Collection::from_file(&pck.file),
+        true => Collection::from_file_raw(&pck.file),
     }?;
     eprintln!("Loaded {} packages.", c.len());
 
@@ -118,7 +120,7 @@ impl Collection {
         Ok(Collection { pcks, raw: None })
     }
 
-    pub fn from_file_v3(p: impl AsRef<Path>) -> anyhow::Result<Collection> {
+    pub fn from_file_raw(p: impl AsRef<Path>) -> anyhow::Result<Collection> {
         let p = p.as_ref();
         let mut b = std::fs::read(p)?;
 
@@ -181,8 +183,8 @@ mod tests {
     }
 
     #[test]
-    fn open_v3() {
-        let c = Collection::from_file_v3("tests/data/14.3").unwrap();
+    fn open_raw() {
+        let c = Collection::from_file_raw("tests/data/14.3").unwrap();
         println!("packages: {}", c.pcks.len());
 
         // println!("raw: {:?}", c.raw.unwrap()[0]);

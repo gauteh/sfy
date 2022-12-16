@@ -7,6 +7,8 @@ use embedded_hal::blocking::{
     i2c::{Write, WriteRead},
 };
 use ism330dhcx::{ctrl1xl, ctrl2g, fifo, fifoctrl, Ism330Dhcx};
+
+#[cfg(feature = "fir")]
 use static_assertions as sa;
 
 use crate::{axl::AxlPacket, axl::VERSION};

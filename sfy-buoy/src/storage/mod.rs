@@ -22,7 +22,10 @@ use embedded_sdmmc::{
 use heapless::{String, Vec};
 
 use crate::axl::{self, AxlPacket, AXL_POSTCARD_SZ};
-use crate::waves::{AxlPacketT, RAW_AXL_BYTE_SZ};
+use crate::waves::AxlPacketT;
+
+#[cfg(feature = "raw")]
+use crate::waves::RAW_AXL_BYTE_SZ;
 
 #[cfg(feature = "raw")]
 pub const PACKAGE_SZ: usize = AXL_POSTCARD_SZ + RAW_AXL_BYTE_SZ;
@@ -494,6 +497,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn read_synth_collection() {
         let mut c = std::fs::read("tests/data/0.2").unwrap();
         assert_eq!(c.len(), AXL_POSTCARD_SZ * 4);

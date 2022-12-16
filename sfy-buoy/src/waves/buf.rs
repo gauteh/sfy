@@ -7,7 +7,10 @@ use crate::{
 #[cfg(feature = "fir")]
 use crate::fir;
 
-use super::wire::{ScaledF32, A16, G16};
+use super::wire::{ScaledF32, A16};
+
+#[cfg(feature = "raw")]
+use super::wire::G16;
 
 // From Adafruit Sensors library.
 pub const SENSORS_RADS_TO_DPS: f64 = 57.29577793;
@@ -208,13 +211,12 @@ impl ImuBuf {
 
 #[cfg(test)]
 mod tests {
-    use crate::axl::SAMPLE_NO;
-
-    use super::*;
-
     #[cfg(feature = "fir")]
     #[test]
     fn filter_decimater() {
+        use crate::axl::SAMPLE_NO;
+        use super::*;
+
         let mut buf = ImuBuf::new(200.);
 
         for _ in 0..SAMPLE_NO {
