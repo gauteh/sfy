@@ -202,9 +202,10 @@ class Axl(Event, AxlTimeseries):
     length: int = None
     offset: int = None
     timestamp: int = None  # milliseconds, i64
-    storage_id: int = None # ID of package on SD card (if applicable), may not be unique.
+    storage_id: int = None  # ID of package on SD card (if applicable), may not be unique.
     storage_version: int = None
-    position_time: int = None # seconds, time of location fix, u32
+    position_time: int = None  # seconds, time of location fix, u32
+    temperature: float = None  # temperature measured by IMU
     lon: float = None
     lat: float = None
     freq: float = None
@@ -220,13 +221,13 @@ class Axl(Event, AxlTimeseries):
 
     def __hash__(self):
         # Packages created with the default timestamp, no storage id, and without GPS location may cause a hash collision. Typically these packages are useless anyway, so we ignore the collision. The other fields are also not considered since they may be different if the same data is uploaded from the SD-card later.
-        return hash((self.timestamp, self.storage_id, self.storage_version, self.lon, self.lat,
-                     self.offset))
+        return hash((self.timestamp, self.storage_id, self.storage_version,
+                     self.lon, self.lat, self.offset))
 
     def duplicate(self, o):
         if self.timestamp == o.timestamp and self.storage_id == o.storage_id and self.storage_version == o.storage_version and self.lon == o.lon and self.lat == o.lat and self.offset == o.offset:
-            if all(self.x == o.x) and all(self.y == o.y) and all(
-                    self.z == o.z):
+            if np.array_equal(self.x, o.x) and np.array_equal(
+                    self.y, o.y) and np.array_equal(self.z, o.z):
                 return True
 
             logger.warn(
@@ -364,6 +365,7 @@ class Axl(Event, AxlTimeseries):
         data['lon'] = data['body'].get('lon')
         data['lat'] = data['body'].get('lat')
         data['position_time'] = data['body'].get('position_time')
+        data['temperature'] = data['body'].get('temperature', 0.)
         data['freq'] = data['body'].get('freq', 208.)
         del data['body']
 
@@ -376,7 +378,8 @@ class Axl(Event, AxlTimeseries):
 
             if sys.byteorder == 'big':
                 logger.warning(
-                    'host is big-endian, swapping bytes: this is not well-tested.')
+                    'host is big-endian, swapping bytes: this is not well-tested.'
+                )
                 payload.byteswap(inplace=True)
 
             x = payload[0::3]
@@ -389,11 +392,13 @@ class Axl(Event, AxlTimeseries):
 
             if sys.byteorder == 'big':
                 logger.warning(
-                    'host is big-endian, swapping bytes: this is not well-tested.')
+                    'host is big-endian, swapping bytes: this is not well-tested.'
+                )
                 payload.byteswap(inplace=True)
 
             SENSORS_GRAVITY_STANDARD = 9.80665
             ACCEL_MAX = SENSORS_GRAVITY_STANDARD * 2.
+
             # SENSORS_DPS_TO_RADS = 0.017453293
             # GYRO_MAX = ((125. * SENSORS_DPS_TO_RADS) * 2.)
 
@@ -424,10 +429,11 @@ class Axl(Event, AxlTimeseries):
             'timestamp': self.timestamp,
             'storage_id': self.storage_id,
             'storage_version': self.storage_version,
-            'from_store' : self.from_store,
+            'from_store': self.from_store,
             'position_time': self.position_time,
             'lon': self.lon,
             'lat': self.lat,
+            'temperature': self.temperature,
             'freq': self.freq,
         }
 
