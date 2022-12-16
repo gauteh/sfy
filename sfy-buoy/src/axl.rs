@@ -48,6 +48,10 @@ pub struct AxlPacket {
     pub data: Vec<u16, { AXL_SZ }>,
 }
 
+fn f32_not_normal(f: &f32) -> bool {
+    !f32::is_subnormal(*f)
+}
+
 #[derive(serde::Serialize, Default)]
 pub struct AxlPacketMeta {
     pub timestamp: i64,
@@ -60,6 +64,8 @@ pub struct AxlPacketMeta {
     pub position_time: u32,
     pub lon: f64,
     pub lat: f64,
+
+    #[serde(skip_serializing_if = "f32_not_normal")]
     pub temperature: f32,
 
     pub freq: f32,
