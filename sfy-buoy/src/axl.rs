@@ -2,7 +2,7 @@ use defmt::{write, Format, Formatter};
 use heapless::Vec;
 
 #[cfg(feature = "raw")]
-pub const SAMPLE_NO: usize = 256;
+pub const SAMPLE_NO: usize = 1024;
 
 #[cfg(not(feature = "raw"))]
 pub const SAMPLE_NO: usize = 1024;
@@ -17,10 +17,10 @@ pub const AXL_OUTN: usize = { AXL_SZ * 2 } * 4 / 3 + 4;
 /// Max size of `AxlPacket` serialized using postcard with COBS. Set with some margin since
 /// postcard messages are not fixed size.
 #[cfg(feature = "raw")]
-pub const AXL_POSTCARD_SZ: usize = 1024 * 4;
+pub const AXL_POSTCARD_SZ: usize = 1024 * 10;
 
 #[cfg(not(feature = "raw"))]
-pub const AXL_POSTCARD_SZ: usize = 512 * 20;
+pub const AXL_POSTCARD_SZ: usize = 1024 * 10;
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct AxlPacket {
@@ -68,7 +68,7 @@ pub struct AxlPacketMeta {
 
 impl core::fmt::Debug for AxlPacket {
     fn fmt(&self, fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        core::write!(fmt, "AxlPacket(timestamp: {}, offset: {}, storage_id: {:?} (v: {:?}), position_time: {}, lon: {}, lat: {}, freq: {}, data (length): {}))",
+        core::write!(fmt, "AxlPacket(timestamp: {}, offset: {}, storage_id: {:?} (v: {:?}), position_time: {}, lon: {}, lat: {}, temp: {}, freq: {}, data (length): {}))",
             self.timestamp,
             self.offset,
             self.storage_id,
@@ -76,6 +76,7 @@ impl core::fmt::Debug for AxlPacket {
             self.position_time,
             self.lon,
             self.lat,
+            self.temperature,
             self.freq,
             self.data.len()
             )
@@ -84,13 +85,14 @@ impl core::fmt::Debug for AxlPacket {
 
 impl Format for AxlPacket {
     fn format(&self, fmt: Formatter) {
-        write!(fmt, "AxlPacket(timestamp: {}, offset: {}, storage_id: {:?}, position_time: {}, lon: {}, lat: {}, freq: {}, data (length): {}))",
+        write!(fmt, "AxlPacket(timestamp: {}, offset: {}, storage_id: {:?}, position_time: {}, lon: {}, lat: {}, temp: {}, freq: {}, data (length): {}))",
             self.timestamp,
             self.offset,
             self.storage_id,
             self.position_time,
             self.lon,
             self.lat,
+            self.temperature,
             self.freq,
             self.data.len()
             );

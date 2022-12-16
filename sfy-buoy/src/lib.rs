@@ -46,7 +46,7 @@ use storage::Storage;
 #[cfg(feature = "raw")]
 pub const STORAGEQ_SZ: usize = 5;
 #[cfg(feature = "raw")]
-pub const NOTEQ_SZ: usize = 6;
+pub const NOTEQ_SZ: usize = 12;
 
 #[cfg(not(feature = "raw"))]
 pub const STORAGEQ_SZ: usize = 12;
