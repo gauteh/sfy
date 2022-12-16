@@ -56,3 +56,6 @@ rtt:
 
 host-test:
 	cargo test
+	cargo test --features raw
+	cargo test --features fir
+	cargo test --features fir,raw
