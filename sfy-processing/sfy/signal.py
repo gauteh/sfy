@@ -215,3 +215,33 @@ def hs(ds: xr.Dataset, window=(20 * 60)):
     hsv.attrs['description'] = 'Total significant wave height (4 * std)'
 
     return hsv
+
+def welchint(f, P):
+    """
+    Integrate a Welch _acceleration_ spectrum to an _elevation_ spectrum.
+
+    Args:
+
+        f: frequencies for which P is given (Hz)
+
+        P: Frequency amplitude of acceleration spectra.
+    """
+    D = np.power((2 * np.pi * f), 4.)
+    return P / D
+
+def omb_welch(u, fs):
+    """
+    Calculate Welch spectra in the same way as the OMB.
+    """
+    NFFT = 2048
+    NFFT_overlap = 512
+    df = fs / NFFT # welch spectrum frequency resolution, fs = 10 Hz on the OMB.
+
+    N_welch_segments = len(u) / (NFFT - NFFT_overlap)
+
+
+    current = 0
+    end = current + NFFT
+
+    raise NotImplemented()
+
