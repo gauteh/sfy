@@ -1,10 +1,13 @@
 #! /usr/bin/env python
 import click
 from tqdm import tqdm
+from datetime import timedelta
 import matplotlib.pyplot as plt
 from cartopy import crs, feature as cfeature
 import pandas as pd
 import io
+import numpy as np
+from sfy.timeutil import utcify
 
 from sfy.hub import Hub
 
@@ -29,43 +32,70 @@ def track():
               help='Map limits margins, format: 0.5,0.5',
               default=None,
               type=str)
+@click.option('--nib',
+              help='Use Norge i Bilder orthophotos (zoom level)',
+              default=None,
+              type=int)
 @click.option('--save', help='Save to file', default=None, type=click.File())
-def map(dev, fast, start, end, margins, save):
+def map(dev, fast, nib, start, end, margins, save):
     hub = Hub.from_env()
     buoy = hub.buoy(dev)
     print(buoy)
 
-    pcks = buoy.position_packages_range(start, end)
+    pcks = buoy.position_packages_range(start - timedelta(days=1), end + timedelta(days=1))
+    pcks = [p for p in pcks if p.best_position_time >= utcify(start) and p.best_position_time <= utcify(end)]
+    pcks.sort(key=lambda p: p.best_position_time)
 
     lon = [pck.longitude for pck in pcks]
     lat = [pck.latitude for pck in pcks]
+    tm  = np.array([pck.best_position_time for pck in pcks])
 
     print('plotting..')
     fig = plt.figure()
-    ax = fig.add_subplot(1, 1, 1, projection=crs.Mercator())
+
+    if nib is not None:
+        from plz.map import NIB
+        img = NIB(cache=True)
+        ax = fig.add_subplot(1, 1, 1, projection=img.crs)
+        ax.add_image(img, nib)
+    else:
+        ax = fig.add_subplot(1, 1, 1, projection=crs.Mercator())
 
     if fast:
         # ax.stock_img()
         ax.coastlines(resolution='10m')
-        ax.natural_earth_shp(name='land', resolution='10m', zorder=-1)
-    else:
+        nh = cfeature.NaturalEarthFeature(name='land', category='physical', scale='10m', facecolor=cfeature.COLORS['land'])
+        ax.add_feature(nh, zorder=-1)
+
+    if not fast and nib is None:
         gsh = cfeature.GSHHSFeature(levels=[1],
                                     facecolor=cfeature.COLORS['land'])
         ax.add_feature(gsh, zorder=-1)
 
-    ax.plot(lon, lat, '-o', transform=crs.PlateCarree(), label=buoy.dev)
+    ax.plot(lon, lat, '-o', gid=tm, transform=crs.PlateCarree(), label=buoy.dev, picker=True)
+    ax.plot(lon[0], lat[0], '*', transform=crs.PlateCarree())
+    ax.plot(lon[-1], lat[-1], 'X', transform=crs.PlateCarree())
+
+    from matplotlib.lines import Line2D
+    def onpick1(event):
+        if isinstance(event.artist, Line2D):
+            thisline = event.artist
+            xdata = thisline.get_xdata()
+            ydata = thisline.get_ydata()
+            ind = event.ind
+            print(ind)
+            print('onpick1 line:', xdata[ind], ydata[ind], tm[ind])
+
+    fig.canvas.mpl_connect('pick_event', onpick1)
 
     if margins is not None:
         ms = margins.split(',')
         mx = float(ms[0])
         my = float(ms[1])
         margins = (mx, my)
-    else:
-        margins = (0.2, 0.2)
+        ax.margins(*margins)
 
-    ax.margins(*margins)
-
-    ax.gridlines(crs.PlateCarree(), draw_labels=True)
+    # ax.gridlines(crs.PlateCarree(), draw_labels=True)
 
     plt.legend()
     plt.title(f'Track of {buoy.dev}')
