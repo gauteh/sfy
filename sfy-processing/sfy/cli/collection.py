@@ -115,14 +115,51 @@ def archive(config):
                         Tz = m.get('Tz')
                         Tc = m.get('Tc')
                         accel_energy = m.get('list_acceleration_energies')
+                        elevation_energy = m.get('list_elevation_energies')
                         m0 = m.get('wave_spectral_moments')['m0']
                         m2 = m.get('wave_spectral_moments')['m2']
                         m4 = m.get('wave_spectral_moments')['m4']
                         is_valid = m.get('is_valid')
 
+                        # processed versions (low-freq cutoff)
+                        pHs = m.get('processed_Hs', np.nan)
+                        pTz = m.get('processed_Tz', np.nan)
+                        pTc = m.get('processed_Tc', np.nan)
+                        pelevation_energy = m.get(
+                            'processed_list_elevation_energies',
+                            np.full((len(list_frequencies), ), np.nan))
+                        wm = m.get('processed_wave_spectral_moments', None)
+                        if wm is not None:
+                            pm0 = wm.get('m0')
+                            pm2 = wm.get('m2')
+                            pm4 = wm.get('m4')
+                        else:
+                            pm0 = np.nan
+                            pm2 = np.nan
+                            pm4 = np.nan
+
+                        pcutoff = m.get('low_frequency_index_cutoff')
+
                         imu.append([
-                            bname, time, Hs, Tz, Tc, m0, m2, m4, is_valid,
-                            np.array(accel_energy)
+                            bname,
+                            time,
+                            Hs,
+                            Tz,
+                            Tc,
+                            m0,
+                            m2,
+                            m4,
+                            is_valid,
+                            np.array(accel_energy),
+                            np.array(elevation_energy),
+                            pHs,
+                            pTz,
+                            pTc,
+                            pm0,
+                            pm2,
+                            pm4,
+                            pcutoff,
+                            np.array(pelevation_energy),
                         ])
                     else:
                         logger.debug(f'Skipping time {time}')
@@ -158,7 +195,10 @@ def archive(config):
                            columns=[
                                'imu_obs', 'trajectory', 'imu_time', 'Hs', 'Tz',
                                'Tc', 'm0', 'm2', 'm4', 'is_valid',
-                               'accel_energy_spectrum'
+                               'accel_energy_spectrum',
+                               'elevation_energy_spectrum', 'pHs', 'pTz',
+                               'pTc', 'pm0', 'pm2', 'pm4', 'pcutoff',
+                               'pelevation_energy'
                            ])
         ids = ids.set_index((['trajectory', 'imu_obs']))
         ids = ids.to_xarray()
@@ -178,14 +218,15 @@ def archive(config):
 
             for var in ids.variables:
                 # logger.debug(f'Condensing {var}..')
-                if ids[var].dtype != np.object:
+                if ids[var].dtype != np.object and var[
+                        0] != 'p':  # skip processed vars
                     n = np.count_nonzero(~np.isnan(ids[var][ti, :]))
-                    assert n == N, f"Unexpected extra observations in trajectory for {ti=}, {var}: {n} != {N}."
+                    assert n == N, f"Unexpected number of observations in trajectory for {ti=}, {var}: {n} != {N}."
 
                 ids[var][ti, :N] = ids[var][ti, iv]
                 ids[var][ti, N:] = np.nan
 
-                if ids[var].dtype != np.object:
+                if ids[var].dtype != np.object and var[0] != 'p':
                     assert (~np.isnan(ids[var][ti, :N])).all(
                     ), "Variying number of valid observartions within same trajectory."
 
@@ -193,8 +234,13 @@ def archive(config):
         ids = ids.isel(imu_obs=slice(0, maxN))
 
         a = ids['accel_energy_spectrum'].values
+        e = ids['elevation_energy_spectrum'].values
+        pe = ids['pelevation_energy'].values
 
-        ids = ids.drop_vars(['accel_energy_spectrum'])
+        ids = ids.drop_vars([
+            'accel_energy_spectrum', 'elevation_energy_spectrum',
+            'pelevation_energy'
+        ])
 
         ds['imu_time'] = ids['imu_time']
         ds['Hs'] = ids['Hs']
@@ -204,21 +250,33 @@ def archive(config):
         ds['m2'] = ids['m2']
         ds['m4'] = ids['m4']
         ds['imu_is_valid'] = ids['is_valid']
+        ds['pHs'] = ids['pHs']
+        ds['pTz'] = ids['pTz']
+        ds['pTc'] = ids['pTc']
+        ds['pm0'] = ids['pm0']
+        ds['pm2'] = ids['pm2']
+        ds['pm4'] = ids['pm4']
+        ds['pcutoff'] = ids['pcutoff']
 
         sh = a.shape
-        a = [[
-            np.full((len(list_frequencies), ), np.nan)
-            if not isinstance(aa, np.ndarray) else aa for aa in aa
-        ] for aa in a]
-        a = np.stack(list(itertools.chain.from_iterable(a)))
-        a = a.reshape((*sh, len(list_frequencies)))
-        accel = xr.DataArray(data=a,
-                             dims=['trajectory', 'imu_obs', 'frequencies'],
-                             coords=dict(frequencies=list_frequencies))
+
+        def coerce_spectra(S):
+            S = [[
+                np.full((len(list_frequencies), ), np.nan)
+                if not isinstance(aa, np.ndarray) else aa for aa in aa
+            ] for aa in S]
+            S = np.stack(list(itertools.chain.from_iterable(S)))
+            S = S.reshape((*sh, len(list_frequencies)))
+            Sv = xr.DataArray(data=S,
+                              dims=['trajectory', 'imu_obs', 'frequencies'],
+                              coords=dict(frequencies=list_frequencies))
+            return Sv
 
         # accel.attrs['frequencies'] = list_frequencies
 
-        ds['accel_energy_spectrum'] = accel
+        ds['accel_energy_spectrum'] = coerce_spectra(a)
+        ds['elevation_energy_spectrum'] = coerce_spectra(e)
+        ds['processed_elevation_energy_spectrum'] = coerce_spectra(pe)
 
     print(ds)
 
