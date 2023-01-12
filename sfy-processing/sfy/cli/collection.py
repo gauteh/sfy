@@ -91,6 +91,7 @@ def archive(config):
 
         dicts[bname] = {}
         packages = b.fetch_packages_range(start=start_time, end=end_time)
+
         for p in packages:
             j = json.loads(p[2])
             ty = j.get('type', None)
@@ -125,9 +126,16 @@ def archive(config):
                         pHs = m.get('processed_Hs', np.nan)
                         pTz = m.get('processed_Tz', np.nan)
                         pTc = m.get('processed_Tc', np.nan)
-                        pelevation_energy = m.get(
-                            'processed_list_elevation_energies',
-                            np.full((len(list_frequencies), ), np.nan))
+                        pelevation_energy = m.get('processed_list_elevation_energies', None)
+                        if pelevation_energy is not None:
+                            if len(pelevation_energy) != len(list_frequencies):
+                                logger.debug('skipping old format elevation energies')
+                                continue
+                            else:
+                                pelevation_energy = np.array(pelevation_energy)
+                        else:
+                            pelevation_energy = np.full((len(list_frequencies),), np.nan)
+
                         wm = m.get('processed_wave_spectral_moments', None)
                         if wm is not None:
                             pm0 = wm.get('m0')
