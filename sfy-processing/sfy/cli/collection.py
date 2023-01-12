@@ -13,9 +13,11 @@ from sfy.hub import Hub
 
 logger = logging.getLogger(__name__)
 
+
 @click.group()
 def collection():
     pass
+
 
 @collection.command()
 @click.argument('config', type=click.File())
@@ -51,7 +53,7 @@ def archive(config):
     if 'start_time' in config:
         overall_start_time = config['start_time']
     else:
-        overall_start_time = datetime(1,1,1)
+        overall_start_time = datetime(1, 1, 1)
     if 'end_time' in config:
         overall_end_time = config['end_time']
     else:
@@ -78,7 +80,7 @@ def archive(config):
         elif 'start_time' in bc and bc['start_time'] is not None:
             start_time = bc['start_time']
         else:
-            start_time = datetime(1,1,1)
+            start_time = datetime(1, 1, 1)
 
         if 'end_time' in config and config['end_time'] is not None:
             end_time = config['end_time']
@@ -118,19 +120,27 @@ def archive(config):
                         m4 = m.get('wave_spectral_moments')['m4']
                         is_valid = m.get('is_valid')
 
-                        imu.append([bname, time, Hs, Tz, Tc, m0, m2, m4, is_valid, np.array(accel_energy)])
+                        imu.append([
+                            bname, time, Hs, Tz, Tc, m0, m2, m4, is_valid,
+                            np.array(accel_energy)
+                        ])
                     else:
                         logger.debug(f'Skipping time {time}')
 
     for b, v in dicts.items():
         logger.info(f'GPS observartions for {b}: {len(v)}')
 
-    ds = ta.trajectory_dict_to_dataset(dicts, variable_attributes=var_attrs, global_attributes=config['attributes'])
-    comments = [config['drifters'][bname]['comment'] if 'comment' in config['drifters'][bname]
-                else '' for bname in config['drifters']]
+    ds = ta.trajectory_dict_to_dataset(dicts,
+                                       variable_attributes=var_attrs,
+                                       global_attributes=config['attributes'])
+    comments = [
+        config['drifters'][bname]['comment']
+        if 'comment' in config['drifters'][bname] else ''
+        for bname in config['drifters']
+    ]
     comments = [c if c is not None else '' for c in comments]
     if sum([len(c) for c in comments]) > 0:
-        ds = ds.assign(drifter_description = (['trajectory'], comments))
+        ds = ds.assign(drifter_description=(['trajectory'], comments))
 
     # Add IMU data
     if len(imu) > 0:
@@ -144,11 +154,18 @@ def archive(config):
 
         logger.info(f'IMU observartions: {len(imu)}')
 
-        ids = pd.DataFrame(imu, columns=['imu_obs', 'trajectory', 'imu_time', 'Hs', 'Tz', 'Tc', 'm0', 'm2', 'm4', 'is_valid', 'accel_energy_spectrum'])
+        ids = pd.DataFrame(imu,
+                           columns=[
+                               'imu_obs', 'trajectory', 'imu_time', 'Hs', 'Tz',
+                               'Tc', 'm0', 'm2', 'm4', 'is_valid',
+                               'accel_energy_spectrum'
+                           ])
         ids = ids.set_index((['trajectory', 'imu_obs']))
         ids = ids.to_xarray()
 
-        ids = ids.drop_vars(['imu_obs', 'trajectory']) # these are dimensions without coordinate values.
+        ids = ids.drop_vars(
+            ['imu_obs',
+             'trajectory'])  # these are dimensions without coordinate values.
 
         # Move all observartions for each trajectory to starting row
         maxN = 0
@@ -169,7 +186,8 @@ def archive(config):
                 ids[var][ti, N:] = np.nan
 
                 if ids[var].dtype != np.object:
-                    assert (~np.isnan(ids[var][ti, :N])).all(), "Variying number of valid observartions within same trajectory."
+                    assert (~np.isnan(ids[var][ti, :N])).all(
+                    ), "Variying number of valid observartions within same trajectory."
 
         logger.info(f'Condensing imu_obs to: {maxN}')
         ids = ids.isel(imu_obs=slice(0, maxN))
@@ -188,11 +206,15 @@ def archive(config):
         ds['imu_is_valid'] = ids['is_valid']
 
         sh = a.shape
-        a = [ [np.full((len(list_frequencies),), np.nan) if not isinstance(aa, np.ndarray) else aa for aa in aa] for aa in a ]
+        a = [[
+            np.full((len(list_frequencies), ), np.nan)
+            if not isinstance(aa, np.ndarray) else aa for aa in aa
+        ] for aa in a]
         a = np.stack(list(itertools.chain.from_iterable(a)))
         a = a.reshape((*sh, len(list_frequencies)))
-        accel = xr.DataArray(data=a, dims = ['trajectory', 'imu_obs', 'frequencies'],
-                             coords = dict(frequencies=list_frequencies))
+        accel = xr.DataArray(data=a,
+                             dims=['trajectory', 'imu_obs', 'frequencies'],
+                             coords=dict(frequencies=list_frequencies))
 
         # accel.attrs['frequencies'] = list_frequencies
 
@@ -200,7 +222,7 @@ def archive(config):
 
     print(ds)
 
-    compression = { 'zlib': True }
+    compression = {'zlib': True}
     encoding = {}
 
     for v in ds.variables:
@@ -208,19 +230,21 @@ def archive(config):
 
     ds.to_netcdf(f"{config['name']}.nc", encoding=encoding)
 
+
 @collection.command()
 @click.argument('config', type=click.File('w'))
-@click.option('-f', '--filter',
+@click.option('-f',
+              '--filter',
               default=None,
               help='Filter on drifter names (case insensitive)',
               type=str,
               multiple=True)
-@click.option('-u', '--userconfig',
+@click.option('-u',
+              '--userconfig',
               default=None,
               help='YML file with config items to add',
               type=str,
               multiple=True)
-
 def template(config, filter, userconfig):
     """Create template yml file which can be manually edited before creating netCDF"""
 
@@ -233,13 +257,14 @@ def template(config, filter, userconfig):
         'attributes': {
             'title': '',
             'summary': '',
-            'history': 'Created with sfydata.py (https://github.com/gauteh/sfy)',
+            'history':
+            'Created with sfydata.py (https://github.com/gauteh/sfy)',
             'creator_name': '',
             'creator_email': '',
             'creator_url': '',
             'references': '',
-            }
         }
+    }
 
     # Fetch list of drifters
     hub = Hub.from_env()
@@ -248,7 +273,9 @@ def template(config, filter, userconfig):
     drifters = [b.dev for b in hub.buoys()]
     if filter != ():
         for filterstring in filter:
-            drifters = [b for b in drifters if filterstring.lower() in b.lower()]
+            drifters = [
+                b for b in drifters if filterstring.lower() in b.lower()
+            ]
 
     overall_end_time = datetime(1, 1, 1)
     overall_start_time = datetime.now()
@@ -265,11 +292,15 @@ def template(config, filter, userconfig):
             for m in j['body']['messages']:
                 if 'latitude' in m:
                     time = datetime.fromtimestamp(m['datetime_fix'])
-                    start_time  = np.minimum(start_time, time)
+                    start_time = np.minimum(start_time, time)
                     end_time = np.maximum(end_time, time)
-        t['drifters'][bname] = {'start_time': start_time, 'end_time': end_time, 'comment': ''}
+        t['drifters'][bname] = {
+            'start_time': start_time,
+            'end_time': end_time,
+            'comment': ''
+        }
 
-        overall_start_time  = np.minimum(overall_start_time, start_time)
+        overall_start_time = np.minimum(overall_start_time, start_time)
         overall_end_time = np.maximum(overall_end_time, end_time)
 
     t['start_time'] = overall_start_time
@@ -280,7 +311,8 @@ def template(config, filter, userconfig):
             logger.info(f'Adding user config from {uc}')
             with open(uc, 'r') as f:
                 usf = yaml.safe_load(f)
-                t = merge(t, usf)  # merge without deleting what is not overwritten
+                t = merge(
+                    t, usf)  # merge without deleting what is not overwritten
 
-    yaml.Dumper.ignore_aliases = lambda *args : True
+    yaml.Dumper.ignore_aliases = lambda *args: True
     yaml.dump(t, open(config.name, 'w'), sort_keys=False)
