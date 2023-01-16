@@ -57,6 +57,8 @@ class Event:
     where_country: str = None
     where_timezone: str = None
 
+    fleets: str = None
+
     body: Any = None
     payload: Any = None
 
