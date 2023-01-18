@@ -56,15 +56,14 @@ mod tests {
         let pck = sfy::axl::AxlPacket {
             timestamp: 1000,
             storage_id: None,
-            storage_version: None,
+            storage_version: 0,
+            temperature: 0.0,
             position_time: 0,
             offset: 1,
             freq: 100.,
             lon: 10.23,
             lat: 14.233,
-            data: (0..3072)
-                .map(|v| half::f16::from_f32(v as f32))
-                .collect::<heapless::Vec<_, { 3 * 1024 }>>(),
+            data: (0..3072).collect::<heapless::Vec<_, { 3 * 1024 }>>(),
         };
 
         assert!(pck.data.len() == sfy::axl::AXL_SZ);
