@@ -208,8 +208,15 @@ def archive(config):
                                'pTc', 'pm0', 'pm2', 'pm4', 'pcutoff',
                                'pelevation_energy'
                            ])
+
+        # If any of the measurements have pHs values, drop messages without.
+        if np.isnan(ids['pHs']).any() and not np.isnan(ids['pHs']).all():
+            logger.error("IMU observations both with and without processed Hs, dropping those without.")
+            ids = ids.loc[~np.isnan(ids['pHs'])]
+
         ids = ids.set_index((['trajectory', 'imu_obs']))
         ids = ids.to_xarray()
+
 
         ids = ids.drop_vars(
             ['imu_obs',
