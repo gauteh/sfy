@@ -1,8 +1,11 @@
 import numpy as np
 import xarray as xr
 from pathlib import Path
+import logging
+
 from . import signal
 
+logger = logging.getLogger(__name__)
 
 class AxlTimeseries:
     def displacement(self):
@@ -40,6 +43,8 @@ class AxlTimeseries:
         return {}
 
     def to_dataset(self, displacement=False):
+        logger.debug(f'Making xarray Dataset from {self.samples()} samples..')
+
         ds = xr.Dataset(data_vars={
             'w_z':
             xr.Variable(
@@ -155,6 +160,7 @@ class AxlTimeseries:
                         })
 
         if displacement:
+            logger.debug('Integrating acceleration to displacement..')
             u_z, u_x, u_y, filter_freqs = self.displacement()
             ds['u_z'] = xr.Variable(
                 ('time'),
@@ -198,6 +204,7 @@ class AxlTimeseries:
                 })
 
         # Adjust for on-board FIR filter
+        logger.debug('Adjusting for FIR filter delay')
         ds = signal.adjust_fir_filter(ds)
 
         return ds

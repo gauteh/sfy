@@ -96,6 +96,12 @@ class AxlCollection(AxlTimeseries):
         if len(segment) > 0:
             yield AxlCollection(segment, duplicates_removed=True)
 
+    def samples(self):
+        """
+        Number of samples.
+        """
+        return sum(p.samples() for p in self.pcks)
+
     def max_gap(self):
         if len(self.pcks) == 1:
             return timedelta(seconds=0)
@@ -457,6 +463,12 @@ class Axl(Event, AxlTimeseries):
         data['body'] = body
 
         return json.dumps(data)
+
+    def samples(self):
+        """
+        Number of samples.
+        """
+        return len(self.z)
 
     @staticmethod
     def from_file(path) -> 'Axl':
