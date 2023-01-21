@@ -213,7 +213,7 @@ def spectral_moment(f, H, order=0):
     ff = f >= f0
 
     f = f[ff]
-    H = H[ff]
+    H = H[..., ff]
 
     assert len(f) > 10
 
@@ -228,8 +228,7 @@ def welch(freq, e, nperseg=4096, order=2):
     Args:
         order: Integration order, default 2 (assuming input is acceleration)
     """
-    e = scipy.signal.detrend(e)
-    f, P = scipy.signal.welch(e, freq, nperseg=nperseg)
+    f, P = scipy.signal.welch(e, freq, nperseg=nperseg, detrend='linear')
     Pi = welchint(f, P, order)
     return f, Pi
 

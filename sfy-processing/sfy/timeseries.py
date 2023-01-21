@@ -41,6 +41,29 @@ class AxlTimeseries:
 
         return (u_z, u_x, u_y, filter_freqs)
 
+    def hm0(self, window=(20*60)):
+        """
+        Return DataArray with Hm0.
+        """
+
+        z = self.z
+
+        # split into windows
+        N = int(window * self.frequency)
+        N = min(N, len(z))
+        i = np.arange(N, len(z), N).astype(np.int32)
+        z = np.split(z, i)
+
+        # Calculate hm0 for each window
+        hm0 = [ signal.hm0(*signal.welch(self.frequency, zz)) for zz in z ]
+
+        i = np.append(i, N)
+
+        time = self.time[i - N]
+        time = np.array([np.datetime64(int(s.timestamp() * 1000.), 'ms') for s in time])
+
+        return xr.DataArray(hm0, coords=[('time', time)])
+
     @property
     def dt(self):
         return 1. / self.frequency
