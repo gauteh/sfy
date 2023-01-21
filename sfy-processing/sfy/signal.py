@@ -191,32 +191,91 @@ def detrend_tp_2021(y, k=0.9995):
     raise NotImplemented()
 
 
-def hs(ds: xr.Dataset, window=(20 * 60)):
+def spectral_moment(f, H, order=0):
     """
-    Calculate Hs for dataset.
+    Calculate the spectral moment `m_o` of `order`.
+
+    Args:
+
+        f: frequencies
+
+        H: Elevation energies (array of real floats)
+
+        order: Order of spectral moment
+
+    Returns:
+
+        (float): spectral moment
     """
-    from numpy.lib.stride_tricks import sliding_window_view
 
-    N = int(window * ds.frequency)
-    N = np.min([len(ds.u_z.values), N])
-    logger.info(f'Calculating Hs.. ({window=} s => {N} samples)')
+    # Cut spectra to avoid infinite values from low-frequencies.
+    f0 = 1. / (20 * 60)  # T = 20 minutes
+    ff = f >= f0
 
-    print(ds.u_z)
+    f = f[ff]
+    H = H[ff]
 
-    ti = 0
-    hs = sliding_window_view(ds.u_z.values, N, ti)
-    hs = 4*np.nanstd(hs, axis=len(hs.shape)-1)
+    assert len(f) > 10
 
-    T = ds.u_z.time[:len(hs)]
+    M = np.power(f, order) * H
+    return np.trapz(M, f)
 
-    hsv = xr.DataArray(hs, coords={'time': T})
-    hsv.name = 'hs'
-    hsv.attrs['long_name'] = 'sea_surface_wave_significant_height'
-    hsv.attrs['description'] = 'Total significant wave height (4 * std)'
 
-    return hsv
+def welch(freq, e, nperseg=4096, order=2):
+    """
+    Wrapper around `scipy.signal.welch` with sane default parameters.
 
-def welchint(f, P):
+    Args:
+        order: Integration order, default 2 (assuming input is acceleration)
+    """
+    e = scipy.signal.detrend(e)
+    f, P = scipy.signal.welch(e, freq, nperseg=nperseg)
+    Pi = welchint(f, P, order)
+    return f, Pi
+
+
+def hm0(f, H):
+    """
+    Calculate Hm0. See `ref:hs` for definition.
+
+    Args:
+        f: Frequencies.
+
+        H: Elevation energies
+
+    Returns:
+
+        Significant wave height estimated through the first order spectral moment.
+
+    Note:
+
+        > According to [0] studies show that Hm0 overestimates Hs with about 5%.
+
+    [0](https://support.nortekgroup.com/hc/en-us/articles/360029507012-What-is-the-difference-between-Hm0-and-Hs-)
+    """
+
+    m0 = spectral_moment(f, H, 0)
+    return 4 * np.sqrt(m0)
+
+
+def hs(e):
+    """
+    Estimate Hs through the standard deviation of the signal.
+
+    > The significant wave height is defined and calculated as the mean of the top 1/3 waves in a given record.
+
+    Args:
+
+        e: elevation
+
+    Returns:
+
+        (float) hs
+    """
+    return 4 * np.nanstd(e)
+
+
+def welchint(f, P, order=2):
     """
     Integrate a Welch _acceleration_ spectrum to an _elevation_ spectrum.
 
@@ -225,23 +284,9 @@ def welchint(f, P):
         f: frequencies for which P is given (Hz)
 
         P: Frequency amplitude of acceleration spectra.
+
+        order: Integration order (default 2, acceleration to elevation).
     """
-    D = np.power((2 * np.pi * f), 4.)
+    order = 2 * order
+    D = np.power((2 * np.pi * f), order)
     return P / D
-
-def omb_welch(u, fs):
-    """
-    Calculate Welch spectra in the same way as the OMB.
-    """
-    NFFT = 2048
-    NFFT_overlap = 512
-    df = fs / NFFT # welch spectrum frequency resolution, fs = 10 Hz on the OMB.
-
-    N_welch_segments = len(u) / (NFFT - NFFT_overlap)
-
-
-    current = 0
-    end = current + NFFT
-
-    raise NotImplemented()
-

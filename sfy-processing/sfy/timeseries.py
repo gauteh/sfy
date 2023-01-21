@@ -7,7 +7,13 @@ from . import signal
 
 logger = logging.getLogger(__name__)
 
+
 class AxlTimeseries:
+    z: np.ndarray
+    x: np.ndarray
+    y: np.ndarray
+    frequency: float
+
     def displacement(self):
         """
         Integrate to displacement using default parameters.
@@ -213,7 +219,7 @@ class AxlTimeseries:
         """
         Write a CF-compliant NetCDF file to filename.
         """
-        compression = { 'zlib': True }
+        compression = {'zlib': True}
         encoding = {}
 
         ds = self.to_dataset(displacement=displacement)

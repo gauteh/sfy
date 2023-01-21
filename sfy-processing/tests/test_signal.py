@@ -60,10 +60,3 @@ def test_adjust_fir():
     assert all(x1['time'] == x['time'])
 
 
-def test_calc_hs():
-    d = open(
-        'tests/data/dev864475044203262/1639855192872-3a0c5fc2-e79f-48d1-91e9-e104ac937644_axl.qo.json'
-    ).read()
-    a = axl.Axl.parse(d)
-    x = a.to_dataset(displacement=True)
-    print(signal.hs(x, window=0.1))
