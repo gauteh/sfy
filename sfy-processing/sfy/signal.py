@@ -288,4 +288,7 @@ def welchint(f, P, order=2):
     """
     order = 2 * order
     D = np.power((2 * np.pi * f), order)
-    return P / D
+    I = D > 0
+    P[I] = P[I] / D[I]
+
+    return P

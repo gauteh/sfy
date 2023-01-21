@@ -2,6 +2,7 @@ import numpy as np
 import xarray as xr
 from pathlib import Path
 import logging
+from concurrent.futures import ThreadPoolExecutor
 
 from . import signal
 
@@ -41,7 +42,7 @@ class AxlTimeseries:
 
         return (u_z, u_x, u_y, filter_freqs)
 
-    def hm0(self, window=(20*60)):
+    def hm0(self, window=(20 * 60)):
         """
         Return DataArray with Hm0.
         """
@@ -55,14 +56,30 @@ class AxlTimeseries:
         z = np.split(z, i)
 
         # Calculate hm0 for each window
-        hm0 = [ signal.hm0(*signal.welch(self.frequency, zz)) for zz in z ]
+        logger.debug('Calculating Hm0 for all 20 minute segments..')
+        with ThreadPoolExecutor() as x:
+            hm0 = list(
+                x.map(lambda zz: signal.hm0(*signal.welch(self.frequency, zz)),
+                      z))
 
-        i = np.append(i, N)
+        i = np.append(i, len(z))
 
-        time = self.time[i - N]
-        time = np.array([np.datetime64(int(s.timestamp() * 1000.), 'ms') for s in time])
+        logger.debug('Building time coordinate..')
+        ms = self.mseconds[i - N]
+        time = ms.astype('datetime64[ms]')
 
-        return xr.DataArray(hm0, coords=[('time', time)])
+        logger.debug('Building dataarray..')
+        return xr.DataArray(
+            hm0,
+            coords=[('time', time)],
+            attrs={
+                'unit':
+                'm',
+                'long_name':
+                'sea_surface_wave_significant_height',
+                'description':
+                'Significant wave height calculated in the frequency domain from the first moment.'
+            })
 
     @property
     def dt(self):
@@ -150,10 +167,9 @@ class AxlTimeseries:
         },
                         coords={
                             'time':
-                            xr.Variable(('time'), [
-                                np.datetime64(int(s.timestamp() * 1000.), 'ms')
-                                for s in self.time
-                            ]),
+                            xr.Variable(
+                                ('time'),
+                                self.mseconds.astype('datetime64[ms]')),
                             'position_time':
                             xr.Variable(
                                 'position_time', [

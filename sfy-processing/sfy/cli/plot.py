@@ -145,13 +145,15 @@ def ts(ctx):
 
 @plot.command(help='Plot Hs')
 @click.pass_context
-def hs(ctx):
-    logger.info('Making dataset..')
-    ds = ctx.obj['pcks'].to_dataset(displacement=True)
-
-    hs = signal.hs(ds)
+def hm0(ctx):
+    logger.info('Calculating Hm0..')
+    c = ctx.obj['pcks']
+    hm0 = c.hm0()
 
     logger.info('Plotting..')
     plt.figure()
-    hs.plot()
+    hm0.plot(label='Hm0')
+    plt.grid()
+    plt.title('Significant wave height for 20 minute windows')
+    plt.legend()
     plt.show()
