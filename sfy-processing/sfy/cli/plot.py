@@ -157,3 +157,24 @@ def hm0(ctx):
     plt.title('Significant wave height for 20 minute windows')
     plt.legend()
     plt.show()
+
+@plot.command(help='Plot Welch spectrum')
+@click.pass_context
+@click.option('--loglog', is_flag=True, help='Use logarithmic scales', default=False)
+def welch(ctx, loglog):
+    logger.info('Calculating Welch spectrum..')
+    c = ctx.obj['pcks']
+    f, P = signal.welch(c.frequency, c.z)
+
+    logger.info('Plotting..')
+    plt.figure()
+    if loglog:
+        plt.loglog(f, P)
+    else:
+        plt.plot(f, P)
+    plt.grid()
+    plt.title('Elevation energy (Welch)')
+    plt.xlabel('Frequency [Hz]')
+    plt.ylabel('Energy [m^2/s]')
+    plt.legend()
+    plt.show()

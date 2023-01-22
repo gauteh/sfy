@@ -64,9 +64,7 @@ class AxlTimeseries:
 
         i = np.append(i, len(z))
 
-        logger.debug('Building time coordinate..')
-        ms = self.mseconds[i - N]
-        time = ms.astype('datetime64[ms]')
+        time = self.mseconds[i - N].astype('datetime64[ms]')
 
         logger.debug('Building dataarray..')
         return xr.DataArray(
