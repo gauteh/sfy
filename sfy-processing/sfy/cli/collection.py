@@ -122,10 +122,17 @@ def archive(config):
                         m4 = m.get('wave_spectral_moments')['m4']
                         is_valid = m.get('is_valid')
 
+                        version = m.get('version', 1)
+
                         # processed versions (low-freq cutoff)
                         pHs = m.get('processed_Hs', np.nan)
                         pTz = m.get('processed_Tz', np.nan)
                         pTc = m.get('processed_Tc', np.nan)
+
+                        if version < 2: # bug in earlier version of decoder
+                            pTz = 1. / pTz
+                            pTc = 1. / pTc
+
                         pelevation_energy = m.get('processed_list_elevation_energies', None)
                         if pelevation_energy is not None:
                             if len(pelevation_energy) != len(list_frequencies):

@@ -313,12 +313,14 @@ def imu_cutoff_rabault2022(f, E):
         i, f: index in f and f of low frequency cutoff.
     """
 
+    OMB_df = 0.048828125 - 0.0439453125  #  df for OpenMetBuoy
+
     df = f[1] - f[0]
     assert (df == np.diff(f)).all()
 
     NE = -E / np.max(E)  # normalized spectrum
 
-    distance = 3
+    distance = int(3 * (df / OMB_df))
     peaks, _ = scipy.signal.find_peaks(NE, distance=distance, prominence=0.05)
     peak = peaks[0] if len(peaks) > 0 else 0  # the first peak
 
