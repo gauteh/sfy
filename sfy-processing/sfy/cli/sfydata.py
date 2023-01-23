@@ -20,7 +20,7 @@ from sfy.cli.plot import plot
 @click.group()
 @click.option('--log', default='info', type=str, help='Python log level')
 def sfy(log):
-    coloredlogs.install(level=log)
+    coloredlogs.install(level=log, logger=logging.getLogger("sfy"))
 
 
 sfy.add_command(track)

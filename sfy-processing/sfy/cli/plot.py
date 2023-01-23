@@ -14,6 +14,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 @click.group()
 @click.argument('dev')
 @click.option('--tx-start',
@@ -89,7 +90,9 @@ def plot(ctx, dev, tx_start, tx_end, start, end, gap, freq):
 
     # filter packages between start and end
     pcks.clip(start, end)
-    logger.info(f"{len(pcks)} in {pcks.start} <-> {pcks.end} range, splitting into segments..")
+    logger.info(
+        f"{len(pcks)} in {pcks.start} <-> {pcks.end} range, splitting into segments.."
+    )
 
     gap = gap if gap is not None else AxlCollection.GAP_LIMIT
 
@@ -158,20 +161,47 @@ def hm0(ctx):
     plt.legend()
     plt.show()
 
+
 @plot.command(help='Plot Welch spectrum')
 @click.pass_context
-@click.option('--loglog', is_flag=True, help='Use logarithmic scales', default=False)
-def welch(ctx, loglog):
+@click.option('--loglog',
+              is_flag=True,
+              help='Use logarithmic scales',
+              default=False)
+@click.option('--acceleration',
+              is_flag=True,
+              help='Plot the acceleration spectrum as well',
+              default=False)
+def welch(ctx, loglog, acceleration):
     logger.info('Calculating Welch spectrum..')
     c = ctx.obj['pcks']
     f, P = signal.welch(c.frequency, c.z)
 
+    ci, cf = signal.imu_cutoff_rabault2022(f, P)
+
     logger.info('Plotting..')
     plt.figure()
+
     if loglog:
-        plt.loglog(f, P)
+        plt.loglog(f, P, label='Elevation')
     else:
-        plt.plot(f, P)
+        plt.plot(f, P, label='Elevation')
+
+    logger.info(f'Cut-off: {cf} Hz, E={P[ci]} m^2/s')
+    plt.plot(cf, P[ci], 'x', label='Cut-off')
+
+    if acceleration:
+        fa, PA = signal.welch(c.frequency, c.z, order=0)
+        if loglog:
+            plt.loglog(fa, PA, label='Elevation')
+        else:
+            plt.plot(fa, PA, label='Elevation')
+
+        ci, cf = signal.imu_cutoff_rabault2022(f, P)
+        logger.info(f'Cut-off (acceleration): {cf} Hz, E={P[ci]} m^2/s')
+        plt.plot(cf, PA[ci], 'x', label='Cut-off (acceleration)')
+
+    plt.legend()
     plt.grid()
     plt.title('Elevation energy (Welch)')
     plt.xlabel('Frequency [Hz]')

@@ -286,9 +286,52 @@ def welchint(f, P, order=2):
 
         order: Integration order (default 2, acceleration to elevation).
     """
+    if order == 0:
+        return P
+
     order = 2 * order
     D = np.power((2 * np.pi * f), order)
     I = D > 0
     P[I] = P[I] / D[I]
 
     return P
+
+def imu_cutoff_rabault2022(f, E):
+    """
+    Find lower cutoff frequency of IMU based measurements based on Figure 7 in Rabault (2022) (https://www.mdpi.com/2076-3263/12/3/110).
+
+    Based on: https://github.com/jerabaul29/OpenMetBuoy-v2021a/blob/1ae44ad9b9ee06b35e36f6f281cb9cf1dd029373/legacy_firmware/decoder/decoder.py#L200
+
+    Args:
+
+        f: frequencies
+
+        E: Elevation spectrum
+
+    Returns:
+
+        i, f: index in f and f of low frequency cutoff.
+    """
+
+    df = f[1] - f[0]
+    assert (df == np.diff(f)).all()
+
+    NE = -E / np.max(E)  # normalized spectrum
+
+    distance = 3
+    peaks, _ = scipy.signal.find_peaks(NE, distance=distance, prominence=0.05)
+    peak = peaks[0] if len(peaks) > 0 else 0  # the first peak
+
+    # If there is no clear minimum, keep the entire spectrum.
+    if E[peak] > 0.1:
+        peak = 0
+
+
+    # Do not flag out valid parts of the spectrum when the spectrum is "really clean"
+    # in cases where the spectrum is "really clean", can happen that the first minimum is a local minimum after the first valid peak
+    # detect these cases and set the full spectrum as valid then
+    if (E[peak] > ((E[0] + E[1]) / 2.0)):
+        peak = 0
+
+    return peak, f[peak]
+

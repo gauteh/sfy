@@ -70,3 +70,21 @@ def test_hm0_collection(sfyhub):
 
     hm0 = c.hm0()
     print(hm0)
+
+@needs_hub
+def test_imu_cutoff_rabault2022(sfyhub, plot):
+    b = sfyhub.buoy("wavebug26")
+    pcks = b.axl_packages_range(
+        datetime(2023, 1, 23, 5, 34, tzinfo=timezone.utc),
+        datetime(2023, 1, 23, 6, 35, tzinfo=timezone.utc))
+    c = AxlCollection(pcks)
+
+    f, P = signal.welch(c.frequency, c.z)
+    ci, cf = signal.imu_cutoff_rabault2022(f, P)
+
+    print(ci, cf, P[ci])
+    if plot:
+        plt.figure()
+        plt.plot(f, P)
+        plt.plot(cf, P[ci], 'x')
+        plt.show()
