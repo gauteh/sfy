@@ -15,14 +15,20 @@ class AxlTimeseries:
     y: np.ndarray
     frequency: float
 
-    def displacement(self):
+    def default_bandpass_freqs(self):
+        if self.frequency < 50:
+            return signal.DEFAULT_BANDPASS_FREQS_20Hz
+        else:
+            return signal.DEFAULT_BANDPASS_FREQS_52Hz
+
+    def displacement(self, filter_freqs=None):
         """
         Integrate to displacement using default parameters.
         """
-        if self.frequency < 50:
-            filter_freqs = signal.DEFAULT_BANDPASS_FREQS_20Hz
-        else:
-            filter_freqs = signal.DEFAULT_BANDPASS_FREQS_52Hz
+        if filter_freqs is None:
+            filter_freqs = self.default_bandpass_freqs()
+
+        logger.info(f'Integrating displacment, filter frequencies: {filter_freqs}.')
 
         u_z = signal.integrate(self.z,
                                self.dt,
@@ -86,7 +92,7 @@ class AxlTimeseries:
     def extra_attrs(self):
         return {}
 
-    def to_dataset(self, displacement=False):
+    def to_dataset(self, displacement=False, filter_freqs=None):
         logger.debug(f'Making xarray Dataset from {self.samples()} samples..')
 
         ds = xr.Dataset(data_vars={
@@ -203,8 +209,7 @@ class AxlTimeseries:
                         })
 
         if displacement:
-            logger.debug('Integrating acceleration to displacement..')
-            u_z, u_x, u_y, filter_freqs = self.displacement()
+            u_z, u_x, u_y, filter_freqs = self.displacement(filter_freqs)
             ds['u_z'] = xr.Variable(
                 ('time'),
                 u_z.astype(np.float32),

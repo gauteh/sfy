@@ -45,8 +45,18 @@ logger = logging.getLogger(__name__)
     help=
     'Only use packages with this frequency (usually 52 or 20.8, within 2 Hz)',
     type=float)
+@click.option(
+        '--f0',
+        type=float,
+        default=None,
+        help='Lower cut-off frequency')
+@click.option(
+        '--f1',
+        type=float,
+        default=None,
+        help='Upper cut-off frequency')
 @click.pass_context
-def plot(ctx, dev, tx_start, tx_end, start, end, gap, freq):
+def plot(ctx, dev, tx_start, tx_end, start, end, gap, freq, f0, f1):
     hub = Hub.from_env()
     buoy = hub.buoy(dev)
 
@@ -132,17 +142,29 @@ def plot(ctx, dev, tx_start, tx_end, start, end, gap, freq):
     ctx.obj['pcks'] = pcks
     ctx.obj['buoy'] = buoy
 
+    freqs = pcks.default_bandpass_freqs()
+    if f0 is not None:
+        freqs[0] = f0
+    if f1 is not None:
+        freqs[1] = f1
+
+    ctx.obj['freqs'] = freqs
+
 
 @plot.command(help='Plot timeseries')
 @click.pass_context
 def ts(ctx):
     logger.info('Making dataset..')
-    ds = ctx.obj['pcks'].to_dataset(displacement=True)
+    c = ctx.obj['pcks']
+    f = ctx.obj['freqs']
+
+    ds = c.to_dataset(displacement=True, filter_freqs=f)
 
     logger.info('Plotting..')
 
     plt.figure()
     ds.u_z.plot()
+    plt.grid()
     plt.show()
 
 
@@ -193,9 +215,9 @@ def welch(ctx, loglog, acceleration):
     if acceleration:
         fa, PA = signal.welch(c.frequency, c.z, order=0)
         if loglog:
-            plt.loglog(fa, PA, label='Elevation')
+            plt.loglog(fa, PA, label='Acceleration')
         else:
-            plt.plot(fa, PA, label='Elevation')
+            plt.plot(fa, PA, label='Acceleration')
 
         ci, cf = signal.imu_cutoff_rabault2022(f, P)
         logger.info(f'Cut-off (acceleration): {cf} Hz, E={P[ci]} m^2/s')
