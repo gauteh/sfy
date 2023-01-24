@@ -121,7 +121,12 @@ def map(dev, fast, nib, start, end, margins, save):
               is_flag=True,
               help='Include positions based on cell tower',
               type=bool)
-def csv(dev, start, end, tower):
+@click.option('--axl',
+              default=False,
+              is_flag=True,
+              help='Include positions from acceleration packages',
+              type=bool)
+def csv(dev, start, end, tower, axl):
     hub = Hub.from_env()
     buoy = hub.buoy(dev)
 
@@ -136,6 +141,7 @@ def csv(dev, start, end, tower):
     velocity = [pck.body.get('velocity', None) for pck in pcks]
     distance = [pck.body.get('distance', None) for pck in pcks]
     temperature = [pck.body.get('temperature', None) for pck in pcks]
+    voltage = [pck.body.get('voltage', None) for pck in pcks]
 
     df = pd.DataFrame({
         'Device': buoy.dev,
@@ -148,10 +154,14 @@ def csv(dev, start, end, tower):
         'Velocity': velocity,
         'Distance': distance,
         'Temperature': temperature,
+        'Voltage': voltage,
     })
 
     if not tower:
         df = df[df['Type'] == 'gps']
+
+    if not axl:
+        df = df[df['File'] == '_track.qo']
 
     buf = io.StringIO()
     df.to_csv(buf, index=False)
