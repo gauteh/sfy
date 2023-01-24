@@ -296,7 +296,8 @@ def welchint(f, P, order=2):
 
     return P
 
-def imu_cutoff_rabault2022(f, E):
+
+def imu_cutoff_rabault2022(f, E, f0=0.05):
     """
     Find lower cutoff frequency of IMU based measurements based on Figure 7 in Rabault (2022) (https://www.mdpi.com/2076-3263/12/3/110).
 
@@ -308,6 +309,8 @@ def imu_cutoff_rabault2022(f, E):
 
         E: Elevation spectrum
 
+        f0: Discard energy below this frequency (default: 0.05 Hz)
+
     Returns:
 
         i, f: index in f and f of low frequency cutoff.
@@ -317,6 +320,13 @@ def imu_cutoff_rabault2022(f, E):
 
     df = f[1] - f[0]
     assert (df == np.diff(f)).all()
+
+    # Below f0 (0.05 Hz) the signal becomes very noisy, and quadrubly so because of the integration.
+    if0 = np.argmax(f >= f0)
+    assert if0 > 0 or f <= f[0]
+
+    fp, f = np.array_split(f, [if0])
+    Ep, E = np.array_split(E, [if0])
 
     NE = -E / np.max(E)  # normalized spectrum
 
@@ -328,12 +338,10 @@ def imu_cutoff_rabault2022(f, E):
     if E[peak] > 0.1:
         peak = 0
 
-
     # Do not flag out valid parts of the spectrum when the spectrum is "really clean"
     # in cases where the spectrum is "really clean", can happen that the first minimum is a local minimum after the first valid peak
     # detect these cases and set the full spectrum as valid then
     if (E[peak] > ((E[0] + E[1]) / 2.0)):
         peak = 0
 
-    return peak, f[peak]
-
+    return (if0 + peak), f[peak]
