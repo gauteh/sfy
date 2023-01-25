@@ -33,8 +33,8 @@ def adjust_fir_filter(x: xr.Dataset, inplace=True):
     return x
 
 
-DEFAULT_BANDPASS_FREQS_52Hz = [0.09, 25.]
-DEFAULT_BANDPASS_FREQS_20Hz = [0.09, 10.]
+DEFAULT_BANDPASS_FREQS_52Hz = [0.05, 25.]
+DEFAULT_BANDPASS_FREQS_20Hz = [0.05, 10.]
 
 
 def bandpass(s, dt, low=None, high=None):
@@ -325,6 +325,8 @@ def imu_cutoff_rabault2022(f, E, f0=0.05):
     if0 = np.argmax(f >= f0)
     assert if0 > 0 or f <= f[0]
 
+    N = len(f)
+
     fp, f = np.array_split(f, [if0])
     Ep, E = np.array_split(E, [if0])
 
@@ -344,4 +346,8 @@ def imu_cutoff_rabault2022(f, E, f0=0.05):
     if (E[peak] > ((E[0] + E[1]) / 2.0)):
         peak = 0
 
-    return (if0 + peak), f[peak]
+    EE = np.zeros((len(Ep) + len(E),))
+    EE[(if0+peak):] = E[peak:]
+
+
+    return (if0 + peak), f[peak], EE

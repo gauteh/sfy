@@ -28,7 +28,8 @@ class AxlTimeseries:
         if filter_freqs is None:
             filter_freqs = self.default_bandpass_freqs()
 
-        logger.info(f'Integrating displacment, filter frequencies: {filter_freqs}.')
+        logger.info(
+            f'Integrating displacment, filter frequencies: {filter_freqs}.')
 
         u_z = signal.integrate(self.z,
                                self.dt,
@@ -48,7 +49,7 @@ class AxlTimeseries:
 
         return (u_z, u_x, u_y, filter_freqs)
 
-    def hm0(self, window=(20 * 60)):
+    def hm0(self, raw=False, window=(20 * 60)):
         """
         Return DataArray with Hm0.
         """
@@ -63,10 +64,15 @@ class AxlTimeseries:
 
         # Calculate hm0 for each window
         logger.debug('Calculating Hm0 for all 20 minute segments..')
+
+        def hm0(zz):
+            f, P = signal.welch(self.frequency, zz)
+            if not raw:
+                _, _, P = signal.imu_cutoff_rabault2022(f, P)
+            return signal.hm0(f, P)
+
         with ThreadPoolExecutor() as x:
-            hm0 = list(
-                x.map(lambda zz: signal.hm0(*signal.welch(self.frequency, zz)),
-                      z))
+            hm0 = list(x.map(hm0, z))
 
         i = np.append(i, len(z))
 

@@ -80,11 +80,12 @@ def test_imu_cutoff_rabault2022(sfyhub, plot):
     c = AxlCollection(pcks)
 
     f, P = signal.welch(c.frequency, c.z)
-    ci, cf = signal.imu_cutoff_rabault2022(f, P)
+    ci, cf, EP = signal.imu_cutoff_rabault2022(f, P)
 
     print(ci, cf, P[ci])
     if plot:
         plt.figure()
         plt.plot(f, P)
+        plt.plot(f, EP)
         plt.plot(cf, P[ci], 'x')
         plt.show()

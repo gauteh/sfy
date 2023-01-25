@@ -170,10 +170,14 @@ def ts(ctx):
 
 @plot.command(help='Plot Hs')
 @click.pass_context
-def hm0(ctx):
+@click.option('--raw',
+              is_flag=True,
+              help='Do not attempt to cut away low frequency noise',
+              default=False)
+def hm0(ctx, raw):
     logger.info('Calculating Hm0..')
     c = ctx.obj['pcks']
-    hm0 = c.hm0()
+    hm0 = c.hm0(raw)
 
     logger.info('Plotting..')
     plt.figure()
@@ -194,20 +198,32 @@ def hm0(ctx):
               is_flag=True,
               help='Plot the acceleration spectrum as well',
               default=False)
-def welch(ctx, loglog, acceleration):
+@click.option('--raw',
+              is_flag=True,
+              help='Do not attempt to cut away low frequency noise',
+              default=False)
+def welch(ctx, loglog, acceleration, raw):
     logger.info('Calculating Welch spectrum..')
     c = ctx.obj['pcks']
     f, P = signal.welch(c.frequency, c.z)
 
-    ci, cf = signal.imu_cutoff_rabault2022(f, P)
+    ci, cf, PP = signal.imu_cutoff_rabault2022(f, P)
+
+    if not raw:
+        P = PP
+
+    hm0 = signal.hm0(f, P)
+    phm0 = signal.hm0(f, PP)
 
     logger.info('Plotting..')
     plt.figure()
 
+    l = f'Elevation (hm0 = {phm0:0.2f}m, raw hm0 = {hm0:0.2f}m'
+
     if loglog:
-        plt.loglog(f, P, label='Elevation')
+        plt.loglog(f, P, label=l)
     else:
-        plt.plot(f, P, label='Elevation')
+        plt.plot(f, P, label=l)
 
     logger.info(f'Cut-off: {cf} Hz, E={P[ci]} m^2/s')
     plt.plot(cf, P[ci], 'x', label='Cut-off')
@@ -219,7 +235,7 @@ def welch(ctx, loglog, acceleration):
         else:
             plt.plot(fa, PA, label='Acceleration')
 
-        ci, cf = signal.imu_cutoff_rabault2022(f, P)
+        ci, cf, PPA = signal.imu_cutoff_rabault2022(f, PA)
         logger.info(f'Cut-off (acceleration): {cf} Hz, E={P[ci]} m^2/s')
         plt.plot(cf, PA[ci], 'x', label='Cut-off (acceleration)')
 
