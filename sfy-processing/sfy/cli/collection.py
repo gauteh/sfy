@@ -240,7 +240,7 @@ def archive(config):
 
             for var in ids.variables:
                 # logger.debug(f'Condensing {var}..')
-                if ids[var].dtype != np.object and var[
+                if ids[var].dtype != np.object_ and var[
                         0] != 'p':  # skip processed vars
                     n = np.count_nonzero(~np.isnan(ids[var][ti, :]))
                     assert n == N, f"Unexpected number of observations in trajectory for {ti=}, {var}: {n} != {N}."
@@ -248,7 +248,7 @@ def archive(config):
                 ids[var][ti, :N] = ids[var][ti, iv]
                 ids[var][ti, N:] = np.nan
 
-                if ids[var].dtype != np.object and var[0] != 'p':
+                if ids[var].dtype != np.object_ and var[0] != 'p':
                     assert (~np.isnan(ids[var][ti, :N])).all(
                     ), "Variying number of valid observartions within same trajectory."
 
