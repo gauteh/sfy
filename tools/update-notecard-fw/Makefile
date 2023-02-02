@@ -1,4 +1,5 @@
-VERSION=3.5.1.15259
+VERSION=4.1.1.4015681$$20221206134917
+SHA=64d60511365351f711d6e7ad5cece4cb04029e634b1d1e29080cf93becff3d3b
 FW=fw/notecard-$(VERSION).bin
 FLASH=/home/gauteh/dev/embedded/STMicroelectronics/STM32Cube/STM32CubeProgrammer/bin/STM32_Programmer_CLI
 USB ?= /dev/ttyACM0
@@ -11,11 +12,12 @@ download-stcube:
 
 download:
 	mkdir -p fw
-	[ -f $(FW) ] || curl https://dev.blues.io/firmware/notecard-$(VERSION).bin --output $(FW)
+	[ -f '$(FW)' ] || curl 'https://dev.blues.io/firmware/notecard-$(VERSION).bin' --output '$(FW)'
+	cd fw/ && sha256sum -c ../sums
 
 enter-bootload: download
 	echo bootloader > $(USB) || true
 	sleep 3
 
 flash: enter-bootload
-	$(FLASH) --connect port=$(STUSB) --write $(FW) 0x08000000 --verify --go 0x08000000
+	$(FLASH) --connect port=$(STUSB) --write "$(FW)" 0x08000000 --verify --go 0x08000000
