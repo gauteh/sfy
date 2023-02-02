@@ -44,7 +44,7 @@ half = { version = "1.8.2", features = [ "use-intrinsics", "bytemuck", "serde" ]
 
 [features]
 continuous = []
-20Hz = []
+20Hz = [ 'fir' ]
 raw = []
 fir = []
 target-test = []

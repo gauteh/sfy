@@ -20,4 +20,4 @@ enter-bootload: download
 	sleep 3
 
 flash: enter-bootload
-	$(FLASH) --connect port=$(STUSB) --write "$(FW)" 0x08000000 --verify --go 0x08000000
+	$(FLASH) --connect port=$(STUSB) --write '$(FW)' 0x08000000 --verify --go 0x08000000

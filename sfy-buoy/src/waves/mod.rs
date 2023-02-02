@@ -154,6 +154,9 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
 
         const FREQ: Freq = Freq::Hz52;
 
+        #[cfg(all(feature = "20Hz", not(feature = "fir")))]
+        compile_error!("Feature 20Hz requires feature fir");
+
         #[cfg(feature = "fir")]
         const OUTPUT_FREQ: f32 = fir::OUT_FREQ;
 
