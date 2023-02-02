@@ -54,4 +54,6 @@ $ make deploy
 * BUOYPR: the product name used for the modem. determines which account the data
     is sent to on notehub.io.
 
+* GPS_PERIOD: Sample interval for GPS.
+
 * DEFMT_LOG: defmt log levels, leave empty to compile out.

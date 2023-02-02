@@ -8,12 +8,11 @@ use crate::NOTEQ_SZ;
 
 pub const BUOYSN: &str = const { option_env!("BUOYSN").unwrap_or("cain") };
 
-/// GPS is sampled at this interval (seconds) when movement is detected by the accelerometer on the
-/// modem. When below 300 seconds the GPS is not turned off when the buoy is moving. For experiment
-/// drifting in fjords and similar 10 minutes is sufficient. However, for experiments on beaches a
-/// higher sample rate is useful.
-// pub const GPS_PERIOD: u32 =  10 * 60;
-pub const GPS_PERIOD: u32 = 60;
+// GPS is sampled at this interval (seconds) when movement is detected by the accelerometer on the
+// modem. When below 300 seconds the GPS is not turned off when the buoy is moving. For experiment
+// drifting in fjords and similar 10 minutes is sufficient. However, for experiments on beaches a
+// higher sample rate is useful.
+include!(concat!(env!("OUT_DIR"), "/config.rs"));
 
 /// Initialize sync when storage use is above this percentage.
 pub const NOTECARD_STORAGE_INIT_SYNC: u32 = 50;
