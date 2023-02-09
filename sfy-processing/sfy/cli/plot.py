@@ -225,7 +225,7 @@ def welch(ctx, loglog, acceleration, raw):
     else:
         plt.plot(f, P, label=l)
 
-    logger.info(f'Cut-off: {cf} Hz, E={P[ci]} m^2/s')
+    logger.info(f'Cut-off: {cf} Hz, E={P[ci]} m^2/Hz')
     plt.plot(cf, P[ci], 'x', label='Cut-off')
 
     if acceleration:
