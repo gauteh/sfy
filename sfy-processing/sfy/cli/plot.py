@@ -243,6 +243,6 @@ def welch(ctx, loglog, acceleration, raw):
     plt.grid()
     plt.title('Elevation energy (Welch)')
     plt.xlabel('Frequency [Hz]')
-    plt.ylabel('Energy [m^2/s]')
+    plt.ylabel('Energy [m^2/Hz]')
     plt.legend()
     plt.show()
