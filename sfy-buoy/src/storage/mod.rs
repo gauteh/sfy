@@ -218,7 +218,11 @@ where
         );
 
 
-        block.write(&collection, &buf, raw_bytes)?;
+        let written = block.write(&collection, &buf, raw_bytes)?;
+
+        if written != (buf.len() + raw_bytes.len()) {
+            defmt::error!("Could not write full package to card, written: {} bytes", written);
+        }
 
         Ok(id)
     }
