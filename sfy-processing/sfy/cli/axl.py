@@ -173,7 +173,6 @@ def ts(dev, tx_start, tx_end, start, end, file, gap, freq, displacement):
     if file:
         logger.info(f"Saving to {file}..")
 
-        assert not os.path.exists(file), "file exists"
         pcks.to_netcdf(file, displacement=displacement)
 
 
