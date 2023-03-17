@@ -366,9 +366,20 @@ def template(config, filter, userconfig):
 
         end_time = datetime(1, 1, 1)
         start_time = datetime.now()
-        packages = b.fetch_packages_range(start=end_time, end=start_time)
+        try:
+            packages = b.fetch_packages_range(start=end_time, end=start_time)
+        except:
+            print(f'Coukd bit fetch packages for {bname}')
+            continue
         for p in packages:
-            j = json.loads(p[2])
+            try:
+                j = json.loads(p[2])
+            except:
+                print('Could not load package')
+                continue
+            if 'messages' not in j['body']:
+                print(f'No messages in body for {bname}')
+                continue
             for m in j['body']['messages']:
                 if 'latitude' in m:
                     time = datetime.fromtimestamp(m['datetime_fix'])
