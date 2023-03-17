@@ -223,7 +223,7 @@ def spectral_moment(f, H, order=0):
 
 def welch(freq, e, nperseg=4096, order=2):
     """
-    Wrapper around `scipy.signal.welch` with sane default parameters.
+    Wrapper around `scipy.signal.welch` (with sane default parameters) that integrates the spectrum twice (by default).
 
     Args:
         order: Integration order, default 2 (assuming input is acceleration)
