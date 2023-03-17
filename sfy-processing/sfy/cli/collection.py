@@ -326,7 +326,11 @@ def archive(config):
               type=str,
               multiple=True)
 def template(config, filter, userconfig):
-    """Create template yml file which can be manually edited before creating netCDF"""
+    """
+    Create template yml file which can be manually edited before creating netCDF.
+
+    > P.S.: This only works on OpenMetBuoys at the moment.
+    """
 
     logger.info(f'Writing configuration file: {config.name}')
 
@@ -350,7 +354,7 @@ def template(config, filter, userconfig):
     hub = Hub.from_env()
     buoys = hub.buoys()
 
-    drifters = [b.dev for b in hub.buoys()]
+    drifters = [b.dev for b in hub.buoys() if b.buoy_type == 'omb']
     if filter != ():
         for filterstring in filter:
             drifters = [
@@ -366,17 +370,9 @@ def template(config, filter, userconfig):
 
         end_time = datetime(1, 1, 1)
         start_time = datetime.now()
-        try:
-            packages = b.fetch_packages_range(start=end_time, end=start_time)
-        except:
-            print(f'Could not fetch packages for {bname}')
-            continue
+        packages = b.fetch_packages_range(start=end_time, end=start_time)
         for p in packages:
-            try:
-                j = json.loads(p[2])
-            except:
-                print('Could not load package')
-                continue
+            j = json.loads(p[2])
             if 'messages' not in j['body']:
                 print(f'No messages in body for {bname}')
                 continue
