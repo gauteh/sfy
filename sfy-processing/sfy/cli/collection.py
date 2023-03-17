@@ -369,7 +369,7 @@ def template(config, filter, userconfig):
         try:
             packages = b.fetch_packages_range(start=end_time, end=start_time)
         except:
-            print(f'Coukd bit fetch packages for {bname}')
+            print(f'Could not fetch packages for {bname}')
             continue
         for p in packages:
             try:
