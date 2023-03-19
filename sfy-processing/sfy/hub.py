@@ -87,7 +87,7 @@ class Hub:
         """
         Get list of buoys.
         """
-        return [Buoy(self, d) for d in self.__json_request__('./')]
+        return [Buoy.from_hub(self, d) for d in self.__json_request__('./')]
 
     def buoy(self, dev: str):
         """
@@ -131,25 +131,20 @@ class Buoy:
     buoy_type: str
     __last__: str
 
-    def __init__(self, hub, dev):
-        self.hub = hub
+    @staticmethod
+    def from_hub(hub, dev):
+        """
+        Construct a correct Buoy type from from a hub entry.
+        """
 
-        if isinstance(dev, list):
-            self.dev = dev[0]
-            self.name = dev[1]
-            self.buoy_type = dev[2]
-            if len(dev[3]) > 0:
-                if self.buoy_type == 'sfy':
-                    self.__last__ = Event.parse(base64.b64decode(dev[3]))
-                else:
-                    self.__last__ = json.loads(base64.b64decode(dev[3]))
-            else:
-                self.__last__ = None
+        buoy_type = dev[2]
+
+        if buoy_type == 'sfy':
+            return SfyBuoy(hub, *dev)
+        elif buoy_type == 'omb':
+            return OmbBuoy(hub, *dev)
         else:
-            self.dev = dev
-            self.name = None
-            self.buoy_type = 'sfy'
-            self.__last__ = None
+            return None
 
     def __repr__(self):
         return f"Buoy {self.name} <{self.dev}> ({self.buoy_type})"
@@ -274,42 +269,6 @@ class Buoy:
 
         return pcks
 
-    def position_packages_range(self, start=None, end=None, only_axl=False):
-        """
-        Get all packages that contain position information.
-
-            only_axl: Only include positions from `axl` packages. Useful for determining where data has been collected.
-        """
-        logger.debug(f"fetching position packages between {start} and {end}")
-        pcks = self.fetch_packages_range(start, end)
-
-        pcks = (pck for pck in pcks if 'axl.qo.json' in pck[1] or '_track.qo.json' in pck[1])
-        if only_axl:
-            pcks = (pck for pck in pcks if 'axl.qo.json' in pck[1])
-
-        pcks = list(pcks)
-        logger.debug(f"Found {len(pcks)} position packages")
-
-        pcks = [Event.try_parse(pck[2]) for pck in tqdm(pcks)]
-        pcks = [pck for pck in pcks if pck is not None]
-        logger.debug(f"Loaded {len(pcks)} packages.")
-
-        return pcks
-
-
-    def axl_packages_range(self, start=None, end=None):
-        logger.debug(f"fetching axl packages between {start} and {end}")
-
-        pcks = self.fetch_packages_range(start, end)
-        pcks = [pck for pck in pcks if 'axl.qo.json' in pck[1]]
-        logger.debug(f"Found {len(pcks)} axl packages")
-
-        pcks = [Axl.try_parse(pck[2]) for pck in tqdm(pcks)]
-        pcks = [pck for pck in pcks if pck is not None]
-        logger.debug(f"Loaded {len(pcks)} packages.")
-
-        return pcks
-
     def last(self):
         if self.buoy_type == 'omb':
             return None
@@ -349,3 +308,70 @@ class Buoy:
         """
         pck = self.fetch_package(pck)
         return Axl.try_parse(pck)
+
+
+class SfyBuoy(Buoy):
+
+    def __init__(self, hub, dev, name, buoy_type, last):
+        self.buoy_type = 'sfy'
+        assert buoy_type == self.buoy_type
+
+        self.hub = hub
+        self.dev = dev
+        self.name = name
+        if len(last) > 0:
+            self.__last__ = Event.parse(base64.b64decode(last))
+        else:
+            self.__last__ = None
+
+    def axl_packages_range(self, start=None, end=None):
+        logger.debug(f"fetching axl packages between {start} and {end}")
+
+        pcks = self.fetch_packages_range(start, end)
+        pcks = [pck for pck in pcks if 'axl.qo.json' in pck[1]]
+        logger.debug(f"Found {len(pcks)} axl packages")
+
+        pcks = [Axl.try_parse(pck[2]) for pck in tqdm(pcks)]
+        pcks = [pck for pck in pcks if pck is not None]
+        logger.debug(f"Loaded {len(pcks)} packages.")
+
+        return pcks
+
+    def position_packages_range(self, start=None, end=None, only_axl=False):
+        """
+        Get all packages that contain position information.
+
+            only_axl: Only include positions from `axl` packages. Useful for determining where data has been collected.
+        """
+        logger.debug(f"fetching position packages between {start} and {end}")
+        pcks = self.fetch_packages_range(start, end)
+
+        pcks = (pck for pck in pcks
+                if 'axl.qo.json' in pck[1] or '_track.qo.json' in pck[1])
+        if only_axl:
+            pcks = (pck for pck in pcks if 'axl.qo.json' in pck[1])
+
+        pcks = list(pcks)
+        logger.debug(f"Found {len(pcks)} position packages")
+
+        pcks = [Event.try_parse(pck[2]) for pck in tqdm(pcks)]
+        pcks = [pck for pck in pcks if pck is not None]
+        logger.debug(f"Loaded {len(pcks)} packages.")
+
+        return pcks
+
+
+class OmbBuoy(Buoy):
+
+    def __init__(self, hub, dev, name, buoy_type, last):
+        self.buoy_type = 'omb'
+        assert buoy_type == self.buoy_type
+
+        self.hub = hub
+        self.dev = dev
+        self.name = name
+        if len(last) > 0:
+            self.__last__ = json.loads(base64.b64decode(last))
+        else:
+            self.__last__ = None
+
