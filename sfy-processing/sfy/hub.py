@@ -5,7 +5,6 @@ import requests
 from datetime import datetime, timezone
 import logging
 from tqdm import tqdm
-import json
 import math
 import tempfile
 import base64
@@ -136,6 +135,8 @@ class Buoy:
         """
         Construct a correct Buoy type from from a hub entry.
         """
+
+        from .omb import OmbBuoy
 
         buoy_type = dev[2]
 
@@ -359,19 +360,4 @@ class SfyBuoy(Buoy):
         logger.debug(f"Loaded {len(pcks)} packages.")
 
         return pcks
-
-
-class OmbBuoy(Buoy):
-
-    def __init__(self, hub, dev, name, buoy_type, last):
-        self.buoy_type = 'omb'
-        assert buoy_type == self.buoy_type
-
-        self.hub = hub
-        self.dev = dev
-        self.name = name
-        if len(last) > 0:
-            self.__last__ = json.loads(base64.b64decode(last))
-        else:
-            self.__last__ = None
 
