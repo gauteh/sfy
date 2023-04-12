@@ -2,14 +2,14 @@ use core::simd::{f32x4, SimdFloat};
 use heapless::Deque;
 
 /// Sample rate.
-pub const FREQ: f32 = 52.0;
+pub const FREQ: f32 = 208.0;
 
 pub mod hz50 {
     /// Filter order, length or number of taps.
     pub const NTAP: usize = 129;
 
     /// Filter coefficients. Generated with Pythons `scipy.signal.firwin(...)`.
-    pub const COEFFS: [f32; NTAP] = include!("firwin.25_52_coeff");
+    pub const COEFFS: [f32; NTAP] = include!("firwin.25_208_coeff");
 
     /// Cut-off frequency of filter.
     pub const CUTOFF: f32 = 25.0;
@@ -24,7 +24,7 @@ pub mod hz20 {
     pub const NTAP: usize = 129;
 
     /// Filter coefficients. Generated with Pythons `scipy.signal.firwin(...)`.
-    pub const COEFFS: [f32; NTAP] = include!("firwin.10_52_coeff");
+    pub const COEFFS: [f32; NTAP] = include!("firwin.10_208_coeff");
 
     /// Cut-off frequency of filter.
     pub const CUTOFF: f32 = 10.0;
