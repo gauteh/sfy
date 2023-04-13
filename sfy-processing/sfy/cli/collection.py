@@ -21,7 +21,8 @@ def collection():
 
 @collection.command()
 @click.argument('config', type=click.File())
-def archive(config):
+@click.option('--skip_imu', is_flag=True, help='Skip IMU messages', default=False)
+def archive(config, skip_imu):
     """Create CF-compatible trajectory file based on yml configuation file
 
     Presently only works for Floatensteins.
@@ -59,7 +60,8 @@ def archive(config):
     else:
         overall_end_time = datetime.now()
 
-    assert overall_end_time > overall_start_time, "end time must be greater than start time"
+    if overall_end_time is not None and overall_start_time is not None:
+        assert overall_end_time > overall_start_time, "end time must be greater than start time"
 
     hub = Hub.from_env()
     # Select only the buoys that are listed in config file
@@ -105,6 +107,8 @@ def archive(config):
                         else:
                             logger.debug(f'Skipping time {time}')
             elif ty == 'imu':
+                if skip_imu is True:
+                    continue
                 messages = j.get('body').get('messages')
                 for m in messages:
                     if list_frequencies is None:
@@ -224,14 +228,13 @@ def archive(config):
         ids = ids.set_index((['trajectory', 'imu_obs']))
         ids = ids.to_xarray()
 
-
         ids = ids.drop_vars(
             ['imu_obs',
              'trajectory'])  # these are dimensions without coordinate values.
 
         # Move all observartions for each trajectory to starting row
         maxN = 0
-        for ti in range(len(ds.trajectory)):
+        for ti in range(len(ids.trajectory)):
             iv = ~np.isnan(ids['imu_time'][ti, :])
             N = np.count_nonzero(iv)
             maxN = max(N, maxN)
@@ -302,11 +305,11 @@ def archive(config):
 
     print(ds)
 
-    compression = {'zlib': True}
     encoding = {}
 
     for v in ds.variables:
-        encoding[v] = compression
+        if not ds.variables[v].dtype.type is np.str_:
+            encoding[v] = {'zlib': True}
 
     ds.to_netcdf(f"{config['name']}.nc", encoding=encoding)
 
