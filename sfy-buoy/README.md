@@ -57,3 +57,9 @@ $ make deploy
 * GPS_PERIOD: Sample interval for GPS.
 
 * DEFMT_LOG: defmt log levels, leave empty to compile out.
+
+# Troubleshooting
+
+1. On Ubuntu 22 the package `brltty` claims the Artemis USB device and the tty
+   device disappears, remove it if you don't need it.
+
