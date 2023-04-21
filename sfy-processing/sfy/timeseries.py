@@ -214,6 +214,61 @@ class AxlTimeseries:
                             **self.extra_attrs()
                         })
 
+        if self.has_raw:
+            ds['a_x'] = xr.Variable(
+                ('time'),
+                self.ax.astype(np.float32),
+                attrs={
+                    'unit': 'm/s^2',
+                    'long_name': 'sea_water_wave_x_acceleration',
+                    'description': 'Raw acceleration measured by IMU'
+                })
+
+            ds['a_y'] = xr.Variable(
+                ('time'),
+                self.ay.astype(np.float32),
+                attrs={
+                    'unit': 'm/s^2',
+                    'long_name': 'sea_water_wave_y_acceleration',
+                    'description': 'Raw acceleration measured by IMU'
+                })
+            ds['a_z'] = xr.Variable(
+                ('time'),
+                self.az.astype(np.float32),
+                attrs={
+                    'unit': 'm/s^2',
+                    'long_name': 'sea_water_wave_z_acceleration',
+                    'description': 'Raw acceleration measured by IMU'
+                })
+
+            ds['g_x'] = xr.Variable(
+                ('time'),
+                self.gx.astype(np.float32),
+                attrs={
+                    'unit': 'rad',
+                    'long_name': 'gyro',
+                    'description': 'Raw gyro measured by IMU'
+                })
+
+            ds['g_y'] = xr.Variable(
+                ('time'),
+                self.gy.astype(np.float32),
+                attrs={
+                    'unit': 'rad',
+                    'long_name': 'gyro',
+                    'description': 'Raw gyro measured by IMU'
+                })
+            ds['g_z'] = xr.Variable(
+                ('time'),
+                self.gz.astype(np.float32),
+                attrs={
+                    'unit': 'rad',
+                    'long_name': 'gyro',
+                    'description': 'Raw gyro measured by IMU'
+                })
+
+
+
         if displacement:
             u_z, u_x, u_y, filter_freqs = self.displacement(filter_freqs)
             ds['u_z'] = xr.Variable(

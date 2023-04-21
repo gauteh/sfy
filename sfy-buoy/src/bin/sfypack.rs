@@ -51,13 +51,18 @@ fn main() -> anyhow::Result<()> {
 
     match (pck.json, pck.note) {
         (true, false) => {
-            println!("{}", json::to_string_pretty(&c).unwrap());
-            // if let Some(raw) = c.raw {
-            //     println!("{}", json::to_string_pretty(&raw).unwrap());
-            // }
+            if let Some(raw) = &c.raw {
+                println!("{}", json::to_string_pretty(&(&c, &raw)).unwrap());
+            } else {
+                println!("{}", json::to_string_pretty(&c).unwrap());
+            }
         }
         (false, true) => {
-            let pcks = c.pcks.iter().map(AxlNote::from).collect::<Vec<_>>();
+            let pcks = if let Some(raw) = c.raw {
+                c.pcks.iter().zip(raw).map(|(p, r)| AxlNote::from(p, Some(r))).collect::<Vec<AxlNote>>()
+            } else {
+                c.pcks.iter().map(|p| AxlNote::from(p, None)).collect::<Vec<AxlNote>>()
+            };
             println!("{}", json::to_string_pretty(&pcks).unwrap());
         }
         (false, false) => (),
@@ -72,15 +77,16 @@ fn main() -> anyhow::Result<()> {
 pub struct AxlNote {
     body: axl::AxlPacketMeta,
     payload: String,
+    raw: Option<Vec<f32>>
 }
 
 impl AxlNote {
-    pub fn from(pck: &axl::AxlPacket) -> AxlNote {
+    pub fn from(pck: &axl::AxlPacket, raw: Option<Vec<f32>>) -> AxlNote {
         let (body, b64) = pck.split();
 
         let payload = String::from_utf8(b64.as_slice().to_vec()).unwrap();
 
-        AxlNote { body, payload }
+        AxlNote { body, payload, raw }
     }
 }
 

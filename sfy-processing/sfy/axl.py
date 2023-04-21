@@ -59,6 +59,7 @@ class AxlCollection(AxlTimeseries):
         else:
             collection = subprocess.check_output(["sfypack", "--raw", "--note", file])
         collection = json.loads(collection)
+
         logger.info(f"Read {len(collection)} packages.")
 
         if len(collection) > 0:
@@ -161,6 +162,34 @@ class AxlCollection(AxlTimeseries):
         return np.concatenate([pck.z for pck in self.pcks])
 
     @property
+    def has_raw(self):
+        return all((pck.has_raw for pck in self.pcks))
+
+    @property
+    def ax(self):
+        return np.concatenate([pck.ax for pck in self.pcks])
+
+    @property
+    def ay(self):
+        return np.concatenate([pck.ay for pck in self.pcks])
+
+    @property
+    def az(self):
+        return np.concatenate([pck.az for pck in self.pcks])
+
+    @property
+    def gx(self):
+        return np.concatenate([pck.gx for pck in self.pcks])
+
+    @property
+    def gy(self):
+        return np.concatenate([pck.gy for pck in self.pcks])
+
+    @property
+    def gz(self):
+        return np.concatenate([pck.gz for pck in self.pcks])
+
+    @property
     def position_times(self):
         return np.concatenate([pck.position_times for pck in self.pcks])
 
@@ -223,6 +252,13 @@ class Axl(Event, AxlTimeseries):
     y: np.ndarray = None
     z: np.ndarray = None
 
+    ax: np.ndarray = None
+    ay: np.ndarray = None
+    az: np.ndarray = None
+    gx: np.ndarray = None
+    gy: np.ndarray = None
+    gz: np.ndarray = None
+
     from_store: bool = False
 
     def __eq__(self, o: 'Axl'):
@@ -246,6 +282,10 @@ class Axl(Event, AxlTimeseries):
 
         else:
             return False
+
+    @property
+    def has_raw(self):
+        return self.az is not None
 
     @property
     def dt(self) -> float:
@@ -382,6 +422,21 @@ class Axl(Event, AxlTimeseries):
         payload = payload[:data['length']]
         payload = base64.b64decode(payload)
 
+        SENSORS_GRAVITY_STANDARD = 9.80665
+        ACCEL_MAX = SENSORS_GRAVITY_STANDARD * 2.
+
+        SENSORS_DPS_TO_RADS = 0.017453293
+        GYRO_MAX = ((125. * SENSORS_DPS_TO_RADS) * 2.)
+
+        def scale_u16_to_f32(mx, u):
+            assert mx > 0.
+            u16_max = np.iinfo(np.dtype(np.uint16)).max
+            mx = np.float64(mx)
+            v = np.float64(u)
+            v = v * (2. * mx) / np.float64(u16_max)
+            v = v - mx
+            return np.float32(v)
+
         if data['storage_version'] < 5:
             payload = np.frombuffer(payload, dtype=np.float16)
 
@@ -405,20 +460,6 @@ class Axl(Event, AxlTimeseries):
                 )
                 payload.byteswap(inplace=True)
 
-            SENSORS_GRAVITY_STANDARD = 9.80665
-            ACCEL_MAX = SENSORS_GRAVITY_STANDARD * 2.
-
-            # SENSORS_DPS_TO_RADS = 0.017453293
-            # GYRO_MAX = ((125. * SENSORS_DPS_TO_RADS) * 2.)
-
-            def scale_u16_to_f32(mx, u):
-                assert mx > 0.
-                u16_max = np.iinfo(np.dtype(np.uint16)).max
-                mx = np.float64(mx)
-                v = np.float64(u)
-                v = v * (2. * mx) / np.float64(u16_max)
-                v = v - mx
-                return np.float32(v)
 
             payload = scale_u16_to_f32(ACCEL_MAX, payload)
 
@@ -428,7 +469,19 @@ class Axl(Event, AxlTimeseries):
             y = payload[1::3]
             z = payload[2::3] + SENSORS_GRAVITY_STANDARD
 
-        return Axl(**data, x=x, y=y, z=z)
+        if 'raw' in data:
+            raw = data['raw']
+            del data['raw']
+            ax = scale_u16_to_f32(ACCEL_MAX, raw[0::6])
+            ay = scale_u16_to_f32(ACCEL_MAX, raw[1::6])
+            az = scale_u16_to_f32(ACCEL_MAX, raw[2::6])
+            gx = scale_u16_to_f32(GYRO_MAX, raw[3::6])
+            gy = scale_u16_to_f32(GYRO_MAX, raw[4::6])
+            gz = scale_u16_to_f32(GYRO_MAX, raw[5::6])
+
+            return Axl(**data, x=x, y=y, z=z, ax=ax, ay=ay, az=az, gx=gx, gy=gy, gz=gz)
+        else:
+            return Axl(**data, x=x, y=y, z=z)
 
     def json(self):
         data = self.__dict__.copy()
