@@ -9,7 +9,12 @@ from . import *
 
 @pytest.mark.skipif(shutil.which('sfypack') is None, reason = 'sfypack not installed')
 def test_parse_collection():
-    f = '../sfy-buoy/tests/data/74.1'
+    f = '../sfy-buoy/tests/data/44.5'
     c = AxlCollection.from_storage_file('WAVEBUG04', '778', f)
     print(c)
 
+@pytest.mark.skipif(shutil.which('sfypack') is None, reason = 'sfypack not installed')
+def test_raw_accel_gyro():
+    f = '../sfy-buoy/tests/data/32.5'
+    c = AxlCollection.from_storage_file('WAVEBUG23', 'XXX', f, raw=True)
+    print(c)

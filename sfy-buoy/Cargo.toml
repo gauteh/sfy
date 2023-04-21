@@ -7,7 +7,7 @@ authors = [ "Gaute Hope <gauteh@met.no>" ]
 [[bin]]
 name = "sfypack"
 path = "src/bin/sfypack.rs"
-required-features = [ "build-bin" ]
+required-features = [ "build-bin", "raw" ]
 
 [workspace]
 members = [ "target-test", "sfy-artemis" ]
@@ -48,7 +48,7 @@ continuous = []
 raw = []
 fir = []
 target-test = []
-build-bin = [ "anyhow", "argh", "serde-json-core/std", "serde_json", "chrono/std" ]
+build-bin = [ "raw", "anyhow", "argh", "serde-json-core/std", "serde_json", "chrono/std" ]
 default = [ "build-bin" ]
 
 [patch.crates-io]

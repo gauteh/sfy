@@ -469,9 +469,9 @@ class Axl(Event, AxlTimeseries):
             y = payload[1::3]
             z = payload[2::3] + SENSORS_GRAVITY_STANDARD
 
-        if 'raw' in data:
-            raw = data['raw']
-            del data['raw']
+        raw = data.pop('raw')
+
+        if raw is not None:
             ax = scale_u16_to_f32(ACCEL_MAX, raw[0::6])
             ay = scale_u16_to_f32(ACCEL_MAX, raw[1::6])
             az = scale_u16_to_f32(ACCEL_MAX, raw[2::6])

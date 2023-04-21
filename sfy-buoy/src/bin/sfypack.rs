@@ -5,7 +5,8 @@ use std::ops::Deref;
 use std::path::{Path, PathBuf};
 
 use sfy::axl;
-use sfy::storage::PACKAGE_SZ;
+use sfy::storage::PACKAGE_SZ as RAW_PACKAGE_SZ;
+use sfy::axl::AXL_POSTCARD_SZ as PACKAGE_SZ;
 use sfy::waves::VecRawAxl;
 
 #[derive(FromArgs)]
@@ -130,11 +131,11 @@ impl Collection {
         let p = p.as_ref();
         let mut b = std::fs::read(p)?;
 
-        if (b.len() % PACKAGE_SZ) != 0 {
+        if (b.len() % RAW_PACKAGE_SZ) != 0 {
             eprintln!("Warning, collection consists of non-integer number of packages.");
         }
 
-        let n = b.len() / PACKAGE_SZ;
+        let n = b.len() / RAW_PACKAGE_SZ;
 
         eprintln!(
             "Parsing {} bytes of packages into {} packages..",
@@ -142,7 +143,7 @@ impl Collection {
             n
         );
         let (pcks, raw) = b
-            .chunks_exact_mut(PACKAGE_SZ)
+            .chunks_exact_mut(RAW_PACKAGE_SZ)
             .filter_map(|p| {
                 let (p, raw) = p.split_at_mut(axl::AXL_POSTCARD_SZ);
 
@@ -201,5 +202,28 @@ mod tests {
         // doesn't work due to: https://github.com/starkat99/half-rs/issues/60
         let f = half::f16::from_f32(45.0);
         println!("{}", json::to_string(&f).unwrap());
+    }
+
+    #[test]
+    fn open_regular_v5() {
+        let c = Collection::from_file("tests/data/44.5").unwrap();
+        println!("packages: {}", c.pcks.len());
+
+        assert!(c.raw.is_none());
+        assert_eq!(c.pcks.len(), 100);
+    }
+
+    #[test]
+    fn open_raw_v5() {
+        let c = Collection::from_file_raw("tests/data/32.5").unwrap();
+        println!("packages: {}", c.pcks.len());
+
+        assert!(c.raw.is_some());
+        assert_eq!(c.pcks.len(), 32);
+
+        // println!("raw: {:?}", c.raw.unwrap()[0]);
+
+        let last = &c.raw.unwrap()[0];
+        println!("{}", json::to_string(&last).unwrap());
     }
 }
