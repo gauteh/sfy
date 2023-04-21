@@ -223,7 +223,7 @@ def raw(dev, start, end, gap, displacement, raw, file, raw_files):
 
     # filter packages between start and end
     if start is not None and end is not None:
-        pcks.clip(start, end)
+        pcks.clip(utcify(start), utcify(end))
         logger.info(
             f"{len(pcks)} in start <-> end range, splitting into segments..")
 
