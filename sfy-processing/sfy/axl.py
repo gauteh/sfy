@@ -48,13 +48,16 @@ class AxlCollection(AxlTimeseries):
         self.pcks.sort(key=lambda pck: pck.start)
 
     @staticmethod
-    def from_storage_file(name, dev, file):
+    def from_storage_file(name, dev, file, raw=False):
         """
         Load all packages from a binary storage file (SD-card) into a collection of Axl packages.
         """
         logger.info(f"Parsing collection from {file} ({name} - {dev})..")
         assert os.path.exists(file), "file does not exist"
-        collection = subprocess.check_output(["sfypack", "--note", file])
+        if not raw:
+            collection = subprocess.check_output(["sfypack", "--note", file])
+        else:
+            collection = subprocess.check_output(["sfypack", "--raw", "--note", file])
         collection = json.loads(collection)
         logger.info(f"Read {len(collection)} packages.")
 

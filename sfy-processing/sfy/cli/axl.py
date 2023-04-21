@@ -175,6 +175,98 @@ def ts(dev, tx_start, tx_end, start, end, file, gap, freq, displacement):
 
         pcks.to_netcdf(file, displacement=displacement)
 
+@axl.command()
+@click.argument('dev')
+@click.argument('raw_files', type=click.Path(), nargs=-1, required=True)
+@click.option('--start',
+              default=None,
+              help='Clip results before this (default: tx-start)',
+              type=click.DateTime())
+@click.option('--end',
+              default=None,
+              help='Clip results after this (default: tx-end)',
+              type=click.DateTime())
+@click.option('--file',
+              default=None,
+              help='Store to this file',
+              type=click.Path())
+@click.option(
+    '--gap',
+    default=None,
+    help=
+    'Maximum gap allowed between packages before splitting into new segment (seconds).',
+    type=float)
+@click.option('--displacement',
+              default=False,
+              is_flag=True,
+              help='Include integrated displacement',
+              type=bool)
+@click.option('--raw',
+              default=False,
+              is_flag=True,
+              help='Files contain raw accelerometer and gyroscope readings.',
+              type=bool)
+def raw(dev, start, end, gap, displacement, raw, file, raw_files):
+    """
+    Read raw files from SD-card and collect into a collection.
+    """
+    hub = Hub.from_env()
+    b = hub.buoy(dev)
+    logger.info(f"Reading {len(raw_files)} raw files..")
+
+    pcks = [ AxlCollection.from_storage_file(b.name, b.dev, f, raw=raw) for f in raw_files ]
+    pcks = [ p.pcks for p in pcks if p is not None ]
+    pcks = [ p for li in pcks for p in li ]
+    logger.info(f"{len(pcks)} packages in files")
+
+    pcks = AxlCollection(pcks)
+
+    # filter packages between start and end
+    if start is not None and end is not None:
+        pcks.clip(start, end)
+        logger.info(
+            f"{len(pcks)} in start <-> end range, splitting into segments..")
+
+    gap = gap if gap is not None else AxlCollection.GAP_LIMIT
+
+    segments = list(pcks.segments(eps_gap=gap))
+    logger.info(f"Collection consists of: {len(segments)} segments")
+
+    assert len(pcks) == sum(len(s) for s in segments)
+
+    stable = [[
+        s.start,
+        s.end,
+        s.duration,
+        timedelta(seconds=s.duration),
+        s.max_gap(),
+        np.nan,
+        len(s),
+        s.pcks[0].storage_id,
+        s.pcks[-1].storage_id,
+    ] for s in segments]
+
+    for i, _ in enumerate(stable[1:]):
+        stable[i + 1][5] = (stable[i + 1][0] - stable[i][1])
+
+    print(
+        tabulate(stable,
+                 headers=[
+                     'Start',
+                     'End',
+                     'Duration (s)',
+                     'Duration',
+                     'Max Internal Gap',
+                     'Segment Gap',
+                     'Packages',
+                     'Start ID',
+                     'End ID',
+                 ]))
+
+    if file:
+        logger.info(f"Saving to {file}..")
+
+        pcks.to_netcdf(file, displacement=displacement)
 
 @axl.command(help='Monitor buoy')
 @click.argument('dev')
