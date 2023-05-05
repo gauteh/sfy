@@ -1,8 +1,3 @@
-import pytest
-import os
-import xarray as xr
-import pandas as pd
-import matplotlib.pyplot as plt
 from pathlib import Path
 from sfy.cli.sfydata import sfy
 

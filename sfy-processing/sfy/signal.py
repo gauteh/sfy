@@ -229,8 +229,11 @@ def welch(freq, e, nperseg=4096, order=2):
         order: Integration order, default 2 (assuming input is acceleration)
     """
     f, P = scipy.signal.welch(e, freq, nperseg=nperseg, detrend='linear')
-    Pi = welchint(f, P, order)
-    return f, Pi
+
+    if order > 0:
+        P = welchint(f, P, order)
+
+    return f, P
 
 
 def hm0(f, H):
