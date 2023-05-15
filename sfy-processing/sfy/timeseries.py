@@ -31,7 +31,7 @@ class AxlTimeseries:
         logger.info(
             f'Integrating displacment, filter frequencies: {filter_freqs}.')
 
-        u_z = signal.integrate(self.z,
+        u_z = signal.integrate(-self.z, # flip upward
                                self.dt,
                                order=2,
                                freqs=filter_freqs,
@@ -109,7 +109,8 @@ class AxlTimeseries:
                 attrs={
                     'unit': 'm/s^2',
                     'long_name': 'sea_water_wave_z_acceleration',
-                    'description': 'Vertical acceleration (including gravity)'
+                    'description': 'Vertical acceleration (downward, including gravity)',
+                    'direction': 'down',
                 }),
             'w_x':
             xr.Variable(
@@ -278,7 +279,8 @@ class AxlTimeseries:
                     'unit': 'm',
                     'long_name': 'sea_water_wave_z_displacement',
                     'description':
-                    'Horizontal z-axis displacement (integrated)',
+                    'Vertical z-axis displacement (upward, integrated)',
+                    'direction': 'up',
                     'detrended': 'yes',
                     'filter': 'butterworth (10th order), two-ways',
                     'filter_freqs': filter_freqs,
