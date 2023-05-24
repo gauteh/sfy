@@ -208,6 +208,7 @@ class AxlTimeseries:
                             'frequency:unit': 'Hz',
                             'dt': self.dt,
                             'dt:unit': 's',
+                            'package_length': self.package_length,
                             'homepage': 'https://github.com/gauteh/sfy',
                             'buoy_type': 'sfy',
                             'buoy_device': self.device,

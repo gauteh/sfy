@@ -126,6 +126,10 @@ class AxlCollection(AxlTimeseries):
         return sum(pck.duration for pck in self.pcks)
 
     @property
+    def package_length(self):
+        return self.pcks[0].package_length
+
+    @property
     def start(self):
         return self.pcks[0].start
 
@@ -358,10 +362,14 @@ class Axl(Event, AxlTimeseries):
     @property
     def mseconds(self):
         """
-        Time vector in milliseconds (UTC).
+        Time vector in milliseconds (UTC). Taking `offset` into account.
         """
-        t = np.arange(0, len(self.x)) * 1000. / self.freq
+        t = (np.arange(0, len(self.x)) - self.offset) * 1000. / self.freq
         return self.timestamp + t
+
+    @property
+    def package_length(self):
+        return len(self.x)
 
     @property
     def position_times(self):
