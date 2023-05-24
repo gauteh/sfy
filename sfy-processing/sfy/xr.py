@@ -117,3 +117,25 @@ def displacement(ds: xr.Dataset, filter_freqs=None):
             })
 
         return d
+
+def estimate_frequency(ds, N=None):
+    """
+    The actual frequency on the IMU may vary with up to 10% (see https://github.com/gauteh/sfy/issues/125). This function
+    estimates the actual frequency from the GPS timestamps.
+    """
+    if N is None:
+        N = ds.attrs.get('package_length', 1024)
+
+    n = len(ds.package_start.values) # number of packages
+
+    dt = []
+
+    for i in range(n):
+        dt.append((ds.time.values[(i+1) * N - 1] - ds.time.values[i*N]).astype('timedelta64[ms]').astype(float))
+
+    dt = np.array(dt)
+    f  = 1024. / (dt / 1000.)
+
+    return f
+
+

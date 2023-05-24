@@ -2,6 +2,7 @@ import pytest
 import numpy as np
 from datetime import datetime, timezone
 
+import sfy.xr
 from sfy import hub
 from sfy.axl import AxlCollection
 from . import *
@@ -51,3 +52,21 @@ def test_join_collections(sfyhub):
     # Duplicates are removed
     jc = segments[0] + segments[1] + segments[0]
     assert len(jc) == len(c)
+
+@needs_hub
+def test_estimate_frequency(sfyhub):
+    b = sfyhub.buoy("dev864475044204278")
+    pcks = b.axl_packages_range(
+        datetime(2022, 4, 26, 11, 34, tzinfo=timezone.utc),
+        datetime(2022, 4, 26, 11, 35, tzinfo=timezone.utc))
+    c = AxlCollection(pcks)
+
+    ds = c.to_dataset()
+
+    f = sfy.xr.estimate_frequency(ds)
+    print(f)
+    assert len(f) == 28
+    assert len(f) == len(c)
+
+    assert np.all(np.abs(f-52) < .1 * 52)
+
