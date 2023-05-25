@@ -49,7 +49,7 @@ def test_retime(sfyhub):
         datetime(2023, 4, 20, 9, 38, tzinfo=timezone.utc))
     c = AxlCollection(pcks)
 
-    ds = c.to_dataset()
+    ds = c.to_dataset(retime=False)
 
     ds2 = sfy.xr.retime(ds)
     print(ds2)
@@ -61,3 +61,6 @@ def test_retime(sfyhub):
 
     ds2 = ds2.sel(time=slice('2023-04-20 09:09:00', '2023-04-20 09:11:00'))
     print(ds2)
+
+    assert np.max(ds2.time) > ds.time[0]
+    assert np.min(ds2.time) < ds.time[-1]
