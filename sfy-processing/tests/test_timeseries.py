@@ -109,7 +109,7 @@ def test_retime_sintef(sfyhub, plot):
         plt.show()
 
 @needs_hub
-def test_retime_group(sfyhub):
+def test_retime_group_no_segment(sfyhub):
     b = sfyhub.buoy("dev867648043599644")
     pcks = b.axl_packages_range(
         datetime(2023, 4, 20, 9, 16, tzinfo=timezone.utc),
@@ -119,6 +119,7 @@ def test_retime_group(sfyhub):
     ds = c.to_dataset()
 
     s = sfy.xr.groupby_segments(ds)
+    assert len(s) == 1
     print(s)
 
     # This dataset has no gaps
@@ -126,4 +127,30 @@ def test_retime_group(sfyhub):
     print(ds2)
 
     assert ds == ds2
+
+@needs_hub
+def test_retime_group_with_segment(sfyhub):
+    b = sfyhub.buoy("dev867648043599644")
+    pcks = b.axl_packages_range(
+        datetime(2023, 4, 20, 8, 25, tzinfo=timezone.utc),
+        datetime(2023, 4, 20, 8, 35, tzinfo=timezone.utc))
+    c = AxlCollection(pcks)
+
+    ds = c.to_dataset()
+
+    s = sfy.xr.groupby_segments(ds)
+    assert len(s) == 2
+    print(s)
+
+    # This dataset has one gap
+    ds2 = sfy.xr.groupby_segments(ds).map(lambda d: d)
+    print(ds2)
+
+    assert ds == ds2
+
+    with pytest.raises(Exception):
+        sfy.xr.retime(ds)
+
+    ds3 = sfy.xr.groupby_segments(ds).map(sfy.xr.retime)
+    print(ds3)
 

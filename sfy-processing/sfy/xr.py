@@ -153,8 +153,10 @@ def groupby_segments(ds, eps_gap=3.):
     PDT = N / ds.attrs['frequency'] * 1000. # length of package in ms
     pdt = np.diff(ds.package_start.values).astype('timedelta64[ms]').astype(float)
 
-    ip  = np.argwhere(np.abs(pdt) > (PDT + eps_gap * 1000.)) # index in package_starts and ends
-    ip  = np.append(ip, n)
+    ip = np.argwhere(np.abs(pdt) > (PDT + eps_gap * 1000.)) # index in package_starts and ends
+    ip = np.append(0, ip)
+    ip = np.append(ip, n)
+    ip = np.unique(ip)
 
     group = np.zeros(ds.time.shape)
     ipp = ip * N
@@ -169,7 +171,7 @@ def retime(ds, eps_gap=3.):
     Re-time a dataset based on the estimated frequency and a best fit of timestamps. Assuming the frequency is
     stable throughout the dataset.
 
-    This will not work on datasets with gaps.
+    This will not work on datasets with gaps, use :ref:`groupby_segments` first.
     """
 
     fs = np.median(estimate_frequency(ds))
