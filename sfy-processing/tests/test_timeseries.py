@@ -108,19 +108,22 @@ def test_retime_sintef(sfyhub, plot):
 
         plt.show()
 
-def test_retime_group():
-    a = np.array([1, 2, 3, 4, 5, 7, 8, 9, 14, 15, 16])
-    a = xr.DataArray(name='a', data=a, dims=('a')).to_dataset()
-    d = np.diff(a['a'])
-    print(d)
-    d = np.argwhere(d>1).flatten()
-    print(d)
+@needs_hub
+def test_retime_group(sfyhub):
+    b = sfyhub.buoy("dev867648043599644")
+    pcks = b.axl_packages_range(
+        datetime(2023, 4, 20, 9, 16, tzinfo=timezone.utc),
+        datetime(2023, 4, 20, 9, 40, tzinfo=timezone.utc))
+    c = AxlCollection(pcks)
 
-    v = np.split(a['a'], d)
-    print(v)
+    ds = c.to_dataset()
 
-    # d = np.append(d, d[-1])
-    # d = xr.DataArray(data=d, dims=('a'))
-    # print(d)
-    # print(a.groupby(d))
+    s = sfy.xr.groupby_segments(ds)
+    print(s)
+
+    # This dataset has no gaps
+    ds2 = sfy.xr.groupby_segments(ds).map(lambda d: d)
+    print(ds2)
+
+    assert ds == ds2
 

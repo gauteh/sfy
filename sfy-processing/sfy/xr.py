@@ -143,6 +143,26 @@ def estimate_frequency(ds, N=None):
 
     return np.array(f)
 
+def groupby_segments(ds, eps_gap=3.):
+    """
+    Split a dataset on gaps in the data.
+    """
+    N = ds.attrs.get('package_length', 1024)
+    n = len(ds.package_start.values)  # number of packages
+
+    PDT = N / ds.attrs['frequency'] * 1000. # length of package in ms
+    pdt = np.diff(ds.package_start.values).astype('timedelta64[ms]').astype(float)
+
+    ip  = np.argwhere(np.abs(pdt) > (PDT + eps_gap * 1000.)) # index in package_starts and ends
+    ip  = np.append(ip, n)
+
+    group = np.zeros(ds.time.shape)
+    ipp = ip * N
+
+    for i, (ip0, ip1) in enumerate(zip(ipp[:-1], ipp[1:])):
+        group[ip0:ip1] = i
+
+    return ds.groupby(xr.DataArray(group, dims=('time')))
 
 def retime(ds, eps_gap=3.):
     """
@@ -163,30 +183,15 @@ def retime(ds, eps_gap=3.):
 
     assert n * N == len(ds.time), "dataset has been sliced in time before retiming"
 
-    # Find gaps
-    PDT = N / ds.attrs['frequency'] * 1000.
-    pdt = np.diff(ds.package_start.values).astype('timedelta64[ms]').astype(float)
-    ip  = np.argwhere(np.abs(pdt) > eps_gap) # index in package_starts and ends
-    ip  = np.append(ip, n)
-    ipt = ip * N                             # index in time
+    # Find the best estimate for the start of the dataset based on the timestamps
+    on = np.arange(0, n) * N + ds.offset.values
+    od = (on * 1000. / fs).astype('timedelta64[ms]')
+    t0s = ds.package_start.values - od
+    t0 = np.mean(
+        t0s.astype('datetime64[ns]').astype(float)).astype('datetime64[ns]')
 
-    T = []
-
-    for iip0, iip1 in zip(ip[:-1], ip[1:]):
-        # Find the best estimate for the start of the dataset based on the timestamps
-        npp = iip1 - iip0
-        on = np.arange(0, npp) * N + ds.offset.values[iip0:iip1]
-        od = (on * 1000. / fs).astype('timedelta64[ms]')
-        t0s = ds.package_start.values[iip0:iip1] - od
-        t0 = np.mean(
-            t0s.astype('datetime64[ns]').astype(float)).astype('datetime64[ns]')
-
-        tt = np.arange(0, npp * N) * 1000. / fs
-        t = t0 + tt.astype('timedelta64[ms]')
-
-        T.append(t)
-
-    t = np.concatenate(T)
+    tt = np.arange(0, n * N) * 1000. / fs
+    t = t0 + tt.astype('timedelta64[ms]')
 
     if 'fir_adjusted' in ds.attrs:
         t = t + np.timedelta64(int(ds.attrs['fir_adjusted']),
