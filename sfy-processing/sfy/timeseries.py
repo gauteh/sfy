@@ -100,7 +100,7 @@ class AxlTimeseries:
     def extra_attrs(self):
         return {}
 
-    def to_dataset(self, displacement=False, filter_freqs=None, retime=True):
+    def to_dataset(self, displacement=False, filter_freqs=None):
         logger.debug(f'Making xarray Dataset from {self.samples()} samples..')
 
         ds = xr.Dataset(data_vars={
@@ -327,9 +327,6 @@ class AxlTimeseries:
         # Adjust for on-board FIR filter
         logger.debug('Adjusting for FIR filter delay')
         ds = signal.adjust_fir_filter(ds)
-
-        if retime:
-            ds = sxr.retime(ds)
 
         return ds
 

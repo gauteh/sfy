@@ -2,6 +2,8 @@ import numpy as np
 import pandas as pd
 from datetime import datetime, timezone
 from pytest import approx
+import matplotlib.pyplot as plt
+import xarray as xr
 
 import sfy.xr
 from sfy.axl import AxlCollection
@@ -42,14 +44,14 @@ def test_estimate_frequency(sfyhub):
     assert np.all(f-52 < .1 * 52)
 
 @needs_hub
-def test_retime(sfyhub):
+def test_retime(sfyhub, plot):
     b = sfyhub.buoy("dev867648043576717")
     pcks = b.axl_packages_range(
         datetime(2023, 4, 20, 9, 8, tzinfo=timezone.utc),
         datetime(2023, 4, 20, 9, 38, tzinfo=timezone.utc))
     c = AxlCollection(pcks)
 
-    ds = c.to_dataset(retime=False)
+    ds = c.to_dataset()
 
     ds2 = sfy.xr.retime(ds)
     print(ds2)
@@ -59,8 +61,66 @@ def test_retime(sfyhub):
 
     np.testing.assert_array_equal(ds2.oldtime, ds.time)
 
-    ds2 = ds2.sel(time=slice('2023-04-20 09:09:00', '2023-04-20 09:11:00'))
-    print(ds2)
 
     assert np.max(ds2.time) > ds.time[0]
     assert np.min(ds2.time) < ds.time[-1]
+
+    if plot:
+        plt.figure()
+        ds.w_z.plot()
+        ds2.w_z.plot()
+
+        plt.show()
+
+    ds2 = ds2.sel(time=slice('2023-04-20 09:09:00', '2023-04-20 09:11:00'))
+    print(ds2)
+
+@needs_hub
+def test_retime_sintef(sfyhub, plot):
+    b = sfyhub.buoy("dev867648043599644")
+    pcks = b.axl_packages_range(
+        datetime(2023, 4, 20, 9, 16, tzinfo=timezone.utc),
+        datetime(2023, 4, 20, 9, 40, tzinfo=timezone.utc))
+    c = AxlCollection(pcks)
+
+    ds = c.to_dataset()
+
+    ds2 = sfy.xr.retime(ds)
+
+    assert not np.all(ds2.time.values == ds.time.values)
+    assert len(np.unique(ds2.time)) == len(ds2.time)
+
+    np.testing.assert_array_equal(ds2.oldtime, ds.time)
+
+    t0 = pd.Timestamp('2023-04-20 09:16:00')
+    t1 = pd.Timestamp('2023-04-20 09:20:00')
+
+    print(ds.time.values[[0, -1]])
+    ds = ds.sel(time=slice(t0, t1))
+
+    print(ds.time.values[[0, -1]])
+    print(ds2.time.values[[0, -1]])
+
+    if plot:
+        plt.figure()
+        ds.w_z.plot()
+        ds2.w_z.plot()
+
+        plt.show()
+
+def test_retime_group():
+    a = np.array([1, 2, 3, 4, 5, 7, 8, 9, 14, 15, 16])
+    a = xr.DataArray(name='a', data=a, dims=('a')).to_dataset()
+    d = np.diff(a['a'])
+    print(d)
+    d = np.argwhere(d>1).flatten()
+    print(d)
+
+    v = np.split(a['a'], d)
+    print(v)
+
+    # d = np.append(d, d[-1])
+    # d = xr.DataArray(data=d, dims=('a'))
+    # print(d)
+    # print(a.groupby(d))
+

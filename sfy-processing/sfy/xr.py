@@ -161,20 +161,38 @@ def retime(ds, eps_gap=3.):
             np.diff(ds.time.values).astype('timedelta64[ms]').astype(float)) <
         (eps_gap * 1000.)), f"gap greater than {eps_gap}s in data"
 
-    # Find the best estimate for the start of the dataset based on the timestamps
-    on = np.arange(0, n) * N + ds.offset.values
-    od = (on * 1000. / fs).astype('timedelta64[ms]')
-    t0s = ds.package_start.values - od
-    t0 = np.mean(
-        t0s.astype('datetime64[ns]').astype(float)).astype('datetime64[ns]')
+    assert n * N == len(ds.time), "dataset has been sliced in time before retiming"
 
-    tt = np.arange(0, n * N) * 1000. / fs
-    t = t0 + tt.astype('timedelta64[ms]')
+    # Find gaps
+    PDT = N / ds.attrs['frequency'] * 1000.
+    pdt = np.diff(ds.package_start.values).astype('timedelta64[ms]').astype(float)
+    ip  = np.argwhere(np.abs(pdt) > eps_gap) # index in package_starts and ends
+    ip  = np.append(ip, n)
+    ipt = ip * N                             # index in time
+
+    T = []
+
+    for iip0, iip1 in zip(ip[:-1], ip[1:]):
+        # Find the best estimate for the start of the dataset based on the timestamps
+        npp = iip1 - iip0
+        on = np.arange(0, npp) * N + ds.offset.values[iip0:iip1]
+        od = (on * 1000. / fs).astype('timedelta64[ms]')
+        t0s = ds.package_start.values[iip0:iip1] - od
+        t0 = np.mean(
+            t0s.astype('datetime64[ns]').astype(float)).astype('datetime64[ns]')
+
+        tt = np.arange(0, npp * N) * 1000. / fs
+        t = t0 + tt.astype('timedelta64[ms]')
+
+        T.append(t)
+
+    t = np.concatenate(T)
 
     if 'fir_adjusted' in ds.attrs:
         t = t + np.timedelta64(int(ds.attrs['fir_adjusted']),
                                ds.attrs['fir_adjusted:unit'])
 
+    assert len(t) == len(ds.w_z)
     assert len(t) == len(ds.time)
 
     oldtime = ds.time.values
