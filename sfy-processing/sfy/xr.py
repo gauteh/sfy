@@ -51,72 +51,71 @@ def hm0(ds: xr.Dataset, raw=False, window=(20 * 60)) -> xr.DataArray:
             'Significant wave height calculated in the frequency domain from the first moment.'
         })
 
+
 def displacement(ds: xr.Dataset, filter_freqs=None):
-        logger.info(
-            f'Integrating displacment, filter frequencies: {filter_freqs}.')
+    logger.info(
+        f'Integrating displacment, filter frequencies: {filter_freqs}.')
 
-        u_z = signal.integrate(ds.w_z,
-                               ds.dt,
-                               order=2,
-                               freqs=filter_freqs,
-                               method='dft')
+    u_z = signal.integrate(ds.w_z,
+                           ds.dt,
+                           order=2,
+                           freqs=filter_freqs,
+                           method='dft')
 
-        u_x = signal.integrate(ds.w_x,
-                               ds.dt,
-                               order=2,
-                               freqs=filter_freqs,
-                               method='dft')
-        u_y = signal.integrate(ds.w_y,
-                               ds.dt,
-                               order=2,
-                               freqs=filter_freqs,
-                               method='dft')
+    u_x = signal.integrate(ds.w_x,
+                           ds.dt,
+                           order=2,
+                           freqs=filter_freqs,
+                           method='dft')
+    u_y = signal.integrate(ds.w_y,
+                           ds.dt,
+                           order=2,
+                           freqs=filter_freqs,
+                           method='dft')
 
-        d = xr.Dataset()
+    d = xr.Dataset()
 
-        d['u_z'] = xr.DataArray(
-            u_z.astype(np.float32),
-            coords = [('time', ds.time.data)],
-            attrs={
-                'unit': 'm',
-                'long_name': 'sea_water_wave_z_displacement',
-                'description':
-                'Horizontal z-axis displacement (integrated)',
-                'detrended': 'yes',
-                'filter': 'butterworth (10th order), two-ways',
-                'filter_freqs': filter_freqs,
-                'filter_freqs:unit': 'Hz',
-            })
+    d['u_z'] = xr.DataArray(u_z.astype(np.float32),
+                            coords=[('time', ds.time.data)],
+                            attrs={
+                                'unit': 'm',
+                                'long_name': 'sea_water_wave_z_displacement',
+                                'description':
+                                'Horizontal z-axis displacement (integrated)',
+                                'detrended': 'yes',
+                                'filter': 'butterworth (10th order), two-ways',
+                                'filter_freqs': filter_freqs,
+                                'filter_freqs:unit': 'Hz',
+                            })
 
-        d['u_x'] = xr.DataArray(
-            u_x.astype(np.float32),
-            coords = [('time', ds.time.data)],
-            attrs={
-                'unit': 'm',
-                'long_name': 'sea_water_wave_x_displacement',
-                'description':
-                'Horizontal x-axis displacement (integrated)',
-                'detrended': 'yes',
-                'filter': 'butterworth (10th order), two-ways',
-                'filter_freqs': filter_freqs,
-                'filter_freqs:unit': 'Hz',
-            })
+    d['u_x'] = xr.DataArray(u_x.astype(np.float32),
+                            coords=[('time', ds.time.data)],
+                            attrs={
+                                'unit': 'm',
+                                'long_name': 'sea_water_wave_x_displacement',
+                                'description':
+                                'Horizontal x-axis displacement (integrated)',
+                                'detrended': 'yes',
+                                'filter': 'butterworth (10th order), two-ways',
+                                'filter_freqs': filter_freqs,
+                                'filter_freqs:unit': 'Hz',
+                            })
 
-        d['u_y'] = xr.DataArray(
-            u_y.astype(np.float32),
-            coords = [('time', ds.time.data)],
-            attrs={
-                'unit': 'm',
-                'long_name': 'sea_water_wave_y_displacement',
-                'description':
-                'Horizontal y-axis displacement (integrated)',
-                'detrended': 'yes',
-                'filter': 'butterworth (10th order), two-ways',
-                'filter_freqs': filter_freqs,
-                'filter_freqs:unit': 'Hz',
-            })
+    d['u_y'] = xr.DataArray(u_y.astype(np.float32),
+                            coords=[('time', ds.time.data)],
+                            attrs={
+                                'unit': 'm',
+                                'long_name': 'sea_water_wave_y_displacement',
+                                'description':
+                                'Horizontal y-axis displacement (integrated)',
+                                'detrended': 'yes',
+                                'filter': 'butterworth (10th order), two-ways',
+                                'filter_freqs': filter_freqs,
+                                'filter_freqs:unit': 'Hz',
+                            })
 
-        return d
+    return d
+
 
 def estimate_frequency(ds, N=None):
     """
@@ -126,16 +125,67 @@ def estimate_frequency(ds, N=None):
     if N is None:
         N = ds.attrs.get('package_length', 1024)
 
-    n = len(ds.package_start.values) # number of packages
+    n = len(ds.package_start.values)  # number of packages
 
-    dt = []
+    f = []
 
-    for i in range(n):
-        dt.append((ds.time.values[(i+1) * N - 1] - ds.time.values[i*N]).astype('timedelta64[ms]').astype(float))
+    for i in range(n - 1):
+        t0 = ds.package_start.values[i]
+        t1 = ds.package_start.values[i + 1]
 
-    dt = np.array(dt)
-    f  = 1024. / (dt / 1000.)
+        # length of batch including offsets of timestamps.
+        m = N - ds.offset.values[i] + ds.offset.values[i + 1]
 
-    return f
+        ddt = (t1 - t0).astype('timedelta64[ms]').astype(float)
+        f.append(float(m) / (ddt / 1000.))
+
+    f.append(f[-1])  # backwards diff for last package.
+
+    return np.array(f)
 
 
+def retime(ds, eps_gap=3.):
+    """
+    Re-time a dataset based on the estimated frequency and a best fit of timestamps. Assuming the frequency is
+    stable throughout the dataset.
+
+    This will not work on datasets with gaps.
+    """
+
+    fs = np.median(estimate_frequency(ds))
+    N = ds.attrs.get('package_length', 1024)
+    n = len(ds.package_start.values)  # number of packages
+
+    assert np.all(
+        np.abs(
+            np.diff(ds.time.values).astype('timedelta64[ms]').astype(float)) <
+        (eps_gap * 1000.)), f"gap greater than {eps_gap}s in data"
+
+    # Find the best estimate for the start of the dataset based on the timestamps
+    on = np.arange(0, n) * N + ds.offset.values
+    od = (on * 1000. / fs).astype('timedelta64[ms]')
+    t0s = ds.package_start.values - od
+    t0 = np.mean(
+        t0s.astype('datetime64[ns]').astype(float)).astype('datetime64[ns]')
+
+    tt = np.arange(0, n * N) * 1000. / fs
+    t = t0 + tt.astype('timedelta64[ms]')
+
+    if 'fir_adjusted' in ds.attrs:
+        t = t + np.timedelta64(int(ds.attrs['fir_adjusted']),
+                               ds.attrs['fir_adjusted:unit'])
+
+    assert len(t) == len(ds.time)
+
+    oldtime = ds.time.values
+
+    ds = ds.assign_coords(
+        retime=('time', t),
+        oldtime=('time', oldtime)).set_index(time='retime').assign_attrs({
+            'estimated_frequency':
+            fs,
+            'estimated_frequency:unit':
+            'Hz'
+        })
+
+    return ds

@@ -28,7 +28,7 @@ def adjust_fir_filter(x: xr.Dataset, inplace=True):
     x['time'].values[:] = x['time'].values[:] + delay
 
     x.attrs['fir_adjusted'] = delay.item().total_seconds() * 1000
-    x.attrs['fir_adjusted:units'] = 'ms'
+    x.attrs['fir_adjusted:unit'] = 'ms'
 
     return x
 

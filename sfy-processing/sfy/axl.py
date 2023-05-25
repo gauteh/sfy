@@ -127,7 +127,12 @@ class AxlCollection(AxlTimeseries):
 
     @property
     def package_length(self):
+        assert all((self.pcks[0].package_length == p.package_length for p in self.pcks)), "all packages must have the same length."
         return self.pcks[0].package_length
+
+    @property
+    def offsets(self):
+        return np.concatenate([pck.offsets for pck in self.pcks])
 
     @property
     def start(self):
@@ -329,17 +334,14 @@ class Axl(Event, AxlTimeseries):
         """
         UTC Datetime of start of samples. Taking `offset` into account.
         """
-        return datetime.fromtimestamp(
-            self.timestamp / 1000. - (self.offset / self.freq), pytz.utc)
+        return self.time[0]
 
     @property
     def end(self):
         """
         UTC Datetime of start of samples. Taking `offset` into account.
         """
-        return datetime.fromtimestamp(
-            self.timestamp / 1000. - (self.offset / self.freq) + self.duration,
-            pytz.utc)
+        return self.time[-1]
 
     @property
     def time(self):
@@ -357,7 +359,7 @@ class Axl(Event, AxlTimeseries):
         """
         Duration in seconds.
         """
-        return len(self.x) / self.freq
+        return float(len(self.x)) / self.freq
 
     @property
     def mseconds(self):
@@ -366,6 +368,10 @@ class Axl(Event, AxlTimeseries):
         """
         t = (np.arange(0, len(self.x)) - self.offset) * 1000. / self.freq
         return self.timestamp + t
+
+    @property
+    def offsets(self):
+        return np.array([self.offset])
 
     @property
     def package_length(self):

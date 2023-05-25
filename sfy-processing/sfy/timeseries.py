@@ -31,11 +31,12 @@ class AxlTimeseries:
         logger.info(
             f'Integrating displacment, filter frequencies: {filter_freqs}.')
 
-        u_z = signal.integrate(-self.z, # flip upward
-                               self.dt,
-                               order=2,
-                               freqs=filter_freqs,
-                               method='dft')
+        u_z = signal.integrate(
+            -self.z,  # flip upward
+            self.dt,
+            order=2,
+            freqs=filter_freqs,
+            method='dft')
         u_x = signal.integrate(self.x,
                                self.dt,
                                order=2,
@@ -109,7 +110,8 @@ class AxlTimeseries:
                 attrs={
                     'unit': 'm/s^2',
                     'long_name': 'sea_water_wave_z_acceleration',
-                    'description': 'Vertical acceleration (downward, including gravity)',
+                    'description':
+                    'Vertical acceleration (downward, including gravity)',
                     'direction': 'down',
                 }),
             'w_x':
@@ -157,7 +159,15 @@ class AxlTimeseries:
                 ],
                 attrs={
                     'description':
-                    'Timestamp at start of each batch (package) of samples.'
+                    'Timestamp at `offset` sample from the start of each batch (package) of samples.'
+                }),
+            'offset':
+            xr.Variable(
+                ('received'),
+                self.offsets,
+                attrs={
+                    'description':
+                    'The sample offset in the package where the package_start timestamp is taken.'
                 }),
             'added':
             xr.Variable(('received'), [
@@ -268,8 +278,6 @@ class AxlTimeseries:
                     'long_name': 'gyro',
                     'description': 'Raw gyro measured by IMU'
                 })
-
-
 
         if displacement:
             u_z, u_x, u_y, filter_freqs = self.displacement(filter_freqs)
