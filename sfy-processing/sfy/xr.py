@@ -137,6 +137,10 @@ def estimate_frequency(ds, N=None):
 
     n = len(ds.package_start.values)  # number of packages
 
+    if n < 2:
+        logger.warning('less than two packages for estimating frequency, using assumed frequency.')
+        return np.array([ds.attrs['frequency']])
+
     f = []
 
     for i in range(n - 1):
@@ -205,11 +209,14 @@ def splitby_segments(ds, eps_gap=3.):
         ipp0 = ip0 * N
         ipp1 = ip1 * N
 
+        assert ip1 > ip0
+
         d = ds.isel(time=slice(ipp0, ipp1)) \
-                .isel(received=slice(ip0, ip1)) \
-                .isel(position_time=slice(ip0, ip1))
+                .isel(package=slice(ip0, ip1))
+
         dss.append(d)
 
+    logger.info(f'split dataset into {len(dss)} segments')
     return dss
 
 
@@ -219,6 +226,7 @@ def retime(ds, eps_gap=3.):
     stable throughout the dataset.
     """
 
+    logger.info('Re-timing dataset based on estimated frequency..')
     N = ds.attrs.get('package_length', 1024)
     n = len(ds.package_start.values)  # number of packages
 
@@ -229,9 +237,14 @@ def retime(ds, eps_gap=3.):
     pdt = np.diff(
         ds.package_start.values).astype('timedelta64[ms]').astype(float)
 
-    if np.max(np.abs(pdt)) >= (PDT + eps_gap * 1000.):
+    if len(pdt) > 1 and np.max(np.abs(pdt)) >= (PDT + eps_gap * 1000.):
         logger.warning(f"gap greater than {eps_gap}s in data, splitting and combining")
-        return xr.merge(map(retime, splitby_segments(ds, eps_gap)))
+        dss = list(map(retime, splitby_segments(ds, eps_gap)))
+        # ds = xr.concat(dss, dim=('time'), data_vars='minimal')
+        # ds = xr.combine_by_coords(dss)
+        ds = xr.merge(dss)
+
+        return ds
 
     fs = np.median(estimate_frequency(ds))
 

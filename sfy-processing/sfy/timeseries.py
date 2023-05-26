@@ -100,7 +100,7 @@ class AxlTimeseries:
     def extra_attrs(self):
         return {}
 
-    def to_dataset(self, displacement=False, filter_freqs=None):
+    def to_dataset(self, displacement=False, filter_freqs=None, retime=True):
         logger.debug(f'Making xarray Dataset from {self.samples()} samples..')
 
         ds = xr.Dataset(data_vars={
@@ -135,7 +135,7 @@ class AxlTimeseries:
                 }),
             'lon':
             xr.Variable(
-                ('position_time'),
+                ('package'),
                 np.array(self.lons, dtype=np.float64),
                 attrs={
                     'units': "degrees_east",
@@ -144,7 +144,7 @@ class AxlTimeseries:
                 }),
             'lat':
             xr.Variable(
-                ('position_time'),
+                ('package'),
                 np.array(self.lats, dtype=np.float64),
                 attrs={
                     'units': "degrees_north",
@@ -153,7 +153,7 @@ class AxlTimeseries:
                 }),
             'package_start':
             xr.Variable(
-                ('received'), [
+                ('package'), [
                     np.datetime64(int(s.timestamp() *
                                       1000.), 'ms') if s else None
                     for s in self.start_times
@@ -164,14 +164,14 @@ class AxlTimeseries:
                 }),
             'offset':
             xr.Variable(
-                ('received'),
+                ('package'),
                 self.offsets,
                 attrs={
                     'description':
                     'The sample offset in the package where the package_start timestamp is taken.'
                 }),
             'added':
-            xr.Variable(('received'), [
+            xr.Variable(('package'), [
                 np.datetime64(int(s.timestamp() * 1000.), 'ms') if s else None
                 for s in self.added_times
             ],
@@ -179,9 +179,25 @@ class AxlTimeseries:
                             'description':
                             'Time package was added to notecard.'
                         }),
+            'received':
+            xr.Variable(
+                ('package'), [
+                    np.datetime64(int(s.timestamp() * 1000.), 'ms')
+                    for s in self.received_times
+                ],
+                attrs={'description':
+                       'Time package was received by data-hub'}),
+            'position_time':
+            xr.Variable(
+                ('package'), [
+                    np.datetime64(int(s), 's') if s else np.nan
+                    for s in self.position_times
+                ],
+                attrs={'description':
+                       'Time of position fix for each package'}),
             'storage_id':
             xr.Variable(
-                ('received'),
+                ('package'),
                 np.array([
                     id if id is not None else np.nan for id in self.storage_ids
                 ]),
@@ -192,27 +208,11 @@ class AxlTimeseries:
                             xr.Variable(
                                 ('time'),
                                 self.mseconds.astype('datetime64[ms]')),
-                            'position_time':
+                            'package':
                             xr.Variable(
-                                'position_time', [
-                                    np.datetime64(int(s), 's') if s else np.nan
-                                    for s in self.position_times
-                                ],
-                                attrs={
-                                    'description':
-                                    'Time of position fix for each package'
-                                }),
-                            'received':
-                            xr.Variable(
-                                ('received'), [
-                                    np.datetime64(int(s.timestamp() * 1000.),
-                                                  'ms')
-                                    for s in self.received_times
-                                ],
-                                attrs={
-                                    'description':
-                                    'Time package was received by data-hub'
-                                }),
+                                ('package'),
+                                np.arange(0, len(self.position_times)),
+                                attrs={'description': 'Package number'}),
                         },
                         attrs={
                             'frequency': self.frequency,
@@ -328,7 +328,9 @@ class AxlTimeseries:
         logger.debug('Adjusting for FIR filter delay')
         ds = signal.adjust_fir_filter(ds)
 
-        ds = sxr.unique_positions(ds)
+        # ds = sxr.unique_positions(ds)
+        if retime:
+            ds = sxr.retime(ds)
 
         return ds
 
