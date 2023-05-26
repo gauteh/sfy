@@ -129,7 +129,7 @@ def test_retime_group_no_segment(sfyhub):
     assert ds == ds2
 
 @needs_hub
-def test_retime_group_with_segment(sfyhub):
+def test_retime_group_with_segment(sfyhub, plot):
     b = sfyhub.buoy("dev867648043599644")
     pcks = b.axl_packages_range(
         datetime(2023, 4, 20, 8, 25, tzinfo=timezone.utc),
@@ -151,6 +151,33 @@ def test_retime_group_with_segment(sfyhub):
     with pytest.raises(Exception):
         sfy.xr.retime(ds)
 
-    ds3 = sfy.xr.groupby_segments(ds).map(sfy.xr.retime)
+    # ds = sfy.xr.unique_positions(ds)
+    # assert len(np.unique(ds.position_time)) == len(ds.position_time)
+
+    dss = sfy.xr.splitby_segments(ds)
+    print(dss)
+    assert len(dss) == 2
+    assert sum(map(lambda ds: len(ds.time), dss)) == len(ds.time)
+    assert sum(map(lambda ds: len(ds.received), dss)) == len(ds.received)
+    assert sum(map(lambda ds: len(ds.position_time), dss)) == len(ds.position_time)
+
+    pos = np.concatenate([d.position_time.values for d in dss])
+    assert len(pos) == len(ds.position_time)
+    assert len(np.unique(pos)) == len(pos)
+
+    ds3 = list(map(sfy.xr.retime, sfy.xr.splitby_segments(ds)))
     print(ds3)
+
+    ds3 = xr.merge(ds3)
+    print(ds3)
+
+    np.testing.assert_array_equal(ds3.w_z.values, ds.w_z.values)
+    assert len(ds3.time) == len(ds.time)
+
+    if plot:
+        plt.figure()
+        ds.w_z.plot()
+        ds3.w_z.plot(linestyle='--')
+        plt.show()
+
 

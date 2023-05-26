@@ -328,6 +328,8 @@ class AxlTimeseries:
         logger.debug('Adjusting for FIR filter delay')
         ds = signal.adjust_fir_filter(ds)
 
+        ds = sxr.unique_positions(ds)
+
         return ds
 
     def to_netcdf(self, filename: Path, displacement: bool = False):

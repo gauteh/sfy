@@ -1,5 +1,6 @@
 import numpy as np
 import xarray as xr
+import pandas as pd
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from . import signal
@@ -116,6 +117,15 @@ def displacement(ds: xr.Dataset, filter_freqs=None):
 
     return d
 
+def unique_positions(ds):
+    """
+    Remove duplicate positions and NaTs
+    """
+    _, ui = np.unique(ds.position_time.values, return_index=True)
+    ds = ds.isel(position_time=ui)
+    ds = ds.isel(position_time=~pd.isna(ds.position_time.values))
+
+    return ds
 
 def estimate_frequency(ds, N=None):
     """
@@ -143,17 +153,21 @@ def estimate_frequency(ds, N=None):
 
     return np.array(f)
 
+
 def groupby_segments(ds, eps_gap=3.):
     """
-    Split a dataset on gaps in the data.
+    Group a dataset on gaps in the data. Cannot split along `received` dimension as well.
     """
     N = ds.attrs.get('package_length', 1024)
     n = len(ds.package_start.values)  # number of packages
 
-    PDT = N / ds.attrs['frequency'] * 1000. # length of package in ms
-    pdt = np.diff(ds.package_start.values).astype('timedelta64[ms]').astype(float)
+    PDT = N / ds.attrs['frequency'] * 1000.  # length of package in ms
+    pdt = np.diff(
+        ds.package_start.values).astype('timedelta64[ms]').astype(float)
 
-    ip = np.argwhere(np.abs(pdt) > (PDT + eps_gap * 1000.)) # index in package_starts and ends
+    ip = np.argwhere(
+        np.abs(pdt) >
+        (PDT + eps_gap * 1000.))  # index in package_starts and ends
     ip = np.append(0, ip)
     ip = np.append(ip, n)
     ip = np.unique(ip)
@@ -166,24 +180,59 @@ def groupby_segments(ds, eps_gap=3.):
 
     return ds.groupby(xr.DataArray(group, dims=('time')))
 
+
+def splitby_segments(ds, eps_gap=3.):
+    """
+    Split a dataset on gaps in the data.
+    """
+    N = ds.attrs.get('package_length', 1024)
+    n = len(ds.package_start.values)  # number of packages
+
+    PDT = N / ds.attrs['frequency'] * 1000.  # length of package in ms
+    pdt = np.diff(
+        ds.package_start.values).astype('timedelta64[ms]').astype(float)
+
+    ip = np.argwhere(
+        np.abs(pdt) >
+        (PDT + eps_gap * 1000.)) + 1  # index in package_starts and ends
+    ip = np.append(0, ip)
+    ip = np.append(ip, n)
+    ip = np.unique(ip)
+
+    dss = []
+
+    for ip0, ip1 in zip(ip[:-1], ip[1:]):
+        ipp0 = ip0 * N
+        ipp1 = ip1 * N
+
+        d = ds.isel(time=slice(ipp0, ipp1)) \
+                .isel(received=slice(ip0, ip1)) \
+                .isel(position_time=slice(ip0, ip1))
+        dss.append(d)
+
+    return dss
+
+
 def retime(ds, eps_gap=3.):
     """
     Re-time a dataset based on the estimated frequency and a best fit of timestamps. Assuming the frequency is
     stable throughout the dataset.
 
-    This will not work on datasets with gaps, use :ref:`groupby_segments` first.
+    This will not work on datasets with gaps, use :ref:`splitby_segments` first and then `xr.merge`.
     """
 
     fs = np.median(estimate_frequency(ds))
     N = ds.attrs.get('package_length', 1024)
     n = len(ds.package_start.values)  # number of packages
 
-    assert np.all(
-        np.abs(
-            np.diff(ds.time.values).astype('timedelta64[ms]').astype(float)) <
-        (eps_gap * 1000.)), f"gap greater than {eps_gap}s in data"
+    assert n * N == len(
+        ds.time), "dataset has been sliced in time before retiming"
 
-    assert n * N == len(ds.time), "dataset has been sliced in time before retiming"
+    PDT = N / ds.attrs['frequency'] * 1000.  # length of package in ms
+    pdt = np.diff(
+        ds.package_start.values).astype('timedelta64[ms]').astype(float)
+
+    assert np.max(np.abs(pdt)) < (PDT + eps_gap * 1000.), f"gap greater than {eps_gap}s in data"
 
     # Find the best estimate for the start of the dataset based on the timestamps
     on = np.arange(0, n) * N + ds.offset.values
