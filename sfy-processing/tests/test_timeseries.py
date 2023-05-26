@@ -181,3 +181,24 @@ def test_retime_group_with_segment(sfyhub, plot):
         plt.show()
 
 
+
+@needs_hub
+def test_retime_group_with_segment_entire(sfyhub, plot):
+    b = sfyhub.buoy("dev867648043599644")
+    pcks = b.axl_packages_range(
+        datetime(2023, 4, 20, 8, 25, tzinfo=timezone.utc),
+        datetime(2023, 4, 20, 8, 35, tzinfo=timezone.utc))
+    c = AxlCollection(pcks)
+
+    ds = c.to_dataset()
+
+    ds3 = sfy.xr.retime(ds)
+
+    np.testing.assert_array_equal(ds3.w_z.values, ds.w_z.values)
+    assert len(ds3.time) == len(ds.time)
+
+    if plot:
+        plt.figure()
+        ds.w_z.plot()
+        ds3.w_z.plot(linestyle='--')
+        plt.show()

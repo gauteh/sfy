@@ -217,11 +217,8 @@ def retime(ds, eps_gap=3.):
     """
     Re-time a dataset based on the estimated frequency and a best fit of timestamps. Assuming the frequency is
     stable throughout the dataset.
-
-    This will not work on datasets with gaps, use :ref:`splitby_segments` first and then `xr.merge`.
     """
 
-    fs = np.median(estimate_frequency(ds))
     N = ds.attrs.get('package_length', 1024)
     n = len(ds.package_start.values)  # number of packages
 
@@ -232,7 +229,11 @@ def retime(ds, eps_gap=3.):
     pdt = np.diff(
         ds.package_start.values).astype('timedelta64[ms]').astype(float)
 
-    assert np.max(np.abs(pdt)) < (PDT + eps_gap * 1000.), f"gap greater than {eps_gap}s in data"
+    if np.max(np.abs(pdt)) >= (PDT + eps_gap * 1000.):
+        logger.warning(f"gap greater than {eps_gap}s in data, splitting and combining")
+        return xr.merge(map(retime, splitby_segments(ds, eps_gap)))
+
+    fs = np.median(estimate_frequency(ds))
 
     # Find the best estimate for the start of the dataset based on the timestamps
     on = np.arange(0, n) * N + ds.offset.values
