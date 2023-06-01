@@ -13,7 +13,7 @@ else
 endif
 
 bump-jlink:
-	python3 ../tools/bump-jlink
+	-python3 ../tools/bump-jlink
 
 build:
 	cd sfy-artemis && cargo build $(CARGO_FLAGS)
