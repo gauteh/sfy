@@ -6,7 +6,10 @@ use embedded_hal::blocking::i2c::{Read, Write};
 
 use crate::NOTEQ_SZ;
 
-pub const BUOYSN: &str = const { option_env!("BUOYSN").unwrap_or("cain") };
+pub const BUOYSN: &str = match option_env!("BUOYSN") {
+    Some(v) => v,
+    None => "cain",
+};
 
 // GPS is sampled at this interval (seconds) when movement is detected by the accelerometer on the
 // modem. When below 300 seconds the GPS is not turned off when the buoy is moving. For experiment

@@ -1,6 +1,5 @@
 #![feature(test)]
 #![feature(inline_const)]
-#![feature(const_option_ext)]
 #![feature(result_option_inspect)]
 #![feature(try_blocks)]
 #![feature(portable_simd)]
