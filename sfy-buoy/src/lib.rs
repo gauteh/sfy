@@ -37,8 +37,8 @@ pub mod storage;
 pub mod waves;
 
 use axl::AxlPacket;
-use waves::AxlPacketT;
 use storage::Storage;
+use waves::AxlPacketT;
 
 // With 'raw' enabled 3 * 2 more samples (compared to processed samples)
 // need to be queued.
@@ -82,14 +82,14 @@ impl<D: DateTimeAccess> SharedState<D> {
     fn now(&mut self) -> NaiveDateTime {
         self.rtc
             .datetime()
-            .unwrap_or(NaiveDateTime::from_timestamp(0, 0))
+            .unwrap_or(NaiveDateTime::from_timestamp_opt(0, 0).unwrap())
     }
 
     fn get(&mut self) -> (NaiveDateTime, u32, f64, f64) {
         (
             self.rtc
                 .datetime()
-                .unwrap_or(NaiveDateTime::from_timestamp(0, 0)),
+                .unwrap_or(NaiveDateTime::from_timestamp_opt(0, 0).unwrap()),
             self.position_time,
             self.lat,
             self.lon,
@@ -173,16 +173,15 @@ impl Location {
                 }) = tm
                 {
                     info!("Got time, setting RTC.");
+                    let dt = NaiveDateTime::from_timestamp_opt(time as i64, 0)
+                        .ok_or_else(|| notecard::NoteError::NotecardErr("Bad time".into()))?;
                     self.time = time;
 
                     free(|cs| {
                         let mut state = state.borrow(cs).borrow_mut();
                         let state: &mut _ = state.deref_mut().as_mut().unwrap();
 
-                        state
-                            .rtc
-                            .set_datetime(&NaiveDateTime::from_timestamp(time as i64, 0))
-                            .ok();
+                        state.rtc.set_datetime(&dt).ok();
                     });
                 }
 

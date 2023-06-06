@@ -47,7 +47,7 @@ embedded-hal = "0.2.6"
 cmsis_dsp = { version = "0.1.0", features = [ "micromath" ] }
 
 [dependencies.ambiq-hal]
-version = "0.2"
+version = "0.3"
 features = ["ambiq-sdk", "sparkfun-redboard-nano", "rt"]
 git = "https://github.com/gauteh/ambiq-rs"
 

@@ -108,7 +108,7 @@ fn main() -> ! {
 
     // Set up RTC
     let mut rtc = hal::rtc::Rtc::new(dp.RTC, &mut dp.CLKGEN);
-    rtc.set(&NaiveDate::from_ymd(2020, 1, 1).and_hms(0, 0, 0)); // Now timestamps will be positive.
+    rtc.set(&NaiveDate::from_ymd_opt(2020, 1, 1).unwrap().and_hms_opt(0, 0, 0).unwrap()); // Now timestamps will be positive.
     rtc.enable();
     rtc.set_alarm_repeat(hal::rtc::AlarmRepeat::CentiSecond);
     rtc.enable_alarm();
