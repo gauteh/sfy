@@ -29,23 +29,37 @@ $ make deploy
 * rustup target add thumbv7em-none-eabihf
 * rustup component add llvm-tools-preview
 
+## Hardware debugger
+
+With the Artemis the JLink EDU debugger works fairly well, install the
+[debug-server and tools](https://www.segger.com/downloads/jlink/).
+
+### Debugging the Notecard
+
+The notecard outputs debug information on the USB-TTY (using e.g. `picocom` with
+baud rate: 115200). Type `trace` + Enter to get much more information. If you
+want to get debug information without powering the whole system through the
+USB-port you have to attach a [FTDI-RS232 adapter to
+AUXRX/AUXTX and pull AUXEN up](https://dev.blues.io/guides-and-tutorials/notecard-guides/debugging-with-the-ftdi-debug-cable/).
+
 ## Feature flags and environment variables
 
 ### Features
 
-* defmt-serial: logs defmt-messages over serial rather than RTT. So that you can
+* defmt-serial (experimental): logs defmt-messages over serial rather than RTT. So that you can
     read messages without a hardware-debugger. See `make defmt-serial`.
 
-* continuous: transmits data continuously, at the cost of power.
+* continuous: transmits data continuously, at the cost of more power and no
+    functional GPS. Mostly for demonstration purposes.
 
 * 20hz: set output sample rate of waves to 20Hz, rather than 52hz.
 
 * deploy: turns on `asm::wfi` in main loop over busy wait.
 
-* storage: WIP: store data on SD card.
+* storage: store data on SD card.
 
 * host-tests: used to disable code that doesn't compile on host, for running
-    host unit tests. Best used though `make host-test`.
+    host unit tests. Best used through `make host-test`.
 
 ### Environment variables
 
@@ -62,4 +76,3 @@ $ make deploy
 
 1. On Ubuntu 22 the package `brltty` claims the Artemis USB device and the tty
    device disappears, remove it if you don't need it.
-

@@ -1,7 +1,7 @@
 VERSION=4.1.1.4015681$$20221206134917
 SHA=64d60511365351f711d6e7ad5cece4cb04029e634b1d1e29080cf93becff3d3b
 FW=fw/notecard-$(VERSION).bin
-FLASH=/home/gauteh/dev/embedded/STMicroelectronics/STM32Cube/STM32CubeProgrammer/bin/STM32_Programmer_CLI
+FLASH=/home/gauteh/dev/embedded/STM32Cube/bin/STM32_Programmer_CLI
 USB ?= /dev/ttyACM0
 STUSB ?= USB1
 
