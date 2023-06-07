@@ -331,6 +331,8 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         // before running main-loop again and letting other tasks run. The main-loop will keep
         // going immediately again if there are more data in the queue.
 
+        let mut tsz = 0;
+
         while let Some(pck) = queue.dequeue() {
             // #[cfg(not(feature = "continuous"))]
             // {
@@ -354,23 +356,33 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                 return Ok(0);
             }
 
-            defmt::info!("sending package: note queue sz (after dequeue): {}", queue.len());
+            defmt::info!(
+                "sending package: note queue sz (after dequeue): {}",
+                queue.len()
+            );
             match self.send(&pck, delay) {
-                Ok(sz) => Ok(sz),
+                Ok(sz) => {
+                    tsz += sz;
+                }
                 Err(e) => {
-                    defmt::error!("Error while sending package to notecard: {:?}, retrying..", e);
+                    defmt::error!(
+                        "Error while sending package to notecard: {:?}, retrying..",
+                        e
+                    );
                     match self.send(&pck, delay) {
-                        Ok(sz) => Ok(sz),
+                        Ok(sz) => {
+                            tsz += sz;
+                        }
                         Err(e) => {
                             defmt::error!("Error while sending package to notecard: {:?}, discarding package.", e);
-                            Err(e)
+                            return Err(e);
                         }
                     }
                 }
             }
-        } else {
-            Ok(0)
         }
+
+        Ok(tsz)
     }
 
     /// Check if notecard is filling up, and initiate sync in that case.

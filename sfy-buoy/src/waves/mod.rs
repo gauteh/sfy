@@ -28,6 +28,8 @@ pub type AxlPacketT = (AxlPacket, VecRawAxl);
 #[cfg(not(feature = "raw"))]
 pub type AxlPacketT = (AxlPacket,);
 
+pub const FREQ: Freq = Freq::Hz52;
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Freq {
     Hz26,
@@ -152,7 +154,6 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         defmt::debug!("setting up imu driver..");
         let imu = Ism330Dhcx::new_with_address(&mut i2c, 0x6a)?;
 
-        const FREQ: Freq = Freq::Hz52;
 
         #[cfg(all(feature = "20Hz", not(feature = "fir")))]
         compile_error!("Feature 20Hz requires feature fir");

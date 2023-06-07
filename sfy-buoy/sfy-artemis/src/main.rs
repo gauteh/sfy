@@ -108,7 +108,12 @@ fn main() -> ! {
 
     // Set up RTC
     let mut rtc = hal::rtc::Rtc::new(dp.RTC, &mut dp.CLKGEN);
-    rtc.set(&NaiveDate::from_ymd_opt(2020, 1, 1).unwrap().and_hms_opt(0, 0, 0).unwrap()); // Now timestamps will be positive.
+    rtc.set(
+        &NaiveDate::from_ymd_opt(2020, 1, 1)
+            .unwrap()
+            .and_hms_opt(0, 0, 0)
+            .unwrap(),
+    ); // Now timestamps will be positive.
     rtc.enable();
     rtc.set_alarm_repeat(hal::rtc::AlarmRepeat::CentiSecond);
     rtc.enable_alarm();
@@ -275,9 +280,17 @@ fn main() -> ! {
             _ => {}
         };
 
-        // Process data and communication for the Notecard.
-        if ((now - last) > 60000) {
+        const LOOP_DELAY: u32 = 60_000;
 
+        assert!(
+            f64::from(LOOP_DELAY)
+                < (f64::from(sfy::axl::SAMPLE_NO as u32) * f64::from(sfy::NOTEQ_SZ as u32)
+                    / f64::from(sfy::waves::FREQ.value())),
+            "loop is too slow, NOTEQ will overflow."
+        );
+
+        // Process data and communication for the Notecard.
+        if (now - last) > LOOP_DELAY as i64 {
             let l = location.check_retrieve(&STATE, &mut delay, &mut note);
 
             defmt::debug!(
