@@ -18,7 +18,7 @@ pub const BUOYSN: &str = match option_env!("BUOYSN") {
 include!(concat!(env!("OUT_DIR"), "/config.rs"));
 
 /// Initialize sync when storage use is above this percentage.
-pub const NOTECARD_STORAGE_INIT_SYNC: u32 = 50;
+pub const NOTECARD_STORAGE_INIT_SYNC: u32 = 65;
 
 pub struct Notecarrier<I2C: Read + Write> {
     note: Notecard<I2C>,
@@ -78,7 +78,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                     Some(notecard::hub::req::HubMode::Periodic)
                 },
                 Some(BUOYSN),
-                Some(20), // max time between out-going sync in minutes.
+                Some(40), // max time between out-going sync in minutes.
                 None,
                 None,
                 None,
@@ -331,7 +331,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         // before running main-loop again and letting other tasks run. The main-loop will keep
         // going immediately again if there are more data in the queue.
 
-        if let Some(pck) = queue.dequeue() {
+        while let Some(pck) = queue.dequeue() {
             // #[cfg(not(feature = "continuous"))]
             // {
             //     let sync_status = self.note.hub().sync_status(delay)?.wait(delay)?;

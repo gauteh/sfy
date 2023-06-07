@@ -249,8 +249,6 @@ fn main() -> ! {
     loop {
         let now = STATE.now().timestamp_millis();
 
-        let l = location.check_retrieve(&STATE, &mut delay, &mut note);
-
         // Move data to SD card and enqueue for Notecard.
         match storage_manager.drain_queue(&mut note, &mut delay) {
             Err(e) => {
@@ -278,7 +276,10 @@ fn main() -> ! {
         };
 
         // Process data and communication for the Notecard.
-        if imu_queue.ready() || ((now - last) > 5000) {
+        if ((now - last) > 60000) {
+
+            let l = location.check_retrieve(&STATE, &mut delay, &mut note);
+
             defmt::debug!(
                 "notecard iteration, now: {}, note queue: {}, storage queue: {}",
                 now,
