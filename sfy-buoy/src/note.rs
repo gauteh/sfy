@@ -54,17 +54,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         // Location mode is not supported when in continuous mode.
         #[cfg(feature = "continuous")]
         note.card()
-            .location_mode(
-                delay,
-                Some("off"),
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-            )?
+            .location_mode(delay, Some("off"), None, None, None, None, None, None, None)?
             .wait(delay)?;
 
         note.hub()
