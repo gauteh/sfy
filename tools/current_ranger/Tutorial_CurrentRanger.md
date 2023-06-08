@@ -13,9 +13,9 @@
 
 ### How to use CurrentViewer
 
-IMPORTANT: The USB connection to the CurrentRanger _needs_ to be insulated. See
-the [docs](https://lowpowerlab.com/guide/currentranger/safety-and-proper-usage/)
-for more information.
+IMPORTANT: The USB connection to the CurrentRanger _needs_ to be insulated, and
+probably also to any other equipment connected to the device (e.g. a hardware
+debugger). See the [docs](https://lowpowerlab.com/guide/currentranger/safety-and-proper-usage/) for more information.
 
 Make sure you are in the "CurrentViewer" directory
 
@@ -47,5 +47,4 @@ Note:
 - To go into "Auto-ranging mode", tap "nA" and "mA" once at the same time. In this mode you can no longer switch between the difference ranges by tapping the golden pads. To go back to "manuel mode" repeat the process.
 
 - If non of the gold pannels are touched within 10min it will automatically switch off. To avoid it turning off, touch one of golden pads. The device will make a beeping sound before it turns off.
-
 
