@@ -52,7 +52,7 @@ AUXRX/AUXTX and pull AUXEN up](https://dev.blues.io/guides-and-tutorials/notecar
 * continuous: transmits data continuously, at the cost of more power and no
     functional GPS. Mostly for demonstration purposes.
 
-* 20hz: set output sample rate of waves to 20Hz, rather than 52hz.
+* 20Hz: set output sample rate of waves to 20Hz, rather than 52hz.
 
 * deploy: turns on `asm::wfi` in main loop over busy wait.
 
