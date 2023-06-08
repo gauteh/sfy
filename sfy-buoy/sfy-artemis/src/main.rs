@@ -294,17 +294,19 @@ fn main() -> ! {
             _ => {}
         };
 
-        const LOOP_DELAY: u32 = 120_000;
-
-        debug_assert!(
-            (f64::from(LOOP_DELAY) / 1000.)
-                < (f64::from(sfy::axl::SAMPLE_NO as u32) * f64::from(sfy::NOTEQ_SZ as u32)
-                    / f64::from(sfy::waves::FREQ.value())),
-            "loop is too slow, NOTEQ will overflow."
-        );
+        const LOOP_DELAY: u32 = 14 * 40_000;
 
         // Process data and communication for the Notecard.
         if (now - last) > LOOP_DELAY as i64 {
+            let queue_time: f64 = f64::from(sfy::axl::SAMPLE_NO as u32)
+                * f64::from(sfy::NOTEQ_SZ as u32)
+                / f64::from(sfy::waves::OUTPUT_FREQ);
+            debug_assert!(
+                (f64::from(LOOP_DELAY) / 1000.)
+                    < queue_time,
+                "loop is too slow, NOTEQ will overflow: loop: {} ms vs queue: {} ms (length: {}, sample_no: {}, freq: {})", LOOP_DELAY, queue_time * 1000., sfy::NOTEQ_SZ, sfy::axl::SAMPLE_NO, sfy::waves::OUTPUT_FREQ
+            );
+
             let l = location.check_retrieve(&STATE, &mut delay, &mut note);
 
             #[cfg(feature = "storage")]

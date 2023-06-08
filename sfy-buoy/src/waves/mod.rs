@@ -30,6 +30,18 @@ pub type AxlPacketT = (AxlPacket,);
 
 pub const FREQ: Freq = Freq::Hz52;
 
+#[cfg(all(feature = "20Hz", not(feature = "fir")))]
+compile_error!("Feature 20Hz requires feature fir");
+
+#[cfg(feature = "fir")]
+pub const OUTPUT_FREQ: f32 = fir::OUT_FREQ;
+
+#[cfg(not(feature = "fir"))]
+pub const OUTPUT_FREQ: f32 = FREQ.value();
+
+#[cfg(feature = "fir")]
+sa::const_assert_eq!(FREQ.value(), fir::FREQ);
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Freq {
     Hz26,
@@ -153,19 +165,6 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
     pub fn new(mut i2c: I2C) -> Result<Waves<I2C>, E> {
         defmt::debug!("setting up imu driver..");
         let imu = Ism330Dhcx::new_with_address(&mut i2c, 0x6a)?;
-
-
-        #[cfg(all(feature = "20Hz", not(feature = "fir")))]
-        compile_error!("Feature 20Hz requires feature fir");
-
-        #[cfg(feature = "fir")]
-        const OUTPUT_FREQ: f32 = fir::OUT_FREQ;
-
-        #[cfg(not(feature = "fir"))]
-        const OUTPUT_FREQ: f32 = FREQ.value();
-
-        #[cfg(feature = "fir")]
-        sa::const_assert_eq!(FREQ.value(), fir::FREQ);
 
         defmt::debug!("imu frequency: {}", FREQ.value());
         defmt::debug!("output frequency: {}", OUTPUT_FREQ);
