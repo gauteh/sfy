@@ -13,6 +13,10 @@
 
 ### How to use CurrentViewer
 
+IMPORTANT: The USB connection to the CurrentRanger _needs_ to be insulated. See
+the [docs](https://lowpowerlab.com/guide/currentranger/safety-and-proper-usage/)
+for more information.
+
 Make sure you are in the "CurrentViewer" directory
 
 For streaming option use the command:
