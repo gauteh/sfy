@@ -297,7 +297,7 @@ fn main() -> ! {
         const LOOP_DELAY: u32 = 60_000;
 
         assert!(
-            f64::from(LOOP_DELAY)
+            (f64::from(LOOP_DELAY) / 1000.)
                 < (f64::from(sfy::axl::SAMPLE_NO as u32) * f64::from(sfy::NOTEQ_SZ as u32)
                     / f64::from(sfy::waves::FREQ.value())),
             "loop is too slow, NOTEQ will overflow."

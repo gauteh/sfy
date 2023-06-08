@@ -58,11 +58,14 @@ pub const NOTEQ_SZ: usize = 6;
 
 #[cfg(not(feature = "raw"))]
 pub const STORAGEQ_SZ: usize = 12;
-#[cfg(not(feature = "raw"))]
+#[cfg(all(not(feature = "raw"), feature = "storage"))]
 pub const NOTEQ_SZ: usize = 12;
 
 #[cfg(feature = "storage")]
 pub const IMUQ_SZ: usize = STORAGEQ_SZ;
+
+#[cfg(all(not(feature = "raw"), not(feature = "storage")))]
+pub const NOTEQ_SZ: usize = 24;
 
 #[cfg(not(feature = "storage"))]
 pub const IMUQ_SZ: usize = NOTEQ_SZ;
