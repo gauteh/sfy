@@ -29,20 +29,23 @@ use cortex_m::{
     interrupt::{free, Mutex},
 };
 use cortex_m_rt::{entry, exception, ExceptionFrame};
-use embedded_hal::{
-    blocking::{
-        delay::DelayMs,
-        i2c::{Read, Write},
-    },
-    spi,
+use embedded_hal::blocking::{
+    delay::DelayMs,
+    i2c::{Read, Write},
 };
-use git_version::git_version;
+
+#[cfg(feature = "storage")]
+use embedded_hal::blocking::spi;
+#[cfg(feature = "storage")]
 use hal::spi::{Freq, Spi};
+
+use git_version::git_version;
 use hal::{i2c, pac::interrupt};
 
 use sfy::log::log;
 use sfy::note::Notecarrier;
 use sfy::waves::Waves;
+#[cfg(feature = "storage")]
 use sfy::{
     storage::{SdSpiSpeed, Storage},
     STORAGEQ,
@@ -86,6 +89,7 @@ fn main() -> ! {
     let mut delay = hal::delay::Delay::new(core.SYST, &mut dp.CLKGEN);
 
     let pins = hal::gpio::Pins::new(dp.GPIO);
+    #[cfg(not(feature = "deploy"))]
     let mut led = pins.d19.into_push_pull_output(); // d14 on redboard_artemis
 
     // set up serial as defmt target.
@@ -123,6 +127,7 @@ fn main() -> ! {
     info!("Giving subsystems a couple of seconds to boot..");
     delay.delay_ms(5_000u32);
 
+    #[cfg(feature = "storage")]
     let storage = {
         info!("Setting up storage..");
 
@@ -165,10 +170,17 @@ fn main() -> ! {
         storage
     };
 
+    #[cfg(feature = "storage")]
     let (imu_p, storage_consumer) = unsafe { STORAGEQ.split() };
+
+    #[cfg(feature = "storage")]
     let (note_p, mut imu_queue) = unsafe { NOTEQ.split() };
 
+    #[cfg(feature = "storage")]
     let mut storage_manager = sfy::StorageManager::new(storage, storage_consumer, note_p);
+
+    #[cfg(not(feature = "storage"))]
+    let (imu_p, mut imu_queue) = unsafe { NOTEQ.split() };
 
     info!("Setting up Notecarrier..");
     let mut note = Notecarrier::new(i2c4, &mut delay).unwrap();
@@ -249,12 +261,14 @@ fn main() -> ! {
 
     let mut last: i64 = 0;
     let mut good_tries: u32 = GOOD_TRIES;
+    #[cfg(feature = "storage")]
     let mut sd_good: bool = true; // Do not spam with log messags.
 
     loop {
         let now = STATE.now().timestamp_millis();
 
         // Move data to SD card and enqueue for Notecard.
+        #[cfg(feature = "storage")]
         match storage_manager.drain_queue(&mut note, &mut delay) {
             Err(e) => {
                 error!("Failed to write to SD card: {:?}", e);
@@ -293,12 +307,22 @@ fn main() -> ! {
         if (now - last) > LOOP_DELAY as i64 {
             let l = location.check_retrieve(&STATE, &mut delay, &mut note);
 
+            #[cfg(feature = "storage")]
             defmt::debug!(
                 "notecard iteration, now: {}, note queue: {}, storage queue: {}",
                 now,
                 imu_queue.len(),
                 storage_manager.storage_queue.len()
             );
+
+            #[cfg(not(feature = "storage"))]
+            defmt::debug!(
+                "notecard iteration, now: {}, note queue: {}",
+                now,
+                imu_queue.len(),
+            );
+
+            #[cfg(not(feature = "deploy"))]
             led.toggle().unwrap();
 
             sfy::log::drain_log(&mut note, &mut delay)
@@ -350,9 +374,7 @@ fn main() -> ! {
         delay.delay_ms(1000u16);
 
         #[cfg(feature = "deploy")]
-        if !(imu_queue.ready() || storage_manager.storage_queue.ready()) {
-            asm::wfi(); // doesn't work very well with RTT + probe
-        }
+        asm::wfi(); // doesn't work very well with RTT + probe
 
         // defmt::flush();
 

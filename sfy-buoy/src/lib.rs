@@ -18,14 +18,14 @@ use core::cell::RefCell;
 use core::fmt::Debug;
 use core::ops::DerefMut;
 use cortex_m::interrupt::{free, Mutex};
-use embedded_hal::{
-    blocking::{
-        delay::DelayMs,
-        i2c::{Read, Write, WriteRead},
-        spi::Transfer,
-    },
-    digital::v2::OutputPin,
+use embedded_hal::blocking::{
+    delay::DelayMs,
+    i2c::{Read, Write, WriteRead},
 };
+
+#[cfg(feature = "storage")]
+use embedded_hal::{blocking::spi::Transfer, digital::v2::OutputPin};
+
 use rtcc::DateTimeAccess;
 
 pub mod axl;
@@ -33,12 +33,21 @@ pub mod axl;
 pub mod fir;
 pub mod log;
 pub mod note;
+#[cfg(feature = "storage")]
 pub mod storage;
 pub mod waves;
 
 use axl::AxlPacket;
+#[cfg(feature = "storage")]
 use storage::Storage;
+#[cfg(feature = "storage")]
 use waves::AxlPacketT;
+
+#[cfg(feature = "storage")]
+pub type ImuAxlPacketT = waves::AxlPacketT;
+
+#[cfg(not(feature = "storage"))]
+pub type ImuAxlPacketT = axl::AxlPacket;
 
 // With 'raw' enabled 3 * 2 more samples (compared to processed samples)
 // need to be queued.
@@ -52,12 +61,17 @@ pub const STORAGEQ_SZ: usize = 12;
 #[cfg(not(feature = "raw"))]
 pub const NOTEQ_SZ: usize = 12;
 
+#[cfg(feature = "storage")]
 pub const IMUQ_SZ: usize = STORAGEQ_SZ;
+
+#[cfg(not(feature = "storage"))]
+pub const IMUQ_SZ: usize = NOTEQ_SZ;
 
 /// These queues are filled up by the IMU interrupt in read batches of time-series. It is then consumed
 /// the main thread and first drained to the SD storage (if enabled), and then queued for the notecard.
 
 /// Queue from IMU to Storage
+#[cfg(feature = "storage")]
 pub static mut STORAGEQ: heapless::spsc::Queue<AxlPacketT, STORAGEQ_SZ> =
     heapless::spsc::Queue::new();
 
@@ -227,7 +241,7 @@ impl Location {
 }
 
 pub struct Imu<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> {
-    pub queue: heapless::spsc::Producer<'static, AxlPacketT, IMUQ_SZ>,
+    pub queue: heapless::spsc::Producer<'static, ImuAxlPacketT, IMUQ_SZ>,
     waves: waves::Waves<I>,
     last_read: i64,
 }
@@ -235,7 +249,7 @@ pub struct Imu<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error =
 impl<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> Imu<E, I> {
     pub fn new(
         waves: waves::Waves<I>,
-        queue: heapless::spsc::Producer<'static, AxlPacketT, IMUQ_SZ>,
+        queue: heapless::spsc::Producer<'static, ImuAxlPacketT, IMUQ_SZ>,
     ) -> Imu<E, I> {
         Imu {
             queue,
@@ -260,13 +274,16 @@ impl<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> Imu<E
             trace!("waves buffer is full, pushing to queue..");
             let pck = self.waves.take_buf(now, position_time, lon, lat)?;
 
+            #[cfg(not(feature = "storage"))]
+            let pck = pck.0;
+
             trace!("collect remaining samples, to avoid overrun.");
             samples += self.waves.read_and_filter()?;
 
             self.queue
                 .enqueue(pck)
-                .inspect_err(|pck| {
-                    error!("queue is full, discarding data: {}", pck.0.data.len());
+                .inspect_err(|_| {
+                    error!("queue is full, discarding data.");
 
                     log::log("Queue is full: discarding package.");
                 })
@@ -305,6 +322,7 @@ impl<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> Imu<E
     }
 }
 
+#[cfg(feature = "storage")]
 pub struct StorageManager<Spi: Transfer<u8>, CS: OutputPin>
 where
     <Spi as Transfer<u8>>::Error: Debug,
@@ -314,6 +332,7 @@ where
     pub note_queue: heapless::spsc::Producer<'static, AxlPacket, NOTEQ_SZ>,
 }
 
+#[cfg(feature = "storage")]
 impl<Spi: Transfer<u8>, CS: OutputPin> StorageManager<Spi, CS>
 where
     <Spi as Transfer<u8>>::Error: Debug,

@@ -38,6 +38,7 @@ continuous = [ "sfy/continuous" ]
 20Hz = [ "sfy/20Hz" ]
 raw = [ "sfy/raw" ]
 fir = [ "sfy/fir" ]
+storage = [ "sfy/storage" ]
 deploy = []
 defmt-serial = [ "dep:ufmt", "dep:defmt-serial" ]
 
