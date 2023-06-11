@@ -295,9 +295,13 @@ fn main() -> ! {
         };
 
         const LOOP_DELAY: u32 = 14 * 40_000;
+        const SHORT_LOOP_DELAY: u32 = 30_000;
 
         // Process data and communication for the Notecard.
-        if (now - last) > LOOP_DELAY as i64 {
+        if ((now - last) > LOOP_DELAY as i64)
+            || ((imu_queue.capacity() - imu_queue.len()) < 3
+                && (now - last) > SHORT_LOOP_DELAY as i64)
+        {
             let queue_time: f64 = f64::from(sfy::axl::SAMPLE_NO as u32)
                 * f64::from(sfy::NOTEQ_SZ as u32)
                 / f64::from(sfy::waves::OUTPUT_FREQ);
@@ -307,6 +311,8 @@ fn main() -> ! {
                 "loop is too slow, NOTEQ will overflow: loop: {} ms vs queue: {} ms (length: {}, sample_no: {}, freq: {})", LOOP_DELAY, queue_time * 1000., sfy::NOTEQ_SZ, sfy::axl::SAMPLE_NO, sfy::waves::OUTPUT_FREQ
             );
 
+            // This updates the RTC. It should happen in the same block as `last`, otherwise we
+            // could theoretically get a negative time jump. In practice that should not be possible.
             let l = location.check_retrieve(&STATE, &mut delay, &mut note);
 
             #[cfg(feature = "storage")]
