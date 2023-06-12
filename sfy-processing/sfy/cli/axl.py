@@ -127,6 +127,7 @@ def ts(dev, tx_start, tx_end, start, end, file, gap, freq, displacement):
             f"Filtering packages on frequency: {freq}, {len(pcks)} packages matching."
         )
 
+    logger.debug(f'Building collection..')
     pcks = AxlCollection(pcks)
 
     # filter packages between start and end
@@ -136,6 +137,7 @@ def ts(dev, tx_start, tx_end, start, end, file, gap, freq, displacement):
 
     gap = gap if gap is not None else AxlCollection.GAP_LIMIT
 
+    logger.debug('Splitting collection into segments..')
     segments = list(pcks.segments(eps_gap=gap))
     logger.info(f"Collection consists of: {len(segments)} segments")
 

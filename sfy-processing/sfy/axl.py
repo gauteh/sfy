@@ -20,7 +20,7 @@ class AxlCollection(AxlTimeseries):
     GAP_LIMIT = 10.  # limit in seconds before data is not considered continuous
     pcks: ['Axl']
 
-    def __init__(self, pcks: ['Axl'], duplicates_removed=False):
+    def __init__(self, pcks: ['Axl'], sorted_and_duplicates_removed=False):
         assert len(pcks) > 0, "must be at least one package"
 
         assert all(pck.frequency == pcks[0].frequency
@@ -38,14 +38,15 @@ class AxlCollection(AxlTimeseries):
         # identify these packages.
         #
 
-        if not duplicates_removed:
+        if not sorted_and_duplicates_removed:
             p = len(self.pcks)
             logger.debug("Removing duplicates..")
             self.pcks = list(frozenset(self.pcks))
             if p > len(self.pcks):
                 logger.warning(f"Removed {p - len(self.pcks)} duplicates.")
 
-        self.pcks.sort(key=lambda pck: pck.start)
+            logger.debug('Sorting packages..')
+            self.pcks.sort(key=lambda pck: pck.start)
 
     @staticmethod
     def from_storage_file(name, dev, file, raw=False):
@@ -94,11 +95,11 @@ class AxlCollection(AxlTimeseries):
                         pcks[0].start.timestamp()) <= eps_gap:
                 segment.append(pcks.pop(0))
             else:
-                yield AxlCollection(segment, duplicates_removed=True)
+                yield AxlCollection(segment, sorted_and_duplicates_removed=True)
                 segment = []
 
         if len(segment) > 0:
-            yield AxlCollection(segment, duplicates_removed=True)
+            yield AxlCollection(segment, sorted_and_duplicates_removed=True)
 
     def samples(self):
         """
@@ -334,7 +335,9 @@ class Axl(Event, AxlTimeseries):
         """
         UTC Datetime of start of samples. Taking `offset` into account.
         """
-        return self.time[0]
+        t = self.timestamp - (self.offset * 1000. / self.freq)
+        t = datetime.fromtimestamp(t / 1000., tz=pytz.utc)
+        return t
 
     @property
     def end(self):

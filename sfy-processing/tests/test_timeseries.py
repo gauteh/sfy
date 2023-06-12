@@ -21,6 +21,8 @@ def test_time(sfyhub):
 
     p0 = c.pcks[0]
 
+    assert p0.start == p0.time[0]
+
     assert p0.offset == 0
     assert p0.start.timestamp() == p0.timestamp / 1000.
 

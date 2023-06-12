@@ -19,6 +19,8 @@ def test_collect(sfyhub):
     print("duration:", c.duration)
     print(f"len= {len(pcks)}")
 
+    assert c.start == c.time[0]
+
     np.testing.assert_almost_equal(c.duration, len(pcks) * 1024 / 52.)
 
 
