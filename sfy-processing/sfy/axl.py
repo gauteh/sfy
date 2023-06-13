@@ -344,7 +344,9 @@ class Axl(Event, AxlTimeseries):
         """
         UTC Datetime of start of samples. Taking `offset` into account.
         """
-        return self.time[-1]
+        t = self.timestamp + ((len(self.x) - 1 - self.offset) * 1000. / self.freq)
+        t = datetime.fromtimestamp(t / 1000., tz=pytz.utc)
+        return t
 
     @property
     def time(self):
