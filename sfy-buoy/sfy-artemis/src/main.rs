@@ -294,6 +294,8 @@ fn main() -> ! {
             _ => {}
         };
 
+        // XXX: This needs to be adapted to frequency, and queue length. Maybe just remove when we
+        // have the remaining space check? Check after Hjeltefjorden deployment.
         const LOOP_DELAY: u32 = 14 * 40_000;
         const SHORT_LOOP_DELAY: u32 = 30_000;
 
