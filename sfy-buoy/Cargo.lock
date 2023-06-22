@@ -499,9 +499,9 @@ dependencies = [
 
 [[package]]
 name = "defmt-serial"
-version = "0.5.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b9dd9b6f842429c6d05d7617ba28cef0d52f51425c5203c426276c409e2aeff7"
+checksum = "6971a5be9a473f92bb1a1e11ebbfc0e1f444fa08163a5f4d0f28389d236b515e"
 dependencies = [
  "critical-section 0.2.8",
  "defmt",
