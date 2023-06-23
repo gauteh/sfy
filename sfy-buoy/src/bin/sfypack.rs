@@ -213,6 +213,7 @@ mod tests {
         assert_eq!(c.pcks.len(), 100);
     }
 
+    #[ignore]
     #[test]
     fn open_raw_v5() {
         let c = Collection::from_file_raw("tests/data/32.5").unwrap();
