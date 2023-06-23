@@ -1,10 +1,10 @@
 import scipy as sc
 
-FREQ = 52.     # Input frequency
+FREQ = 208.     # Input frequency
 
 # 50 Hz
 NTAP = 129      # Length of filter
-CUTOFF = 20.    # Cut-off frequency for output
+CUTOFF = 26.    # Cut-off frequency for output
 
 fir = sc.signal.firwin(NTAP, cutoff=CUTOFF, pass_zero='lowpass', fs = FREQ)
 
@@ -16,7 +16,7 @@ with open('firwin.25_52_coeff', 'w') as fd:
 
 # 20 Hz
 NTAP = 129      # Length of filter
-CUTOFF = 8.     # Cut-off frequency for output
+CUTOFF = 13.    # Cut-off frequency for output
 
 fir = sc.signal.firwin(NTAP, cutoff=CUTOFF, pass_zero='lowpass', fs = FREQ)
 

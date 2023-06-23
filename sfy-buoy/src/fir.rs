@@ -2,7 +2,7 @@ use core::simd::{f32x4, SimdFloat};
 use heapless::Deque;
 
 /// Sample rate.
-pub const FREQ: f32 = 52.0;
+pub const FREQ: f32 = 208.0;
 
 pub mod hz50 {
     /// Filter order, length or number of taps.
@@ -12,11 +12,11 @@ pub mod hz50 {
     pub const COEFFS: [f32; NTAP] = include!("firwin.25_52_coeff");
 
     /// Cut-off frequency of filter.
-    pub const CUTOFF: f32 = 25.0;
+    pub const CUTOFF: f32 = 26.0;
 
-    /// True cut-off frequency as generated with `firwin`. Must have some margin to sufficiently
-    /// attenuate frequencies close to Nyquist.
-    pub const TRUE_CUTOFF: f32 = 20.0;
+    // True cut-off frequency as generated with `firwin`. Must have some margin to sufficiently
+    // attenuate frequencies close to Nyquist.
+    // pub const TRUE_CUTOFF: f32 = 20.0;
 }
 
 pub mod hz20 {
@@ -27,11 +27,11 @@ pub mod hz20 {
     pub const COEFFS: [f32; NTAP] = include!("firwin.10_52_coeff");
 
     /// Cut-off frequency of filter.
-    pub const CUTOFF: f32 = 10.0;
+    pub const CUTOFF: f32 = 13.0;
 
-    /// True cut-off frequency as generated with `firwin`. Must have some margin to sufficiently
-    /// attenuate frequencies close to Nyquist.
-    pub const TRUE_CUTOFF: f32 = 8.0;
+    // True cut-off frequency as generated with `firwin`. Must have some margin to sufficiently
+    // attenuate frequencies close to Nyquist.
+    // pub const TRUE_CUTOFF: f32 = 8.0;
 }
 
 #[cfg(feature = "20Hz")]
