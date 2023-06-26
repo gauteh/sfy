@@ -19,6 +19,8 @@ The buoys deployed in the surf on the coast of Norway:
 
 [![Wave buoys in the surf zone at Jæren](http://img.youtube.com/vi/qK1Di7pjYFI/0.jpg)](http://www.youtube.com/watch?v=qK1Di7pjYFI "Wave buoys in the surf zone at Jæren")
 
+see [Seldal, Torunn Irene, M. Sc. thesis, 2023, _SFY: A free-drifting wave buoy for measuring surf waves_](https://bora.uib.no/bora-xmlui/handle/11250/3072146) for more information.
+
 # Acknowledgements
 
 This work is based on the [OpenMetBuoy-v2021a](https://github.com/jerabaul29/OpenMetBuoy-v2021a), see [Rabault et. al. (2022)](https://www.mdpi.com/2076-3263/12/3/110).
