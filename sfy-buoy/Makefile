@@ -34,6 +34,9 @@ deploy: bin
 com:
 	picocom -e c -b 115200 $(USB)
 
+defmt-serial-mac:
+	(stty speed 115200 >/dev/null && cat) </dev/cu.usbserial-10 | defmt-print -e $(ELF)
+
 defmt-serial:
 	socat $(USB),raw,echo=0,b115200 STDOUT | defmt-print -e $(ELF)
 
