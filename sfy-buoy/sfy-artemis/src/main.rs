@@ -127,10 +127,12 @@ fn main() -> ! {
     let mut led = pins.d19.into_push_pull_output();
 
     info!("Blinking to indicate start-up.");
-    led.toggle().unwrap();
+    led.set_high().unwrap();
 
     info!("Giving subsystems a couple of seconds to boot..");
     delay.delay_ms(5_000u32);
+
+    led.set_low().unwrap();
 
     #[cfg(feature = "storage")]
     let storage = {
