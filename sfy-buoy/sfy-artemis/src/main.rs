@@ -124,6 +124,11 @@ fn main() -> ! {
 
     let mut location = Location::new();
 
+    let mut led = pins.d19.into_push_pull_output();
+
+    info!("Blinking to indicate start-up.");
+    led.toggle().unwrap();
+
     info!("Giving subsystems a couple of seconds to boot..");
     delay.delay_ms(5_000u32);
 
