@@ -322,7 +322,7 @@ def imu_cutoff_rabault2022(f, E, f0=0.05):
     OMB_df = 0.048828125 - 0.0439453125  #  df for OpenMetBuoy
 
     df = f[1] - f[0]
-    assert (df == np.diff(f)).all()
+    assert np.max(np.abs(df - np.diff(f))) < 1e-12, f"df not constant: {df} vs {np.diff(f)}, max diff: {np.max(np.abs(np.diff(f)-df))}"
 
     # Below f0 (0.05 Hz) the signal becomes very noisy, and quadrubly so because of the integration.
     if0 = np.argmax(f >= f0)
