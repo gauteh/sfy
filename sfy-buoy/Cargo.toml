@@ -53,7 +53,7 @@ build-bin = [ "storage", "raw", "anyhow", "argh", "serde-json-core/std", "serde_
 default = [ "build-bin" ]
 
 [patch.crates-io]
-ism330dhcx = { git = "https://github.com/gauteh/ism330dhcx", branch = "52hz" }
+ism330dhcx = { git = "https://github.com/stianvikanes/ism330dhcx", branch = "datarate" }
 # ism330dhcx = { path = "../../../../dev/embedded/imu/ism330dhcx" }
 cmsis_dsp = { git = "https://github.com/samcrow/cmsis_dsp.rs" }
 # embedded-sdmmc = { git = "https://github.com/rust-embedded-community/embedded-sdmmc-rs", branch = "develop" }

@@ -8,7 +8,6 @@ use embedded_hal::blocking::{
 };
 use ism330dhcx::{ctrl1xl, ctrl2g, fifo, fifoctrl, Ism330Dhcx};
 
-
 #[cfg(feature = "fir")]
 use static_assertions as sa;
 
@@ -29,7 +28,7 @@ pub type AxlPacketT = (AxlPacket, VecRawAxl);
 #[cfg(not(feature = "raw"))]
 pub type AxlPacketT = (AxlPacket,);
 
-pub const FREQ: Freq = Freq::KHz166;                         /////////////////////////////////
+pub const FREQ: Freq = Freq::Hz208;                         /////////////////////////////////
 
 #[cfg(all(feature = "20Hz", not(feature = "fir")))]
 compile_error!("Feature 20Hz requires feature fir");
@@ -49,8 +48,15 @@ pub enum Freq {
     Hz52,
     Hz104,
     Hz208,
+    Hz416,
+    Hz417,
     Hz833,
     KHz166,
+    Hz1667,
+    KHz333,
+    Hz3333,
+    KHz666,
+    Hz6667,
 }
 
 impl Freq {
@@ -62,8 +68,15 @@ impl Freq {
             Hz52 => 52.,
             Hz104 => 104.,
             Hz208 => 208.,
+            Hz417 => 417.,
+            Hz416 => 416.,
             Hz833 => 833.,
             KHz166 => 1667.,
+            Hz1667 => 1667.,
+            KHz333 => 3333.,
+            Hz3333 => 3333.,
+            KHz666 => 6667.,
+            Hz6667 => 6667.,
         }
     }
 
@@ -76,8 +89,12 @@ impl Freq {
             Hz52 => Odr::Hz52,
             Hz104 => Odr::Hz104,
             Hz208 => Odr::Hz208,
+            Hz416 => Odr::Hz416,
+            //Hz417 => Odr::
             Hz833 => Odr::Hz833,
-            KHz166 => Odr::KHz166
+            KHz166 => Odr::KHz166,
+            KHz333 => Odr::KHz333,
+            KHz666 => Odr::KHz666,
         }
     }
 
@@ -90,8 +107,11 @@ impl Freq {
             Hz52 => Odr::Hz52,
             Hz104 => Odr::Hz104,
             Hz208 => Odr::Hz208,
+            Hz416 => Odr::Hz416,
             Hz833 => Odr::Hz833,
             KHz166 => Odr::KHz166,
+            KHz333 => Odr::KHz333,
+            KHz666 => Odr::KHz666,
         }
     }
 
@@ -104,8 +124,11 @@ impl Freq {
             Hz52 => Odr::Hz52,
             Hz104 => Odr::Hz104,
             Hz208 => Odr::Hz208,
+            Hz417 => Odr::Hz417,
             Hz833 => Odr::Hz833,
             Hz1667 => Odr::Hz1667,
+            Hz3333 => Odr::Hz3333,
+            Hz6667 => Odr::Hz6667,
         }
     }
 
@@ -118,8 +141,11 @@ impl Freq {
             Hz52 => Odr::Hz52,
             Hz104 => Odr::Hz104,
             Hz208 => Odr::Hz208,
+            Hz417 => Odr::Hz417,
             Hz833 => Odr::Hz833,
             Hz1667 => Odr::Hz1667,
+            Hz3333 => Odr::Hz3333,
+            Hz6667 => Odr::Hz6667,
         }
     }
 }
