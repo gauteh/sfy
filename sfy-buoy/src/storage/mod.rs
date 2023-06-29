@@ -217,11 +217,13 @@ where
             offset
         );
 
-
         let written = block.write(&collection, &buf, raw_bytes)?;
 
         if written != (buf.len() + raw_bytes.len()) {
-            defmt::error!("Could not write full package to card, written: {} bytes", written);
+            defmt::error!(
+                "Could not write full package to card, written: {} bytes",
+                written
+            );
         }
 
         Ok(id)
@@ -312,8 +314,7 @@ where
         &mut self,
         collection: &str,
         buf: &[u8],
-        #[allow(unused)]
-        buf_raw: &[u8],
+        #[allow(unused)] buf_raw: &[u8],
     ) -> Result<usize, StorageErr> {
         let sz: Result<usize, StorageErr> = try {
             let mut c = Controller::new(&self.block, self.clock);
@@ -529,9 +530,7 @@ mod tests {
             offset: 15,
             storage_id: Some(0),
             storage_version: STORAGE_VERSION,
-            data: (6..3078)
-                .map(|v| v as u16)
-                .collect::<Vec<_, { AXL_SZ }>>(),
+            data: (6..3078).map(|v| v as u16).collect::<Vec<_, { AXL_SZ }>>(),
         };
         let p1_truth = AxlPacket {
             timestamp: 1002400,
@@ -543,9 +542,7 @@ mod tests {
             offset: 15,
             storage_id: Some(1),
             storage_version: STORAGE_VERSION,
-            data: (6..3078)
-                .map(|v| v as u16)
-                .collect::<Vec<_, { AXL_SZ }>>(),
+            data: (6..3078).map(|v| v as u16).collect::<Vec<_, { AXL_SZ }>>(),
         };
         let p2_truth = AxlPacket {
             timestamp: 1002500,
@@ -557,9 +554,7 @@ mod tests {
             offset: 15,
             storage_id: Some(2),
             storage_version: STORAGE_VERSION,
-            data: (9..3081)
-                .map(|v| v as u16)
-                .collect::<Vec<_, { AXL_SZ }>>(),
+            data: (9..3081).map(|v| v as u16).collect::<Vec<_, { AXL_SZ }>>(),
         };
 
         assert_eq!(p0_truth, p0);

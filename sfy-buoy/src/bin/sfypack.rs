@@ -5,8 +5,8 @@ use std::ops::Deref;
 use std::path::{Path, PathBuf};
 
 use sfy::axl;
-use sfy::storage::PACKAGE_SZ as RAW_PACKAGE_SZ;
 use sfy::axl::AXL_POSTCARD_SZ as PACKAGE_SZ;
+use sfy::storage::PACKAGE_SZ as RAW_PACKAGE_SZ;
 use sfy::waves::VecRawAxl;
 
 #[derive(FromArgs)]
@@ -60,9 +60,16 @@ fn main() -> anyhow::Result<()> {
         }
         (false, true) => {
             let pcks = if let Some(raw) = c.raw {
-                c.pcks.iter().zip(raw).map(|(p, r)| AxlNote::from(p, Some(r))).collect::<Vec<AxlNote>>()
+                c.pcks
+                    .iter()
+                    .zip(raw)
+                    .map(|(p, r)| AxlNote::from(p, Some(r)))
+                    .collect::<Vec<AxlNote>>()
             } else {
-                c.pcks.iter().map(|p| AxlNote::from(p, None)).collect::<Vec<AxlNote>>()
+                c.pcks
+                    .iter()
+                    .map(|p| AxlNote::from(p, None))
+                    .collect::<Vec<AxlNote>>()
             };
             println!("{}", json::to_string_pretty(&pcks).unwrap());
         }
@@ -78,7 +85,7 @@ fn main() -> anyhow::Result<()> {
 pub struct AxlNote {
     body: axl::AxlPacketMeta,
     payload: String,
-    raw: Option<Vec<f32>>
+    raw: Option<Vec<f32>>,
 }
 
 impl AxlNote {
@@ -160,7 +167,10 @@ impl Collection {
             })
             .unzip();
 
-        Ok(Collection { pcks, raw: Some(raw) })
+        Ok(Collection {
+            pcks,
+            raw: Some(raw),
+        })
     }
 }
 

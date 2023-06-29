@@ -3,7 +3,7 @@
 #![no_main]
 
 #[cfg(not(feature = "deploy"))]
-use panic_probe as _; 
+use panic_probe as _;
 
 #[allow(unused_imports)]
 use defmt::{debug, error, info, println, trace, warn};
@@ -35,7 +35,7 @@ use embedded_hal::blocking::{
 };
 
 #[cfg(feature = "storage")]
-use embedded_hal::spi::MODE_0; //, blocking::spi};
+use embedded_hal::spi::MODE_0; 
 #[cfg(feature = "storage")]
 use hal::spi::{Freq, Spi};
 
@@ -139,14 +139,7 @@ fn main() -> ! {
         info!("Setting up storage..");
 
         debug!("Setting up SPI for SD card..");
-        let spi = Spi::new(
-            dp.IOM0,
-            pins.d12,
-            pins.d13,
-            pins.d11,
-            Freq::F100kHz,
-            MODE_0,
-        );
+        let spi = Spi::new(dp.IOM0, pins.d12, pins.d13, pins.d11, Freq::F100kHz, MODE_0);
         let cs = pins.a14.into_push_pull_output();
 
         let mut storage = Storage::open(
