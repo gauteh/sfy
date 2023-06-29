@@ -296,7 +296,7 @@ fn main() -> ! {
 
         // XXX: This needs to be adapted to frequency, and queue length. Maybe just remove when we
         // have the remaining space check? Check after Hjeltefjorden deployment.
-        const LOOP_DELAY: u32 = 5 * 40_000;
+        const LOOP_DELAY: u32 = 14 * 20_000;
         const SHORT_LOOP_DELAY: u32 = 30_000;
 
         // Process data and communication for the Notecard.
