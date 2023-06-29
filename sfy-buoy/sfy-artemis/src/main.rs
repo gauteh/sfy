@@ -3,7 +3,7 @@
 #![no_main]
 
 #[cfg(not(feature = "deploy"))]
-use panic_probe as _;
+use panic_probe as _; 
 
 #[allow(unused_imports)]
 use defmt::{debug, error, info, println, trace, warn};
@@ -35,7 +35,7 @@ use embedded_hal::blocking::{
 };
 
 #[cfg(feature = "storage")]
-use embedded_hal::blocking::spi;
+use embedded_hal::spi::MODE_0; //, blocking::spi};
 #[cfg(feature = "storage")]
 use hal::spi::{Freq, Spi};
 
@@ -145,7 +145,7 @@ fn main() -> ! {
             pins.d13,
             pins.d11,
             Freq::F100kHz,
-            spi::MODE_0,
+            MODE_0,
         );
         let cs = pins.a14.into_push_pull_output();
 
@@ -303,7 +303,7 @@ fn main() -> ! {
 
         // XXX: This needs to be adapted to frequency, and queue length. Maybe just remove when we
         // have the remaining space check? Check after Hjeltefjorden deployment.
-        const LOOP_DELAY: u32 = 14 * 40_000;
+        const LOOP_DELAY: u32 = 5 * 40_000;
         const SHORT_LOOP_DELAY: u32 = 30_000;
 
         // Process data and communication for the Notecard.
