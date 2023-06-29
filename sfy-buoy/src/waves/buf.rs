@@ -1,9 +1,7 @@
 use ahrs_fusion::NxpFusion;
 use micromath::{vector::Vector3d, Quaternion};
 
-use crate::{
-    axl::{AXL_SZ, SAMPLE_SZ},
-};
+use crate::axl::{AXL_SZ, SAMPLE_SZ};
 #[cfg(feature = "fir")]
 use crate::fir;
 
@@ -16,7 +14,6 @@ use super::wire::G16;
 pub const SENSORS_RADS_TO_DPS: f64 = 57.29577793;
 pub const SENSORS_DPS_TO_RADS: f64 = 0.017453293;
 pub const SENSORS_GRAVITY_STANDARD: f64 = 9.80665;
-
 
 #[cfg(feature = "fir")]
 pub const RAW_AXL_SZ: usize = 2 * AXL_SZ * fir::DECIMATE as usize;
@@ -143,8 +140,10 @@ impl ImuBuf {
         // Store raw values
         #[cfg(feature = "raw")]
         {
-            self.raw_axl.extend(g.iter().map(|g| G16::from_f32(*g as f32).to_u16()));
-            self.raw_axl.extend(a.iter().map(|a| A16::from_f32(*a as f32).to_u16()));
+            self.raw_axl
+                .extend(g.iter().map(|g| G16::from_f32(*g as f32).to_u16()));
+            self.raw_axl
+                .extend(a.iter().map(|a| A16::from_f32(*a as f32).to_u16()));
         }
 
         // Feed AHRS filter
@@ -180,7 +179,9 @@ impl ImuBuf {
             // rotate the instantanuous acceleration.
             self.axl.push(A16::from_f32(axl.x).to_u16()).unwrap();
             self.axl.push(A16::from_f32(axl.y).to_u16()).unwrap();
-            self.axl.push(A16::from_f32(axl.z - SENSORS_GRAVITY_STANDARD as f32).to_u16()).unwrap();
+            self.axl
+                .push(A16::from_f32(axl.z - SENSORS_GRAVITY_STANDARD as f32).to_u16())
+                .unwrap();
         }
 
         // Filter and decimate the rotated acceleration.
@@ -214,8 +215,8 @@ mod tests {
     #[cfg(feature = "fir")]
     #[test]
     fn filter_decimater() {
-        use crate::axl::SAMPLE_NO;
         use super::*;
+        use crate::axl::SAMPLE_NO;
 
         let mut buf = ImuBuf::new(200.);
 

@@ -20,7 +20,7 @@ mod buf;
 mod wire;
 
 use buf::ImuBuf;
-pub use buf::{VecAxl, VecRawAxl, RAW_AXL_SZ, RAW_AXL_BYTE_SZ};
+pub use buf::{VecAxl, VecRawAxl, RAW_AXL_BYTE_SZ, RAW_AXL_SZ};
 
 #[cfg(feature = "raw")]
 pub type AxlPacketT = (AxlPacket, VecRawAxl);

@@ -138,7 +138,6 @@ impl AxlPacket {
             temperature: self.temperature,
         };
 
-
         (meta, b64)
     }
 }
