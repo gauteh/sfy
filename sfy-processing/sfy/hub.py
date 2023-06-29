@@ -57,9 +57,6 @@ class Hub:
     @staticmethod
     def from_env():
         from urllib.parse import urljoin
-        from dotenv import load_dotenv
-
-        load_dotenv()
 
         API = os.getenv('SFY_SERVER')
         KEY = os.getenv('SFY_READ_TOKEN')

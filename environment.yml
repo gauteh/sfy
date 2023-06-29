@@ -13,7 +13,6 @@ dependencies:
   - click
   - tabulate
   - tqdm
-  - python-dotenv
   - coloredlogs
   - xarray
   - netcdf4

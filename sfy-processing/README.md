@@ -12,15 +12,7 @@ $ pip install -e .
 
 ## Usage
 
-Specify the server and read-token in a [`.env`](./.env-example) file:
-
-```
-SFY_SERVER="http://wavebug.met.no:3000/"
-SFY_READ_TOKEN="secret"
-SFY_DATA_CACHE="/tmp/sfy-cache"
-```
-
-Or set them as environment variables in e.g. `.bashrc`:
+Specify the server and read-token in environment variables, e.g. in `.bashrc`:
 
 ```
 export SFY_SERVER='http://wavebug.met.no:3000'
