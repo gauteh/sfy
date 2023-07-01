@@ -216,7 +216,6 @@ def splitby_segments(ds, eps_gap=3.):
 
         dss.append(d)
 
-    logger.info(f'split dataset into {len(dss)} segments')
     return dss
 
 
@@ -226,7 +225,7 @@ def retime(ds, eps_gap=3.):
     stable throughout the dataset.
     """
 
-    logger.info('Re-timing dataset based on estimated frequency..')
+    logger.debug('Re-timing dataset based on estimated frequency..')
     N = ds.attrs.get('package_length', 1024)
     n = len(ds.package_start.values)  # number of packages
 
@@ -238,8 +237,9 @@ def retime(ds, eps_gap=3.):
         ds.package_start.values).astype('timedelta64[ms]').astype(float)
 
     if len(pdt) > 1 and np.max(np.abs(pdt)) >= (PDT + eps_gap * 1000.):
-        logger.warning(f"gap greater than {eps_gap}s in data, splitting and combining")
+        logger.warning(f"Re-timing: gap greater than {eps_gap}s in data, splitting and combining")
         dss = list(map(retime, splitby_segments(ds, eps_gap)))
+        logger.info(f'Split dataset into {len(dss)} segments, merging..')
         # ds = xr.concat(dss, dim=('time'), data_vars='minimal')
         # ds = xr.combine_by_coords(dss)
         ds = xr.merge(dss)

@@ -330,6 +330,7 @@ class AxlTimeseries:
 
         # ds = sxr.unique_positions(ds)
         if retime:
+            logger.info('Re-timing dataset based on estimated frequency..')
             ds = sxr.retime(ds)
 
         return ds
@@ -345,4 +346,5 @@ class AxlTimeseries:
         for v in ds.variables:
             encoding[v] = compression
 
+        logger.info(f'Writing dataset to {filename}..')
         ds.to_netcdf(filename, format='NETCDF4', encoding=encoding)
