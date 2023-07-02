@@ -192,5 +192,50 @@ def csv(dev, start, end, tower, axl):
     print(buf.getvalue())
 
 
+@track.command(help="Plot stats, voltage, temperature, etc")
+@click.argument('dev')
+@click.option('--start',
+              default=None,
+              help='Filter packages after this time',
+              type=click.DateTime())
+@click.option('--end',
+              default=None,
+              help='Filter packages before this time',
+              type=click.DateTime())
+def stats(dev, start, end):
+    """
+    Plot stats, voltage, temperature, etc
+    """
+    hub = Hub.from_env()
+    buoy = hub.buoy(dev)
+
+    pcks = buoy.position_packages_range(start, end)
+    pcks = [pck for pck in pcks if pck.file == '_track.qo']
+
+    tm = np.array([pck.best_position_time for pck in pcks], dtype='datetime64[s]')
+    lon = [pck.longitude for pck in pcks]
+    lat = [pck.latitude for pck in pcks]
+    typ = [pck.position_type for pck in pcks]
+    file = [pck.file for pck in pcks]
+    bearing = [pck.body.get('bearing', None) for pck in pcks]
+    velocity = [pck.body.get('velocity', None) for pck in pcks]
+    distance = [pck.body.get('distance', None) for pck in pcks]
+    temperature = [pck.body.get('temperature', None) for pck in pcks]
+    voltage = [pck.body.get('voltage', None) for pck in pcks]
+
+    f = plt.figure()
+    ax = plt.gca()
+    ax.plot(tm, voltage, color='C2', label='Voltage [V]')
+    ax.grid()
+    ax.set_ylim([3., 5.])
+
+    at = ax.twinx()
+    at.plot(tm, temperature, color='C1', label='Temperature (modem) [C]')
+
+    plt.title(f'Statistics for {buoy.name} ({buoy.dev})')
+    f.legend()
+    plt.show()
+
+
 if __name__ == '__main__':
     track()
