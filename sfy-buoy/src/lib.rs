@@ -297,6 +297,7 @@ impl<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> Imu<E
             let elapsed = now - self.last_read; // ms
                                                 // will be a large jump when getting time.
             if elapsed > 3000 && elapsed < 100_0000 {
+                ///////////////////
                 error!("Too few samples, IMU may be stuck: {}", elapsed);
                 self.last_read = now;
                 return Err(waves::ImuError::TooFewSamples(elapsed));

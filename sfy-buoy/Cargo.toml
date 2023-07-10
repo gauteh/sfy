@@ -24,7 +24,8 @@ serde-json-core = { version = "0.4", optional = true }
 serde_json = { version = "1", optional = true }
 embedded-hal = "0.2.6"
 cortex-m = "*"
-ism330dhcx = "0.5.1"
+ism330dhcx = { git = "https://github.com/stianvikanes/ism330dhcx", branch = "datarate" }
+#ism330dhcx = "0.5.1"
 static_assertions = "1"
 chrono = { version = "0.4.19", default-features = false }
 micromath = { version = "2", features = [ "quaternion", "vector" ] }

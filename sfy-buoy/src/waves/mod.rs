@@ -28,7 +28,7 @@ pub type AxlPacketT = (AxlPacket, VecRawAxl);
 #[cfg(not(feature = "raw"))]
 pub type AxlPacketT = (AxlPacket,);
 
-pub const FREQ: Freq = Freq::Hz208;                         /////////////////////////////////
+pub const FREQ: Freq = Freq::Hz417; /////////////////////////////////
 
 #[cfg(all(feature = "20Hz", not(feature = "fir")))]
 compile_error!("Feature 20Hz requires feature fir");
@@ -40,7 +40,7 @@ pub const OUTPUT_FREQ: f32 = fir::OUT_FREQ;
 pub const OUTPUT_FREQ: f32 = FREQ.value();
 
 #[cfg(feature = "fir")]
-sa::const_assert_eq!(FREQ.value(), fir::FREQ);              ////// make sure the two values are equal at compile time
+sa::const_assert_eq!(FREQ.value(), fir::FREQ); ////// make sure the two values are equal at compile time
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Freq {
@@ -48,7 +48,6 @@ pub enum Freq {
     Hz52,
     Hz104,
     Hz208,
-    //Hz416,
     Hz417,
     Hz833,
     Hz1667,
@@ -66,7 +65,6 @@ impl Freq {
             Hz104 => 104.,
             Hz208 => 208.,
             Hz417 => 417.,
-            //Hz416 => 416.,
             Hz833 => 833.,
             Hz1667 => 1667.,
             Hz3333 => 3333.,
@@ -192,8 +190,8 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         defmt::debug!("setting up imu driver..");
         let imu = Ism330Dhcx::new_with_address(&mut i2c, 0x6a)?;
 
-        defmt::debug!("imu frequency: {}", FREQ.value());                              ///////////////////
-        defmt::debug!("output frequency: {}", OUTPUT_FREQ);                            ////////////////////
+        defmt::debug!("imu frequency: {}", FREQ.value()); ///////////////////
+        defmt::debug!("output frequency: {}", OUTPUT_FREQ); ////////////////////
 
         let mut w = Waves {
             i2c,
@@ -272,7 +270,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         // CTRL1_XL
         sensor
             .ctrl1xl
-            .set_accelerometer_data_rate(i2c, self.freq.accel_odr())?;                         /////////////////
+            .set_accelerometer_data_rate(i2c, self.freq.accel_odr())?; /////////////////
 
         sensor
             .ctrl1xl
@@ -282,7 +280,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         // CTRL2_G
         sensor
             .ctrl2g
-            .set_gyroscope_data_rate(i2c, self.freq.gyro_odr())?;                               //////////////
+            .set_gyroscope_data_rate(i2c, self.freq.gyro_odr())?; //////////////
 
         sensor
             .ctrl2g

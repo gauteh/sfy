@@ -740,7 +740,7 @@ dependencies = [
 [[package]]
 name = "ism330dhcx"
 version = "0.5.1"
-source = "git+https://github.com/stianvikanes/ism330dhcx?branch=datarate#adacf2f7a94e09cd72bfde175291044616eab2b0"
+source = "git+https://github.com/stianvikanes/ism330dhcx?branch=datarate#0d5670fb0bcfb9912210441e375d091ab4311ed8"
 dependencies = [
  "defmt",
  "embedded-hal",
