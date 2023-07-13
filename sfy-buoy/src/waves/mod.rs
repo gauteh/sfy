@@ -28,7 +28,7 @@ pub type AxlPacketT = (AxlPacket, VecRawAxl);
 #[cfg(not(feature = "raw"))]
 pub type AxlPacketT = (AxlPacket,);
 
-pub const FREQ: Freq = Freq::Hz417; /////////////////////////////////
+pub const FREQ: Freq = Freq::Hz833; /////////////////////////////////
 
 #[cfg(all(feature = "20Hz", not(feature = "fir")))]
 compile_error!("Feature 20Hz requires feature fir");
@@ -288,6 +288,9 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
 
         // CTRL7_G
         sensor.ctrl7g.set_g_hm_mode(i2c, true)?; // high-res mode on gyro
+
+        sensor.fifoctrl.compression(i2c, true)?; // Enable compression
+
 
         // Both the gyro and accelerometer is low-pass filtered on-board:
         //
