@@ -44,14 +44,15 @@ git = "https://github.com/gauteh/notecard-rs"
 half = { version = "1.8.2", features = [ "use-intrinsics", "bytemuck", "serde" ] }
 
 [features]
+default = [ "build-bin" ]
 continuous = []
-20Hz = [ 'fir' ]
+20Hz = ["fir"]
 raw = [ "storage" ]
 fir = []
 storage = []
 target-test = [ "storage" ]
-build-bin = [ "storage", "raw", "anyhow", "argh", "serde-json-core/std", "serde_json", "chrono/std" ]
-default = [ "build-bin" ]
+build-bin = [ "fir", "storage", "raw", "anyhow", "argh", "serde-json-core/std", "serde_json", "chrono/std" ]
+
 
 [patch.crates-io]
 ism330dhcx = { git = "https://github.com/stianvikanes/ism330dhcx", branch = "CTRL10-register-trying" }
