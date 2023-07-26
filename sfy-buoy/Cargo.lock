@@ -730,7 +730,17 @@ dependencies = [
 [[package]]
 name = "ism330dhcx"
 version = "0.4.1"
-source = "git+https://github.com/gauteh/ism330dhcx?branch=52hz#e9d098a62c502ab25b6f88957f6b38229a28cd22"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9574fc715002016603f290bf977b2c240afaacbd760dbb0d46f4cac06856bc8f"
+dependencies = [
+ "defmt",
+ "embedded-hal",
+]
+
+[[package]]
+name = "ism330dhcx"
+version = "0.5.1"
+source = "git+https://github.com/stianvikanes/ism330dhcx?branch=CTRL10-register-trying#eea6698da67789a126f009e3f74d7cd6e9c93263"
 dependencies = [
  "defmt",
  "embedded-hal",
@@ -1221,7 +1231,7 @@ dependencies = [
  "embedded-sdmmc",
  "half 1.8.2",
  "heapless",
- "ism330dhcx",
+ "ism330dhcx 0.5.1",
  "libm",
  "micromath",
  "postcard",
@@ -1336,7 +1346,7 @@ dependencies = [
  "defmt-test",
  "embedded-hal",
  "heapless",
- "ism330dhcx",
+ "ism330dhcx 0.4.1",
  "panic-probe",
  "serde",
  "serde-json-core",
