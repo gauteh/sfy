@@ -289,7 +289,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         // CTRL7_G
         sensor.ctrl7g.set_g_hm_mode(i2c, true)?; // high-res mode on gyro
 
-        sensor.fifoctrl.compression(i2c, true)?; // Enable compression
+        //sensor.fifoctrl.compression(i2c, true)?; // Enable compression
 
 
         // Both the gyro and accelerometer is low-pass filtered on-board:
