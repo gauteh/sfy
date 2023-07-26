@@ -6,7 +6,7 @@ use embedded_hal::blocking::{
     delay::DelayMs,
     i2c::{Write, WriteRead},
 };
-use ism330dhcx::{ctrl1xl, ctrl2g, fifo, fifoctrl, Ism330Dhcx};
+use ism330dhcx::{ctrl10c, ctrl1xl, ctrl2g, fifo, fifoctrl, freqfine, Ism330Dhcx};
 
 #[cfg(feature = "fir")]
 use static_assertions as sa;
@@ -28,7 +28,7 @@ pub type AxlPacketT = (AxlPacket, VecRawAxl);
 #[cfg(not(feature = "raw"))]
 pub type AxlPacketT = (AxlPacket,);
 
-pub const FREQ: Freq = Freq::Hz208;
+pub const FREQ: Freq = Freq::Hz104;
 
 #[cfg(all(feature = "20Hz", not(feature = "fir")))]
 compile_error!("Feature 20Hz requires feature fir");
@@ -161,7 +161,7 @@ impl<E: Debug> From<E> for ImuError<E> {
     }
 }
 
-impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
+impl<E: Debug + defmt::Format, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
     pub fn new(mut i2c: I2C) -> Result<Waves<I2C>, E> {
         defmt::debug!("setting up imu driver..");
         let imu = Ism330Dhcx::new_with_address(&mut i2c, 0x6a)?;
@@ -270,6 +270,9 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         // Gyro: LPF2 at 66.8 Hz when ODR = 208 Hz (not configurable)
         // Accel: default is ODR/2 => 104 Hz.
 
+        //CTRL10_C
+        sensor.ctrl10c.enable_timestamp(i2c, true)?; // Enable timestamp (for the ODR_actual)
+
         Ok(())
     }
 
@@ -298,6 +301,8 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         // Start FIFO. The FIFO will fill up and stop if it is not emptied fast enough.
         self.imu.fifoctrl.mode(i2c, fifoctrl::FifoMode::FifoMode)?;
 
+        let actual: f32 = self.imu.freqfine.read_freq(i2c)?.into();
+        defmt::debug!("actual frequency: {}", actual);
         Ok(())
     }
 

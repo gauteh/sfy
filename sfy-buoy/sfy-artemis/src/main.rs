@@ -35,7 +35,7 @@ use embedded_hal::blocking::{
 };
 
 #[cfg(feature = "storage")]
-use embedded_hal::spi::MODE_0; 
+use embedded_hal::spi::MODE_0;
 #[cfg(feature = "storage")]
 use hal::spi::{Freq, Spi};
 

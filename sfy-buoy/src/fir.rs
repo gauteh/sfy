@@ -2,7 +2,7 @@ use core::simd::{f32x4, SimdFloat};
 use heapless::Deque;
 
 /// Sample rate.
-pub const FREQ: f32 = 208.0;
+pub const FREQ: f32 = 104.0;
 
 pub mod hz50 {
     /// Filter order, length or number of taps.

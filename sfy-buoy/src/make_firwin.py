@@ -1,6 +1,6 @@
 import scipy as sc
 
-FREQ = 208.     # Input frequency
+FREQ = 104.     # Input frequency
 
 # 50 Hz
 NTAP = 129      # Length of filter

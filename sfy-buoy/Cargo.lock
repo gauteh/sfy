@@ -740,7 +740,7 @@ dependencies = [
 [[package]]
 name = "ism330dhcx"
 version = "0.5.1"
-source = "git+https://github.com/stianvikanes/ism330dhcx?branch=CTRL10-register-trying#eea6698da67789a126f009e3f74d7cd6e9c93263"
+source = "git+https://github.com/stianvikanes/ism330dhcx?branch=CTRL10-register-trying#6027179ec51e376a56bdf6e9c448ec560424316a"
 dependencies = [
  "defmt",
  "embedded-hal",
