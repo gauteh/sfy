@@ -131,7 +131,10 @@ fn main() -> ! {
             .unwrap(),
     ); // Now timestamps will be positive.
     rtc.enable();
+    #[cfg(not(feature = "raw"))]
     rtc.set_alarm_repeat(hal::rtc::AlarmRepeat::DeciSecond);
+    #[cfg(feature = "raw")]
+    rtc.set_alarm_repeat(hal::rtc::AlarmRepeat::CentiSecond);
     rtc.enable_alarm();
 
     let mut location = Location::new();
@@ -308,22 +311,29 @@ fn main() -> ! {
 
         // XXX: This needs to be adapted to frequency, and queue length. Maybe just remove when we
         // have the remaining space check? Check after Hjeltefjorden deployment.
-        const LOOP_DELAY: u32 = 14 * 20_000;
-        const SHORT_LOOP_DELAY: u32 = 30_000;
+        // const LOOP_DELAY: u32 = 14 * 20_000;
+        #[cfg(not(feature = "raw"))]
+        const SHORT_LOOP_DELAY: u32 = 20_000;
+
+        #[cfg(feature = "raw")]
+        const SHORT_LOOP_DELAY: u32 = 0;
+
+        #[cfg(not(feature = "raw"))]
+        const IMU_Q_D: usize = 3;
+
+        #[cfg(feature = "raw")]
+        const IMU_Q_D: usize = 0;
 
         // Process data and communication for the Notecard.
-        if ((now - last) > LOOP_DELAY as i64)
-            || ((imu_queue.capacity() - imu_queue.len()) < 3
-                && (now - last) > SHORT_LOOP_DELAY as i64)
-        {
-            let queue_time: f64 = f64::from(sfy::axl::SAMPLE_NO as u32)
-                * f64::from(sfy::NOTEQ_SZ as u32)
-                / f64::from(sfy::waves::OUTPUT_FREQ);
-            debug_assert!(
-                (f64::from(LOOP_DELAY) / 1000.)
-                    < queue_time,
-                "loop is too slow, NOTEQ will overflow: loop: {} ms vs queue: {} ms (length: {}, sample_no: {}, freq: {})", LOOP_DELAY, queue_time * 1000., sfy::NOTEQ_SZ, sfy::axl::SAMPLE_NO, sfy::waves::OUTPUT_FREQ
-            );
+        if imu_queue.ready() {
+            // let queue_time: f64 = f64::from(sfy::axl::SAMPLE_NO as u32)
+            //     * f64::from(sfy::NOTEQ_SZ as u32)
+            //     / f64::from(sfy::waves::OUTPUT_FREQ);
+            // debug_assert!(
+            //     (f64::from(LOOP_DELAY) / 1000.)
+            //         < queue_time,
+            //     "loop is too slow, NOTEQ will overflow: loop: {} ms vs queue: {} ms (length: {}, sample_no: {}, freq: {})", LOOP_DELAY, queue_time * 1000., sfy::NOTEQ_SZ, sfy::axl::SAMPLE_NO, sfy::waves::OUTPUT_FREQ
+            // );
 
             // This updates the RTC. It should happen in the same block as `last`, otherwise we
             // could theoretically get a negative time jump. In practice that should not be possible.

@@ -370,6 +370,9 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                     }
                 }
             }
+
+            #[cfg(feature = "raw")]
+            break;
         }
 
         Ok(tsz)
