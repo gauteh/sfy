@@ -20,7 +20,7 @@ def test_fir():
     # plt.show()
 
 def test_filter_coeffs():
-    f50 = eval(open('../sfy-buoy/src/firwin.25_52_coeff').read())
+    f50 = eval(open('../sfy-buoy/src/firwin.26_coeff').read())
     f50 = np.array(f50)
 
     NTAP = 129      # Length of filter
@@ -30,7 +30,7 @@ def test_filter_coeffs():
 
     np.testing.assert_allclose(fir, f50, rtol=1e-10)
 
-    f20 = eval(open('../sfy-buoy/src/firwin.10_52_coeff').read())
+    f20 = eval(open('../sfy-buoy/src/firwin.13_coeff').read())
     f20 = np.array(f20)
 
     NTAP = 129      # Length of filter

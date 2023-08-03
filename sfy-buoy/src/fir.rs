@@ -9,7 +9,7 @@ pub mod hz50 {
     pub const NTAP: usize = 129;
 
     /// Filter coefficients. Generated with Pythons `scipy.signal.firwin(...)`.
-    pub const COEFFS: [f32; NTAP] = include!("firwin.25_52_coeff");
+    pub const COEFFS: [f32; NTAP] = include!("firwin.26_coeff");
 
     /// Cut-off frequency of filter.
     pub const CUTOFF: f32 = 26.0;
@@ -24,7 +24,7 @@ pub mod hz20 {
     pub const NTAP: usize = 129;
 
     /// Filter coefficients. Generated with Pythons `scipy.signal.firwin(...)`.
-    pub const COEFFS: [f32; NTAP] = include!("firwin.10_52_coeff");
+    pub const COEFFS: [f32; NTAP] = include!("firwin.13_coeff");
 
     /// Cut-off frequency of filter.
     pub const CUTOFF: f32 = 13.0;
