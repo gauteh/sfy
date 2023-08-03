@@ -35,7 +35,7 @@ use embedded_hal::blocking::{
 };
 
 #[cfg(feature = "storage")]
-use embedded_hal::spi::MODE_0; 
+use embedded_hal::spi::MODE_0;
 #[cfg(feature = "storage")]
 use hal::spi::{Freq, Spi};
 
@@ -103,6 +103,18 @@ fn main() -> ! {
         git_version!(),
         sfy::note::BUOYSN
     );
+
+    println!("firmware configuration:");
+    println!("storage .....: {}", cfg!(feature = "storage"));
+    println!("fir .........: {}", cfg!(feature = "fir"));
+    println!("raw .........: {}", cfg!(feature = "raw"));
+    println!("20Hz ........: {}", cfg!(feature = "20Hz"));
+    println!("continuous ..: {}", cfg!(feature = "continuous"));
+    println!("deploy ......: {}", cfg!(feature = "deploy"));
+    println!("defmt-serial : {}", cfg!(feature = "defmt-serial"));
+    println!("NOTEQ_SZ ....: {}", sfy::NOTEQ_SZ);
+    println!("IMUQ_SZ .....: {}", sfy::IMUQ_SZ);
+    println!("STORAGEQ_SZ .: {}", sfy::STORAGEQ_SZ);
 
     info!("Setting up IOM and RTC.");
     delay.delay_ms(1_000u32);
