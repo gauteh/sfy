@@ -126,41 +126,40 @@ def spec_stats(ds: xr.Dataset, raw=False, window=(20 * 60)) -> xr.Dataset:
             xr.DataArray(
                 np.array(m0),
                 dims=['time'],
-                attrs={
-                    'description': 'Zeroth order moment from spectrum'
-                }),
+                attrs={'description': 'Zeroth order moment from spectrum'}),
             'm1':
             xr.DataArray(
                 np.array(m1),
                 dims=['time'],
-                attrs={
-                    'description': 'First order moment from spectrum'
-                }),
+                attrs={'description': 'First order moment from spectrum'}),
             'm2':
             xr.DataArray(
                 np.array(m2),
                 dims=['time'],
-                attrs={
-                    'description': 'Second order moment from spectrum'
-                }),
+                attrs={'description': 'Second order moment from spectrum'}),
             'm4':
             xr.DataArray(
                 np.array(m4),
                 dims=['time'],
-                attrs={
-                    'description': 'Forth order moment from spectrum'
-                }),
+                attrs={'description': 'Forth order moment from spectrum'}),
             'E':
             xr.DataArray(
                 P,
                 dims=['time', 'frequency'],
                 attrs={
-                    'unit': 'm^2/Hz',
-                    'long_name': 'sea_surface_wave_variance_spectral_density',
-                    'description': 'Sea surface elevation spectrum (variance density spectrum) calculated using Welch method.',
+                    'unit':
+                    'm^2/Hz',
+                    'long_name':
+                    'sea_surface_wave_variance_spectral_density',
+                    'description':
+                    'Sea surface elevation spectrum (variance density spectrum) calculated using Welch method.',
                 }),
         },
-        coords={'time': time, 'frequency': np.array(f[0])})
+        coords={
+            'time': time,
+            'frequency': np.array(f[0])
+        })
+
 
 def displacement(ds: xr.Dataset, filter_freqs=None):
     logger.info(
@@ -309,7 +308,7 @@ def seltime(ds, start, end):
         float)
 
     ip0 = np.argmax(pdt >= fstart)
-    ip1 = np.argmax(pdt <= fend)
+    ip1 = np.argmax(pdt > fend)
 
     return ds.sel(time=slice(start, end)).isel(package=slice(ip0, ip1))
 

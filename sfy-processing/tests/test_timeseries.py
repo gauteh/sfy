@@ -201,3 +201,28 @@ def test_retime_group_with_segment_entire(sfyhub, plot):
         ds.w_z.plot()
         ds3.w_z.plot(linestyle='--')
         plt.show()
+
+@needs_hub
+def test_seltime(sfyhub, plot):
+    b = sfyhub.buoy("dev867648043599644")
+    pcks = b.axl_packages_range(
+        datetime(2023, 4, 20, 8, 25, tzinfo=timezone.utc),
+        datetime(2023, 4, 20, 11, 35, tzinfo=timezone.utc))
+    c = AxlCollection(pcks)
+    dsr = c.to_dataset()
+    assert dsr.dims['package'] > 0
+
+    ds = sfy.xr.seltime(dsr, '2023-04-20T08:25', '2023-04-20T10:00:00.0')
+    print(ds)
+    assert ds.dims['package'] > 0
+    assert ds.dims['time'] > 0
+    assert np.all(ds.time>pd.to_datetime('2023-04-20T08:25'))
+    # assert ds.time.values[-1] <= pd.to_datetime('2023-04-20T10:00')
+    assert np.all(ds.time<=pd.to_datetime('2023-04-20T10:00'))
+    assert np.all(ds.package_start>pd.to_datetime('2023-04-20T08:25'))
+    assert np.all(ds.package_start<=pd.to_datetime('2023-04-20T10:00'))
+
+    ds = sfy.xr.seltime(dsr, '2023-05-20T08:25', '2023-05-20T10:00')
+    assert ds.dims['package'] == 0
+    assert ds.dims['time'] == 0
+
