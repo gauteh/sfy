@@ -228,10 +228,12 @@ def welch(freq, e, nperseg=4096, order=2):
     Args:
         order: Integration order, default 2 (assuming input is acceleration)
     """
-    f, P = scipy.signal.welch(e, freq, nperseg=nperseg, detrend='linear')
+    f, P = scipy.signal.welch(e, freq, nperseg=nperseg, nfft=nperseg, detrend='linear')
 
     if order > 0:
         P = welchint(f, P, order)
+
+    assert len(P) == nperseg//2 +1
 
     return f, P
 
@@ -259,6 +261,32 @@ def hm0(f, H):
     m0 = spectral_moment(f, H, 0)
     return 4 * np.sqrt(m0)
 
+def spec_stats(f, H):
+    """
+    Calculate Hm0, m0, m1, Tc, Tz, etc. See `ref:hs` for definition.
+
+    Based on code in `decoder.py` from OMB. And:
+        * Holthuijsen, Leo H. Waves in Oceanic and Coastal Waters. Cambridge University Press, 2010.
+    Args:
+        f: Frequencies.
+
+        H: Elevation energies
+
+    Returns:
+
+        Spectral moments and derived parameters.
+    """
+
+    m0 = spectral_moment(f, H, 0)
+    m1 = spectral_moment(f, H, 1)
+    m2 = spectral_moment(f, H, 2)
+    m4 = spectral_moment(f, H, 4)
+
+    hm0 =  4 * np.sqrt(m0)
+    Tm01 = (m0 / m1)  # mean zero-crossing period (Holthuijsen)
+    Tm02 = np.sqrt(m0 / m2) # mean zero-crossing period (Holthuijsen)
+
+    return m0, m1, m2, m4, hm0, Tm01, Tm02
 
 def hs(e):
     """

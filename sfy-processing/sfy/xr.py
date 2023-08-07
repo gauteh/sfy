@@ -53,6 +53,115 @@ def hm0(ds: xr.Dataset, raw=False, window=(20 * 60)) -> xr.DataArray:
         })
 
 
+def spec_stats(ds: xr.Dataset, raw=False, window=(20 * 60)) -> xr.Dataset:
+    """
+    Return DataSet with Hm0, Tc, Tz, m0, m2, m4 and elevation spectra.
+    """
+
+    z = ds.w_z.values
+
+    # split into windows
+    N = int(window * ds.frequency)
+    N = min(N, len(z))
+    i = np.arange(N, len(z), N).astype(np.int32)
+    logger.debug(f'Splitting into {len(i)} windows..')
+    z = np.split(z, i)
+
+    # Calculate hm0 for each window
+    logger.debug(f'Calculating Hm0 for {len(z)} 20 minute segments..')
+
+    def stat(zz):
+        f, P = signal.welch(ds.frequency, zz)
+        if not raw:
+            _, _, P = signal.imu_cutoff_rabault2022(f, P)
+        return *signal.spec_stats(f, P), f, P
+
+    with ThreadPoolExecutor() as x:
+        m0, m1, m2, m4, hm0, Tm01, Tm02, f, P = zip(*x.map(stat, z))
+
+    i = np.append(i, len(z))
+
+    time = ds.time[i - N].values
+
+    assert len(hm0) == len(time)
+
+    P = np.vstack(P)
+
+    logger.debug('Building dataset..')
+
+    return xr.Dataset(
+        {
+            'hm0':
+            xr.DataArray(
+                np.array(hm0),
+                dims=[
+                    'time',
+                ],
+                attrs={
+                    'unit':
+                    'm',
+                    'long_name':
+                    'sea_surface_wave_significant_height',
+                    'description':
+                    'Significant wave height calculated in the frequency domain from the first moment.'
+                }),
+            'Tm01':
+            xr.DataArray(np.array(Tm01),
+                         dims=['time'],
+                         attrs={
+                             'unit': 's',
+                             'long_name': 'sea_surface_wave_mean_period',
+                             'description': 'Mean zero crossing period (m0/m1)'
+                         }),
+            'Tm02':
+            xr.DataArray(
+                np.array(Tm02),
+                dims=['time'],
+                attrs={
+                    'unit': 's',
+                    'long_name': 'sea_surface_wave_mean_period',
+                    'description': 'Mean zero crossing period (sqrt(m0/m2))'
+                }),
+            'm0':
+            xr.DataArray(
+                np.array(m0),
+                dims=['time'],
+                attrs={
+                    'description': 'Zeroth order moment from spectrum'
+                }),
+            'm1':
+            xr.DataArray(
+                np.array(m1),
+                dims=['time'],
+                attrs={
+                    'description': 'First order moment from spectrum'
+                }),
+            'm2':
+            xr.DataArray(
+                np.array(m2),
+                dims=['time'],
+                attrs={
+                    'description': 'Second order moment from spectrum'
+                }),
+            'm4':
+            xr.DataArray(
+                np.array(m4),
+                dims=['time'],
+                attrs={
+                    'description': 'Forth order moment from spectrum'
+                }),
+            'E':
+            xr.DataArray(
+                P,
+                dims=['time', 'frequency'],
+                attrs={
+                    'unit': 'm^2/Hz',
+                    'long_name': 'sea_surface_wave_variance_spectral_density',
+                    'description': 'Sea surface elevation spectrum (variance density spectrum) calculated using Welch method.',
+                }),
+        },
+        coords={'time': time, 'frequency': np.array(f[0])})
+
 def displacement(ds: xr.Dataset, filter_freqs=None):
     logger.info(
         f'Integrating displacment, filter frequencies: {filter_freqs}.')
@@ -117,6 +226,7 @@ def displacement(ds: xr.Dataset, filter_freqs=None):
 
     return d
 
+
 def unique_positions(ds):
     """
     Remove duplicate positions and NaTs
@@ -126,6 +236,7 @@ def unique_positions(ds):
     ds = ds.isel(position_time=~pd.isna(ds.position_time.values))
 
     return ds
+
 
 def estimate_frequency(ds, N=None):
     """
@@ -138,7 +249,9 @@ def estimate_frequency(ds, N=None):
     n = len(ds.package_start.values)  # number of packages
 
     if n < 2:
-        logger.warning('less than two packages for estimating frequency, using assumed frequency.')
+        logger.warning(
+            'less than two packages for estimating frequency, using assumed frequency.'
+        )
         return np.array([ds.attrs['frequency']])
 
     f = []
@@ -169,9 +282,9 @@ def groupby_segments(ds, eps_gap=3.):
     pdt = np.diff(
         ds.package_start.values).astype('timedelta64[ms]').astype(float)
 
-    ip = np.argwhere(
-        np.abs(pdt) >
-        (PDT + eps_gap * 1000.))  # index in package_starts and ends
+    ip = np.argwhere(np.abs(pdt)
+                     > (PDT +
+                        eps_gap * 1000.))  # index in package_starts and ends
     ip = np.append(0, ip)
     ip = np.append(ip, n)
     ip = np.unique(ip)
@@ -185,6 +298,22 @@ def groupby_segments(ds, eps_gap=3.):
     return ds.groupby(xr.DataArray(group, dims=('time')))
 
 
+def seltime(ds, start, end):
+    """
+    Trim dataset to between start and end (both along time and packages)
+    """
+    pdt = ds.package_start.values.astype('datetime64[ms]').astype(float)
+    fstart = pd.to_datetime(start).to_datetime64().astype(
+        'datetime64[ms]').astype(float)
+    fend = pd.to_datetime(end).to_datetime64().astype('datetime64[ms]').astype(
+        float)
+
+    ip0 = np.argmax(pdt >= fstart)
+    ip1 = np.argmax(pdt <= fend)
+
+    return ds.sel(time=slice(start, end)).isel(package=slice(ip0, ip1))
+
+
 def splitby_segments(ds, eps_gap=3.):
     """
     Split a dataset on gaps in the data.
@@ -196,9 +325,8 @@ def splitby_segments(ds, eps_gap=3.):
     pdt = np.diff(
         ds.package_start.values).astype('timedelta64[ms]').astype(float)
 
-    ip = np.argwhere(
-        np.abs(pdt) >
-        (PDT + eps_gap * 1000.)) + 1  # index in package_starts and ends
+    ip = np.argwhere(np.abs(pdt) > (
+        PDT + eps_gap * 1000.)) + 1  # index in package_starts and ends
     ip = np.append(0, ip)
     ip = np.append(ip, n)
     ip = np.unique(ip)
@@ -237,7 +365,9 @@ def retime(ds, eps_gap=3.):
         ds.package_start.values).astype('timedelta64[ms]').astype(float)
 
     if len(pdt) > 1 and np.max(np.abs(pdt)) >= (PDT + eps_gap * 1000.):
-        logger.warning(f"Re-timing: gap greater than {eps_gap}s in data, splitting and combining")
+        logger.warning(
+            f"Re-timing: gap greater than {eps_gap}s in data, splitting and combining"
+        )
         dss = list(map(retime, splitby_segments(ds, eps_gap)))
         logger.info(f'Split dataset into {len(dss)} segments, merging..')
         # ds = xr.concat(dss, dim=('time'), data_vars='minimal')
