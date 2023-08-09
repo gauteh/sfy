@@ -154,8 +154,8 @@ class AxlTimeseries:
             'package_start':
             xr.Variable(
                 ('package'), [
-                    np.datetime64(int(s.timestamp() *
-                                      1000.), 'ms') if s else None
+                    np.datetime64(int(s.timestamp() * 1000.),
+                                  'ms').astype('datetime64[ns]') if s else None
                     for s in self.start_times
                 ],
                 attrs={
@@ -172,7 +172,7 @@ class AxlTimeseries:
                 }),
             'added':
             xr.Variable(('package'), [
-                np.datetime64(int(s.timestamp() * 1000.), 'ms') if s else None
+                np.datetime64(int(s.timestamp() * 1000.), 'ms').astype('datetime64[ns]') if s else None
                 for s in self.added_times
             ],
                         attrs={
@@ -182,7 +182,7 @@ class AxlTimeseries:
             'received':
             xr.Variable(
                 ('package'), [
-                    np.datetime64(int(s.timestamp() * 1000.), 'ms')
+                    np.datetime64(int(s.timestamp() * 1000.), 'ms').astype('datetime64[ns]')
                     for s in self.received_times
                 ],
                 attrs={'description':
@@ -190,7 +190,7 @@ class AxlTimeseries:
             'position_time':
             xr.Variable(
                 ('package'), [
-                    np.datetime64(int(s), 's') if s else np.nan
+                    np.datetime64(int(s), 's').astype('datetime64[ns]') if s else np.nan
                     for s in self.position_times
                 ],
                 attrs={'description':
@@ -207,7 +207,7 @@ class AxlTimeseries:
                             'time':
                             xr.Variable(
                                 ('time'),
-                                self.mseconds.astype('datetime64[ms]')),
+                                self.mseconds.astype('datetime64[ms]').astype('datetime64[ns]')),
                             'package':
                             xr.Variable(
                                 ('package'),
