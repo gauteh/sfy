@@ -28,7 +28,7 @@ pub type AxlPacketT = (AxlPacket, VecRawAxl);
 #[cfg(not(feature = "raw"))]
 pub type AxlPacketT = (AxlPacket,);
 
-pub const FREQ: Freq = Freq::Hz208;
+pub const FREQ: Freq = Freq::Hz104;
 
 #[cfg(all(feature = "20Hz", not(feature = "fir")))]
 compile_error!("Feature 20Hz requires feature fir");
