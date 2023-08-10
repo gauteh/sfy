@@ -491,12 +491,12 @@ class Axl(Event, AxlTimeseries):
         raw = data.pop('raw', None)
 
         if raw is not None:
-            ax = scale_u16_to_f32(ACCEL_MAX, raw[0::6])
-            ay = scale_u16_to_f32(ACCEL_MAX, raw[1::6])
-            az = scale_u16_to_f32(ACCEL_MAX, raw[2::6])
-            gx = scale_u16_to_f32(GYRO_MAX, raw[3::6])
-            gy = scale_u16_to_f32(GYRO_MAX, raw[4::6])
-            gz = scale_u16_to_f32(GYRO_MAX, raw[5::6])
+            gx = scale_u16_to_f32(GYRO_MAX, raw[0::6])
+            gy = scale_u16_to_f32(GYRO_MAX, raw[1::6])
+            gz = scale_u16_to_f32(GYRO_MAX, raw[2::6])
+            ax = scale_u16_to_f32(ACCEL_MAX, raw[3::6])
+            ay = scale_u16_to_f32(ACCEL_MAX, raw[4::6])
+            az = scale_u16_to_f32(ACCEL_MAX, raw[5::6])
 
             return Axl(**data, x=x, y=y, z=z, ax=ax, ay=ay, az=az, gx=gx, gy=gy, gz=gz)
         else:
