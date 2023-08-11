@@ -498,6 +498,8 @@ class Axl(Event, AxlTimeseries):
             ay = scale_u16_to_f32(ACCEL_MAX, raw[4::6])
             az = scale_u16_to_f32(ACCEL_MAX, raw[5::6])
 
+            assert len(ax) == len(x), 'Raw and filtered signal is not the same sample-rate, processing does not yet know how to handle that.'
+
             return Axl(**data, x=x, y=y, z=z, ax=ax, ay=ay, az=az, gx=gx, gy=gy, gz=gz)
         else:
             return Axl(**data, x=x, y=y, z=z)
