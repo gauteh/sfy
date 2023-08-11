@@ -491,6 +491,12 @@ class Axl(Event, AxlTimeseries):
         raw = data.pop('raw', None)
 
         if raw is not None:
+            if sys.byteorder == 'big':
+                logger.warning(
+                    'host is big-endian, swapping bytes: this is not well-tested.'
+                )
+                raw.byteswap(inplace=True)
+
             gx = scale_u16_to_f32(GYRO_MAX, raw[0::6])
             gy = scale_u16_to_f32(GYRO_MAX, raw[1::6])
             gz = scale_u16_to_f32(GYRO_MAX, raw[2::6])
