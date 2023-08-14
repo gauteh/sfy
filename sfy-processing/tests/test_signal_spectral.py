@@ -45,32 +45,6 @@ def test_calc_hm0():
     print(hm0)
 
 
-def test_calc_hm0_timeseries():
-    d = open(
-        'tests/data/dev864475044203262/1639855192872-3a0c5fc2-e79f-48d1-91e9-e104ac937644_axl.qo.json'
-    ).read()
-    a = axl.Axl.parse(d)
-
-    hm0 = a.hm0()
-    print(hm0)
-    assert hm0 < 0.01
-
-    f, P = signal.welch(a.frequency, a.z, order=2)
-    hm0d = signal.hm0(f, P)
-    print(hm0d)
-    assert hm0 == hm0d
-
-@needs_hub
-def test_hm0_collection(sfyhub):
-    b = sfyhub.buoy("dev864475044204278")
-    pcks = b.axl_packages_range(
-        datetime(2022, 4, 26, 11, 34, tzinfo=timezone.utc),
-        datetime(2022, 4, 26, 12, 35, tzinfo=timezone.utc))
-    c = AxlCollection(pcks)
-
-    hm0 = c.hm0()
-    print(hm0)
-
 @needs_hub
 def test_imu_cutoff_rabault2022(sfyhub, plot):
     b = sfyhub.buoy("wavebug26")

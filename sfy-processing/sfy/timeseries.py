@@ -2,7 +2,6 @@ import numpy as np
 import xarray as xr
 from pathlib import Path
 import logging
-from concurrent.futures import ThreadPoolExecutor
 
 from . import signal
 from . import xr as sxr
@@ -50,48 +49,6 @@ class AxlTimeseries:
                                method='dft')
 
         return (u_z, u_x, u_y, filter_freqs)
-
-    def hm0(self, raw=False, window=(20 * 60)):
-        """
-        Return DataArray with Hm0.
-        """
-
-        z = self.z
-
-        # split into windows
-        N = int(window * self.frequency)
-        N = min(N, len(z))
-        i = np.arange(N, len(z), N).astype(np.int32)
-        z = np.split(z, i)
-
-        # Calculate hm0 for each window
-        logger.debug('Calculating Hm0 for all 20 minute segments..')
-
-        def hm0(zz):
-            f, P = signal.welch(self.frequency, zz)
-            if not raw:
-                _, _, P = signal.imu_cutoff_rabault2022(f, P)
-            return signal.hm0(f, P)
-
-        with ThreadPoolExecutor() as x:
-            hm0 = list(x.map(hm0, z))
-
-        i = np.append(i, len(z))
-
-        time = self.mseconds[i - N].astype('datetime64[ms]')
-
-        logger.debug('Building dataarray..')
-        return xr.DataArray(
-            hm0,
-            coords=[('time', time)],
-            attrs={
-                'unit':
-                'm',
-                'long_name':
-                'sea_surface_wave_significant_height',
-                'description':
-                'Significant wave height calculated in the frequency domain from the first moment.'
-            })
 
     @property
     def dt(self):
@@ -171,18 +128,18 @@ class AxlTimeseries:
                     'The sample offset in the package where the package_start timestamp is taken.'
                 }),
             'added':
-            xr.Variable(('package'), [
-                np.datetime64(int(s.timestamp() * 1000.), 'ms').astype('datetime64[ns]') if s else None
-                for s in self.added_times
-            ],
-                        attrs={
-                            'description':
-                            'Time package was added to notecard.'
-                        }),
+            xr.Variable(
+                ('package'), [
+                    np.datetime64(int(s.timestamp() * 1000.),
+                                  'ms').astype('datetime64[ns]') if s else None
+                    for s in self.added_times
+                ],
+                attrs={'description': 'Time package was added to notecard.'}),
             'received':
             xr.Variable(
                 ('package'), [
-                    np.datetime64(int(s.timestamp() * 1000.), 'ms').astype('datetime64[ns]')
+                    np.datetime64(int(s.timestamp() * 1000.),
+                                  'ms').astype('datetime64[ns]')
                     for s in self.received_times
                 ],
                 attrs={'description':
@@ -190,8 +147,8 @@ class AxlTimeseries:
             'position_time':
             xr.Variable(
                 ('package'), [
-                    np.datetime64(int(s), 's').astype('datetime64[ns]') if s else np.nan
-                    for s in self.position_times
+                    np.datetime64(int(s), 's').astype('datetime64[ns]')
+                    if s else np.nan for s in self.position_times
                 ],
                 attrs={'description':
                        'Time of position fix for each package'}),
@@ -207,7 +164,8 @@ class AxlTimeseries:
                             'time':
                             xr.Variable(
                                 ('time'),
-                                self.mseconds.astype('datetime64[ms]').astype('datetime64[ns]')),
+                                self.mseconds.astype('datetime64[ms]').astype(
+                                    'datetime64[ns]')),
                             'package':
                             xr.Variable(
                                 ('package'),

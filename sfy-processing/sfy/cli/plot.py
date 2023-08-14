@@ -7,8 +7,9 @@ from datetime import timedelta, datetime
 import numpy as np
 
 from sfy.hub import Hub
-from sfy.axl import Axl, AxlCollection
+from sfy.axl import AxlCollection
 from sfy import signal
+import sfy.xr
 from sfy.timeutil import utcify
 import logging
 
@@ -177,7 +178,8 @@ def ts(ctx):
 def hm0(ctx, raw):
     logger.info('Calculating Hm0..')
     c = ctx.obj['pcks']
-    hm0 = c.hm0(raw)
+    ds = c.to_dataset(retime=False)
+    hm0 = sfy.xr.hm0(ds, raw)
 
     logger.info('Plotting..')
     plt.figure()

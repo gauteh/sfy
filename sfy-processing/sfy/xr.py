@@ -11,64 +11,49 @@ logger = logging.getLogger(__name__)
 def hm0(ds: xr.Dataset, raw=False, window=(20 * 60)) -> xr.DataArray:
     """
     Return DataArray with Hm0.
+
+    Args:
+
+        window: window size to calculate hm0 for (seconds, default 20 minutes).
     """
 
-    z = ds.w_z.values
-
-    # split into windows
-    N = int(window * ds.frequency)
-    N = min(N, len(z))
-    i = np.arange(N, len(z), N).astype(np.int32)
-    logger.debug(f'Splitting into {len(i)} windows..')
-    z = np.split(z, i)
-
-    # Calculate hm0 for each window
-    logger.debug(f'Calculating Hm0 for {len(z)} 20 minute segments..')
-
-    def hm0(zz):
-        f, P = signal.welch(ds.frequency, zz)
-        if not raw:
-            _, _, P = signal.imu_cutoff_rabault2022(f, P)
-        return signal.hm0(f, P)
-
-    with ThreadPoolExecutor() as x:
-        hm0 = list(x.map(hm0, z))
-
-    i = np.append(i, len(z))
-
-    time = ds.time[i - N].values
-
-    logger.debug('Building dataarray..')
-    return xr.DataArray(
-        hm0,
-        coords=[('time', time)],
-        name='hm0',
-        attrs={
-            'unit':
-            'm',
-            'long_name':
-            'sea_surface_wave_significant_height',
-            'description':
-            'Significant wave height calculated in the frequency domain from the first moment.'
-        })
+    return spec_stats(ds, raw, window)['hm0']
 
 
 def spec_stats(ds: xr.Dataset, raw=False, window=(20 * 60)) -> xr.Dataset:
     """
-    Return DataSet with Hm0, Tc, Tz, m0, m2, m4 and elevation spectra.
+    Return Dataset with Hm0, Tc, Tz, m0, m2, m4 and elevation spectra.
+
+    Args:
+
+        window: window size to calculate hm0 for (seconds, default 20 minutes).
     """
 
-    z = ds.w_z.values
+    zz = ds.w_z.values
+
+    # The windows need to be the full size, otherwise the statistics will be invalid.
 
     # split into windows
     N = int(window * ds.frequency)
-    N = min(N, len(z))
-    i = np.arange(N, len(z), N).astype(np.int32)
-    logger.debug(f'Splitting into {len(i)} windows..')
-    z = np.split(z, i)
 
-    # Calculate hm0 for each window
-    logger.debug(f'Calculating Hm0 for {len(z)} 20 minute segments..')
+    if len(zz) < N:
+        logger.warning(f'Dataset is shorter {len(zz)/ds.freequency} than requested window: {window}')
+
+    N = min(N, len(zz))
+
+    i = np.arange(N, len(zz), N).astype(np.int32)
+    logger.debug(f'Splitting into {len(i)} windows..')
+    z = np.split(zz, i)
+    z[-1] = zz[-N:] # make sure last window is also full length
+
+    if len(ds.w_z.values) <= N:
+        assert len(z) == 1, "expected only one window"
+    else:
+        Ns = [len(zz) for zz in z]
+        assert all((ns == N for ns in Ns)), f'All windows should be {N} samples length: {Ns=}, {N=}'
+
+    # Calculate stats for each window
+    logger.debug(f'Calculating spectral stats for {len(z)} 20 minute segments..')
 
     def stat(zz):
         f, P = signal.welch(ds.frequency, zz)
@@ -79,9 +64,8 @@ def spec_stats(ds: xr.Dataset, raw=False, window=(20 * 60)) -> xr.Dataset:
     with ThreadPoolExecutor() as x:
         m0, m1, m2, m4, hm0, Tm01, Tm02, f, P = zip(*x.map(stat, z))
 
-    i = np.append(i, len(z))
-
-    time = ds.time[i - N].values
+    i = np.append(i, len(zz)-1) # Add timestamp for last window as well.
+    time = ds.time[i].values # Use timestamp from last sample in each window.
 
     assert len(hm0) == len(time)
 
