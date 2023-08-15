@@ -11,8 +11,13 @@ fn main() {
         .map(|p| p.parse::<u32>().unwrap())
         .unwrap_or(60);
 
+    let sync_period: u32 = option_env!("SYNC_PERIOD")
+        .map(|p| p.parse::<u32>().unwrap())
+        .unwrap_or(20);
+
     let fd = fs::File::create(&dest_path).unwrap();
     writeln!(&fd, "pub const GPS_PERIOD: u32 = {gps_period};").unwrap();
+    writeln!(&fd, "pub const SYNC_PERIOD: u32 = {sync_period};").unwrap();
 
     println!("cargo:rerun-if-changed=build.rs");
 }

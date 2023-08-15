@@ -68,7 +68,9 @@ AUXRX/AUXTX and pull AUXEN up](https://dev.blues.io/guides-and-tutorials/notecar
 * BUOYPR: the product name used for the modem. determines which account the data
     is sent to on notehub.io.
 
-* GPS_PERIOD: Sample interval for GPS.
+* GPS_PERIOD: Sample interval for GPS (default 60 seconds).
+
+* SYNC_PERIOD: Maximum time between syncs (default 20 minutes).
 
 * DEFMT_LOG: defmt log levels, leave empty to compile out.
 
