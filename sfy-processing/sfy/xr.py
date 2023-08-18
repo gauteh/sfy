@@ -37,7 +37,8 @@ def spec_stats(ds: xr.Dataset, raw=False, window=(20 * 60)) -> xr.Dataset:
     N = int(window * ds.frequency)
 
     if len(zz) < N:
-        logger.warning(f'Dataset is shorter {len(zz)/ds.freequency} than requested window: {window}')
+        logger.error(f'Dataset is shorter {len(zz)/ds.frequency} than requested window: {window}')
+        raise ValueError(f'Dataset is shorter {len(zz)/ds.frequency} than requested window: {window}')
 
     N = min(N, len(zz))
 
