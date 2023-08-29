@@ -63,7 +63,7 @@ def spec_stats(ds: xr.Dataset, raw=False, window=(20 * 60)) -> xr.Dataset:
         return *signal.spec_stats(f, P), f, P
 
     with ThreadPoolExecutor() as x:
-        m0, m1, m2, m4, hm0, Tm01, Tm02, f, P = zip(*x.map(stat, z))
+        m_1, m0, m1, m2, m4, hm0, Tm01, Tm02, Tm_10, f, P = zip(*x.map(stat, z))
 
     i = np.append(i, len(zz)-1) # Add timestamp for last window as well.
     time = ds.time[i].values # Use timestamp from last sample in each window.
@@ -95,8 +95,8 @@ def spec_stats(ds: xr.Dataset, raw=False, window=(20 * 60)) -> xr.Dataset:
                          dims=['time'],
                          attrs={
                              'unit': 's',
-                             'long_name': 'sea_surface_wave_mean_period',
-                             'description': 'Mean zero crossing period (m0/m1)'
+                             'long_name': 'sea_surface_wave_mean_period_from_variance_spectral_density_first_frequency_moment',
+                             'description': 'First wave period (m0/m1)'
                          }),
             'Tm02':
             xr.DataArray(
@@ -104,9 +104,23 @@ def spec_stats(ds: xr.Dataset, raw=False, window=(20 * 60)) -> xr.Dataset:
                 dims=['time'],
                 attrs={
                     'unit': 's',
-                    'long_name': 'sea_surface_wave_mean_period',
-                    'description': 'Mean zero crossing period (sqrt(m0/m2))'
+                    'long_name': 'sea_surface_wave_mean_period_from_variance_spectral_density_second_frequency_moment',
+                    'description': 'Second wave period (sqrt(m0/m2))'
                 }),
+            'Tm_10':
+            xr.DataArray(
+                np.array(Tm02),
+                dims=['time'],
+                attrs={
+                    'unit': 's',
+                    'long_name': 'sea_surface_wave_mean_period_from_variance_spectral_density_inverse_frequency_moment',
+                    'description': 'Inverse wave period ((m-1/m0))'
+                }),
+            'm_1':
+            xr.DataArray(
+                np.array(m_1),
+                dims=['time'],
+                attrs={'description': 'Inverse order moment from spectrum'}),
             'm0':
             xr.DataArray(
                 np.array(m0),

@@ -267,6 +267,7 @@ def spec_stats(f, H):
 
     Based on code in `decoder.py` from OMB. And:
         * Holthuijsen, Leo H. Waves in Oceanic and Coastal Waters. Cambridge University Press, 2010.
+        * Bidlot, Jean-Raymond. “Ocean Wave Model Output Parameters,” 2016.
     Args:
         f: Frequencies.
 
@@ -277,6 +278,7 @@ def spec_stats(f, H):
         Spectral moments and derived parameters.
     """
 
+    m_1 = spectral_moment(f, H, -1)
     m0 = spectral_moment(f, H, 0)
     m1 = spectral_moment(f, H, 1)
     m2 = spectral_moment(f, H, 2)
@@ -285,8 +287,9 @@ def spec_stats(f, H):
     hm0 =  4 * np.sqrt(m0)
     Tm01 = (m0 / m1)  # mean zero-crossing period (Holthuijsen)
     Tm02 = np.sqrt(m0 / m2) # mean zero-crossing period (Holthuijsen)
+    Tm_10 = m_1 / m0        # mean wave period (inverse frequency moment)
 
-    return m0, m1, m2, m4, hm0, Tm01, Tm02
+    return m_1, m0, m1, m2, m4, hm0, Tm01, Tm02, Tm_10
 
 def hs(e):
     """
