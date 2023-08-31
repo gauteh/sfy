@@ -17,8 +17,8 @@ class Event:
     device: str
     sn: str
 
-    tower_when: int
-    tower_timezone: str
+    tower_when: int = None
+    tower_timezone: str = None
     app: str = None
     note: str = None
     deleted: any = None

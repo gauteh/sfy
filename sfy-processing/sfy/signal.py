@@ -233,7 +233,7 @@ def welch(freq, e, nperseg=4096, order=2):
     if order > 0:
         P = welchint(f, P, order)
 
-    assert len(P) == nperseg//2 +1
+    assert len(P) == nperseg//2 +1, f'{len(P)}, {nperseg}'
 
     return f, P
 
@@ -347,7 +347,7 @@ def imu_cutoff_rabault2022(f, E, f0=0.05):
 
     Returns:
 
-        i, f: index in f and f of low frequency cutoff.
+        i, f, P: index in f and f of low frequency cutoff, and cut spectrum.
     """
 
     OMB_df = 0.048828125 - 0.0439453125  #  df for OpenMetBuoy
