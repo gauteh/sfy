@@ -109,7 +109,7 @@ def spec_stats(ds: xr.Dataset, raw=False, window=(20 * 60)) -> xr.Dataset:
                 }),
             'Tm_10':
             xr.DataArray(
-                np.array(Tm02),
+                np.array(Tm_10),
                 dims=['time'],
                 attrs={
                     'unit': 's',
