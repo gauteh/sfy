@@ -88,7 +88,7 @@ def spec_stats(ds: xr.Dataset, raw=False, window=(20 * 60)) -> xr.Dataset:
                     'long_name':
                     'sea_surface_wave_significant_height',
                     'description':
-                    'Significant wave height calculated in the frequency domain from the first moment.'
+                    'Significant wave height calculated in the frequency domain from the zeroth moment (4 * sqrt(m0)).'
                 }),
             'Tm01':
             xr.DataArray(np.array(Tm01),
