@@ -115,6 +115,8 @@ fn main() -> ! {
     println!("NOTEQ_SZ ....: {}", sfy::NOTEQ_SZ);
     println!("IMUQ_SZ .....: {}", sfy::IMUQ_SZ);
     println!("STORAGEQ_SZ .: {}", sfy::STORAGEQ_SZ);
+    println!("GPS_PERIOD ..: {}", sfy::note::GPS_PERIOD);
+    println!("SYNC_PERIOD .: {}", sfy::note::SYNC_PERIOD);
 
     info!("Setting up IOM and RTC.");
     delay.delay_ms(1_000u32);
