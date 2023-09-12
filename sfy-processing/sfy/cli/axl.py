@@ -95,13 +95,16 @@ def ts(dev, tx_start, tx_end, start, end, file, gap, freq, displacement):
         tx_start = datetime.utcnow() - timedelta(days=1)
 
     if tx_end is None:
-        tx_end = datetime.utcnow()
+        if end is not None:
+            tx_end = end + timedelta(days=14)
+        else:
+            tx_end = datetime.utcnow()
 
     if start is None:
         start = tx_start
 
     if end is None:
-        end = tx_end
+        end = datetime.utcnow()
 
     if tx_start > start:
         tx_start = start
@@ -171,6 +174,8 @@ def ts(dev, tx_start, tx_end, start, end, file, gap, freq, displacement):
                      'Start ID',
                      'End ID',
                  ]))
+
+    del segments
 
     if file:
         logger.info(f"Saving to {file}..")

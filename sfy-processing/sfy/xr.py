@@ -34,39 +34,47 @@ def spec_stats(ds: xr.Dataset, raw=False, window=(20 * 60)) -> xr.Dataset:
     # The windows need to be the full size, otherwise the statistics will be invalid.
 
     # split into windows
-    N = int(window * ds.frequency)
+    N = int(window * ds.estimated_frequency)
 
     if len(zz) < N:
-        logger.error(f'Dataset is shorter {len(zz)/ds.frequency} than requested window: {window}')
-        raise ValueError(f'Dataset is shorter {len(zz)/ds.frequency} than requested window: {window}')
+        logger.error(
+            f'Dataset is shorter {len(zz)/ds.estimated_frequency}({len(zz)}) than requested window: {window}({N})'
+        )
+        raise ValueError(
+            f'Dataset is shorter {len(zz)/ds.estimated_frequency}({len(zz)}) than requested window: {window}({N})'
+        )
 
     N = min(N, len(zz))
 
     i = np.arange(N, len(zz), N).astype(np.int32)
     logger.debug(f'Splitting into {len(i)} windows..')
     z = np.split(zz, i)
-    z[-1] = zz[-N:] # make sure last window is also full length
+    z[-1] = zz[-N:]  # make sure last window is also full length
 
     if len(ds.w_z.values) <= N:
         assert len(z) == 1, "expected only one window"
     else:
         Ns = [len(zz) for zz in z]
-        assert all((ns == N for ns in Ns)), f'All windows should be {N} samples length: {Ns=}, {N=}'
+        assert all(
+            (ns == N for ns in Ns
+             )), f'All windows should be {N} samples length: {Ns=}, {N=}'
 
     # Calculate stats for each window
-    logger.debug(f'Calculating spectral stats for {len(z)} 20 minute segments..')
+    logger.debug(
+        f'Calculating spectral stats for {len(z)} 20 minute segments..')
 
     def stat(zz):
-        f, P = signal.welch(ds.frequency, zz)
+        f, P = signal.welch(ds.estimated_frequency, zz)
         if not raw:
             _, _, P = signal.imu_cutoff_rabault2022(f, P)
         return *signal.spec_stats(f, P), f, P
 
     with ThreadPoolExecutor() as x:
-        m_1, m0, m1, m2, m4, hm0, Tm01, Tm02, Tm_10, f, P = zip(*x.map(stat, z))
+        m_1, m0, m1, m2, m4, hm0, Tm01, Tm02, Tm_10, f, P = zip(
+            *x.map(stat, z))
 
-    i = np.append(i, len(zz)-1) # Add timestamp for last window as well.
-    time = ds.time[i].values # Use timestamp from last sample in each window.
+    i = np.append(i, len(zz) - 1)  # Add timestamp for last window as well.
+    time = ds.time[i].values  # Use timestamp from last sample in each window.
 
     assert len(hm0) == len(time)
 
@@ -91,20 +99,23 @@ def spec_stats(ds: xr.Dataset, raw=False, window=(20 * 60)) -> xr.Dataset:
                     'Significant wave height calculated in the frequency domain from the zeroth moment (4 * sqrt(m0)).'
                 }),
             'Tm01':
-            xr.DataArray(np.array(Tm01),
-                         dims=['time'],
-                         attrs={
-                             'unit': 's',
-                             'long_name': 'sea_surface_wave_mean_period_from_variance_spectral_density_first_frequency_moment',
-                             'description': 'First wave period (m0/m1)'
-                         }),
+            xr.DataArray(
+                np.array(Tm01),
+                dims=['time'],
+                attrs={
+                    'unit': 's',
+                    'long_name':
+                    'sea_surface_wave_mean_period_from_variance_spectral_density_first_frequency_moment',
+                    'description': 'First wave period (m0/m1)'
+                }),
             'Tm02':
             xr.DataArray(
                 np.array(Tm02),
                 dims=['time'],
                 attrs={
                     'unit': 's',
-                    'long_name': 'sea_surface_wave_mean_period_from_variance_spectral_density_second_frequency_moment',
+                    'long_name':
+                    'sea_surface_wave_mean_period_from_variance_spectral_density_second_frequency_moment',
                     'description': 'Second wave period (sqrt(m0/m2))'
                 }),
             'Tm_10':
@@ -113,7 +124,8 @@ def spec_stats(ds: xr.Dataset, raw=False, window=(20 * 60)) -> xr.Dataset:
                 dims=['time'],
                 attrs={
                     'unit': 's',
-                    'long_name': 'sea_surface_wave_mean_period_from_variance_spectral_density_inverse_frequency_moment',
+                    'long_name':
+                    'sea_surface_wave_mean_period_from_variance_spectral_density_inverse_frequency_moment',
                     'description': 'Inverse wave period ((m-1/m0))'
                 }),
             'm_1':
@@ -345,6 +357,51 @@ def splitby_segments(ds, eps_gap=3.):
     return dss
 
 
+def concat(dss):
+    """
+    Concatenate multiple datasets in a more optimal way than xarray does.
+    """
+
+    dss = sorted(dss, key=lambda ds: ds.time.values[0])
+
+    # build coordinates
+    time = np.concatenate([ds.time.values for ds in dss])
+    package = np.concatenate([ds.package.values for ds in dss])
+
+    # concat variables
+    cds = xr.Dataset(coords={
+        'time': time,
+        'package': package
+    },
+                     attrs=dss[0].attrs)
+
+    for v in dss[0].data_vars:
+        if 'time' in dss[0][v].dims:
+            values = np.full(time.shape, np.nan, dtype=dss[0][v].dtype)
+            offset = 0
+            for ds in dss:
+                values[offset:offset + len(ds[v])] = ds[v].values
+                offset += len(ds[v])
+            cds[v] = xr.DataArray(name=v,
+                                  data=values,
+                                  dims=('time'),
+                                  attrs=dss[0][v].attrs)
+
+    for v in dss[0].data_vars:
+        if 'package' in dss[0][v].dims:
+            values = np.full(package.shape, np.nan, dtype=dss[0][v].dtype)
+            offset = 0
+            for ds in dss:
+                values[offset:offset + len(ds[v])] = ds[v].values
+                offset += len(ds[v])
+            cds[v] = xr.DataArray(name=v,
+                                  data=values,
+                                  dims=('package'),
+                                  attrs=dss[0][v].attrs)
+
+    return cds
+
+
 def retime(ds, eps_gap=3.):
     """
     Re-time a dataset based on the estimated frequency and a best fit of timestamps. Assuming the frequency is
@@ -370,7 +427,8 @@ def retime(ds, eps_gap=3.):
         logger.info(f'Split dataset into {len(dss)} segments, merging..')
         # ds = xr.concat(dss, dim=('time'), data_vars='minimal')
         # ds = xr.combine_by_coords(dss)
-        ds = xr.merge(dss)
+        # ds = xr.merge(dss)
+        ds = concat(dss)
 
         return ds
 

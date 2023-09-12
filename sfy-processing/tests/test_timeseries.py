@@ -226,3 +226,25 @@ def test_seltime(sfyhub, plot):
     assert ds.dims['package'] == 0
     assert ds.dims['time'] == 0
 
+@needs_hub
+def test_concat(sfyhub, plot):
+    b = sfyhub.buoy("dev867648043599644")
+    pcks = b.axl_packages_range(
+        datetime(2023, 4, 20, 8, 25, tzinfo=timezone.utc),
+        datetime(2023, 4, 20, 11, 35, tzinfo=timezone.utc))
+    c = AxlCollection(pcks)
+    dsr = c.to_dataset()
+    print(dsr)
+    assert dsr.dims['package'] > 0
+
+    dss = sfy.xr.splitby_segments(dsr)
+    assert len(dss) > 2
+
+    dsc = sfy.xr.concat(dss)
+    print(dsc)
+    assert (dsc.time == dsr.time).all()
+    assert (dsc.package == dsr.package).all()
+
+    np.testing.assert_array_equal(dsr.w_z, dsc.w_z)
+    np.testing.assert_array_equal(dsr.package_start, dsc.package_start)
+
