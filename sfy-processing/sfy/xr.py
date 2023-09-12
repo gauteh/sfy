@@ -360,6 +360,8 @@ def splitby_segments(ds, eps_gap=3.):
 def concat(dss):
     """
     Concatenate multiple datasets in a more optimal way than xarray does.
+
+    > Duplicate time and package samples are removed.
     """
 
     dss = sorted(dss, key=lambda ds: ds.time.values[0])
@@ -399,7 +401,25 @@ def concat(dss):
                                   dims=('package'),
                                   attrs=dss[0][v].attrs)
 
+    # Remove duplicate times - might cause trouble with packages.
+    _, ui = np.unique(cds.time.values, return_index=True)
+    cds = cds.isel(time=ui)
+
+    _, ui = np.unique(cds.package.values, return_index=True)
+    cds = cds.isel(package=ui)
+
     return cds
+
+
+def open_mfdataset(path):
+    """
+    Open multiple sfy datasets and concat (in a more optimized way than xarray does).
+    """
+    if isinstance(path, str):
+        import glob
+        path = glob.glob(path)
+
+    return concat([xr.open_dataset(p) for p in path])
 
 
 def retime(ds, eps_gap=3.):
