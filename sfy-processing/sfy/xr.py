@@ -30,18 +30,19 @@ def spec_stats(ds: xr.Dataset, raw=False, window=(20 * 60)) -> xr.Dataset:
     """
 
     zz = ds.w_z.values
+    freq = ds.attrs.get('estimated_frequency', ds.attrs['frequency'])
 
     # The windows need to be the full size, otherwise the statistics will be invalid.
 
     # split into windows
-    N = int(window * ds.estimated_frequency)
+    N = int(window * freq)
 
     if len(zz) < N:
         logger.error(
-            f'Dataset is shorter {len(zz)/ds.estimated_frequency}({len(zz)}) than requested window: {window}({N})'
+            f'Dataset is shorter {len(zz)/freq}({len(zz)}) than requested window: {window}({N})'
         )
         raise ValueError(
-            f'Dataset is shorter {len(zz)/ds.estimated_frequency}({len(zz)}) than requested window: {window}({N})'
+            f'Dataset is shorter {len(zz)/freq}({len(zz)}) than requested window: {window}({N})'
         )
 
     N = min(N, len(zz))
@@ -64,7 +65,7 @@ def spec_stats(ds: xr.Dataset, raw=False, window=(20 * 60)) -> xr.Dataset:
         f'Calculating spectral stats for {len(z)} 20 minute segments..')
 
     def stat(zz):
-        f, P = signal.welch(ds.estimated_frequency, zz)
+        f, P = signal.welch(freq, zz)
         if not raw:
             _, _, P = signal.imu_cutoff_rabault2022(f, P)
         return *signal.spec_stats(f, P), f, P
