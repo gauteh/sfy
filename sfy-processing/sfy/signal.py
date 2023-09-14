@@ -288,8 +288,9 @@ def spec_stats(f, H):
     Tm01 = (m0 / m1)  # mean zero-crossing period (Holthuijsen)
     Tm02 = np.sqrt(m0 / m2) # mean zero-crossing period (Holthuijsen)
     Tm_10 = m_1 / m0        # mean wave period (inverse frequency moment)
+    Tp = 1. / f[np.argmax(H)] # peak period
 
-    return m_1, m0, m1, m2, m4, hm0, Tm01, Tm02, Tm_10
+    return m_1, m0, m1, m2, m4, hm0, Tm01, Tm02, Tm_10, Tp
 
 def hs(e):
     """

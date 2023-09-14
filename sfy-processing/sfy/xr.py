@@ -71,7 +71,7 @@ def spec_stats(ds: xr.Dataset, raw=False, window=(20 * 60)) -> xr.Dataset:
         return *signal.spec_stats(f, P), f, P
 
     with ThreadPoolExecutor() as x:
-        m_1, m0, m1, m2, m4, hm0, Tm01, Tm02, Tm_10, f, P = zip(
+        m_1, m0, m1, m2, m4, hm0, Tm01, Tm02, Tm_10, Tp, f, P = zip(
             *x.map(stat, z))
 
     i = np.append(i, len(zz) - 1)  # Add timestamp for last window as well.
@@ -128,6 +128,16 @@ def spec_stats(ds: xr.Dataset, raw=False, window=(20 * 60)) -> xr.Dataset:
                     'long_name':
                     'sea_surface_wave_mean_period_from_variance_spectral_density_inverse_frequency_moment',
                     'description': 'Inverse wave period ((m-1/m0))'
+                }),
+            'Tp':
+            xr.DataArray(
+                np.array(Tp),
+                dims=['time'],
+                attrs={
+                    'unit': 's',
+                    'long_name':
+                    'sea_surface_wave_period_at_variance_spectral_density_maximum',
+                    'description': 'Peak period (period with maximum elevation energy)'
                 }),
             'm_1':
             xr.DataArray(
