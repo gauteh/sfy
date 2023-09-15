@@ -11,6 +11,8 @@ pub const BUOYSN: &str = match option_env!("BUOYSN") {
     None => "cain",
 };
 
+pub const BUOYPR: &str = env!("BUOYPR", "Specify notehub project");
+
 // GPS is sampled at this interval (seconds) when movement is detected by the accelerometer on the
 // modem. When below 300 seconds the GPS is not turned off when the buoy is moving. For experiment
 // drifting in fjords and similar 10 minutes is sufficient. However, for experiments on beaches a
@@ -60,7 +62,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         note.hub()
             .set(
                 delay,
-                Some(env!("BUOYPR", "Specify notehub project")),
+                Some(BUOYPR),
                 None,
                 if cfg!(feature = "continuous") {
                     Some(notecard::hub::req::HubMode::Continuous)
@@ -96,7 +98,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             .wait(delay)?;
 
         note.card()
-            .location_track(delay, true, true, false, Some(1), None)?
+            .location_track(delay, true, true, false, Some(GPS_HEARTBEAT), None)?
             .wait(delay)?;
 
         let version = note.card().version(delay)?.wait(delay)?;

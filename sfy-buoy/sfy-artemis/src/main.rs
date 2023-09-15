@@ -105,6 +105,9 @@ fn main() -> ! {
     );
 
     println!("firmware configuration:");
+    println!("name ........: {}", sfy::note::BUOYSN);
+    println!("notehub pr ..: {}", sfy::note::BUOYPR);
+    println!("version .....: {}", git_version!());
     println!("storage .....: {}", cfg!(feature = "storage"));
     println!("fir .........: {}", cfg!(feature = "fir"));
     println!("raw .........: {}", cfg!(feature = "raw"));
@@ -116,6 +119,7 @@ fn main() -> ! {
     println!("IMUQ_SZ .....: {}", sfy::IMUQ_SZ);
     println!("STORAGEQ_SZ .: {}", sfy::STORAGEQ_SZ);
     println!("GPS_PERIOD ..: {}", sfy::note::GPS_PERIOD);
+    println!("GPS_HEARTBEAT: {}", sfy::note::GPS_HEARTBEAT);
     println!("SYNC_PERIOD .: {}", sfy::note::SYNC_PERIOD);
 
     info!("Setting up IOM and RTC.");
