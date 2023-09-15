@@ -133,7 +133,7 @@ fn main() -> ! {
             .unwrap(),
     ); // Now timestamps will be positive.
     rtc.enable();
-    rtc.set_alarm_repeat(hal::rtc::AlarmRepeat::DeciSecond);
+    rtc.set_alarm_repeat(hal::rtc::AlarmRepeat::CentiSecond);
     rtc.enable_alarm();
 
     let mut location = Location::new();

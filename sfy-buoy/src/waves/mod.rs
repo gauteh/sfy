@@ -28,7 +28,7 @@ pub type AxlPacketT = (AxlPacket, VecRawAxl);
 #[cfg(not(feature = "raw"))]
 pub type AxlPacketT = (AxlPacket,);
 
-pub const FREQ: Freq = Freq::Hz208;
+pub const FREQ: Freq = Freq::Hz833; /////////////////////////////////
 
 #[cfg(all(feature = "20Hz", not(feature = "fir")))]
 compile_error!("Feature 20Hz requires feature fir");
@@ -40,7 +40,7 @@ pub const OUTPUT_FREQ: f32 = fir::OUT_FREQ;
 pub const OUTPUT_FREQ: f32 = FREQ.value();
 
 #[cfg(feature = "fir")]
-sa::const_assert_eq!(FREQ.value(), fir::FREQ);
+sa::const_assert_eq!(FREQ.value(), fir::FREQ); ////// make sure the two values are equal at compile time
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Freq {
@@ -48,7 +48,11 @@ pub enum Freq {
     Hz52,
     Hz104,
     Hz208,
+    Hz417,
     Hz833,
+    Hz1667,
+    Hz3333,
+    Hz6667,
 }
 
 impl Freq {
@@ -60,7 +64,11 @@ impl Freq {
             Hz52 => 52.,
             Hz104 => 104.,
             Hz208 => 208.,
+            Hz417 => 417.,
             Hz833 => 833.,
+            Hz1667 => 1667.,
+            Hz3333 => 3333.,
+            Hz6667 => 6667.,
         }
     }
 
@@ -73,7 +81,11 @@ impl Freq {
             Hz52 => Odr::Hz52,
             Hz104 => Odr::Hz104,
             Hz208 => Odr::Hz208,
+            Hz417 => Odr::Hz417,
             Hz833 => Odr::Hz833,
+            Hz1667 => Odr::Hz1667,
+            Hz3333 => Odr::Hz3333,
+            Hz6667 => Odr::Hz6667,
         }
     }
 
@@ -86,7 +98,11 @@ impl Freq {
             Hz52 => Odr::Hz52,
             Hz104 => Odr::Hz104,
             Hz208 => Odr::Hz208,
+            Hz417 => Odr::Hz417,
             Hz833 => Odr::Hz833,
+            Hz1667 => Odr::Hz1667,
+            Hz3333 => Odr::Hz3333,
+            Hz6667 => Odr::Hz6667,
         }
     }
 
@@ -99,7 +115,11 @@ impl Freq {
             Hz52 => Odr::Hz52,
             Hz104 => Odr::Hz104,
             Hz208 => Odr::Hz208,
+            Hz417 => Odr::Hz417,
             Hz833 => Odr::Hz833,
+            Hz1667 => Odr::Hz1667,
+            Hz3333 => Odr::Hz3333,
+            Hz6667 => Odr::Hz6667,
         }
     }
 
@@ -112,7 +132,11 @@ impl Freq {
             Hz52 => Odr::Hz52,
             Hz104 => Odr::Hz104,
             Hz208 => Odr::Hz208,
+            Hz417 => Odr::Hz417,
             Hz833 => Odr::Hz833,
+            Hz1667 => Odr::Hz1667,
+            Hz3333 => Odr::Hz3333,
+            Hz6667 => Odr::Hz6667,
         }
     }
 }
@@ -166,8 +190,8 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         defmt::debug!("setting up imu driver..");
         let imu = Ism330Dhcx::new_with_address(&mut i2c, 0x6a)?;
 
-        defmt::debug!("imu frequency: {}", FREQ.value());
-        defmt::debug!("output frequency: {}", OUTPUT_FREQ);
+        defmt::debug!("imu frequency: {}", FREQ.value()); ///////////////////
+        defmt::debug!("output frequency: {}", OUTPUT_FREQ); ////////////////////
 
         let mut w = Waves {
             i2c,
@@ -246,7 +270,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         // CTRL1_XL
         sensor
             .ctrl1xl
-            .set_accelerometer_data_rate(i2c, self.freq.accel_odr())?;
+            .set_accelerometer_data_rate(i2c, self.freq.accel_odr())?; /////////////////
 
         sensor
             .ctrl1xl
@@ -256,7 +280,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         // CTRL2_G
         sensor
             .ctrl2g
-            .set_gyroscope_data_rate(i2c, self.freq.gyro_odr())?;
+            .set_gyroscope_data_rate(i2c, self.freq.gyro_odr())?; //////////////
 
         sensor
             .ctrl2g
@@ -264,6 +288,9 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
 
         // CTRL7_G
         sensor.ctrl7g.set_g_hm_mode(i2c, true)?; // high-res mode on gyro
+
+        //sensor.fifoctrl.compression(i2c, true)?; // Enable compression
+
 
         // Both the gyro and accelerometer is low-pass filtered on-board:
         //
