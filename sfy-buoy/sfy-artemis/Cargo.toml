@@ -39,6 +39,7 @@ continuous = [ "sfy/continuous" ]
 raw = [ "sfy/raw" ]
 fir = [ "sfy/fir" ]
 storage = [ "sfy/storage" ]
+surf = [ "sfy/surf" ]
 deploy = []
 defmt-serial = [ "dep:ufmt", "dep:defmt-serial" ]
 
