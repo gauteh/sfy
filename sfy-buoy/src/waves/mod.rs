@@ -30,6 +30,17 @@ pub type AxlPacketT = (AxlPacket,);
 
 pub const FREQ: Freq = Freq::Hz208;
 
+// See discussion below in `boot`.
+#[cfg(feature = "surf")]
+pub const ACCEL_RANGE: f32 = 16.; // [g]
+#[cfg(feature = "surf")]
+pub const GYRO_RANGE: f32 = 1000.; // [dps]
+                                  //
+#[cfg(not(feature = "surf"))]
+pub const ACCEL_RANGE: f32 = 8.; // [g]
+#[cfg(not(feature = "surf"))]
+pub const GYRO_RANGE: f32 = 500.; // [dps]
+
 #[cfg(all(feature = "20Hz", not(feature = "fir")))]
 compile_error!("Feature 20Hz requires feature fir");
 
@@ -248,9 +259,30 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
             .ctrl1xl
             .set_accelerometer_data_rate(i2c, self.freq.accel_odr())?;
 
+        // # Acceleration range
+        //
+        // Acceleration range is measured to up to 8 and 14 g in breaking waves. But much less in
+        // normal waves.
+        //
+        // Important: Make sure that the range here matches the range specified in the serialization of
+        // acceleration values.
+        //
+        // Feddersen, F., Andre Amador, Kanoa Pick, A. Vizuet, Kaden Quinn, Eric Wolfinger, J. H. MacMahan, and Adam Fincham. “The Wavedrifter: A Low-Cost IMU-Based Lagrangian Drifter to Observe Steepening and Overturning of Surface Gravity Waves and the Transition to Turbulence.” Coastal Engineering Journal, July 26, 2023, 1–14. https://doi.org/10.1080/21664250.2023.2238949.
+        //
+        // Sinclair, Alexandra. “FlowRider: A Lagrangian Float to Measure 3-D Dynamics of Plunging Breakers in the Surf Zone.” Journal of Coastal Research 293 (January 2014): 205–9. https://doi.org/10.2112/JCOASTRES-D-13-00014.1.
+
+        #[cfg(not(feature = "surf"))]
         sensor
             .ctrl1xl
-            .set_chain_full_scale(i2c, ctrl1xl::Fs_Xl::G2)?;
+            .set_chain_full_scale(i2c, ctrl1xl::Fs_Xl::G4)?;
+
+        #[cfg(feature = "surf")]
+        sensor
+            .ctrl1xl
+            .set_chain_full_scale(i2c, ctrl1xl::Fs_Xl::G16)?;
+
+        assert_eq!(sensor.ctrl1xl.chain_full_scale(), ACCEL_RANGE as f64);
+
         sensor.ctrl1xl.set_lpf2_xl_en(i2c, true)?; // high-res mode on accelerometer.
 
         // CTRL2_G
@@ -258,9 +290,29 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
             .ctrl2g
             .set_gyroscope_data_rate(i2c, self.freq.gyro_odr())?;
 
+        // # Angular velocity range
+        //
+        // The angular velocity was measured to maximum 1000 dps with buoys travelling through a
+        // breaking wave, with very seldomly values measured above 600 dps. We set it to 1000 in
+        // surf-experiments, and lower in open-water experiments. For deployments in very quiet
+        // areas, it would probably be best to use the lowest possible range (i.e. 125 for our
+        // sensor).
+        //
+        // Important: Make sure that the range here matches the range specified in the serialization of
+        // gyro values.
+        //
+        // Feddersen, F., Andre Amador, Kanoa Pick, A. Vizuet, Kaden Quinn, Eric Wolfinger, J. H. MacMahan, and Adam Fincham. “The Wavedrifter: A Low-Cost IMU-Based Lagrangian Drifter to Observe Steepening and Overturning of Surface Gravity Waves and the Transition to Turbulence.” Coastal Engineering Journal, July 26, 2023, 1–14. https://doi.org/10.1080/21664250.2023.2238949.
+        #[cfg(not(feature = "surf"))]
         sensor
             .ctrl2g
-            .set_chain_full_scale(i2c, ctrl2g::Fs::Dps125)?;
+            .set_chain_full_scale(i2c, ctrl2g::Fs::Dps500)?;
+
+        #[cfg(feature = "surf")]
+        sensor
+            .ctrl2g
+            .set_chain_full_scale(i2c, ctrl2g::Fs::Dps1000)?;
+
+        assert_eq!(sensor.ctrl2g.chain_full_scale(), GYRO_RANGE as f64);
 
         // CTRL7_G
         sensor.ctrl7g.set_g_hm_mode(i2c, true)?; // high-res mode on gyro
@@ -350,6 +402,8 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
             lon: self.lon,
             lat: self.lat,
             freq: self.output_freq,
+            accel_range: ACCEL_RANGE,
+            gyro_range: GYRO_RANGE,
         };
         defmt::trace!("axl: buffer taken: {:?}", pck);
 

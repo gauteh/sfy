@@ -258,6 +258,7 @@ class Axl(Event, AxlTimeseries):
     lat: float = None
     freq: float = None
 
+    # Acceleration in m/s^2
     x: np.ndarray = None
     y: np.ndarray = None
     z: np.ndarray = None
@@ -265,6 +266,8 @@ class Axl(Event, AxlTimeseries):
     ax: np.ndarray = None
     ay: np.ndarray = None
     az: np.ndarray = None
+
+    # Gyro in rad/s
     gx: np.ndarray = None
     gy: np.ndarray = None
     gz: np.ndarray = None
