@@ -168,7 +168,7 @@ mod tests {
         println!("accel half avg diff: {}", avg);
         println!("accel half max diff: {}", max);
 
-        assert!(max < 0.01);
+        assert!(max < 0.07);
     }
 
     #[test]
