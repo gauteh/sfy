@@ -240,7 +240,7 @@ checksum = "b4682ae6287fcf752ecaabbfcc7b6f9b72aa33933dc23a554d853aea8eea8635"
 [[package]]
 name = "blues-notecard"
 version = "0.3.1"
-source = "git+https://github.com/gauteh/notecard-rs#31a4b49042498eaac8b3f92302e43a022aef24df"
+source = "git+https://github.com/gauteh/notecard-rs#667ac5e16ee23d74af07f6c3edb49b065109cdbe"
 dependencies = [
  "defmt",
  "embedded-hal",
@@ -1175,7 +1175,7 @@ checksum = "cd8d6c9f025a446bc4d18ad9632e69aec8f287aa84499ee335599fabd20c3fd8"
 dependencies = [
  "log",
  "ring",
- "rustls-webpki 0.101.5",
+ "rustls-webpki 0.101.6",
  "sct",
 ]
 
@@ -1191,9 +1191,9 @@ dependencies = [
 
 [[package]]
 name = "rustls-webpki"
-version = "0.101.5"
+version = "0.101.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "45a27e3b59326c16e23d30aeb7a36a24cc0d29e71d68ff611cdfb4a01d013bed"
+checksum = "3c7d5dece342910d9ba34d259310cae3e0154b873b35408b787b59bce53d34fe"
 dependencies = [
  "ring",
  "untrusted",
