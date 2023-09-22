@@ -9,7 +9,7 @@ pub const SAMPLE_NO: usize = 1024;
 
 pub const SAMPLE_SZ: usize = 3;
 pub const AXL_SZ: usize = SAMPLE_SZ * SAMPLE_NO;
-pub const VERSION: u32 = 5;
+pub const VERSION: u32 = 6;
 
 /// Maximum length of base64 string from [f16; AXL_SZ]
 pub const AXL_OUTN: usize = { AXL_SZ * 2 } * 4 / 3 + 4;
@@ -44,6 +44,10 @@ pub struct AxlPacket {
     /// Frequency of data.
     pub freq: f32,
 
+    /// Accelerometer [g] and gyro range [dps]
+    pub accel_range: f32,
+    pub gyro_range: f32,
+
     /// IMU data. This is moved to the payload when transmitting.
     pub data: Vec<u16, { AXL_SZ }>,
 }
@@ -69,12 +73,14 @@ pub struct AxlPacketMeta {
     pub temperature: f32,
 
     pub freq: f32,
+    pub accel_range: f32, // g
+    pub gyro_range: f32,  // dps
     pub length: u32,
 }
 
 impl core::fmt::Debug for AxlPacket {
     fn fmt(&self, fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        core::write!(fmt, "AxlPacket(timestamp: {}, offset: {}, storage_id: {:?} (v: {:?}), position_time: {}, lon: {}, lat: {}, temp: {}, freq: {}, data (length): {}))",
+        core::write!(fmt, "AxlPacket(timestamp: {}, offset: {}, storage_id: {:?} (v: {:?}), position_time: {}, lon: {}, lat: {}, temp: {}, freq: {}, accel_range: {}, gyro_range: {}, data (length): {}))",
             self.timestamp,
             self.offset,
             self.storage_id,
@@ -84,6 +90,8 @@ impl core::fmt::Debug for AxlPacket {
             self.lat,
             self.temperature,
             self.freq,
+            self.accel_range,
+            self.gyro_range,
             self.data.len()
             )
     }
@@ -91,7 +99,7 @@ impl core::fmt::Debug for AxlPacket {
 
 impl Format for AxlPacket {
     fn format(&self, fmt: Formatter) {
-        write!(fmt, "AxlPacket(timestamp: {}, offset: {}, storage_id: {:?}, position_time: {}, lon: {}, lat: {}, temp: {}, freq: {}, data (length): {}))",
+        write!(fmt, "AxlPacket(timestamp: {}, offset: {}, storage_id: {:?}, position_time: {}, lon: {}, lat: {}, temp: {}, freq: {}, accel_range: {}, gyro_range: {}, data (length): {}))",
             self.timestamp,
             self.offset,
             self.storage_id,
@@ -100,6 +108,8 @@ impl Format for AxlPacket {
             self.lat,
             self.temperature,
             self.freq,
+            self.accel_range,
+            self.gyro_range,
             self.data.len()
             );
     }
@@ -130,6 +140,8 @@ impl AxlPacket {
             offset: self.offset as u32,
             length: b64.len() as u32,
             freq: self.freq,
+            accel_range: self.accel_range,
+            gyro_range: self.gyro_range,
             storage_id: self.storage_id,
             storage_version: self.storage_version,
             position_time: self.position_time,
@@ -154,6 +166,8 @@ mod tests {
             lat: 0.0,
             lon: 0.0,
             freq: 100.0,
+            accel_range: 8.,
+            gyro_range: 500.,
             offset: 0,
             storage_id: Some(0),
             storage_version: VERSION,
@@ -175,6 +189,8 @@ mod tests {
             lat: 34.52341,
             lon: 54.012,
             freq: 53.0,
+            accel_range: 8.,
+            gyro_range: 500.,
             offset: 0,
             storage_id: Some(1489),
             storage_version: VERSION,

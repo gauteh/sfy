@@ -257,7 +257,10 @@ class Axl(Event, AxlTimeseries):
     lon: float = None
     lat: float = None
     freq: float = None
+    accel_range: float = None # in [g]
+    gyro_range: float = None  # in [dps]
 
+    # Acceleration in m/s^2
     x: np.ndarray = None
     y: np.ndarray = None
     z: np.ndarray = None
@@ -265,6 +268,8 @@ class Axl(Event, AxlTimeseries):
     ax: np.ndarray = None
     ay: np.ndarray = None
     az: np.ndarray = None
+
+    # Gyro in rad/s
     gx: np.ndarray = None
     gy: np.ndarray = None
     gz: np.ndarray = None
@@ -435,6 +440,8 @@ class Axl(Event, AxlTimeseries):
         data['position_time'] = data['body'].get('position_time')
         data['temperature'] = data['body'].get('temperature', 0.)
         data['freq'] = data['body'].get('freq', 208.)
+        data['accel_range'] = data['body'].get('accel_range', 2.) # added in v6
+        data['gyro_range'] = data['body'].get('gyro_range', 125. * 2.) # added in v6
         del data['body']
 
         # decode x, y, z
@@ -442,10 +449,10 @@ class Axl(Event, AxlTimeseries):
         payload = base64.b64decode(payload)
 
         SENSORS_GRAVITY_STANDARD = 9.80665
-        ACCEL_MAX = SENSORS_GRAVITY_STANDARD * 2.
+        ACCEL_MAX = SENSORS_GRAVITY_STANDARD * data['accel_range'] # [m/s^2]
 
         SENSORS_DPS_TO_RADS = 0.017453293
-        GYRO_MAX = ((125. * SENSORS_DPS_TO_RADS) * 2.)
+        GYRO_MAX = SENSORS_DPS_TO_RADS * data['gyro_range'] # [rad/s]
 
         def scale_u16_to_f32(mx, u):
             assert mx > 0.

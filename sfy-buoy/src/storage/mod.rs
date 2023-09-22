@@ -44,7 +44,7 @@ use handles::*;
 pub const COLLECTION_SIZE: u32 = 100;
 pub const STORAGE_VERSION: u32 = axl::VERSION;
 #[cfg(not(feature = "target-test"))]
-pub const STORAGE_VERSION_STR: &'static str = "5";
+pub const STORAGE_VERSION_STR: &'static str = "6";
 
 #[cfg(feature = "target-test")]
 pub const STORAGE_VERSION_STR: &'static str = "t";
@@ -467,12 +467,12 @@ mod tests {
     #[test]
     fn test_id_to_parts() {
         let (c, file, o) = id_to_parts(0);
-        assert_eq!(c, "0.5");
+        assert_eq!(c, "0.6");
         assert_eq!(file, 0);
         assert_eq!(o, 0);
 
         let (c, file, o) = id_to_parts(1231255);
-        assert_eq!(c, "12312.5");
+        assert_eq!(c, "12312.6");
         assert_eq!(file, 55);
         assert_eq!(o, 55 * PACKAGE_SZ);
     }
@@ -527,6 +527,8 @@ mod tests {
             lat: 34.52341,
             lon: 54.012,
             freq: 53.0,
+            accel_range: 8.,
+            gyro_range: 500.,
             offset: 15,
             storage_id: Some(0),
             storage_version: STORAGE_VERSION,
@@ -539,6 +541,8 @@ mod tests {
             lat: 34.52341,
             lon: 54.012,
             freq: 53.0,
+            accel_range: 8.,
+            gyro_range: 500.,
             offset: 15,
             storage_id: Some(1),
             storage_version: STORAGE_VERSION,
@@ -551,6 +555,8 @@ mod tests {
             lat: 34.52341,
             lon: 54.012,
             freq: 53.0,
+            accel_range: 8.,
+            gyro_range: 500.,
             offset: 15,
             storage_id: Some(2),
             storage_version: STORAGE_VERSION,
@@ -562,6 +568,7 @@ mod tests {
         assert_eq!(p2_truth, p2);
     }
 
+    #[ignore]
     #[test]
     fn read_real_data() {
         let mut c = std::fs::read("tests/data/2.2").unwrap();

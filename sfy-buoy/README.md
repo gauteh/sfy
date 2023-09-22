@@ -58,6 +58,14 @@ AUXRX/AUXTX and pull AUXEN up](https://dev.blues.io/guides-and-tutorials/notecar
 
 * storage: store data on SD card.
 
+* fir: recommended and sometimes needed: run IMU faster and filter kalman-output down to output
+    rate.
+
+* surf: increase accel and gyro range to expect greater forces impacted by
+    breaking waves.
+
+* raw: store raw data on SD-card (experimental)
+
 * host-tests: used to disable code that doesn't compile on host, for running
     host unit tests. Best used through `make host-test`.
 

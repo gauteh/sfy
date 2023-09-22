@@ -24,7 +24,7 @@ serde-json-core = { version = "0.4", optional = true }
 serde_json = { version = "1", optional = true }
 embedded-hal = "0.2.6"
 cortex-m = "*"
-ism330dhcx = "0.4.0"
+ism330dhcx = "0.5.1"
 static_assertions = "1"
 chrono = { version = "0.4.19", default-features = false }
 micromath = { version = "2", features = [ "quaternion", "vector" ] }
@@ -49,12 +49,13 @@ continuous = []
 raw = [ "storage" ]
 fir = []
 storage = []
+surf = []
 target-test = [ "storage" ]
 build-bin = [ "fir", "storage", "raw", "anyhow", "argh", "serde-json-core/std", "serde_json", "chrono/std" ]
 
 
 [patch.crates-io]
-ism330dhcx = { git = "https://github.com/gauteh/ism330dhcx", branch = "52hz" }
+ism330dhcx = { git = "https://github.com/gauteh/ism330dhcx", branch = "gyro-chain-values" }
 # ism330dhcx = { path = "../../../../dev/embedded/imu/ism330dhcx" }
 cmsis_dsp = { git = "https://github.com/samcrow/cmsis_dsp.rs" }
 # embedded-sdmmc = { git = "https://github.com/rust-embedded-community/embedded-sdmmc-rs", branch = "develop" }

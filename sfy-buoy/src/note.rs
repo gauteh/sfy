@@ -158,6 +158,8 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             temperature: f32,
 
             freq: f32,
+            accel_range: f32,
+            gyro_range: f32,
             length: u32,
         }
 
@@ -174,6 +176,8 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             temperature: 18.1,
 
             freq: 14.1,
+            accel_range: 14.1,
+            gyro_range: 14.1,
             length: 14,
         };
 
