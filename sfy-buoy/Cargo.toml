@@ -56,7 +56,7 @@ build-bin = [ "fir", "storage", "raw", "anyhow", "argh", "serde-json-core/std", 
 
 [patch.crates-io]
 ism330dhcx = { git = "https://github.com/gauteh/ism330dhcx", branch = "gyro-chain-values" }
-# ism330dhcx = { path = "../../../../dev/embedded/imu/ism330dhcx" }
+# ism330dhcx = { path = "../../../../dev/embedded/ism330dhcx" }
 cmsis_dsp = { git = "https://github.com/samcrow/cmsis_dsp.rs" }
 # embedded-sdmmc = { git = "https://github.com/rust-embedded-community/embedded-sdmmc-rs", branch = "develop" }
 embedded-sdmmc = { git = "https://github.com/gauteh/embedded-sdmmc-rs", branch = "sdmmc-spi-borrow" }

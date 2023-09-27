@@ -284,7 +284,16 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         // XXX: Re-enable
         // assert_eq!(sensor.ctrl1xl.chain_full_scale(), ACCEL_RANGE as f64);
 
-        sensor.ctrl1xl.set_lpf2_xl_en(i2c, true)?; // high-res mode on accelerometer.
+        sensor.ctrl1xl.set_lpf2_xl_en(i2c, true)?; // Use LPF2 filtering (cannot be used at the
+                                                   // same time as HP filter)
+        // XL_HM_MODE is enabled by default (CTRL6C)
+
+        // Accelerometer High-Pass filter: At least 30 seconds, preferably the same
+        // as the gyro-scope (16 mHz).
+        //
+        // 0.016 = 208 Hz / X => X = 208 / 0.016 = 13000. The lowest is ODR / 800 which is 3.86
+        //   seconds. This is too high, so we cannot use the built-in HP-filter.
+        // sensor.ctrl8xl.set_hpcf(i2c, ctrl8xl::HPCF_XL::)
 
         // CTRL2_G
         sensor
@@ -317,7 +326,13 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         // assert_eq!(sensor.ctrl2g.chain_full_scale(), GYRO_RANGE as f64);
 
         // CTRL7_G
-        sensor.ctrl7g.set_g_hm_mode(i2c, true)?; // high-res mode on gyro
+        sensor.ctrl7g.set_g_hm_mode(i2c, true)?; // high-res mode on gyro (default is already on)
+
+
+        // High-pass filter for gyro
+        // sensor.ctrl7g.set_hpm_g(i2c, ctrl7g::Hpm_g::Hpmg16)?; // HPF at 16mHz (62.5
+        //                                                       // seconds)
+        // sensor.ctrl7g.set_hp_en_g(i2c, true)?;
 
         // Both the gyro and accelerometer is low-pass filtered on-board:
         //

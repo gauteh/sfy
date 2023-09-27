@@ -240,7 +240,7 @@ checksum = "b4682ae6287fcf752ecaabbfcc7b6f9b72aa33933dc23a554d853aea8eea8635"
 [[package]]
 name = "blues-notecard"
 version = "0.3.1"
-source = "git+https://github.com/gauteh/notecard-rs#667ac5e16ee23d74af07f6c3edb49b065109cdbe"
+source = "git+https://github.com/gauteh/notecard-rs#cee82bcdd244b35afa0076c568046730bab01961"
 dependencies = [
  "defmt",
  "embedded-hal",
