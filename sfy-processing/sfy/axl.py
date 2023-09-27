@@ -15,6 +15,17 @@ from .event import Event
 
 logger = logging.getLogger(__name__)
 
+SENSORS_GRAVITY_STANDARD = 9.80665
+SENSORS_DPS_TO_RADS = 0.017453293
+
+def scale_u16_to_f32(mx, u):
+    assert mx > 0.
+    u16_max = np.iinfo(np.dtype(np.uint16)).max
+    mx = np.float64(mx)
+    v = np.float64(u)
+    v = v * (2. * mx) / np.float64(u16_max)
+    v = v - mx
+    return np.float32(v)
 
 class AxlCollection(AxlTimeseries):
     GAP_LIMIT = 10.  # limit in seconds before data is not considered continuous
@@ -276,6 +287,9 @@ class Axl(Event, AxlTimeseries):
 
     from_store: bool = False
 
+    # For testing purpuses
+    __keep_payload__ = False
+
     def __eq__(self, o: 'Axl'):
         return self.duplicate(o)
 
@@ -427,7 +441,8 @@ class Axl(Event, AxlTimeseries):
         data = json.loads(d)
 
         payload = data['payload']
-        del data['payload']
+        if not Axl.__keep_payload__:
+            del data['payload']
 
         data['length'] = data['body']['length']
         data['offset'] = data['body'].get('offset', 0)
@@ -448,20 +463,8 @@ class Axl(Event, AxlTimeseries):
         payload = payload[:data['length']]
         payload = base64.b64decode(payload)
 
-        SENSORS_GRAVITY_STANDARD = 9.80665
         ACCEL_MAX = SENSORS_GRAVITY_STANDARD * data['accel_range'] # [m/s^2]
-
-        SENSORS_DPS_TO_RADS = 0.017453293
         GYRO_MAX = SENSORS_DPS_TO_RADS * data['gyro_range'] # [rad/s]
-
-        def scale_u16_to_f32(mx, u):
-            assert mx > 0.
-            u16_max = np.iinfo(np.dtype(np.uint16)).max
-            mx = np.float64(mx)
-            v = np.float64(u)
-            v = v * (2. * mx) / np.float64(u16_max)
-            v = v - mx
-            return np.float32(v)
 
         if data['storage_version'] < 5:
             payload = np.frombuffer(payload, dtype=np.float16)
