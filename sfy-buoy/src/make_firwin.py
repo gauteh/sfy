@@ -1,12 +1,16 @@
 import scipy as sc
 
-FREQ = 208.     # Input frequency
+FREQ = 208.  # Input frequency
+HP_CUTOFF = 1. / 30.  # High-pass cut-off. We do not expect to measure meaningful signals on longer periods than 30 seconds.
 
 # 50 Hz
-NTAP = 129      # Length of filter
-CUTOFF = 26.    # Cut-off frequency for output
+NTAP = 129  # Length of filter
+CUTOFF = 26.  # Cut-off frequency for output
 
-fir = sc.signal.firwin(NTAP, cutoff=CUTOFF, pass_zero='lowpass', fs = FREQ)
+fir = sc.signal.firwin(NTAP,
+                       cutoff=[HP_CUTOFF, CUTOFF],
+                       pass_zero='bandpass',
+                       fs=FREQ)
 
 with open('firwin.26_coeff', 'w') as fd:
     fd.write('[\n')
@@ -15,10 +19,13 @@ with open('firwin.26_coeff', 'w') as fd:
     fd.write(']')
 
 # 20 Hz
-NTAP = 129      # Length of filter
-CUTOFF = 13.    # Cut-off frequency for output
+NTAP = 129  # Length of filter
+CUTOFF = 13.  # Cut-off frequency for output
 
-fir = sc.signal.firwin(NTAP, cutoff=CUTOFF, pass_zero='lowpass', fs = FREQ)
+fir = sc.signal.firwin(NTAP,
+                       cutoff=[HP_CUTOFF, CUTOFF],
+                       pass_zero='bandpass',
+                       fs=FREQ)
 
 with open('firwin.13_coeff', 'w') as fd:
     fd.write('[\n')
