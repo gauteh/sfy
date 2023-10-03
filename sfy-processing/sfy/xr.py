@@ -187,7 +187,8 @@ def displacement(ds: xr.Dataset, filter_freqs=None):
     logger.info(
         f'Integrating displacment, filter frequencies: {filter_freqs}.')
 
-    u_z = signal.integrate(ds.w_z,
+    # sea-surface displacement should point upwards:
+    u_z = -signal.integrate(ds.w_z,
                            ds.dt,
                            order=2,
                            freqs=filter_freqs,
@@ -212,7 +213,8 @@ def displacement(ds: xr.Dataset, filter_freqs=None):
                                 'unit': 'm',
                                 'long_name': 'sea_water_wave_z_displacement',
                                 'description':
-                                'Horizontal z-axis displacement (integrated)',
+                                'Vertical z-axis displacement (integrated) (direction: up)',
+                                'direction': 'up',
                                 'detrended': 'yes',
                                 'filter': 'butterworth (10th order), two-ways',
                                 'filter_freqs': filter_freqs,
