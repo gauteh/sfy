@@ -51,7 +51,7 @@ def map(dev, fast, nib, start, end, margins, save):
     pcks = buoy.position_packages_range(start - timedelta(days=1),
                                         end + timedelta(days=1))
     pcks = [
-        p for p in pcks if p.best_position_time >= utcify(start)
+        p for p in pcks if p.best_position_time and p.best_position_time >= utcify(start)
         and p.best_position_time <= utcify(end)
     ]
     pcks.sort(key=lambda p: p.best_position_time)
