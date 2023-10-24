@@ -228,12 +228,16 @@ def welch(freq, e, nperseg=4096, order=2):
     Args:
         order: Integration order, default 2 (assuming input is acceleration)
     """
-    f, P = scipy.signal.welch(e, freq, nperseg=nperseg, nfft=nperseg, detrend='linear')
+    f, P = scipy.signal.welch(e,
+                              freq,
+                              nperseg=nperseg,
+                              nfft=nperseg,
+                              detrend='linear')
 
     if order > 0:
         P = welchint(f, P, order)
 
-    assert len(P) == nperseg//2 +1, f'{len(P)}, {nperseg}'
+    assert len(P) == nperseg // 2 + 1, f'{len(P)}, {nperseg}'
 
     return f, P
 
@@ -261,6 +265,7 @@ def hm0(f, H):
     m0 = spectral_moment(f, H, 0)
     return 4 * np.sqrt(m0)
 
+
 def spec_stats(f, H):
     """
     Calculate Hm0, m0, m1, Tc, Tz, etc. See `ref:hs` for definition.
@@ -284,13 +289,14 @@ def spec_stats(f, H):
     m2 = spectral_moment(f, H, 2)
     m4 = spectral_moment(f, H, 4)
 
-    hm0 =  4 * np.sqrt(m0)
+    hm0 = 4 * np.sqrt(m0)
     Tm01 = (m0 / m1)  # mean zero-crossing period (Holthuijsen)
-    Tm02 = np.sqrt(m0 / m2) # mean zero-crossing period (Holthuijsen)
-    Tm_10 = m_1 / m0        # mean wave period (inverse frequency moment)
-    Tp = 1. / f[np.argmax(H)] # peak period
+    Tm02 = np.sqrt(m0 / m2)  # mean zero-crossing period (Holthuijsen)
+    Tm_10 = m_1 / m0  # mean wave period (inverse frequency moment)
+    Tp = 1. / f[np.argmax(H)]  # peak period
 
     return m_1, m0, m1, m2, m4, hm0, Tm01, Tm02, Tm_10, Tp
+
 
 def hs(e):
     """
@@ -354,7 +360,9 @@ def imu_cutoff_rabault2022(f, E, f0=0.05):
     OMB_df = 0.048828125 - 0.0439453125  #  df for OpenMetBuoy
 
     df = f[1] - f[0]
-    assert np.max(np.abs(df - np.diff(f))) < 1e-12, f"df not constant: {df} vs {np.diff(f)}, max diff: {np.max(np.abs(np.diff(f)-df))}"
+    assert np.max(
+        np.abs(df - np.diff(f))
+    ) < 1e-12, f"df not constant: {df} vs {np.diff(f)}, max diff: {np.max(np.abs(np.diff(f)-df))}"
 
     # Below f0 (0.05 Hz) the signal becomes very noisy, and quadrubly so because of the integration.
     if0 = np.argmax(f >= f0)
@@ -381,8 +389,57 @@ def imu_cutoff_rabault2022(f, E, f0=0.05):
     if (E[peak] > ((E[0] + E[1]) / 2.0)):
         peak = 0
 
-    EE = np.zeros((len(Ep) + len(E),))
-    EE[(if0+peak):] = E[peak:]
-
+    EE = np.zeros((len(Ep) + len(E), ))
+    EE[(if0 + peak):] = E[peak:]
 
     return (if0 + peak), f[peak], EE
+
+
+def reproject_pca(x, y):
+    """
+    Re-project x-y vectors in direction of maximum variance using Principal
+    Component Analysis (sfy-paper). The primary direction will be aligned along
+    the 'x' direction.
+
+    For this to work well the direction and gyro-drift should be relative
+    stable for the segment of the signal. 10 seconds in the wave-flume works
+    ok, for more chaotic situations this might not work so well.
+
+    It also works better to re-project the high-freq movement.
+
+    * https://math.stackexchange.com/questions/2398662/how-to-find-the-axis-of-highest-variance-of-a-set-of-2d-points
+    * https://stackoverflow.com/questions/73652615/is-there-a-rolling-implementation-of-pca-in-python/73652616#73652616
+
+    Returns:
+
+        xx, yy, varx, vary
+
+        x and y re-projected so that x is along the direction of major
+        variance. y is orthogonal to x.
+
+        varx and vary is the explained variance of the two components. the
+        ratio between the first and second gives an idea about
+        how little the gyro is drifting, or how multi-directional the wave is.
+    """
+    from sklearn.decomposition import PCA
+    pca = PCA(n_components=2, whiten=True, copy=True)
+
+    U = np.vstack((x, y)).T
+    pca.fit(U)
+
+    C = pca.components_
+
+    # Find direction:
+    u0 = C[0]  # greatest variation
+    u1 = C[1]  # second, orthogonal to first
+
+    # normalize
+    u0 = u0 / np.linalg.norm(u0)
+    u1 = u1 / np.linalg.norm(u1)
+
+    assert np.isclose(u0.dot(u1), 0., atol=1e-6), "PCAs should be orthogonal"
+
+    UU = np.vstack((U.dot(u0), U.dot(u1))).T
+    xx, yy = UU[:, 0], UU[:, 1]
+
+    return xx, yy, pca.explained_variance_[0], pca.explained_variance_[1]
