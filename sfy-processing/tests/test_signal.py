@@ -1,6 +1,7 @@
 import numpy as np
 import scipy as sc
 from sfy import axl, signal
+import sfy
 import matplotlib.pyplot as plt
 from sfy.axl import AxlCollection
 from datetime import datetime, timezone
@@ -67,7 +68,7 @@ def test_adjust_fir():
 
 
 @needs_hub
-def test_pca_xy(sfyhub):
+def test_pca_xy(sfyhub, plot):
     b = sfyhub.buoy("wavebug25")
     pcks = b.axl_packages_range(
         datetime(2023, 4, 20, 9, 17, tzinfo=timezone.utc),
@@ -75,7 +76,7 @@ def test_pca_xy(sfyhub):
     c = AxlCollection(pcks)
     ds = c.to_dataset()
 
-    x, y, xv, yv = signal.reproject_pca(ds.w_x, ds.w_y)
+    x, y, xv, yv, u0, u1 = signal.reproject_pca(ds.w_x, ds.w_y)
     print(xv, yv)
 
     assert xv > yv
@@ -83,3 +84,13 @@ def test_pca_xy(sfyhub):
     assert np.var(y) < np.var(ds.w_y)
     np.testing.assert_array_almost_equal(np.sqrt(x**2 + y**2),
                                          np.sqrt(ds.w_x**2 + ds.w_y**2))
+
+    u = sfy.xr.displacement(ds, filter_freqs=[0.15, 25])
+    xd, yd, xvd, yvd, ud0, ud1 = signal.reproject_pca(u.u_x, u.u_y)
+    print(u0, u1)
+    print(ud0, ud1)
+
+    if plot:
+        plt.figure()
+        plt.plot(u.time, u.u_z)
+        plt.show()

@@ -395,7 +395,7 @@ def imu_cutoff_rabault2022(f, E, f0=0.05):
     return (if0 + peak), f[peak], EE
 
 
-def reproject_pca(x, y):
+def reproject_pca(x, y, Fs=None, low=None, high=None):
     """
     Re-project x-y vectors in direction of maximum variance using Principal
     Component Analysis (sfy-paper). The primary direction will be aligned along
@@ -410,9 +410,17 @@ def reproject_pca(x, y):
     * https://math.stackexchange.com/questions/2398662/how-to-find-the-axis-of-highest-variance-of-a-set-of-2d-points
     * https://stackoverflow.com/questions/73652615/is-there-a-rolling-implementation-of-pca-in-python/73652616#73652616
 
+    Args:
+
+        x, y: vector components to re-project
+
+        low, high: calculate variance on filtered signal between these
+        frequencies. If one is set and one is None, the default value is used.
+
+
     Returns:
 
-        xx, yy, varx, vary
+        xx, yy, varx, vary, u0, u1
 
         x and y re-projected so that x is along the direction of major
         variance. y is orthogonal to x.
@@ -420,11 +428,22 @@ def reproject_pca(x, y):
         varx and vary is the explained variance of the two components. the
         ratio between the first and second gives an idea about
         how little the gyro is drifting, or how multi-directional the wave is.
+
+        u0, u1 is the new basis.
     """
     from sklearn.decomposition import PCA
     pca = PCA(n_components=2, whiten=True, copy=True)
 
-    U = np.vstack((x, y)).T
+
+    if low is not None or high is not None:
+        assert Fs is not None, "Fs must be set when filtering"
+        xb = bandpass(x, 1./Fs, low, high)
+        yb = bandpass(y, 1./Fs, low, high)
+
+        U = np.vstack((xb, yb)).T
+    else:
+        U = np.vstack((x, y)).T
+
     pca.fit(U)
 
     C = pca.components_
@@ -439,7 +458,8 @@ def reproject_pca(x, y):
 
     assert np.isclose(u0.dot(u1), 0., atol=1e-6), "PCAs should be orthogonal"
 
+    U = np.vstack((x, y)).T # re-assign to unfiltered vectors.
     UU = np.vstack((U.dot(u0), U.dot(u1))).T
     xx, yy = UU[:, 0], UU[:, 1]
 
-    return xx, yy, pca.explained_variance_[0], pca.explained_variance_[1]
+    return xx, yy, pca.explained_variance_[0], pca.explained_variance_[1], u0, u1

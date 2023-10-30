@@ -20,7 +20,7 @@ def hm0(ds: xr.Dataset, raw=False, window=(20 * 60)) -> xr.DataArray:
     return spec_stats(ds, raw, window)['hm0']
 
 
-def spec_stats(ds: xr.Dataset, raw=False, window=(20 * 60)) -> xr.Dataset:
+def spec_stats(ds: xr.Dataset, raw=False, window=(20 * 60), nperseg=4096, order=2) -> xr.Dataset:
     """
     Return Dataset with Hm0, Tc, Tz, m0, m2, m4 and elevation spectra.
 
@@ -30,7 +30,12 @@ def spec_stats(ds: xr.Dataset, raw=False, window=(20 * 60)) -> xr.Dataset:
     """
 
     zz = ds.w_z.values
+    yy = ds.w_y.values
+    xx = ds.w_x.values
     freq = ds.attrs.get('estimated_frequency', ds.attrs['frequency'])
+
+    assert len(zz) == len(yy)
+    assert len(xx) == len(yy)
 
     # The windows need to be the full size, otherwise the statistics will be invalid.
 
@@ -52,6 +57,12 @@ def spec_stats(ds: xr.Dataset, raw=False, window=(20 * 60)) -> xr.Dataset:
     z = np.split(zz, i)
     z[-1] = zz[-N:]  # make sure last window is also full length
 
+    y = np.split(yy, i)
+    y[-1] = yy[-N:]  # make sure last window is also full length
+
+    x = np.split(xx, i)
+    x[-1] = xx[-N:]  # make sure last window is also full length
+
     if len(ds.w_z.values) <= N:
         assert len(z) == 1, "expected only one window"
     else:
@@ -64,22 +75,28 @@ def spec_stats(ds: xr.Dataset, raw=False, window=(20 * 60)) -> xr.Dataset:
     logger.debug(
         f'Calculating spectral stats for {len(z)} 20 minute segments..')
 
-    def stat(zz):
-        f, P = signal.welch(freq, zz)
+    def stat(zz, yy, xx):
+        f, Pz = signal.welch(freq, zz, nperseg, order)
+        f, Py = signal.welch(freq, yy, nperseg, order)
+        f, Px = signal.welch(freq, xx, nperseg, order)
         if not raw:
-            _, _, P = signal.imu_cutoff_rabault2022(f, P)
-        return *signal.spec_stats(f, P), f, P
+            i0, _, Pz = signal.imu_cutoff_rabault2022(f, Pz)
+            Py[:i0] = 0
+            Px[:i0] = 0
+        return *signal.spec_stats(f, Pz), f, Pz, Py, Px
 
-    with ThreadPoolExecutor() as x:
-        m_1, m0, m1, m2, m4, hm0, Tm01, Tm02, Tm_10, Tp, f, P = zip(
-            *x.map(stat, z))
+    with ThreadPoolExecutor() as ex:
+        m_1, m0, m1, m2, m4, hm0, Tm01, Tm02, Tm_10, Tp, f, Pz, Py, Px = zip(
+            *ex.map(stat, z, y, x))
 
     i = np.append(i, len(zz) - 1)  # Add timestamp for last window as well.
     time = ds.time[i].values  # Use timestamp from last sample in each window.
 
     assert len(hm0) == len(time)
 
-    P = np.vstack(P)
+    Pz = np.vstack(Pz)
+    Py = np.vstack(Py)
+    Px = np.vstack(Px)
 
     logger.debug('Building dataset..')
 
@@ -166,7 +183,7 @@ def spec_stats(ds: xr.Dataset, raw=False, window=(20 * 60)) -> xr.Dataset:
                 attrs={'description': 'Forth order moment from spectrum'}),
             'E':
             xr.DataArray(
-                P,
+                Pz,
                 dims=['time', 'frequency'],
                 attrs={
                     'unit':
@@ -175,6 +192,28 @@ def spec_stats(ds: xr.Dataset, raw=False, window=(20 * 60)) -> xr.Dataset:
                     'sea_surface_wave_variance_spectral_density',
                     'description':
                     'Sea surface elevation spectrum (variance density spectrum) calculated using Welch method.',
+                }),
+            'Ey':
+            xr.DataArray(
+                Py,
+                dims=['time', 'frequency'],
+                attrs={
+                    'unit':
+                    'm^2/Hz',
+                    'long_name':
+                    'sea_surface_wave_variance_spectral_density',
+                    'description':
+                    'First horizontal component of sea surface elevation spectrum (variance density spectrum) calculated using Welch method.',
+                }),
+            'Ex':
+            xr.DataArray(
+                Px,
+                dims=['time', 'frequency'],
+                attrs={
+                    'unit':
+                    'm^2/Hz',
+                    'description':
+                    'Second horizontal component of sea surface elevation spectrum (variance density spectrum) calculated using Welch method.',
                 }),
         },
         coords={
@@ -246,6 +285,8 @@ def displacement(ds: xr.Dataset, filter_freqs=None):
                                 'filter_freqs': filter_freqs,
                                 'filter_freqs:unit': 'Hz',
                             })
+
+    d.assign_attrs(ds.attrs)
 
     return d
 
@@ -496,3 +537,30 @@ def retime(ds, eps_gap=3.):
         })
 
     return ds
+
+def reproject_pca(ds: xr.Dataset, low=None, high=None):
+    """
+    Re-project x and y vectors onto direction of maximum variance.
+    """
+    ds = ds.copy()
+
+    if 'u_x' in ds:
+        # re-project displacement
+        xx, yy, v0, v1, u0, u1 = signal.reproject_pca(ds.u_x, ds.u_y, ds.estimated_frequency, low, high)
+        ds['u_x'][:] = xx
+        ds['u_y'][:] = yy
+
+        ds['u_x']['variance'] = v0
+        ds['u_y']['variance'] = v1
+
+    if 'w_x' in ds:
+        # re-project acceleration
+        xx, yy, v0, v1, u0, u1 = signal.reproject_pca(ds.w_x, ds.w_y, ds.estimated_frequency, low, high)
+        ds['w_x'][:] = xx
+        ds['w_y'][:] = yy
+
+        ds['w_x']['variance'] = v0
+        ds['w_y']['variance'] = v1
+
+    return ds
+
