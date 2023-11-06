@@ -52,18 +52,21 @@ def test_axl_v3_quiet(sfyhub):
 
 
 @needs_hub
-def test_axl_v6_range(sfyhub):
+def test_axl_v6_16g_range(sfyhub, plot):
+    # this is a desktop test with buoy configured to 16g, 1000 dps after fixing gyro-accel driver scale error.
     import base64
 
     axl.Axl.__keep_payload__ = True
-    b = sfyhub.buoy('bug32')
+    b = sfyhub.buoy('bug29')
     pcks = b.axl_packages_range(
-        datetime(2023, 9, 23, 13, 00, tzinfo=timezone.utc),
-        datetime(2023, 9, 23, 15, 33, tzinfo=timezone.utc))
+        datetime(2023, 11, 6, 9, 40, tzinfo=timezone.utc),
+        datetime(2023, 11, 6, 11, 50, tzinfo=timezone.utc))
 
     c = axl.AxlCollection(pcks)
-    c = c.clip(datetime(2023, 9, 23, 13, 29, tzinfo=timezone.utc),
-               datetime(2023, 9, 23, 13, 33, tzinfo=timezone.utc))
+    c = c.clip(datetime(2023, 11, 6, 10, 40, tzinfo=timezone.utc),
+               datetime(2023, 11, 6, 10, 50, tzinfo=timezone.utc))
+
+    axl.Axl.__keep_payload__ = False
 
     assert c.pcks[0].accel_range == 16
     assert c.pcks[0].gyro_range == 1000
@@ -72,7 +75,8 @@ def test_axl_v6_range(sfyhub):
     payload = base64.b64decode(payload)
     payload = np.frombuffer(payload, dtype=np.uint16)
 
-    z = axl.scale_u16_to_f32(16 * axl.SENSORS_GRAVITY_STANDARD, payload[2::3])
+    z = axl.scale_u16_to_f32(2 * 16 * axl.SENSORS_GRAVITY_STANDARD,
+                             payload[2::3])
     MAX = 16 * axl.SENSORS_GRAVITY_STANDARD
     print(np.max(z), MAX)
     assert np.max(z) <= (MAX + .2)
@@ -81,15 +85,18 @@ def test_axl_v6_range(sfyhub):
     ds = c.to_dataset()
     print(ds)
 
-    np.testing.assert_array_equal(z + axl.SENSORS_GRAVITY_STANDARD, ds.w_z[:1024])
+    np.testing.assert_array_equal(z + axl.SENSORS_GRAVITY_STANDARD,
+                                  ds.w_z[:1024])
 
-    # import matplotlib.pyplot as plt
+    # this is a period where the buoy was resting quietly
+    assert np.mean(ds.w_z) == approx(9.8, abs=0.3)
+    assert np.mean(ds.w_x) == approx(0.0, abs=0.2)
+    assert np.mean(ds.w_y) == approx(0.0, abs=0.2)
 
-    # (ds.w_z / axl.SENSORS_GRAVITY_STANDARD).plot()
+    if plot:
+        import matplotlib.pyplot as plt
+        (ds.w_z / axl.SENSORS_GRAVITY_STANDARD).plot()
 
-    ww_z = signal.bandpass(ds.w_z, 1/52)
-    # plt.plot(ds.time, ww_z / axl.SENSORS_GRAVITY_STANDARD)
-
-    # plt.show()
-
-    axl.Axl.__keep_payload__ = False
+        ww_z = signal.bandpass(ds.w_z, 1 / 52)
+        plt.plot(ds.time, ww_z / axl.SENSORS_GRAVITY_STANDARD)
+        plt.show()

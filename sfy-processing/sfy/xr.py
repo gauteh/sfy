@@ -538,6 +538,12 @@ def retime(ds, eps_gap=3.):
 
     return ds
 
+def fill_gaps(ds: xr.Dataset, fill_value=np.nan):
+    """
+    Fill gaps with `fill_value` (default: nan) so that the time vector is approximately monotonously increasing.
+    """
+    pass
+
 def reproject_pca(ds: xr.Dataset, low=None, high=None):
     """
     Re-project x and y vectors onto direction of maximum variance.

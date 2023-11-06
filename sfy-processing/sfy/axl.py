@@ -455,16 +455,16 @@ class Axl(Event, AxlTimeseries):
         data['position_time'] = data['body'].get('position_time')
         data['temperature'] = data['body'].get('temperature', 0.)
         data['freq'] = data['body'].get('freq', 208.)
-        data['accel_range'] = data['body'].get('accel_range', 2.) # added in v6
-        data['gyro_range'] = data['body'].get('gyro_range', 125. * 2.) # added in v6
+        data['accel_range'] = data['body'].get('accel_range', 1.) # added in v6
+        data['gyro_range'] = data['body'].get('gyro_range', 125.) # added in v6
         del data['body']
 
         # decode x, y, z
         payload = payload[:data['length']]
         payload = base64.b64decode(payload)
 
-        ACCEL_MAX = SENSORS_GRAVITY_STANDARD * data['accel_range'] # [m/s^2]
-        GYRO_MAX = SENSORS_DPS_TO_RADS * data['gyro_range'] # [rad/s]
+        ACCEL_MAX = 2 * SENSORS_GRAVITY_STANDARD * data['accel_range'] # [m/s^2]
+        GYRO_MAX = 2 * SENSORS_DPS_TO_RADS * data['gyro_range'] # [rad/s]
 
         if data['storage_version'] < 5:
             payload = np.frombuffer(payload, dtype=np.float16)
