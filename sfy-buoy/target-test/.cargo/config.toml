@@ -1,5 +1,5 @@
 [target.thumbv7em-none-eabihf]
-runner = "probe-run --chip AMA3B1KK"
+runner = "gdb-multiarch --command=test.gdb"
 
 rustflags = [
   # This is needed if your flash or ram addresses are not aligned to 0x10000 in memory.x

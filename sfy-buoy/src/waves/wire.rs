@@ -118,6 +118,21 @@ mod tests {
     }
 
     #[test]
+    fn round_trip_accel_4g() {
+        assert!((2. * ACCEL_MAX * SENSORS_GRAVITY_STANDARD as f32) > super::super::ACCEL_RANGE);
+
+        let a = 4. * SENSORS_GRAVITY_STANDARD;
+        let s = A16::from_f32(a as f32);
+
+        println!("{}", s.to_u16());
+        assert!(a as f32 - s.to_f32() < 0.01);
+
+        // less accurate
+        let s = half::f16::from_f64(a);
+        assert!(a - s.to_f64() < 0.01);
+    }
+
+    #[test]
     fn round_trip_accel() {
         let mut max: f32 = 0.0;
         let mut avg: f32 = 0.0;

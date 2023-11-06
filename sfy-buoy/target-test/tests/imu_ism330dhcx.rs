@@ -17,7 +17,7 @@ mod tests {
         prelude::*,
     };
 
-    use sfy::waves::Waves;
+    use sfy::waves::{self, Waves, wire::ScaledF32};
 
     struct State {
         // waves: Waves<hal::i2c::Iom4>,
@@ -48,6 +48,13 @@ mod tests {
     fn get_temperature(s: &mut State) {
         let temp = s.waves.get_temperature();
         defmt::info!("temperature: {:?}", temp);
+    }
+
+    #[test]
+    fn sensor_range(s: &mut State) {
+        assert_eq!(s.waves.imu.ctrl1xl.chain_full_scale(), waves::ACCEL_RANGE as f64);
+        assert_eq!(s.waves.imu.ctrl1xl.chain_full_scale(), 4.);
+        assert_eq!(s.waves.imu.ctrl2g.chain_full_scale(), waves::GYRO_RANGE as f64);
     }
 
     #[test]
@@ -191,5 +198,48 @@ mod tests {
         defmt::debug!("taking buf..");
         let p = s.waves.take_buf(100031231, 1231231, 34.0, 23.2).unwrap();
         defmt::debug!("pck: {:?}", p);
+    }
+
+    #[test]
+    fn desk_1g(s: &mut State) {
+        defmt::info!("this test tries to see if the average z acceeleration equals earth gravity. make sure the device is sitting still on the desk");
+
+        s.waves.reset(&mut s.delay).unwrap();
+        let mut samples = s.waves.imu.fifostatus.diff_fifo(&mut s.waves.i2c).unwrap();
+        assert_eq!(samples, 0);
+
+        let _p = s.waves.take_buf(100031231, 1231231, 34.0, 23.2).unwrap();
+
+        s.waves.enable_fifo(&mut s.delay).unwrap();
+
+        while !s.waves.is_full() {
+            defmt::debug!("wait for some samples..");
+            s.delay.delay_ms(200u16);
+
+            samples = s.waves.imu.fifostatus.diff_fifo(&mut s.waves.i2c).unwrap();
+            defmt::debug!("values in FIFO before collecting: {}", samples);
+            assert!(samples >= 0);
+
+            defmt::debug!("read and filter..");
+            s.waves.read_and_filter().unwrap();
+
+            defmt::debug!("buffer: {}", s.waves.len());
+        }
+
+        defmt::debug!("time series len: {}", s.waves.len());
+
+        defmt::debug!("taking buf..");
+        let p = s.waves.take_buf(100031231, 1231231, 34.0, 23.2).unwrap();
+        defmt::debug!("pck: {:?}", p);
+
+        // Every third sample is Z
+        let p = p.0;
+        let z = p.data.iter().skip(2).step_by(3).cloned().collect::<heapless::Vec<u16, 1024>>();
+        defmt::info!("z len: {}", z.len());
+        for zz in z {
+            let z2 = waves::wire::A16::from_u16(zz);
+            defmt::info!("z = {} -> {}", zz, z2.to_f32());
+            assert!(z2.abs() < 0.3); // should be close to zero since 9.81 has been removed.
+        }
     }
 }

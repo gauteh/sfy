@@ -146,6 +146,7 @@ impl ImuBuf {
                 .extend(a.iter().map(|a| A16::from_f32(*a as f32).to_u16()));
         }
 
+        defmt::trace!("gyro: [{}, {}, {}]", g[0], g[1], g[2]);
         // Feed AHRS filter
         //
         // The filter takes gyro readings in degrees per second (dps) and accelerometer in (g) for
@@ -172,6 +173,9 @@ impl ImuBuf {
             z: a[2] as f32,
         };
         let axl = q.rotate(axl);
+
+        defmt::trace!("unrotated acl: [{}, {}, {}]", a[0], a[1], a[2]);
+        defmt::trace!("pushing acl: [{}, {}, {}]", axl.x, axl.y, axl.z);
 
         #[cfg(not(feature = "fir"))]
         {

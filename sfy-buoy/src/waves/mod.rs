@@ -17,7 +17,7 @@ use crate::{axl::AxlPacket, axl::VERSION};
 use crate::fir;
 
 mod buf;
-mod wire;
+pub mod wire;
 
 use buf::ImuBuf;
 pub use buf::{VecAxl, VecRawAxl, RAW_AXL_BYTE_SZ, RAW_AXL_SZ};
@@ -281,8 +281,8 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
             .ctrl1xl
             .set_chain_full_scale(i2c, ctrl1xl::Fs_Xl::G16)?;
 
-        // XXX: Re-enable
-        // assert_eq!(sensor.ctrl1xl.chain_full_scale(), ACCEL_RANGE as f64);
+        defmt::info!("accelerometer range: {} g", sensor.ctrl1xl.chain_full_scale());
+        assert_eq!(sensor.ctrl1xl.chain_full_scale(), ACCEL_RANGE as f64);
 
         sensor.ctrl1xl.set_lpf2_xl_en(i2c, true)?; // Use LPF2 filtering (cannot be used at the
                                                    // same time as HP filter)
@@ -322,8 +322,8 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
             .ctrl2g
             .set_chain_full_scale(i2c, ctrl2g::Fs::Dps1000)?;
 
-        // XXX: Re-enable
-        // assert_eq!(sensor.ctrl2g.chain_full_scale(), GYRO_RANGE as f64);
+        defmt::info!("gyroscope range: {} dps", sensor.ctrl2g.chain_full_scale());
+        assert_eq!(sensor.ctrl2g.chain_full_scale(), GYRO_RANGE as f64);
 
         // CTRL7_G
         sensor.ctrl7g.set_g_hm_mode(i2c, true)?; // high-res mode on gyro (default is already on)
