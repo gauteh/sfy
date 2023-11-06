@@ -20,4 +20,4 @@ dependencies:
   - trajan
   - pytest-benchmark
   - mergedeep
-  - sklearn
+  - scikit-learn
