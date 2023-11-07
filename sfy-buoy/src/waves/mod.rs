@@ -35,7 +35,7 @@ pub const FREQ: Freq = Freq::Hz208;
 pub const ACCEL_RANGE: f32 = 16.; // [g]
 #[cfg(feature = "surf")]
 pub const GYRO_RANGE: f32 = 1000.; // [dps]
-                                  //
+                                   //
 #[cfg(not(feature = "surf"))]
 pub const ACCEL_RANGE: f32 = 4.; // [g]
 #[cfg(not(feature = "surf"))]
@@ -281,12 +281,15 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
             .ctrl1xl
             .set_chain_full_scale(i2c, ctrl1xl::Fs_Xl::G16)?;
 
-        defmt::info!("accelerometer range: {} g", sensor.ctrl1xl.chain_full_scale());
-        assert_eq!(sensor.ctrl1xl.chain_full_scale(), ACCEL_RANGE as f64);
+        defmt::info!(
+            "accelerometer range: {} g",
+            sensor.ctrl1xl.chain_full_scale()
+        );
+        assert_eq!(sensor.ctrl1xl.chain_full_scale().g(), ACCEL_RANGE);
 
         sensor.ctrl1xl.set_lpf2_xl_en(i2c, true)?; // Use LPF2 filtering (cannot be used at the
                                                    // same time as HP filter)
-        // XL_HM_MODE is enabled by default (CTRL6C)
+                                                   // XL_HM_MODE is enabled by default (CTRL6C)
 
         // Accelerometer High-Pass filter: At least 30 seconds, preferably the same
         // as the gyro-scope (16 mHz).
@@ -323,11 +326,10 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
             .set_chain_full_scale(i2c, ctrl2g::Fs::Dps1000)?;
 
         defmt::info!("gyroscope range: {} dps", sensor.ctrl2g.chain_full_scale());
-        assert_eq!(sensor.ctrl2g.chain_full_scale(), GYRO_RANGE as f64);
+        assert_eq!(sensor.ctrl2g.chain_full_scale().dps(), GYRO_RANGE);
 
         // CTRL7_G
         sensor.ctrl7g.set_g_hm_mode(i2c, true)?; // high-res mode on gyro (default is already on)
-
 
         // High-pass filter for gyro
         // sensor.ctrl7g.set_hpm_g(i2c, ctrl7g::Hpm_g::Hpmg16)?; // HPF at 16mHz (62.5

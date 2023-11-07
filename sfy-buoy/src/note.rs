@@ -86,8 +86,8 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                 delay,
                 Some("periodic"),
                 Some(GPS_PERIOD), // seconds between each GPS fix. the position is only logged if
-                                  // the accelerometer detects movement. otherwise the heartbeat
-                                  // configured to the most frequent (1 hour) is set below.
+                // the accelerometer detects movement. otherwise the heartbeat
+                // configured to the most frequent (1 hour) is set below.
                 None,
                 None,
                 None,

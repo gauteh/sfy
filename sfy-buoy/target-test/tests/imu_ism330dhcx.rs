@@ -17,7 +17,7 @@ mod tests {
         prelude::*,
     };
 
-    use sfy::waves::{self, Waves, wire::ScaledF32};
+    use sfy::waves::{self, wire::ScaledF32, Waves};
 
     struct State {
         // waves: Waves<hal::i2c::Iom4>,
@@ -52,9 +52,15 @@ mod tests {
 
     #[test]
     fn sensor_range(s: &mut State) {
-        assert_eq!(s.waves.imu.ctrl1xl.chain_full_scale(), waves::ACCEL_RANGE as f64);
+        assert_eq!(
+            s.waves.imu.ctrl1xl.chain_full_scale(),
+            waves::ACCEL_RANGE as f64
+        );
         assert_eq!(s.waves.imu.ctrl1xl.chain_full_scale(), 4.);
-        assert_eq!(s.waves.imu.ctrl2g.chain_full_scale(), waves::GYRO_RANGE as f64);
+        assert_eq!(
+            s.waves.imu.ctrl2g.chain_full_scale(),
+            waves::GYRO_RANGE as f64
+        );
     }
 
     #[test]
@@ -234,7 +240,13 @@ mod tests {
 
         // Every third sample is Z
         let p = p.0;
-        let z = p.data.iter().skip(2).step_by(3).cloned().collect::<heapless::Vec<u16, 1024>>();
+        let z = p
+            .data
+            .iter()
+            .skip(2)
+            .step_by(3)
+            .cloned()
+            .collect::<heapless::Vec<u16, 1024>>();
         defmt::info!("z len: {}", z.len());
         for zz in z {
             let z2 = waves::wire::A16::from_u16(zz);

@@ -1,4 +1,5 @@
 use ahrs_fusion::NxpFusion;
+use ism330dhcx::{AccelValue, GyroValue};
 use micromath::{vector::Vector3d, Quaternion};
 
 use crate::axl::{AXL_SZ, SAMPLE_SZ};
@@ -11,7 +12,7 @@ use super::wire::{ScaledF32, A16};
 use super::wire::G16;
 
 // From Adafruit Sensors library.
-pub const SENSORS_RADS_TO_DPS: f64 = 57.29577793;
+// pub const SENSORS_RADS_TO_DPS: f64 = 57.29577793;
 pub const SENSORS_DPS_TO_RADS: f64 = 0.017453293;
 pub const SENSORS_GRAVITY_STANDARD: f64 = 9.80665;
 
@@ -132,32 +133,38 @@ impl ImuBuf {
 
     /// Sample a new value and filter through Kalman-filter and FIR-filters. Will grow
     /// buffer with `SAMPLE_SZ` samples.
-    pub fn sample(&mut self, g: [f64; 3], a: [f64; 3]) -> Result<(), Error> {
+    pub fn sample(&mut self, g: GyroValue, a: AccelValue) -> Result<(), Error> {
         if self.is_full() {
             return Err(Error::BufFull);
         }
+
+        let g_rad = g.as_rad();
+        let g_dps = g.as_dps();
+
+        let a_m_ss = a.as_m_ss();
+        let a_g = a.as_g();
 
         // Store raw values
         #[cfg(feature = "raw")]
         {
             self.raw_axl
-                .extend(g.iter().map(|g| G16::from_f32(*g as f32).to_u16()));
+                .extend(g_rad.iter().map(|g| G16::from_f32(*g as f32).to_u16()));
             self.raw_axl
-                .extend(a.iter().map(|a| A16::from_f32(*a as f32).to_u16()));
+                .extend(a_m_ss.iter().map(|a| A16::from_f32(*a as f32).to_u16()));
         }
 
-        defmt::trace!("gyro: [{}, {}, {}]", g[0], g[1], g[2]);
+        defmt::trace!("gyro: [{:?}]", g_rad);
         // Feed AHRS filter
         //
         // The filter takes gyro readings in degrees per second (dps) and accelerometer in (g) for
         // linear acceleration (can also take it in m/s^2 if not linear acceleration).
         self.filter.update(
-            (g[0] * SENSORS_RADS_TO_DPS) as f32,
-            (g[1] * SENSORS_RADS_TO_DPS) as f32,
-            (g[2] * SENSORS_RADS_TO_DPS) as f32,
-            (a[0] / SENSORS_GRAVITY_STANDARD) as f32,
-            (a[1] / SENSORS_GRAVITY_STANDARD) as f32,
-            (a[2] / SENSORS_GRAVITY_STANDARD) as f32,
+            (g_dps[0]) as f32,
+            (g_dps[1]) as f32,
+            (g_dps[2]) as f32,
+            (a_g[0]) as f32,
+            (a_g[1]) as f32,
+            (a_g[2]) as f32,
             0., // Ignore (uncalibrated) magnetometer. This does more harm than good, ref. Jeans buoy.
             0.,
             0.,
@@ -168,13 +175,13 @@ impl ImuBuf {
         let q = self.filter.quaternion();
         let q = Quaternion::new(q[0], q[1], q[2], q[3]);
         let axl = Vector3d {
-            x: a[0] as f32,
-            y: a[1] as f32,
-            z: a[2] as f32,
+            x: a_m_ss[0] as f32,
+            y: a_m_ss[1] as f32,
+            z: a_m_ss[2] as f32,
         };
         let axl = q.rotate(axl);
 
-        defmt::trace!("unrotated acl: [{}, {}, {}]", a[0], a[1], a[2]);
+        defmt::trace!("unrotated acl: [{:?}]", a);
         defmt::trace!("pushing acl: [{}, {}, {}]", axl.x, axl.y, axl.z);
 
         #[cfg(not(feature = "fir"))]
@@ -221,11 +228,16 @@ mod tests {
     fn filter_decimater() {
         use super::*;
         use crate::axl::SAMPLE_NO;
+        use ism330dhcx::{ctrl1xl, ctrl2g};
 
         let mut buf = ImuBuf::new(200.);
 
         for _ in 0..SAMPLE_NO {
-            buf.sample([0., 1., 2.], [0., 1., 2.]).unwrap();
+            buf.sample(
+                GyroValue::new(ctrl2g::Fs::Dps500, [0, 1, 2]),
+                AccelValue::new(ctrl1xl::Fs_Xl::G2, [0, 1, 2]),
+            )
+            .unwrap();
         }
 
         assert_eq!(

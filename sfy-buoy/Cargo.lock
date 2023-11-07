@@ -752,7 +752,7 @@ dependencies = [
 [[package]]
 name = "ism330dhcx"
 version = "0.5.1"
-source = "git+https://github.com/gauteh/ism330dhcx?branch=gyro-accel-parse-range#802c4ed7188312a6c6f656984744af9da0f46394"
+source = "git+https://github.com/gauteh/ism330dhcx?branch=gyro-accel-parse-range#27c2bb6ab331370af78385bf3efcd18060b7a03f"
 dependencies = [
  "defmt",
  "embedded-hal",
