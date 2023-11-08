@@ -20,7 +20,11 @@ def hm0(ds: xr.Dataset, raw=False, window=(20 * 60)) -> xr.DataArray:
     return spec_stats(ds, raw, window)['hm0']
 
 
-def spec_stats(ds: xr.Dataset, raw=False, window=(20 * 60), nperseg=4096, order=2) -> xr.Dataset:
+def spec_stats(ds: xr.Dataset,
+               raw=False,
+               window=(20 * 60),
+               nperseg=4096,
+               order=2) -> xr.Dataset:
     """
     Return Dataset with Hm0, Tc, Tz, m0, m2, m4 and elevation spectra.
 
@@ -151,10 +155,12 @@ def spec_stats(ds: xr.Dataset, raw=False, window=(20 * 60), nperseg=4096, order=
                 np.array(Tp),
                 dims=['time'],
                 attrs={
-                    'unit': 's',
+                    'unit':
+                    's',
                     'long_name':
                     'sea_surface_wave_period_at_variance_spectral_density_maximum',
-                    'description': 'Peak period (period with maximum elevation energy)'
+                    'description':
+                    'Peak period (period with maximum elevation energy)'
                 }),
             'm_1':
             xr.DataArray(
@@ -227,11 +233,8 @@ def displacement(ds: xr.Dataset, filter_freqs=None):
         f'Integrating displacment, filter frequencies: {filter_freqs}.')
 
     # sea-surface displacement should point upwards:
-    u_z = -signal.integrate(ds.w_z,
-                           ds.dt,
-                           order=2,
-                           freqs=filter_freqs,
-                           method='dft')
+    u_z = -signal.integrate(
+        ds.w_z, ds.dt, order=2, freqs=filter_freqs, method='dft')
 
     u_x = signal.integrate(ds.w_x,
                            ds.dt,
@@ -246,19 +249,20 @@ def displacement(ds: xr.Dataset, filter_freqs=None):
 
     d = xr.Dataset()
 
-    d['u_z'] = xr.DataArray(u_z.astype(np.float32),
-                            coords=[('time', ds.time.data)],
-                            attrs={
-                                'unit': 'm',
-                                'long_name': 'sea_water_wave_z_displacement',
-                                'description':
-                                'Vertical z-axis displacement (integrated) (direction: up)',
-                                'direction': 'up',
-                                'detrended': 'yes',
-                                'filter': 'butterworth (10th order), two-ways',
-                                'filter_freqs': filter_freqs,
-                                'filter_freqs:unit': 'Hz',
-                            })
+    d['u_z'] = xr.DataArray(
+        u_z.astype(np.float32),
+        coords=[('time', ds.time.data)],
+        attrs={
+            'unit': 'm',
+            'long_name': 'sea_water_wave_z_displacement',
+            'description':
+            'Vertical z-axis displacement (integrated) (direction: up)',
+            'direction': 'up',
+            'detrended': 'yes',
+            'filter': 'butterworth (10th order), two-ways',
+            'filter_freqs': filter_freqs,
+            'filter_freqs:unit': 'Hz',
+        })
 
     d['u_x'] = xr.DataArray(u_x.astype(np.float32),
                             coords=[('time', ds.time.data)],
@@ -378,7 +382,7 @@ def seltime(ds, start, end):
     return ds.sel(time=slice(start, end)).isel(package=slice(ip0, ip1))
 
 
-def splitby_segments(ds, eps_gap=3.):
+def splitby_segments(ds, eps_gap=3.) -> list[xr.Dataset]:
     """
     Split a dataset on gaps in the data.
     """
@@ -448,8 +452,9 @@ def concat(dss):
             values = np.full(package.shape, np.nan, dtype=dss[0][v].dtype)
             offset = 0
             for ds in dss:
-                values[offset:offset + len(ds[v])] = ds[v].values
-                offset += len(ds[v])
+                if ds.dims['package'] > 0:
+                    values[offset:offset + len(ds[v])] = ds[v].values
+                    offset += len(ds[v])
             cds[v] = xr.DataArray(name=v,
                                   data=values,
                                   dims=('package'),
@@ -538,11 +543,49 @@ def retime(ds, eps_gap=3.):
 
     return ds
 
-def fill_gaps(ds: xr.Dataset, fill_value=np.nan):
+
+def fill_gaps(ds: xr.Dataset, fill_value=np.nan, eps_gap=3.) -> xr.Dataset:
     """
     Fill gaps with `fill_value` (default: nan) so that the time vector is approximately monotonously increasing.
+
+    This will invalidate package time to sample relation.
     """
-    pass
+    fs = ds.estimated_frequency
+    s = splitby_segments(ds, eps_gap)
+
+    news = []
+
+    if len(s) > 1:
+        for i in range(len(s) - 1):
+            s0 = s[i]
+            s1 = s[i + 1]
+
+            t0 = s0.time.values[-1]
+            t1 = s1.time.values[0]
+            assert t1 > t0, "this is designed to fill gaps. use retime to handle overlapping samples (i.e. lower than expected sample rate)."
+
+            N = int((t1 - t0).astype('timedelta64[ms]').astype(float) / fs)
+            time = np.arange(0, N) / fs
+            time = pd.to_timedelta(time, 'ms') + t0
+            v = np.full((N, ), np.nan)
+
+            fds = xr.Dataset(coords={'time': time, 'package': []})
+            for var in s0.data_vars:
+                if 'time' in s0[var].dims:
+                    fds[var] = xr.DataArray(name=var,
+                                          data=v,
+                                          dims=('time'),
+                                          attrs=s0[var].attrs)
+            news.append(s0)
+            news.append(fds)
+
+        news.append(s[-1])
+        return concat(news)
+
+    else:
+        # no gaps
+        return ds
+
 
 def reproject_pca(ds: xr.Dataset, low=None, high=None):
     """
@@ -552,7 +595,9 @@ def reproject_pca(ds: xr.Dataset, low=None, high=None):
 
     if 'u_x' in ds:
         # re-project displacement
-        xx, yy, v0, v1, u0, u1 = signal.reproject_pca(ds.u_x, ds.u_y, ds.estimated_frequency, low, high)
+        xx, yy, v0, v1, u0, u1 = signal.reproject_pca(ds.u_x, ds.u_y,
+                                                      ds.estimated_frequency,
+                                                      low, high)
         ds['u_x'][:] = xx
         ds['u_y'][:] = yy
 
@@ -561,7 +606,9 @@ def reproject_pca(ds: xr.Dataset, low=None, high=None):
 
     if 'w_x' in ds:
         # re-project acceleration
-        xx, yy, v0, v1, u0, u1 = signal.reproject_pca(ds.w_x, ds.w_y, ds.estimated_frequency, low, high)
+        xx, yy, v0, v1, u0, u1 = signal.reproject_pca(ds.w_x, ds.w_y,
+                                                      ds.estimated_frequency,
+                                                      low, high)
         ds['w_x'][:] = xx
         ds['w_y'][:] = yy
 
@@ -569,4 +616,3 @@ def reproject_pca(ds: xr.Dataset, low=None, high=None):
         ds['w_y']['variance'] = v1
 
     return ds
-

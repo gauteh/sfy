@@ -248,3 +248,26 @@ def test_concat(sfyhub, plot):
     np.testing.assert_array_equal(dsr.w_z, dsc.w_z)
     np.testing.assert_array_equal(dsr.package_start, dsc.package_start)
 
+@needs_hub
+def test_fill_gaps(sfyhub, plot):
+    b = sfyhub.buoy("dev867648043599644")
+    pcks = b.axl_packages_range(
+        datetime(2023, 4, 20, 8, 25, tzinfo=timezone.utc),
+        datetime(2023, 4, 20, 11, 35, tzinfo=timezone.utc))
+    c = AxlCollection(pcks)
+    dsr = c.to_dataset()
+    print(dsr)
+    assert dsr.dims['package'] > 0
+
+    dss = sfy.xr.splitby_segments(dsr)
+    assert len(dss) > 2
+
+    fds = sfy.xr.fill_gaps(dsr)
+    assert np.any(np.isnan(fds.w_z))
+
+    if plot:
+        plt.figure()
+        plt.plot(dsr.time, dsr.w_z, label='orig')
+        plt.plot(fds.time, fds.w_z, '--', label='filled')
+        plt.legend()
+        plt.show()
