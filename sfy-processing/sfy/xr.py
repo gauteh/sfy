@@ -389,7 +389,9 @@ def splitby_segments(ds, eps_gap=3.) -> list[xr.Dataset]:
     N = ds.attrs.get('package_length', 1024)
     n = len(ds.package_start.values)  # number of packages
 
-    PDT = N / ds.attrs['frequency'] * 1000.  # length of package in ms
+    PDT = N / ds.attrs.get(
+        'estimated_frequency',
+        ds.attrs.get('frequency')) * 1000.  # length of package in ms
     pdt = np.diff(
         ds.package_start.values).astype('timedelta64[ms]').astype(float)
 
@@ -398,6 +400,9 @@ def splitby_segments(ds, eps_gap=3.) -> list[xr.Dataset]:
     ip = np.append(0, ip)
     ip = np.append(ip, n)
     ip = np.unique(ip)
+
+    assert N * n == ds.dims[
+        'time'], "this dataset does not have time and packages corresponding anymore. try splitby_time"
 
     dss = []
 
@@ -409,6 +414,35 @@ def splitby_segments(ds, eps_gap=3.) -> list[xr.Dataset]:
 
         d = ds.isel(time=slice(ipp0, ipp1)) \
                 .isel(package=slice(ip0, ip1))
+
+        assert d.dims['time'] > 0
+
+        dss.append(d)
+
+    return dss
+
+
+def splitby_time(ds: xr.Dataset, eps_gap=3.) -> list[xr.Dataset]:
+    dt = np.diff(ds.time.values).astype('timedelta64[ms]').astype(float)
+    ip = np.argwhere(np.abs(dt) > eps_gap * 1000.) + 1
+    ip = np.append(0, ip)
+    ip = np.append(ip, ds.dims['time'])
+    ip = np.unique(ip)
+
+    dss = []
+
+    for ipp0, ipp1 in zip(ip[:-1], ip[1:]):
+
+        assert ipp1 > ipp0
+
+        # find closest package
+        ip0 = np.argmin(np.abs(ds.package_start.values - ds.time.values[ipp0]))
+        ip1 = np.argmin(
+            np.abs(ds.package_start.values - ds.time.values[ipp1 - 1]))
+
+        d = ds.isel(time=slice(ipp0, ipp1)).isel(package=slice(ip0, ip1))
+
+        assert d.dims['time'] > 0
 
         dss.append(d)
 
@@ -551,7 +585,7 @@ def fill_gaps(ds: xr.Dataset, fill_value=np.nan, eps_gap=3.) -> xr.Dataset:
     This will invalidate package time to sample relation.
     """
     fs = ds.estimated_frequency
-    s = splitby_segments(ds, eps_gap)
+    s = splitby_time(ds, eps_gap)
 
     news = []
 
@@ -559,6 +593,9 @@ def fill_gaps(ds: xr.Dataset, fill_value=np.nan, eps_gap=3.) -> xr.Dataset:
         for i in range(len(s) - 1):
             s0 = s[i]
             s1 = s[i + 1]
+
+            # print(s0)
+            # print(s1)
 
             t0 = s0.time.values[-1]
             t1 = s1.time.values[0]
@@ -569,13 +606,15 @@ def fill_gaps(ds: xr.Dataset, fill_value=np.nan, eps_gap=3.) -> xr.Dataset:
             time = pd.to_timedelta(time, 'ms') + t0
             v = np.full((N, ), np.nan)
 
+            assert N > 0
+
             fds = xr.Dataset(coords={'time': time, 'package': []})
             for var in s0.data_vars:
                 if 'time' in s0[var].dims:
                     fds[var] = xr.DataArray(name=var,
-                                          data=v,
-                                          dims=('time'),
-                                          attrs=s0[var].attrs)
+                                            data=v,
+                                            dims=('time'),
+                                            attrs=s0[var].attrs)
             news.append(s0)
             news.append(fds)
 
