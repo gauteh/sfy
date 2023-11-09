@@ -80,6 +80,11 @@ def spec_stats(ds: xr.Dataset,
         f'Calculating spectral stats for {len(z)} 20 minute segments..')
 
     def stat(zz, yy, xx):
+        if np.any(np.isnan(zz)):
+            logger.warning(f'NaN values in signal, spectra is set to NaN')
+            a = np.full((4096//2 +1,), np.nan)
+            return np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, a, a, a, a
+
         f, Pz = signal.welch(freq, zz, nperseg, order)
         f, Py = signal.welch(freq, yy, nperseg, order)
         f, Px = signal.welch(freq, xx, nperseg, order)
@@ -97,6 +102,8 @@ def spec_stats(ds: xr.Dataset,
     time = ds.time[i].values  # Use timestamp from last sample in each window.
 
     assert len(hm0) == len(time)
+
+    assert np.isfinite(f[0][0]), "coordinate frequencies all nan"
 
     Pz = np.vstack(Pz)
     Py = np.vstack(Py)
@@ -604,7 +611,7 @@ def fill_gaps(ds: xr.Dataset, fill_value=np.nan, eps_gap=3.) -> xr.Dataset:
             N = int((t1 - t0).astype('timedelta64[ms]').astype(float) / fs)
             time = np.arange(0, N) / fs
             time = pd.to_timedelta(time, 'ms') + t0
-            v = np.full((N, ), np.nan)
+            v = np.full((N, ), fill_value)
 
             assert N > 0
 
@@ -619,7 +626,14 @@ def fill_gaps(ds: xr.Dataset, fill_value=np.nan, eps_gap=3.) -> xr.Dataset:
             news.append(fds)
 
         news.append(s[-1])
-        return concat(news)
+        ds = concat(news)
+
+        # fix time (based on first sample (assuming retime already done)
+        time = np.arange(0, ds.dims['time']) * 1000. / fs
+        time = pd.to_timedelta(time, 'ms') + ds.time.values[0]
+        ds = ds.assign_coords(time=('time', time)).reindex({'time': time})
+
+        return ds
 
     else:
         # no gaps
