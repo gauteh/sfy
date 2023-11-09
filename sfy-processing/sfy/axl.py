@@ -247,12 +247,29 @@ class AxlCollection(AxlTimeseries):
         return np.concatenate([pck.start_times for pck in self.pcks])
 
     def extra_attrs(self):
-        return {
+        attrs = {
             'collection': 'yes',
             'max_gap': self.max_gap().total_seconds(),
             'max_gap:unit': 's',
             'number_of_packages': len(self.pcks)
         }
+
+        accel_range = [ pck.accel_range for pck in self.pcks if pck.accel_range is not None ]
+        gyro_range = [ pck.gyro_range for pck in self.pcks if pck.gyro_range is not None ]
+
+        if len(accel_range):
+            assert all((accel_range[0] == a for a in accel_range)), "varying acceleration range"
+            assert all((gyro_range[0] == g for g in gyro_range)), "varying gyro range"
+            accel_range = accel_range[0]
+            gyro_range = gyro_range[0]
+
+            attrs['accel_range'] = accel_range
+            attrs['accel_range:unit'] = 'g'
+
+            attrs['gyro_range'] = gyro_range
+            attrs['gyro_range:unit'] = 'dps'
+
+        return attrs
 
 
 @dataclass(frozen=True)
