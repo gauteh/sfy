@@ -126,28 +126,6 @@ def integrate(s,
     return s
 
 
-def velocity(a: 'Axl'):
-    """
-    Calculate velocity from axelerometer package. Resulting vectors will be one length shorter than the original.
-    """
-    x = integrate(a.x, a.dt)
-    y = integrate(a.y, a.dt)
-    z = integrate(a.z, a.dt)
-
-    return x, y, z
-
-
-def displacement(a: 'Axl'):
-    """
-    Calculate diplacement from axelerometer package. Resulting vectors will be two length shorter than the original.
-    """
-    x = integrate(a.x, a.dt, order=2)
-    y = integrate(a.y, a.dt, order=2)
-    z = integrate(a.z, a.dt, order=2)
-
-    return x, y, z
-
-
 def dft_integrate(x, fs):
     """
     Integrate in the Fourier domain. See Brandt & Brincker (2014) for a comparsion with the trapezoidal rule.
@@ -434,11 +412,10 @@ def reproject_pca(x, y, Fs=None, low=None, high=None):
     from sklearn.decomposition import PCA
     pca = PCA(n_components=2, whiten=True, copy=True)
 
-
     if low is not None or high is not None:
         assert Fs is not None, "Fs must be set when filtering"
-        xb = bandpass(x, 1./Fs, low, high)
-        yb = bandpass(y, 1./Fs, low, high)
+        xb = bandpass(x, 1. / Fs, low, high)
+        yb = bandpass(y, 1. / Fs, low, high)
 
         U = np.vstack((xb, yb)).T
     else:
@@ -458,8 +435,9 @@ def reproject_pca(x, y, Fs=None, low=None, high=None):
 
     assert np.isclose(u0.dot(u1), 0., atol=1e-6), "PCAs should be orthogonal"
 
-    U = np.vstack((x, y)).T # re-assign to unfiltered vectors.
+    U = np.vstack((x, y)).T  # re-assign to unfiltered vectors.
     UU = np.vstack((U.dot(u0), U.dot(u1))).T
     xx, yy = UU[:, 0], UU[:, 1]
 
-    return xx, yy, pca.explained_variance_[0], pca.explained_variance_[1], u0, u1
+    return xx, yy, pca.explained_variance_[0], pca.explained_variance_[
+        1], u0, u1
