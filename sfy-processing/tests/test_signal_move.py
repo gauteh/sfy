@@ -103,6 +103,43 @@ def test_v6_16g_range_bali_161cm(sfyhub, plot):
     print(diff)
     assert diff > 1.6 and diff < 1.8
 
+# @needs_hub
+# def test_v6_16g_range_bali_hip_head(sfyhub, plot):
+#     # this as test with buoy configured to 16g, 1000 dps after fixing gyro-accel driver scale error.
+#     # the buoy was moved up and down from the ground to above 161 cm
+
+#     b = sfyhub.buoy('bug32')
+#     pcks = b.axl_packages_range(
+#         datetime(2023, 11, 10, 11 - 8, tzinfo=timezone.utc),
+#         datetime(2023, 11, 10, 13 - 8, tzinfo=timezone.utc))
+
+#     c = axl.AxlCollection(pcks)
+#     ds = c.to_dataset()
+#     print(ds)
+
+#     u = sxr.displacement(ds, filter_freqs=[0.05, 25])
+#     u = u.sel(time=slice('2023-11-10T03:36:19', '2023-11-10T03:43:12'))
+#     u['u_z'] = u['u_z'] - u['u_z'].mean()
+
+#     ds = ds.sel(time=slice('2023-11-10T03:36:19', '2023-11-10T03:43:12'))
+
+#     if plot:
+#         import matplotlib.pyplot as plt
+
+#         (ds.w_z / axl.SENSORS_GRAVITY_STANDARD).plot()
+
+#         ww_z = signal.bandpass(ds.w_z, 1 / 52)
+#         plt.plot(ds.time, ww_z / axl.SENSORS_GRAVITY_STANDARD)
+
+#         plt.figure()
+#         plt.plot(u.time, u.u_z)
+
+#         plt.show()
+
+#     diff = u.u_z.max() - u.u_z.min()
+#     print(diff)
+#     assert diff > 1.6 and diff < 1.8
+
 def test_direction_integrate(plot):
     fs = 52
     dt = 1/fs
@@ -125,5 +162,59 @@ def test_direction_integrate(plot):
         plt.plot(t, s)
         plt.plot(t, u_z)
         plt.plot(t[:-1], u_z_t, '--')
+        plt.show()
+
+@needs_hub
+def test_v6_16g_range_window_20cm_1m_test(sfyhub, plot):
+    # 12:43 LT: window
+    # 12:47 LT: three taps + 3x lift 20 cm + rest + 3 taps + 3 x lift 1m + rest
+    # 12:50 LT: ^^ done,
+    # 12:53 LT: reset to initiate sync.
+
+    b = sfyhub.buoy('bug30')
+    pcks = b.axl_packages_range(
+        datetime(2023, 11, 10, 11, tzinfo=timezone.utc),
+        datetime(2023, 11, 10, 13, tzinfo=timezone.utc))
+
+    c = axl.AxlCollection(pcks)
+    ds = c.to_dataset()
+    print(ds)
+
+    u = sxr.displacement(ds, filter_freqs=[0.1, 25])
+    u = u.sel(time=slice('2023-11-10T11:47:00', '2023-11-10T11:51:00'))
+    u['u_z'] = u['u_z'] - u['u_z'].mean()
+
+    ds = ds.sel(time=slice('2023-11-10T11:47:00', '2023-11-10T11:51:00'))
+
+    # 3x ca 20 cm
+
+    uu = u.sel(time=slice('2023-11-10T11:49:15', '2023-11-10T11:49:45'))
+    dds = ds.sel(time=slice('2023-11-10T11:49:15', '2023-11-10T11:49:45'))
+
+    diff = uu.u_z.max() - uu.u_z.min()
+    print(diff)
+    assert diff > 0.15 and diff < 0.35
+
+    # 3x ca 1m
+    u = sxr.displacement(ds, filter_freqs=[0.05, 25])
+    u['u_z'] = u['u_z'] - u['u_z'].mean()
+    uu = u.sel(time=slice('2023-11-10T11:50:02', '2023-11-10T11:50:53'))
+    dds = ds.sel(time=slice('2023-11-10T11:50:02', '2023-11-10T11:50:53'))
+
+    diff = uu.u_z.max() - uu.u_z.min()
+    print(diff)
+    assert diff > 0.99 and diff < 1.1
+
+    if plot:
+        import matplotlib.pyplot as plt
+
+        (ds.w_z / axl.SENSORS_GRAVITY_STANDARD).plot()
+
+        ww_z = signal.bandpass(ds.w_z, 1 / 52)
+        plt.plot(ds.time, ww_z / axl.SENSORS_GRAVITY_STANDARD)
+
+        plt.figure()
+        plt.plot(uu.time, uu.u_z)
+
         plt.show()
 
