@@ -23,4 +23,4 @@ see [Seldal, Torunn Irene, M. Sc. thesis, 2023, _SFY: A free-drifting wave buoy 
 
 # Acknowledgements
 
-This work is based on the [OpenMetBuoy-v2021a](https://github.com/jerabaul29/OpenMetBuoy-v2021a), see [Rabault et. al. (2022)](https://www.mdpi.com/2076-3263/12/3/110).
+This work is inspired by the [OpenMetBuoy-v2021a](https://github.com/jerabaul29/OpenMetBuoy-v2021a), see [Rabault et. al. (2022)](https://www.mdpi.com/2076-3263/12/3/110).
