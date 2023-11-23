@@ -7,6 +7,8 @@ from . import signal
 
 logger = logging.getLogger(__name__)
 
+def welch(ds: xr.Dataset):
+    return signal.welch(ds.estimated_frequency, ds.w_z)
 
 def hm0(ds: xr.Dataset, raw=False, window=(20 * 60)) -> xr.DataArray:
     """
@@ -297,7 +299,7 @@ def displacement(ds: xr.Dataset, filter_freqs=None):
                                 'filter_freqs:unit': 'Hz',
                             })
 
-    d.assign_attrs(ds.attrs)
+    d = d.assign_attrs(ds.attrs)
 
     return d
 
