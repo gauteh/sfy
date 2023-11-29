@@ -166,6 +166,8 @@ def csv(dev, start, end, tower, axl):
     distance = [pck.body.get('distance', None) for pck in pcks]
     temperature = [pck.body.get('temperature', None) for pck in pcks]
     voltage = [pck.body.get('voltage', None) for pck in pcks]
+    tower_lat = [ pck.tower_lat for pck in pcks ]
+    tower_lon = [ pck.tower_lon for pck in pcks ]
 
     df = pd.DataFrame({
         'Device': buoy.dev,
@@ -179,6 +181,8 @@ def csv(dev, start, end, tower, axl):
         'Distance': distance,
         'Temperature': temperature,
         'Voltage': voltage,
+        'TowerLat' : tower_lat,
+        'TowerLon' : tower_lon,
     })
 
     if not tower:
