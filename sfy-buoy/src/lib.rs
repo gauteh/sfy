@@ -24,7 +24,11 @@ use embedded_hal::blocking::{
 };
 
 #[cfg(feature = "storage")]
-use embedded_hal::{blocking::spi::Transfer, digital::v2::OutputPin};
+use embedded_hal::{
+    blocking::spi::{write::Default as DefaultWrite, Transfer},
+    digital::v2::OutputPin,
+    spi::FullDuplex,
+};
 
 use rtcc::DateTimeAccess;
 
@@ -326,25 +330,28 @@ impl<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> Imu<E
 }
 
 #[cfg(feature = "storage")]
-pub struct StorageManager<Spi: Transfer<u8>, CS: OutputPin>
+pub struct StorageManager<Spi: Transfer<u8> + DefaultWrite<u8>, CS: OutputPin, DL: DelayUs<u8>>
 where
     <Spi as Transfer<u8>>::Error: Debug,
+    <Spi as FullDuplex<u8>>::Error: Debug,
 {
-    storage: Storage<Spi, CS>,
+    storage: Storage<Spi, CS, DL>,
     pub storage_queue: heapless::spsc::Consumer<'static, AxlPacketT, STORAGEQ_SZ>,
     pub note_queue: heapless::spsc::Producer<'static, AxlPacket, NOTEQ_SZ>,
 }
 
 #[cfg(feature = "storage")]
-impl<Spi: Transfer<u8>, CS: OutputPin> StorageManager<Spi, CS>
+impl<Spi: Transfer<u8> + DefaultWrite<u8>, CS: OutputPin, DL: DelayUs<u8>>
+    StorageManager<Spi, CS, DL>
 where
     <Spi as Transfer<u8>>::Error: Debug,
+    <Spi as FullDuplex<u8>>::Error: Debug,
 {
     pub fn new(
-        storage: Storage<Spi, CS>,
+        storage: Storage<Spi, CS, DL>,
         storage_queue: heapless::spsc::Consumer<'static, AxlPacketT, STORAGEQ_SZ>,
         note_queue: heapless::spsc::Producer<'static, AxlPacket, NOTEQ_SZ>,
-    ) -> StorageManager<Spi, CS> {
+    ) -> StorageManager<Spi, CS, DL> {
         StorageManager {
             storage,
             storage_queue,

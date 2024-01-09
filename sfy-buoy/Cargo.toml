@@ -17,7 +17,7 @@ base64 = { version = "0.13.0", default-features = false }
 defmt = "0.3"
 bytemuck = "1.7.2"
 heapless = { version = "0.7", features = [ "serde", "ufmt-impl", "defmt-impl" ] }
-embedded-sdmmc = { version = "0.4.0", default-features = false, features = ["defmt-log"] }
+embedded-sdmmc = { version = "0.6.0", default-features = false, features = ["defmt-log"] }
 postcard = { version = "1.0.1", features = [ "experimental-derive" ]}
 serde = { version = "1", features = ["derive"], default-features = false }
 serde-json-core = { version = "0.4", optional = true }
@@ -58,8 +58,8 @@ build-bin = [ "fir", "storage", "raw", "anyhow", "argh", "serde-json-core/std", 
 ism330dhcx = { git = "https://github.com/gauteh/ism330dhcx", branch = "gyro-accel-parse-range" }
 # ism330dhcx = { path = "../../../../dev/embedded/ism330dhcx" }
 cmsis_dsp = { git = "https://github.com/samcrow/cmsis_dsp.rs" }
-# embedded-sdmmc = { git = "https://github.com/rust-embedded-community/embedded-sdmmc-rs", branch = "develop" }
-embedded-sdmmc = { git = "https://github.com/gauteh/embedded-sdmmc-rs", branch = "sdmmc-spi-borrow" }
+embedded-sdmmc = { git = "https://github.com/rust-embedded-community/embedded-sdmmc-rs", branch = "develop" }
+# embedded-sdmmc = { git = "https://github.com/gauteh/embedded-sdmmc-rs", branch = "sdmmc-spi-borrow" }
 # embedded-sdmmc = { path = "../../../../dev/embedded/embedded-sdmmc-rs" }
 
 # [patch.'https://github.com/gauteh/ahrs-fusion']

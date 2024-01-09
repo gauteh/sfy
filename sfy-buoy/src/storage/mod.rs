@@ -12,12 +12,16 @@
 //! At 52 Hz and 1024 length data-package, there is 4389 packages per day. That is about 44 collections per day. See tests for more details.
 
 use core::fmt::Debug;
-use core::ops::DerefMut;
 use core::sync::atomic::Ordering;
 use cortex_m::interrupt::free;
-use embedded_hal::{blocking::spi::Transfer, digital::v2::OutputPin};
+use embedded_hal::{
+    blocking::delay::DelayUs,
+    blocking::spi::{write::Default as DefaultWrite, Transfer},
+    digital::v2::OutputPin,
+    spi::FullDuplex,
+};
 use embedded_sdmmc::{
-    BlockSpi, Controller, Error as GenericSdMmcError, Mode, SdMmcError, SdMmcSpi, VolumeIdx,
+    Error as GenericSdMmcError, Mode, SdCard, SdCardError, VolumeIdx, VolumeManager,
 };
 use heapless::{String, Vec};
 
@@ -34,10 +38,10 @@ pub const PACKAGE_SZ: usize = AXL_POSTCARD_SZ + RAW_AXL_BYTE_SZ;
 pub const PACKAGE_SZ: usize = AXL_POSTCARD_SZ;
 
 pub mod clock;
-mod handles;
+// mod handles;
 
 use clock::CountClock;
-use handles::*;
+// use handles::*;
 
 /// Writing to a file seems to take longer time when it has more packages, this can cause timeouts
 /// in the interrupt that drains the IMU FIFO. See <https://github.com/gauteh/sfy/issues/77>.
@@ -51,8 +55,8 @@ pub const STORAGE_VERSION_STR: &'static str = "t";
 
 #[derive(Debug, defmt::Format)]
 pub enum StorageErr {
-    SdMmcErr(SdMmcError),
-    GenericSdMmmcErr(GenericSdMmcError<SdMmcError>),
+    SdMmcErr(SdCardError),
+    GenericSdMmmcErr(GenericSdMmcError<SdCardError>),
     ParseIDFailure,
     WriteIDFailure,
     WriteError,
@@ -62,14 +66,14 @@ pub enum StorageErr {
     Uninitialized,
 }
 
-impl From<SdMmcError> for StorageErr {
-    fn from(e: SdMmcError) -> Self {
+impl From<SdCardError> for StorageErr {
+    fn from(e: SdCardError) -> Self {
         StorageErr::SdMmcErr(e)
     }
 }
 
-impl From<embedded_sdmmc::Error<SdMmcError>> for StorageErr {
-    fn from(e: embedded_sdmmc::Error<SdMmcError>) -> Self {
+impl From<embedded_sdmmc::Error<SdCardError>> for StorageErr {
+    fn from(e: embedded_sdmmc::Error<SdCardError>) -> Self {
         StorageErr::GenericSdMmmcErr(e)
     }
 }
@@ -87,20 +91,22 @@ pub enum SdSpiSpeed {
     High,
 }
 
-pub struct Storage<Spi: Transfer<u8>, CS: OutputPin>
+pub struct Storage<Spi: Transfer<u8> + DefaultWrite<u8>, CS: OutputPin, DL: DelayUs<u8>>
 where
     <Spi as Transfer<u8>>::Error: Debug,
+    <Spi as FullDuplex<u8>>::Error: Debug,
 {
-    sd: SdMmcSpi<Spi, CS>,
+    sd: VolumeManager<SdCard<Spi, CS, DL>, CountClock>,
 
     reclock_cb: fn(&mut Spi, SdSpiSpeed) -> (),
     clock: CountClock,
     state: SdState,
 }
 
-impl<Spi: Transfer<u8>, CS: OutputPin> Storage<Spi, CS>
+impl<Spi: Transfer<u8> + DefaultWrite<u8>, CS: OutputPin, DL: DelayUs<u8>> Storage<Spi, CS, DL>
 where
     <Spi as Transfer<u8>>::Error: Debug,
+    <Spi as FullDuplex<u8>>::Error: Debug,
 {
     /// Returns an un-initialized storage module.
     pub fn open(
@@ -108,10 +114,12 @@ where
         cs: CS,
         clock: CountClock,
         reclock_cb: fn(&mut Spi, SdSpiSpeed) -> (),
-    ) -> Storage<Spi, CS> {
+        delay: DL,
+    ) -> Storage<Spi, CS, DL> {
         defmt::info!("Opening SD card..");
 
-        let sd = SdMmcSpi::new(spi, cs);
+        let sd = SdCard::new(spi, cs, delay);
+        let sd = VolumeManager::new(sd, clock);
 
         Storage {
             sd,
@@ -121,8 +129,8 @@ where
         }
     }
 
-    pub fn acquire(&mut self) -> Result<BlockSpiHandle<'_, Spi, CS>, StorageErr> {
-        BlockSpiHandle::acquire(self)
+    pub fn acquire(&mut self) -> Result<SdHandle<'_, Spi, CS, DL>, StorageErr> {
+        SdHandle::acquire(self)
     }
 
     /// Returns the next free ID.
@@ -155,7 +163,7 @@ where
 
         let sz = self
             .acquire()
-            .and_then(|mut block| block.read(&collection, offset, &mut buf))?;
+            .and_then(|mut sd| sd.read(&collection, offset, &mut buf))?;
 
         defmt::trace!("Read {:?} bytes.", sz);
 
@@ -174,11 +182,11 @@ where
         #[cfg(not(feature = "raw"))]
         let (pck,) = pck;
 
-        let mut block = self.acquire()?;
+        let mut sd = self.acquire()?;
 
         // If writing fails we will always start a new collection, so ID's should not get out of
         // sync within one collection file.
-        let id = block.advance_id()?;
+        let id = sd.advance_id()?;
         let (collection, fid, offset) = id_to_parts(id);
 
         // Package now has a storage ID.
@@ -217,35 +225,34 @@ where
             offset
         );
 
-        let written = block.write(&collection, &buf, raw_bytes)?;
-
-        if written != (buf.len() + raw_bytes.len()) {
-            defmt::error!(
-                "Could not write full package to card, written: {} bytes",
-                written
-            );
-        }
+        sd.write(&collection, &buf, raw_bytes)?;
 
         Ok(id)
     }
 }
 
-pub struct BlockSpiHandle<'a, Spi: Transfer<u8>, CS: OutputPin>
+pub struct SdHandle<'a, Spi: Transfer<u8> + DefaultWrite<u8>, CS: OutputPin, DL: DelayUs<u8>>
 where
     <Spi as Transfer<u8>>::Error: Debug,
+    <Spi as FullDuplex<u8>>::Error: Debug,
 {
-    block: BlockSpi<'a, Spi, CS>,
-    clock: &'a CountClock,
+    sd: &'a mut VolumeManager<SdCard<Spi, CS, DL>, CountClock>,
     state: &'a mut SdState,
 }
 
-impl<'spi, Spi: Transfer<u8> + 'spi, CS: OutputPin + 'spi> BlockSpiHandle<'spi, Spi, CS>
+impl<
+        'spi,
+        Spi: Transfer<u8> + 'spi + DefaultWrite<u8>,
+        CS: OutputPin + 'spi,
+        DL: DelayUs<u8> + 'spi,
+    > SdHandle<'spi, Spi, CS, DL>
 where
     <Spi as Transfer<u8>>::Error: Debug,
+    <Spi as FullDuplex<u8>>::Error: Debug,
 {
     fn acquire<'a>(
-        storage: &'a mut Storage<Spi, CS>,
-    ) -> Result<BlockSpiHandle<'a, Spi, CS>, StorageErr> {
+        storage: &'a mut Storage<Spi, CS, DL>,
+    ) -> Result<SdHandle<'a, Spi, CS, DL>, StorageErr> {
         match storage.state {
             SdState::Retry { last_try } => {
                 let now = storage.clock.0.load(Ordering::Relaxed);
@@ -268,45 +275,42 @@ where
                 storage.state = SdState::Retry {
                     last_try: storage.clock.0.load(Ordering::Relaxed),
                 };
-                (storage.reclock_cb)(storage.sd.spi().deref_mut(), SdSpiSpeed::Low);
+                storage
+                    .sd
+                    .device()
+                    .spi(|spi| (storage.reclock_cb)(spi, SdSpiSpeed::Low));
 
                 // XXX: This is slow if it fails (time-out), hopefully not too slow, but if so
                 // needs to only be attempted seldomly.
-                let mut block = storage.sd.acquire()?;
+                // let mut block = storage.sd.acquire()?;
 
                 defmt::debug!("Increasing SPI speed.");
-                (storage.reclock_cb)(block.spi().deref_mut(), SdSpiSpeed::High);
+                storage
+                    .sd
+                    .device()
+                    .spi(|spi| (storage.reclock_cb)(spi, SdSpiSpeed::High));
 
-                let sz = block.card_size_bytes()? / 1024_u64.pow(2);
+                let sz = storage.sd.device().num_bytes()? / 1024_u64.pow(2);
                 defmt::info!("SD card size: {} mb", sz);
 
                 // XXX: This is a slow operation which is likely to cause trouble if it is done on
                 // every send to notecard loop. Hopefully we will fail above (quickly
                 // enough), otherwise this can only be attempted seldomly.
-                let next_id = Self::find_first_free_collection(&mut block, &storage.clock, None)?
-                    * COLLECTION_SIZE;
+                let next_id =
+                    Self::find_first_free_collection(&mut storage.sd, None)? * COLLECTION_SIZE;
                 defmt::info!("Next free ID: {}", next_id);
 
                 storage.state = SdState::Initialized { next_id };
 
-                Ok(BlockSpiHandle {
-                    block,
-                    clock: &storage.clock,
+                Ok(SdHandle {
+                    sd: &mut storage.sd,
                     state: &mut storage.state,
                 })
             }
-            SdState::Initialized { next_id: _ } => {
-                let block = storage
-                    .sd
-                    .acquire()
-                    .inspect_err(|_| storage.state = SdState::Uninitialized)?;
-
-                Ok(BlockSpiHandle {
-                    block,
-                    clock: &storage.clock,
-                    state: &mut storage.state,
-                })
-            }
+            SdState::Initialized { next_id: _ } => Ok(SdHandle {
+                sd: &mut storage.sd,
+                state: &mut storage.state,
+            }),
         }
     }
 
@@ -315,23 +319,25 @@ where
         collection: &str,
         buf: &[u8],
         #[allow(unused)] buf_raw: &[u8],
-    ) -> Result<usize, StorageErr> {
-        let sz: Result<usize, StorageErr> = try {
-            let mut c = Controller::new(&self.block, self.clock);
-            let mut v = c.get_volume(VolumeIdx(0))?;
-            let mut root = DirHandle::open_root(&mut c, &mut v)?;
-            let mut f = root.open_file(&collection, Mode::ReadWriteCreateOrAppend)?;
+    ) -> Result<(), StorageErr> {
+        let sz: Result<(), StorageErr> = try {
+            let mut v = self.sd.open_volume(VolumeIdx(0))?;
+            let mut root = v.open_root_dir()?;
+            let mut f = root.open_file_in_dir(collection, Mode::ReadWriteCreateOrAppend)?;
             f.seek_from_end(0)
                 .inspect_err(|e| defmt::error!("File seek error: {}", e))
                 .map_err(|_| StorageErr::WriteError)?; // We should already be at the
                                                        // end.
             #[cfg(feature = "raw")]
-            let r = f.write(&buf)? + f.write(&buf_raw)?;
+            {
+                f.write(&buf)?;
+                f.write(&buf_raw)?;
+            }
 
             #[cfg(not(feature = "raw"))]
-            let r = f.write(&buf)?;
+            f.write(&buf)?;
 
-            r
+            ()
         };
 
         if sz.is_err() {
@@ -348,10 +354,9 @@ where
         buf: &mut [u8],
     ) -> Result<usize, StorageErr> {
         let sz: Result<usize, StorageErr> = try {
-            let mut c = Controller::new(&self.block, self.clock);
-            let mut v = c.get_volume(VolumeIdx(0))?;
-            let mut root = DirHandle::open_root(&mut c, &mut v)?;
-            let mut f = root.open_file(collection, Mode::ReadOnly)?;
+            let mut v = self.sd.open_volume(VolumeIdx(0))?;
+            let mut root = v.open_root_dir()?;
+            let mut f = root.open_file_in_dir(collection, Mode::ReadOnly)?;
 
             if f.length() < (offset + AXL_POSTCARD_SZ) as u32 {
                 defmt::debug!("Collection is not long enough, no such file in it.");
@@ -379,7 +384,7 @@ where
             // Check that the next collection is free, if rolling over.
             if next_id % COLLECTION_SIZE == 0 {
                 let c = next_id / COLLECTION_SIZE;
-                let nc = Self::find_first_free_collection(&mut self.block, self.clock, Some(c))?;
+                let nc = Self::find_first_free_collection(&mut self.sd, Some(c))?;
 
                 if nc > c {
                     defmt::info!("Starting new collection: {}", c);
@@ -398,19 +403,16 @@ where
     /// to prevent offset mismatch between file id. The ID will be set to the first entry in that
     /// collection.
     pub fn find_first_free_collection<'a>(
-        block: &mut BlockSpi<'a, Spi, CS>,
-        clock: &CountClock,
+        sd: &'a mut VolumeManager<SdCard<Spi, CS, DL>, CountClock>,
         start: Option<u32>,
     ) -> Result<u32, StorageErr> {
-        let mut c = Controller::new(&block, clock);
-        let mut v = c.get_volume(VolumeIdx(0))?;
-
-        let mut root = DirHandle::open_root(&mut c, &mut v)?;
+        let mut v = sd.open_volume(VolumeIdx(0))?;
+        let mut root = v.open_root_dir()?;
 
         for c in start.unwrap_or(0)..65536u32 {
             let f = collection_fname(c);
             defmt::debug!("Searching for free collection, testing: {}", f);
-            match root.find_directory_entry(&f) {
+            match root.find_directory_entry(f.as_str()) {
                 Ok(_) => continue,
                 Err(GenericSdMmcError::FileNotFound) => return Ok(c),
                 Err(e) => return Err(e.into()),
@@ -425,10 +427,9 @@ where
 
         let f = collection_fname(collection);
 
-        let mut c = Controller::new(&self.block, self.clock);
-        let mut v = c.get_volume(VolumeIdx(0))?;
-        let mut root = DirHandle::open_root(&mut c, &mut v)?;
-        root.delete_file(&f)?;
+        let mut v = self.sd.open_volume(VolumeIdx(0))?;
+        let mut root = v.open_root_dir()?;
+        root.delete_file_in_dir(f.as_str())?;
 
         Ok(())
     }

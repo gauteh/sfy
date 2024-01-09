@@ -22,7 +22,7 @@ impl TimeSource for NullClock {
 #[derive(Clone, Copy)]
 pub struct CountClock(pub &'static AtomicI32);
 
-impl TimeSource for &CountClock {
+impl TimeSource for CountClock {
     fn get_timestamp(&self) -> Timestamp {
         let dt =
             NaiveDateTime::from_timestamp_opt(self.0.load(Ordering::Relaxed) as i64, 0).unwrap();

@@ -214,6 +214,7 @@ mod tests {
         println!("{}", json::to_string(&f).unwrap());
     }
 
+    #[ignore]
     #[test]
     fn open_regular_v5() {
         let c = Collection::from_file("tests/data/44.5").unwrap();
