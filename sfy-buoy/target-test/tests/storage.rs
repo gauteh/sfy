@@ -227,7 +227,7 @@ mod tests {
 
     #[test]
     fn write_many_packages(s: &mut State) {
-        for i in 0..150u32 {
+        for i in 0..1050u32 {
             let p = AxlPacket {
                 timestamp: 100 + i as i64,
                 position_time: 123123,
@@ -249,14 +249,14 @@ mod tests {
 
             let (c, fid, offset) = storage::id_to_parts(p.0.storage_id.unwrap());
 
-            if i < 100 {
+            if i < 1000 {
                 assert_eq!(c, "0.t");
                 assert_eq!(fid, i);
                 assert_eq!(offset as u32, (AXL_POSTCARD_SZ as u32) * i);
             } else {
                 assert_eq!(c, "1.t");
-                assert_eq!(fid, i - 100);
-                assert_eq!(offset as u32, (AXL_POSTCARD_SZ as u32) * (i - 100));
+                assert_eq!(fid, i - 1000);
+                assert_eq!(offset as u32, (AXL_POSTCARD_SZ as u32) * (i - 1000));
             }
         }
 
@@ -281,14 +281,14 @@ mod tests {
 
             let (c, fid, offset) = storage::id_to_parts(p.storage_id.unwrap());
 
-            if i < 100 {
+            if i < 1000 {
                 assert_eq!(c, "0.t");
                 assert_eq!(fid, i);
                 assert_eq!(offset as u32, (AXL_POSTCARD_SZ as u32) * i);
             } else {
                 assert_eq!(c, "1.t");
-                assert_eq!(fid, i - 100);
-                assert_eq!(offset as u32, (AXL_POSTCARD_SZ as u32) * (i - 100));
+                assert_eq!(fid, i - 1000);
+                assert_eq!(offset as u32, (AXL_POSTCARD_SZ as u32) * (i - 1000));
             }
         }
         clean_up_collection(&mut s.storage);

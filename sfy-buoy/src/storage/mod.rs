@@ -44,7 +44,7 @@ use clock::CountClock;
 
 /// Writing to a file seems to take longer time when it has more packages, this can cause timeouts
 /// in the interrupt that drains the IMU FIFO. See <https://github.com/gauteh/sfy/issues/77>.
-pub const COLLECTION_SIZE: u32 = 100;
+pub const COLLECTION_SIZE: u32 = 1000;
 pub const STORAGE_VERSION: u32 = axl::VERSION;
 #[cfg(not(feature = "target-test"))]
 pub const STORAGE_VERSION_STR: &'static str = "6";
@@ -474,9 +474,9 @@ mod tests {
         assert_eq!(o, 0);
 
         let (c, file, o) = id_to_parts(1231255);
-        assert_eq!(c, "12312.6");
-        assert_eq!(file, 55);
-        assert_eq!(o, 55 * PACKAGE_SZ);
+        assert_eq!(c, "1231.6");
+        assert_eq!(file, 255);
+        assert_eq!(o, 255 * PACKAGE_SZ);
     }
 
     #[test]
