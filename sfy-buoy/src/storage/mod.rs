@@ -16,9 +16,8 @@ use core::sync::atomic::Ordering;
 use cortex_m::interrupt::free;
 use embedded_hal::{
     blocking::delay::DelayUs,
-    blocking::spi::{write::Default as DefaultWrite, Transfer},
+    blocking::spi::{Write as DefaultWrite, Transfer},
     digital::v2::OutputPin,
-    spi::FullDuplex,
 };
 use embedded_sdmmc::{
     Error as GenericSdMmcError, Mode, SdCard, SdCardError, VolumeIdx, VolumeManager,
@@ -94,7 +93,7 @@ pub enum SdSpiSpeed {
 pub struct Storage<Spi: Transfer<u8> + DefaultWrite<u8>, CS: OutputPin, DL: DelayUs<u8>>
 where
     <Spi as Transfer<u8>>::Error: Debug,
-    <Spi as FullDuplex<u8>>::Error: Debug,
+    <Spi as DefaultWrite<u8>>::Error: Debug,
 {
     sd: VolumeManager<SdCard<Spi, CS, DL>, CountClock>,
 
@@ -106,7 +105,7 @@ where
 impl<Spi: Transfer<u8> + DefaultWrite<u8>, CS: OutputPin, DL: DelayUs<u8>> Storage<Spi, CS, DL>
 where
     <Spi as Transfer<u8>>::Error: Debug,
-    <Spi as FullDuplex<u8>>::Error: Debug,
+    <Spi as DefaultWrite<u8>>::Error: Debug,
 {
     /// Returns an un-initialized storage module.
     pub fn open(
@@ -226,6 +225,7 @@ where
         );
 
         sd.write(&collection, &buf, raw_bytes)?;
+        defmt::debug!("Package written.");
 
         Ok(id)
     }
@@ -234,7 +234,7 @@ where
 pub struct SdHandle<'a, Spi: Transfer<u8> + DefaultWrite<u8>, CS: OutputPin, DL: DelayUs<u8>>
 where
     <Spi as Transfer<u8>>::Error: Debug,
-    <Spi as FullDuplex<u8>>::Error: Debug,
+    <Spi as DefaultWrite<u8>>::Error: Debug,
 {
     sd: &'a mut VolumeManager<SdCard<Spi, CS, DL>, CountClock>,
     state: &'a mut SdState,
@@ -248,7 +248,7 @@ impl<
     > SdHandle<'spi, Spi, CS, DL>
 where
     <Spi as Transfer<u8>>::Error: Debug,
-    <Spi as FullDuplex<u8>>::Error: Debug,
+    <Spi as DefaultWrite<u8>>::Error: Debug,
 {
     fn acquire<'a>(
         storage: &'a mut Storage<Spi, CS, DL>,

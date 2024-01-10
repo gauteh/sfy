@@ -30,7 +30,7 @@ dependencies = [
 [[package]]
 name = "ambiq-apollo3-pac2"
 version = "0.2.0"
-source = "git+https://github.com/gauteh/ambiq-rs#edc9dec2db43fde6ebd36dd956a167e52ee0c133"
+source = "git+https://github.com/gauteh/ambiq-rs#39f83828723f38dc4db387c60e418e49ada6493d"
 dependencies = [
  "bare-metal 0.2.5",
  "cortex-m",
@@ -41,7 +41,7 @@ dependencies = [
 [[package]]
 name = "ambiq-hal"
 version = "0.3.2"
-source = "git+https://github.com/gauteh/ambiq-rs#edc9dec2db43fde6ebd36dd956a167e52ee0c133"
+source = "git+https://github.com/gauteh/ambiq-rs#39f83828723f38dc4db387c60e418e49ada6493d"
 dependencies = [
  "ambiq-apollo3-pac2",
  "ambiq-hal-sys",
@@ -60,7 +60,7 @@ dependencies = [
 [[package]]
 name = "ambiq-hal-sys"
 version = "0.1.0"
-source = "git+https://github.com/gauteh/ambiq-rs#edc9dec2db43fde6ebd36dd956a167e52ee0c133"
+source = "git+https://github.com/gauteh/ambiq-rs#39f83828723f38dc4db387c60e418e49ada6493d"
 dependencies = [
  "bindgen 0.59.2",
  "cc",
@@ -1351,9 +1351,9 @@ dependencies = [
 
 [[package]]
 name = "termcolor"
-version = "1.4.0"
+version = "1.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff1bc3d3f05aff0403e8ac0d92ced918ec05b666a43f83297ccef5bea8a3d449"
+checksum = "06794f8f6c5c898b3275aebefa6b8a1cb24cd2c6c79397ab15774837a0bc5755"
 dependencies = [
  "winapi-util",
 ]
@@ -1371,6 +1371,7 @@ dependencies = [
  "defmt-rtt",
  "defmt-test",
  "embedded-hal",
+ "embedded-sdmmc",
  "heapless",
  "ism330dhcx",
  "panic-probe",

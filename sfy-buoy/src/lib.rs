@@ -25,9 +25,8 @@ use embedded_hal::blocking::{
 
 #[cfg(feature = "storage")]
 use embedded_hal::{
-    blocking::spi::{write::Default as DefaultWrite, Transfer},
+    blocking::spi::{Write as DefaultWrite, Transfer},
     digital::v2::OutputPin,
-    spi::FullDuplex,
 };
 
 use rtcc::DateTimeAccess;
@@ -333,7 +332,7 @@ impl<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> Imu<E
 pub struct StorageManager<Spi: Transfer<u8> + DefaultWrite<u8>, CS: OutputPin, DL: DelayUs<u8>>
 where
     <Spi as Transfer<u8>>::Error: Debug,
-    <Spi as FullDuplex<u8>>::Error: Debug,
+    <Spi as DefaultWrite<u8>>::Error: Debug,
 {
     storage: Storage<Spi, CS, DL>,
     pub storage_queue: heapless::spsc::Consumer<'static, AxlPacketT, STORAGEQ_SZ>,
@@ -345,7 +344,7 @@ impl<Spi: Transfer<u8> + DefaultWrite<u8>, CS: OutputPin, DL: DelayUs<u8>>
     StorageManager<Spi, CS, DL>
 where
     <Spi as Transfer<u8>>::Error: Debug,
-    <Spi as FullDuplex<u8>>::Error: Debug,
+    <Spi as DefaultWrite<u8>>::Error: Debug,
 {
     pub fn new(
         storage: Storage<Spi, CS, DL>,
@@ -369,7 +368,7 @@ where
     ) -> Result<Option<u32>, storage::StorageErr> {
         let mut e: Result<Option<u32>, storage::StorageErr> = Ok(None);
 
-        defmt::debug!("Draining storage queue: {} (note queue: {})",
+        defmt::trace!("Draining storage queue: {} (note queue: {})",
             self.storage_queue.len(),
             self.note_queue.len(),
         );
