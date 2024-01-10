@@ -19,7 +19,7 @@ use core::fmt::Debug;
 use core::ops::DerefMut;
 use cortex_m::interrupt::{free, Mutex};
 use embedded_hal::blocking::{
-    delay::DelayMs,
+    delay::{DelayMs, DelayUs},
     i2c::{Read, Write, WriteRead},
 };
 

@@ -160,6 +160,7 @@ fn main() -> ! {
         let spi = Spi::new(dp.IOM0, pins.d12, pins.d13, pins.d11, Freq::F100kHz, MODE_0);
         let cs = pins.a14.into_push_pull_output();
 
+        let fdelay = hal::delay::FlashDelay;
         let mut storage = Storage::open(
             spi,
             cs,
@@ -168,6 +169,7 @@ fn main() -> ! {
                 SdSpiSpeed::Low => spi.set_freq(Freq::F100kHz),
                 SdSpiSpeed::High => spi.set_freq(Freq::F12mHz),
             },
+            fdelay,
         );
 
         storage
