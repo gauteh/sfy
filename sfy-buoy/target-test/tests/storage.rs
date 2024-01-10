@@ -13,8 +13,9 @@ pub static COUNT: AtomicI32 = AtomicI32::new(0);
 
 type Spi0 = hal::spi::Spi0;
 type CS = hal::gpio::pin::P35<{ hal::gpio::Mode::Output }>;
+type DL = hal::delay::FlashDelay;
 
-fn clean_up_collection(s: &mut Storage<Spi0, CS>) {
+fn clean_up_collection(s: &mut Storage<Spi0, CS, DL>) {
     defmt::info!("cleaning up test collection");
     s.acquire().unwrap().remove_collection(0).ok();
     s.acquire().unwrap().remove_collection(1).ok();
@@ -40,7 +41,7 @@ mod tests {
         #[allow(unused)]
         rtc: hal::rtc::Rtc,
 
-        storage: Storage<Spi0, CS>,
+        storage: Storage<Spi0, CS, DL>,
     }
 
     #[init]
@@ -80,6 +81,7 @@ mod tests {
                 SdSpiSpeed::Low => spi.set_freq(Freq::F100kHz),
                 SdSpiSpeed::High => spi.set_freq(Freq::F48mHz),
             },
+            hal::delay::FlashDelay,
         );
 
         // clean up previous tests
@@ -112,6 +114,8 @@ mod tests {
             storage_id: None,
             storage_version: VERSION,
             temperature: 0.0,
+            accel_range: 4.0,
+            gyro_range: 500.0,
             data: (6..3078).map(|v| v as u16).collect::<Vec<_, { AXL_SZ }>>(),
         };
 
@@ -130,6 +134,8 @@ mod tests {
             storage_id: None,
             storage_version: VERSION,
             temperature: 0.0,
+            accel_range: 4.0,
+            gyro_range: 500.0,
             data: (6..3078).map(|v| v as u16).collect::<Vec<_, { AXL_SZ }>>(),
         };
 
@@ -152,6 +158,8 @@ mod tests {
             storage_id: None,
             storage_version: VERSION,
             temperature: 0.0,
+            accel_range: 4.0,
+            gyro_range: 500.0,
             data: (6..3078).map(|v| v as u16).collect::<Vec<_, { AXL_SZ }>>(),
         };
 
@@ -173,6 +181,8 @@ mod tests {
             storage_id: None,
             storage_version: VERSION,
             temperature: 0.0,
+            accel_range: 4.0,
+            gyro_range: 500.0,
             data: (6..3078).map(|v| v as u16).collect::<Vec<_, { AXL_SZ }>>(),
         };
 
@@ -190,6 +200,8 @@ mod tests {
             storage_id: None,
             storage_version: VERSION,
             temperature: 0.0,
+            accel_range: 4.0,
+            gyro_range: 500.0,
             data: (9..3081).map(|v| v as u16).collect::<Vec<_, { AXL_SZ }>>(),
         };
 
@@ -226,6 +238,8 @@ mod tests {
                 storage_id: None,
                 storage_version: VERSION,
                 temperature: 0.0,
+                accel_range: 4.0,
+                gyro_range: 500.0,
                 data: (6..3078).map(|v| v as u16).collect::<Vec<_, { AXL_SZ }>>(),
             };
 
@@ -257,6 +271,8 @@ mod tests {
                 storage_id: Some(i),
                 storage_version: VERSION,
                 temperature: 0.0,
+                accel_range: 4.0,
+                gyro_range: 500.0,
                 data: (6..3078).map(|v| v as u16).collect::<Vec<_, { AXL_SZ }>>(),
             };
 

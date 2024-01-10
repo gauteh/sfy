@@ -20,8 +20,8 @@ load
 # monitor reset halt
 # b main
 
-# b rust_begin_unwind
-# b HardFault
+b rust_begin_unwind
+b HardFault
 
 source ../defmt-rtt-gdb.py
 defmt-rtt

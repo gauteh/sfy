@@ -283,15 +283,16 @@ where
                 // XXX: This is slow if it fails (time-out), hopefully not too slow, but if so
                 // needs to only be attempted seldomly.
                 // let mut block = storage.sd.acquire()?;
+                storage.sd.device().mark_card_uninit();
+
+                let sz = storage.sd.device().num_bytes()? / 1024_u64.pow(2);
+                defmt::info!("SD card size: {} mb", sz);
 
                 defmt::debug!("Increasing SPI speed.");
                 storage
                     .sd
                     .device()
                     .spi(|spi| (storage.reclock_cb)(spi, SdSpiSpeed::High));
-
-                let sz = storage.sd.device().num_bytes()? / 1024_u64.pow(2);
-                defmt::info!("SD card size: {} mb", sz);
 
                 // XXX: This is a slow operation which is likely to cause trouble if it is done on
                 // every send to notecard loop. Hopefully we will fail above (quickly

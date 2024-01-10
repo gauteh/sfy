@@ -369,6 +369,10 @@ where
     ) -> Result<Option<u32>, storage::StorageErr> {
         let mut e: Result<Option<u32>, storage::StorageErr> = Ok(None);
 
+        defmt::debug!("Draining storage queue: {} (note queue: {})",
+            self.storage_queue.len(),
+            self.note_queue.len(),
+        );
         if let Some(mut pck) = self.storage_queue.dequeue() {
             defmt::info!(
                 "Storing package: {:?} (sz queue length: {})",
