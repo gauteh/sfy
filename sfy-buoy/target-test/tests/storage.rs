@@ -95,6 +95,34 @@ mod tests {
         }
     }
 
+
+    #[ignore]
+    #[test]
+    fn write_1030_files(s: &mut State) {
+        // slow test: set COLLECTION_SIZE to 1 to run faster.
+        // there was a bug when we exceed 1024 files.
+        for i in 0..(sfy::storage::COLLECTION_SIZE * 1030) {
+            let p = AxlPacket {
+                timestamp: 100 + i as i64,
+                position_time: 123123,
+                lat: 34.52341,
+                lon: 54.012,
+                freq: 53.0,
+                offset: 15,
+                storage_id: None,
+                storage_version: VERSION,
+                temperature: 0.0,
+                accel_range: 4.0,
+                gyro_range: 500.0,
+                data: (6..3078).map(|v| v as u16).collect::<Vec<_, { AXL_SZ }>>(),
+            };
+
+            let mut p = (p,);
+            s.storage.store(&mut p).unwrap();
+            assert_eq!(p.0.storage_id, Some(i));
+        }
+    }
+
     #[test]
     fn initialize_storage(s: &mut State) {
         s.storage.acquire().unwrap();
@@ -247,7 +275,7 @@ mod tests {
             s.storage.store(&mut p).unwrap();
             assert_eq!(p.0.storage_id, Some(i));
 
-            let (c, fid, offset) = storage::id_to_parts(p.0.storage_id.unwrap());
+            let (dir, c, fid, offset) = storage::id_to_parts(p.0.storage_id.unwrap());
 
             if i < 100 {
                 assert_eq!(c, "0.t");
@@ -279,7 +307,7 @@ mod tests {
             let p_read = s.storage.get(i).unwrap();
             assert_eq!(p, p_read);
 
-            let (c, fid, offset) = storage::id_to_parts(p.storage_id.unwrap());
+            let (dir, c, fid, offset) = storage::id_to_parts(p.storage_id.unwrap());
 
             if i < 100 {
                 assert_eq!(c, "0.t");

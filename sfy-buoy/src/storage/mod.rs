@@ -45,6 +45,7 @@ use clock::CountClock;
 /// Writing to a file seems to take longer time when it has more packages, this can cause timeouts
 /// in the interrupt that drains the IMU FIFO. See <https://github.com/gauteh/sfy/issues/77>.
 pub const COLLECTION_SIZE: u32 = 100;
+pub const DIR_SIZE: u32 = 1000;
 pub const STORAGE_VERSION: u32 = axl::VERSION;
 #[cfg(not(feature = "target-test"))]
 pub const STORAGE_VERSION_STR: &'static str = "6";
@@ -147,7 +148,7 @@ where
     /// Deserialize and return AxlPacket.
     pub fn get(&mut self, id: u32) -> Result<AxlPacket, StorageErr> {
         defmt::debug!("Reading file: {}", id);
-        let (collection, file, offset) = id_to_parts(id);
+        let (dir, collection, file, offset) = id_to_parts(id);
 
         let mut buf: Vec<u8, { AXL_POSTCARD_SZ }> = Vec::new();
         buf.resize_default(AXL_POSTCARD_SZ).unwrap();
@@ -162,7 +163,7 @@ where
 
         let sz = self
             .acquire()
-            .and_then(|mut sd| sd.read(&collection, offset, &mut buf))?;
+            .and_then(|mut sd| sd.read(dir, &collection, offset, &mut buf))?;
 
         defmt::trace!("Read {:?} bytes.", sz);
 
@@ -186,7 +187,7 @@ where
         // If writing fails we will always start a new collection, so ID's should not get out of
         // sync within one collection file.
         let id = sd.advance_id()?;
-        let (collection, fid, offset) = id_to_parts(id);
+        let (dir, collection, fid, offset) = id_to_parts(id);
 
         // Package now has a storage ID.
         pck.storage_id = Some(id);
@@ -224,7 +225,7 @@ where
             offset
         );
 
-        sd.write(&collection, &buf, raw_bytes)?;
+        sd.write(dir, &collection, &buf, raw_bytes)?;
         defmt::debug!("Package written.");
 
         Ok(id)
@@ -317,6 +318,7 @@ where
 
     pub fn write(
         &mut self,
+        dir: u32,
         collection: &str,
         buf: &[u8],
         #[allow(unused)] buf_raw: &[u8],
@@ -324,7 +326,8 @@ where
         let sz: Result<(), StorageErr> = try {
             let mut v = self.sd.open_volume(VolumeIdx(0))?;
             let mut root = v.open_root_dir()?;
-            let mut f = root.open_file_in_dir(collection, Mode::ReadWriteCreateOrAppend)?;
+            let mut dir = root.open_dir(dir_name(dir).as_str())?;
+            let mut f = dir.open_file_in_dir(collection, Mode::ReadWriteCreateOrAppend)?;
             f.seek_from_end(0)
                 .inspect_err(|e| defmt::error!("File seek error: {}", e))
                 .map_err(|_| StorageErr::WriteError)?; // We should already be at the
@@ -350,6 +353,7 @@ where
 
     pub fn read(
         &mut self,
+        dir: u32,
         collection: &str,
         offset: usize,
         buf: &mut [u8],
@@ -357,7 +361,8 @@ where
         let sz: Result<usize, StorageErr> = try {
             let mut v = self.sd.open_volume(VolumeIdx(0))?;
             let mut root = v.open_root_dir()?;
-            let mut f = root.open_file_in_dir(collection, Mode::ReadOnly)?;
+            let mut dir = root.open_dir(dir_name(dir).as_str())?;
+            let mut f = dir.open_file_in_dir(collection, Mode::ReadOnly)?;
 
             if f.length() < (offset + AXL_POSTCARD_SZ) as u32 {
                 defmt::debug!("Collection is not long enough, no such file in it.");
@@ -410,12 +415,36 @@ where
         let mut v = sd.open_volume(VolumeIdx(0))?;
         let mut root = v.open_root_dir()?;
 
-        for c in start.unwrap_or(0)..65536u32 {
-            let f = collection_fname(c);
-            defmt::debug!("Searching for free collection, testing: {}", f);
-            match root.find_directory_entry(f.as_str()) {
+        let dstart = start.unwrap_or(0) / DIR_SIZE;
+        for d in dstart..65536u32 {
+            let dir = dir_name(d);
+
+            match root.find_directory_entry(dir.as_str()) {
                 Ok(_) => continue,
-                Err(GenericSdMmcError::FileNotFound) => return Ok(c),
+                Err(GenericSdMmcError::FileNotFound) => {
+                    if d == 0 {
+                        return Ok(0);
+                    } else {
+                        // Look for the last collection in the previous directory.
+                        let d = d - 1;
+                        let start = d * DIR_SIZE;
+                        let dir = dir_name(d);
+                        let mut dir = root.open_dir(dir.as_str())?; // must exist
+
+                        for c in start..(start + DIR_SIZE) {
+                            let f = collection_fname(c);
+                            defmt::debug!("Searching for free collection, testing: {}", f);
+                            match dir.find_directory_entry(f.as_str()) {
+                                Ok(_) => continue,
+                                Err(GenericSdMmcError::FileNotFound) => return Ok(c),
+                                Err(e) => return Err(e.into()),
+                            }
+                        }
+
+                        // This dir was full: take next dir
+                        return Ok((d+1)*DIR_SIZE);
+                    }
+                }
                 Err(e) => return Err(e.into()),
             }
         }
@@ -430,10 +459,18 @@ where
 
         let mut v = self.sd.open_volume(VolumeIdx(0))?;
         let mut root = v.open_root_dir()?;
-        root.delete_file_in_dir(f.as_str())?;
+
+        let d = collection / DIR_SIZE;
+        let mut dir = root.open_dir(dir_name(d).as_str())?;
+        dir.delete_file_in_dir(f.as_str())?;
 
         Ok(())
     }
+}
+
+pub fn dir_name(dir: u32) -> String<32> {
+    let mut f: String<32> = String::from(dir);
+    f
 }
 
 pub fn collection_fname(c: u32) -> String<32> {
@@ -445,14 +482,15 @@ pub fn collection_fname(c: u32) -> String<32> {
 
 /// Calculate collection file, file number in collection and byte offset of start of pacakge in
 /// collection file for a given ID.
-pub fn id_to_parts(id: u32) -> (String<32>, u32, usize) {
+pub fn id_to_parts(id: u32) -> (u32, String<32>, u32, usize) {
     let collection = id / COLLECTION_SIZE;
+    let dir = collection / DIR_SIZE;
     let fileid = id % COLLECTION_SIZE;
     let offset = fileid as usize * PACKAGE_SZ;
 
     let collection = collection_fname(collection);
 
-    (collection, fileid, offset)
+    (dir, collection, fileid, offset)
 }
 
 #[cfg(test)]
@@ -468,12 +506,14 @@ mod tests {
 
     #[test]
     fn test_id_to_parts() {
-        let (c, file, o) = id_to_parts(0);
+        let (dir, c, file, o) = id_to_parts(0);
+        assert_eq!(dir, 0);
         assert_eq!(c, "0.6");
         assert_eq!(file, 0);
         assert_eq!(o, 0);
 
-        let (c, file, o) = id_to_parts(1231255);
+        let (dir, c, file, o) = id_to_parts(1231255);
+        assert_eq!(dir, 12);
         assert_eq!(c, "12312.6");
         assert_eq!(file, 55);
         assert_eq!(o, 55 * PACKAGE_SZ);
