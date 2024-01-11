@@ -570,19 +570,18 @@ mod tests {
         assert_eq!(p2_truth, p2);
     }
 
-    #[ignore]
     #[test]
     fn read_real_data() {
-        let mut c = std::fs::read("tests/data/2.2").unwrap();
-        assert_eq!(c.len(), AXL_POSTCARD_SZ * 12);
+        let mut c = std::fs::read("tests/data/3.6").unwrap();
+        assert_eq!(c.len(), AXL_POSTCARD_SZ * 4);
 
         let buf = c.as_mut_slice();
 
-        for p in 0..12 {
+        for p in 0..3 {
             let slice = &mut buf[(AXL_POSTCARD_SZ * p)..(AXL_POSTCARD_SZ * (p + 1))];
             let pck: AxlPacket = postcard::from_bytes_cobs(slice).unwrap();
             println!("Deserialized data package: {:?}", pck);
-            assert_eq!(pck.storage_id, Some(200 + p as u32));
+            assert_eq!(pck.storage_id, Some(3000 + p as u32));
         }
     }
 }

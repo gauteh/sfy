@@ -214,14 +214,13 @@ mod tests {
         println!("{}", json::to_string(&f).unwrap());
     }
 
-    #[ignore]
     #[test]
-    fn open_regular_v5() {
-        let c = Collection::from_file("tests/data/44.5").unwrap();
+    fn open_regular_v6() {
+        let c = Collection::from_file("tests/data/3.6").unwrap();
         println!("packages: {}", c.pcks.len());
 
         assert!(c.raw.is_none());
-        assert_eq!(c.pcks.len(), 100);
+        assert_eq!(c.pcks.len(), 4);
     }
 
     #[ignore]
