@@ -20,7 +20,7 @@ use embedded_hal::{
     digital::v2::OutputPin,
 };
 use embedded_sdmmc::{
-    Error as GenericSdMmcError, Mode, SdCard, SdCardError, VolumeIdx, VolumeManager,
+    Error as GenericSdMmcError, Mode, SdCard, SdCardError, VolumeIdx, VolumeManager, sdcard::AcquireOpts,
 };
 use heapless::{String, Vec};
 
@@ -117,7 +117,7 @@ where
     ) -> Storage<Spi, CS, DL> {
         defmt::info!("Opening SD card..");
 
-        let sd = SdCard::new(spi, cs, delay);
+        let sd = SdCard::new_with_options(spi, cs, delay, AcquireOpts { use_crc: true, acquire_retries: 10 });
         let sd = VolumeManager::new(sd, clock);
 
         Storage {
