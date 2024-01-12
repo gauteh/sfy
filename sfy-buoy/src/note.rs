@@ -53,6 +53,19 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         );
         note.initialize(delay)?;
 
+        // Use extrnal SIM first
+        defmt::info!("Configuring for external SIM..");
+        let w = note.card()
+            .wireless(
+                delay,
+                None,
+                Some("internet"),
+                Some("dual-secondary-primary"),
+                Some(1),
+            )?
+            .wait(delay)?;
+        defmt::info!("Wireless status: {:#?}", w);
+
         // Location mode is not supported when in continuous mode.
         #[cfg(feature = "continuous")]
         note.card()
@@ -393,7 +406,11 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
 
         #[cfg(debug_assertions)]
         {
-            let wireless = self.note.card().wireless(delay).and_then(|r| r.wait(delay));
+            let wireless = self
+                .note
+                .card()
+                .wireless(delay, None, None, None, None)
+                .and_then(|r| r.wait(delay));
             defmt::trace!("card.wireless: {}", wireless);
         }
 
