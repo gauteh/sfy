@@ -49,7 +49,7 @@ dependencies = [
  "cortex-m",
  "cortex-m-rt",
  "defmt",
- "embedded-hal 0.2.7",
+ "embedded-hal",
  "embedded-time",
  "nb 1.1.0",
  "paste",
@@ -243,7 +243,7 @@ version = "0.3.2"
 source = "git+https://github.com/gauteh/notecard-rs#340484a676d0461bcd11f8bc8d6e0fc5731f0d91"
 dependencies = [
  "defmt",
- "embedded-hal 0.2.7",
+ "embedded-hal",
  "heapless",
  "serde",
  "serde-json-core",
@@ -389,7 +389,7 @@ dependencies = [
  "bare-metal 0.2.5",
  "bitfield",
  "critical-section 1.1.2",
- "embedded-hal 0.2.7",
+ "embedded-hal",
  "volatile-register",
 ]
 
@@ -509,7 +509,7 @@ checksum = "6971a5be9a473f92bb1a1e11ebbfc0e1f444fa08163a5f4d0f28389d236b515e"
 dependencies = [
  "critical-section 0.2.8",
  "defmt",
- "embedded-hal 0.2.7",
+ "embedded-hal",
  "nb 1.1.0",
 ]
 
@@ -553,19 +553,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "embedded-hal"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "361a90feb7004eca4019fb28352a9465666b24f840f5c3cddf0ff13920590b89"
-
-[[package]]
 name = "embedded-sdmmc"
 version = "0.6.0"
-source = "git+https://github.com/rust-embedded-community/embedded-sdmmc-rs?branch=develop#ae5e1165d86dfaeee80cdb2547775183463066c5"
+source = "git+https://github.com/rust-embedded-community/embedded-sdmmc-rs?rev=3b5c026d#3b5c026dbae56644382a0fb1bd0d9ed1592c1d0b"
 dependencies = [
  "byteorder",
  "defmt",
- "embedded-hal 1.0.0",
+ "embedded-hal",
  "heapless",
 ]
 
@@ -760,7 +754,7 @@ version = "0.5.1"
 source = "git+https://github.com/gauteh/ism330dhcx?branch=gyro-accel-parse-range#27c2bb6ab331370af78385bf3efcd18060b7a03f"
 dependencies = [
  "defmt",
- "embedded-hal 0.2.7",
+ "embedded-hal",
 ]
 
 [[package]]
@@ -1265,7 +1259,7 @@ dependencies = [
  "chrono",
  "cortex-m",
  "defmt",
- "embedded-hal 0.2.7",
+ "embedded-hal",
  "embedded-sdmmc",
  "half 1.8.2",
  "heapless",
@@ -1292,7 +1286,7 @@ dependencies = [
  "defmt",
  "defmt-rtt",
  "defmt-serial",
- "embedded-hal 0.2.7",
+ "embedded-hal",
  "git-version",
  "heapless",
  "panic-probe",
@@ -1376,7 +1370,7 @@ dependencies = [
  "defmt",
  "defmt-rtt",
  "defmt-test",
- "embedded-hal 0.2.7",
+ "embedded-hal",
  "embedded-sdmmc",
  "heapless",
  "ism330dhcx",
