@@ -22,7 +22,7 @@ name = "ahrs-fusion"
 version = "0.4.0"
 source = "git+https://github.com/gauteh/ahrs-fusion#dd057f7ccf3549ed939509e31916921a7c87b86b"
 dependencies = [
- "bindgen 0.69.1",
+ "bindgen 0.69.2",
  "cc",
  "cty",
 ]
@@ -49,7 +49,7 @@ dependencies = [
  "cortex-m",
  "cortex-m-rt",
  "defmt",
- "embedded-hal",
+ "embedded-hal 0.2.7",
  "embedded-time",
  "nb 1.1.0",
  "paste",
@@ -169,9 +169,9 @@ checksum = "9e1b586273c5702936fe7b7d6896644d8be71e6314cfe09d3167c95f712589e8"
 
 [[package]]
 name = "base64"
-version = "0.21.6"
+version = "0.21.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c79fed4cdb43e993fcdadc7e58a09fd0e3e649c4436fa11da71c9f1f3ee7feb9"
+checksum = "9d297deb1925b89f2ccc13d7635fa0714f12c87adce1c75356b39ca9b7178567"
 
 [[package]]
 name = "bindgen"
@@ -198,9 +198,9 @@ dependencies = [
 
 [[package]]
 name = "bindgen"
-version = "0.69.1"
+version = "0.69.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9ffcebc3849946a7170a05992aac39da343a90676ab392c51a4280981d6379c2"
+checksum = "a4c69fae65a523209d34240b60abe0c42d33d1045d445c0839d8a4894a736e2d"
 dependencies = [
  "bitflags 2.4.1",
  "cexpr",
@@ -239,10 +239,11 @@ checksum = "327762f6e5a765692301e5bb513e0d9fef63be86bbc14528052b1cd3e6f03e07"
 
 [[package]]
 name = "blues-notecard"
-version = "0.3.1"
+version = "0.3.2"
+source = "git+https://github.com/gauteh/notecard-rs#340484a676d0461bcd11f8bc8d6e0fc5731f0d91"
 dependencies = [
  "defmt",
- "embedded-hal",
+ "embedded-hal 0.2.7",
  "heapless",
  "serde",
  "serde-json-core",
@@ -388,7 +389,7 @@ dependencies = [
  "bare-metal 0.2.5",
  "bitfield",
  "critical-section 1.1.2",
- "embedded-hal",
+ "embedded-hal 0.2.7",
  "volatile-register",
 ]
 
@@ -508,7 +509,7 @@ checksum = "6971a5be9a473f92bb1a1e11ebbfc0e1f444fa08163a5f4d0f28389d236b515e"
 dependencies = [
  "critical-section 0.2.8",
  "defmt",
- "embedded-hal",
+ "embedded-hal 0.2.7",
  "nb 1.1.0",
 ]
 
@@ -552,13 +553,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "embedded-hal"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "361a90feb7004eca4019fb28352a9465666b24f840f5c3cddf0ff13920590b89"
+
+[[package]]
 name = "embedded-sdmmc"
 version = "0.6.0"
-source = "git+https://github.com/rust-embedded-community/embedded-sdmmc-rs?branch=develop#3b5c026dbae56644382a0fb1bd0d9ed1592c1d0b"
+source = "git+https://github.com/rust-embedded-community/embedded-sdmmc-rs?branch=develop#ae5e1165d86dfaeee80cdb2547775183463066c5"
 dependencies = [
  "byteorder",
  "defmt",
- "embedded-hal",
+ "embedded-hal 1.0.0",
  "heapless",
 ]
 
@@ -753,7 +760,7 @@ version = "0.5.1"
 source = "git+https://github.com/gauteh/ism330dhcx?branch=gyro-accel-parse-range#27c2bb6ab331370af78385bf3efcd18060b7a03f"
 dependencies = [
  "defmt",
- "embedded-hal",
+ "embedded-hal 0.2.7",
 ]
 
 [[package]]
@@ -1127,9 +1134,9 @@ dependencies = [
 
 [[package]]
 name = "rustix"
-version = "0.38.28"
+version = "0.38.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "72e572a5e8ca657d7366229cdde4bd14c4eb5499a9573d4d366fe1b599daa316"
+checksum = "322394588aaf33c24007e8bb3238ee3e4c5c09c084ab32bc73890b99ff326bca"
 dependencies = [
  "bitflags 2.4.1",
  "errno",
@@ -1258,7 +1265,7 @@ dependencies = [
  "chrono",
  "cortex-m",
  "defmt",
- "embedded-hal",
+ "embedded-hal 0.2.7",
  "embedded-sdmmc",
  "half 1.8.2",
  "heapless",
@@ -1285,7 +1292,7 @@ dependencies = [
  "defmt",
  "defmt-rtt",
  "defmt-serial",
- "embedded-hal",
+ "embedded-hal 0.2.7",
  "git-version",
  "heapless",
  "panic-probe",
@@ -1369,7 +1376,7 @@ dependencies = [
  "defmt",
  "defmt-rtt",
  "defmt-test",
- "embedded-hal",
+ "embedded-hal 0.2.7",
  "embedded-sdmmc",
  "heapless",
  "ism330dhcx",
@@ -1503,7 +1510,7 @@ version = "2.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8cdd25c339e200129fe4de81451814e5228c9b771d57378817d6117cc2b3f97"
 dependencies = [
- "base64 0.21.6",
+ "base64 0.21.7",
  "flate2",
  "log",
  "once_cell",
