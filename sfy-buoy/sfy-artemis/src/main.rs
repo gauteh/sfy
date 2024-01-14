@@ -121,6 +121,7 @@ fn main() -> ! {
     println!("GPS_PERIOD ..: {}", sfy::note::GPS_PERIOD);
     println!("GPS_HEARTBEAT: {}", sfy::note::GPS_HEARTBEAT);
     println!("SYNC_PERIOD .: {}", sfy::note::SYNC_PERIOD);
+    println!("EXT_SIM_APN .: {}", sfy::note::EXT_APN);
 
     info!("Setting up IOM and RTC.");
     delay.delay_ms(1_000u32);

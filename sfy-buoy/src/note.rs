@@ -13,6 +13,8 @@ pub const BUOYSN: &str = match option_env!("BUOYSN") {
 
 pub const BUOYPR: &str = env!("BUOYPR", "Specify notehub project");
 
+pub const EXT_APN: Option<&str> = option_env!("SFY_EXT_SIM_APN");
+
 // GPS is sampled at this interval (seconds) when movement is detected by the accelerometer on the
 // modem. When below 300 seconds the GPS is not turned off when the buoy is moving. For experiment
 // drifting in fjords and similar 10 minutes is sufficient. However, for experiments on beaches a
@@ -54,17 +56,19 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         note.initialize(delay)?;
 
         // Use extrnal SIM first
-        defmt::info!("Configuring for external SIM..");
-        let w = note.card()
-            .wireless(
-                delay,
-                None,
-                Some("internet"),
-                Some("dual-secondary-primary"),
-                Some(1),
-            )?
-            .wait(delay)?;
-        defmt::info!("Wireless status: {:#?}", w);
+        if let Some(apn) = EXT_APN {
+            defmt::info!("Configuring for external SIM..");
+            let w = note.card()
+                .wireless(
+                    delay,
+                    None,
+                    Some(apn),
+                    Some("dual-secondary-primary"),
+                    Some(1),
+                )?
+                .wait(delay)?;
+            defmt::info!("Wireless status: {:#?}", w);
+        }
 
         // Location mode is not supported when in continuous mode.
         #[cfg(feature = "continuous")]

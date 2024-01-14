@@ -76,6 +76,8 @@ AUXRX/AUXTX and pull AUXEN up](https://dev.blues.io/guides-and-tutorials/notecar
 * BUOYPR: the product name used for the modem. determines which account the data
     is sent to on notehub.io.
 
+* SFY_EXT_SIM_APN: Enable external SIM and specify APN.
+
 * GPS_PERIOD: Sample interval for GPS (default 60 seconds).
 
 * GPS_HEARTBEAT: Minimum GPS interval when no motion detected. Positive value is
