@@ -1,5 +1,7 @@
 [![sfy-data](https://github.com/gauteh/sfy/actions/workflows/sfy-data.yml/badge.svg)](https://github.com/gauteh/sfy/actions/workflows/sfy-data.yml)
 [![sfy-buoy](https://github.com/gauteh/sfy/actions/workflows/sfy-buoy.yml/badge.svg)](https://github.com/gauteh/sfy/actions/workflows/sfy-buoy.yml)
+[![sfy-processing](https://github.com/gauteh/sfy/actions/workflows/sfy-processing.yml/badge.svg)](https://github.com/gauteh/sfy/actions/workflows/sfy-processing.yml)
+
 <img src="doc/logo/logo1.png" width="100px" />
 
 # The small friendly buoy
