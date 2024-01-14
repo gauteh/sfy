@@ -9,6 +9,7 @@ use panic_probe as _; // memory layout + panic handler
 #[defmt_test::tests]
 mod tests {
     use super::*;
+    use micromath::F32Ext;
     #[allow(unused)]
     use defmt::{assert, assert_eq, info};
 
@@ -53,13 +54,13 @@ mod tests {
     #[test]
     fn sensor_range(s: &mut State) {
         assert_eq!(
-            s.waves.imu.ctrl1xl.chain_full_scale(),
-            waves::ACCEL_RANGE as f64
+            s.waves.imu.ctrl1xl.chain_full_scale().g(),
+            waves::ACCEL_RANGE
         );
-        assert_eq!(s.waves.imu.ctrl1xl.chain_full_scale(), 4.);
+        assert_eq!(s.waves.imu.ctrl1xl.chain_full_scale().g(), 4.);
         assert_eq!(
-            s.waves.imu.ctrl2g.chain_full_scale(),
-            waves::GYRO_RANGE as f64
+            s.waves.imu.ctrl2g.chain_full_scale().dps(),
+            waves::GYRO_RANGE
         );
     }
 
@@ -251,7 +252,7 @@ mod tests {
         for zz in z {
             let z2 = waves::wire::A16::from_u16(zz);
             defmt::info!("z = {} -> {}", zz, z2.to_f32());
-            assert!(z2.abs() < 0.3); // should be close to zero since 9.81 has been removed.
+            assert!(z2.to_f32().abs() < 0.3); // should be close to zero since 9.81 has been removed.
         }
     }
 }

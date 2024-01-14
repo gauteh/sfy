@@ -64,6 +64,8 @@ mod tests {
             lon: 10.23,
             lat: 14.233,
             data: (0..3072).collect::<heapless::Vec<_, { 3 * 1024 }>>(),
+            gyro_range: 500.0,
+            accel_range: 4.0
         };
 
         assert!(pck.data.len() == sfy::axl::AXL_SZ);
