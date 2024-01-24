@@ -110,7 +110,7 @@ class Event:
     def try_parse(cls, d):
         try:
             return cls.parse(d)
-        except (KeyError, json.decoder.JSONDecodeError) as e:
+        except (KeyError, json.decoder.JSONDecodeError, ValueError) as e:
             # logger.exception(e)
             logger.error(f"failed to parse file: {d}: {e}")
             return None
