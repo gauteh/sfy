@@ -497,6 +497,7 @@ class Axl(Event, AxlTimeseries):
             z = payload[2::3]
 
         else:
+            if (len(payload) % (2*3)) != 0: raise ValueError(f"length of payload: {len(payload)}, does not match expected number of values")
             payload = np.frombuffer(payload, dtype=np.uint16)
             n = len(payload)
 
