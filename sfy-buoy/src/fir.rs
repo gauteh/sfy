@@ -1,4 +1,4 @@
-use core::simd::{f32x4, num::SimdFloat};
+use core::simd::{f32x4, SimdFloat};
 use heapless::Deque;
 
 /// Sample rate.
