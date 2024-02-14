@@ -212,7 +212,10 @@ fn main() -> ! {
     w.push_str("SFY (v").unwrap();
     w.push_str(git_version!()).unwrap();
     w.push_str(") (sn: ").unwrap();
-    w.push_str(sfy::note::BUOYSN).unwrap();
+    match sfy::note::BUOYSN {
+        Some(sn) => w.push_str(sn).unwrap(),
+        None => w.push_str("None").unwrap(),
+    };
     w.push_str(") started up.").unwrap();
     info!("{}", w);
 

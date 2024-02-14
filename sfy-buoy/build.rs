@@ -24,5 +24,13 @@ fn main() {
     writeln!(&fd, "pub const GPS_HEARTBEAT: i32 = {gps_heartbeat};").unwrap();
     writeln!(&fd, "pub const SYNC_PERIOD: u32 = {sync_period};").unwrap();
 
+    if option_env!("BUOYSN").is_none() {
+        println!("cargo:warning=BUOYSN: No buoy name supplied, using device id or previously configured.");
+    }
+
+    if option_env!("BUOYPR").is_none() {
+        println!("cargo:warning=BUOYPR: No notehub modem product supplied, using previously configured.");
+    }
+
     println!("cargo:rerun-if-changed=build.rs");
 }

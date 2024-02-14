@@ -6,12 +6,8 @@ use embedded_hal::blocking::i2c::{Read, Write};
 
 use crate::NOTEQ_SZ;
 
-pub const BUOYSN: &str = match option_env!("BUOYSN") {
-    Some(v) => v,
-    None => "cain",
-};
-
-pub const BUOYPR: &str = env!("BUOYPR", "Specify notehub project");
+pub const BUOYSN: Option<&str> = option_env!("BUOYSN");
+pub const BUOYPR: Option<&str> = option_env!("BUOYPR");
 
 pub const EXT_APN: Option<&str> = option_env!("SFY_EXT_SIM_APN");
 
@@ -79,14 +75,14 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         note.hub()
             .set(
                 delay,
-                Some(BUOYPR),
+                BUOYPR,
                 None,
                 if cfg!(feature = "continuous") {
                     Some(notecard::hub::req::HubMode::Continuous)
                 } else {
                     Some(notecard::hub::req::HubMode::Periodic)
                 },
-                Some(BUOYSN),
+                BUOYSN,
                 Some(SYNC_PERIOD), // max time between out-going sync in minutes.
                 None,
                 None,
