@@ -12,6 +12,7 @@ from sfy.hub import Hub
 from sfy.cli.track import track
 from sfy.cli.axl import axl
 from sfy.cli.ctrl import ctrl
+from sfy.cli.hub import hub
 from sfy.cli.store import store
 from sfy.cli.collection import collection
 from sfy.cli.plot import plot
@@ -26,6 +27,7 @@ def sfy(log):
 sfy.add_command(track)
 sfy.add_command(axl)
 sfy.add_command(ctrl)
+sfy.add_command(hub)
 sfy.add_command(store)
 sfy.add_command(collection)
 sfy.add_command(plot)

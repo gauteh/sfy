@@ -108,7 +108,7 @@ class Hub:
         logger.debug('Logging into Notehub..')
         user = os.getenv('SFY_NH_USER')
         pw = os.getenv('SFY_NH_PW')
-        assert user is not None and pw is not None, "SFY_NH_USER and/or SFY_NH_PW env not set."
+        assert user is not None and pw is not None, "SFY_NH_USER and/or SFY_NH_PW environment variables with credentials to Notehub.io not set."
 
         r = requests.post('https://api.notefile.net/auth/login',
                           json={
