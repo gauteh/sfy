@@ -14,14 +14,6 @@ use std::io::Write;
 use std::path::PathBuf;
 
 fn main() {
-    println!("cargo:rerun-if-env-changed=BUOYSN");
-    if env::var_os("BUOYSN").is_none() {
-        println!("cargo:warning=Buoy serial id not specified (env BUOYSN), will use default.");
-        // panic!("No serial id specified.");
-    } else {
-        // println!("cargo:warning=Serial no: {:?}", env::var_os("BUOYSN").unwrap());
-    }
-
     // Put `memory.x` in our output directory and ensure it's
     // on the linker search path.
     let out = &PathBuf::from(env::var_os("OUT_DIR").unwrap());
