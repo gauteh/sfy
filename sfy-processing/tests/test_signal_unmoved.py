@@ -57,7 +57,7 @@ def test_axl_v6_16g_range(sfyhub, plot):
     import base64
 
     axl.Axl.__keep_payload__ = True
-    b = sfyhub.buoy('bug29')
+    b = sfyhub.buoy('dev867648043600996')
     pcks = b.axl_packages_range(
         datetime(2023, 11, 6, 9, 40, tzinfo=timezone.utc),
         datetime(2023, 11, 6, 11, 50, tzinfo=timezone.utc))
@@ -107,7 +107,7 @@ def test_axl_v6_4g_range(sfyhub, plot):
     import base64
 
     axl.Axl.__keep_payload__ = True
-    b = sfyhub.buoy('bug29')
+    b = sfyhub.buoy('dev867648043600996')
     pcks = b.axl_packages_range(
         datetime(2023, 11, 6, 9, 40, tzinfo=timezone.utc),
         datetime(2023, 11, 6, 12, 50, tzinfo=timezone.utc))
