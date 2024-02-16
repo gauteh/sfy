@@ -7,8 +7,10 @@ from . import signal
 
 logger = logging.getLogger(__name__)
 
+
 def welch(ds: xr.Dataset):
     return signal.welch(ds.estimated_frequency, ds.w_z)
+
 
 def hm0(ds: xr.Dataset, raw=False, window=(20 * 60)) -> xr.DataArray:
     """
@@ -84,7 +86,7 @@ def spec_stats(ds: xr.Dataset,
     def stat(zz, yy, xx):
         if np.any(np.isnan(zz)):
             logger.warning(f'NaN values in signal, spectra is set to NaN')
-            a = np.full((4096//2 +1,), np.nan)
+            a = np.full((4096 // 2 + 1, ), np.nan)
             return np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, a, a, a, a
 
         f, Pz = signal.welch(freq, zz, nperseg, order)
@@ -333,6 +335,8 @@ def estimate_frequency(ds, N=None):
 
     f = []
 
+    iFs = ds.attrs['frequency']  # ideal frequency
+
     for i in range(n - 1):
         t0 = ds.package_start.values[i]
         t1 = ds.package_start.values[i + 1]
@@ -341,9 +345,16 @@ def estimate_frequency(ds, N=None):
         m = N - ds.offset.values[i] + ds.offset.values[i + 1]
 
         ddt = (t1 - t0).astype('timedelta64[ms]').astype(float)
-        f.append(float(m) / (ddt / 1000.))
 
-    f.append(f[-1])  # backwards diff for last package.
+        assert ddt > 0
+        ffs = float(m) / (ddt / 1000.)
+        if (ffs > (iFs * 1.1)) or (ffs < (iFs * 0.9)):
+            logger.warning(f'More than 10% frequency deviation: {ffs}, skipping')
+        else:
+            f.append(ffs)
+
+    if len(f) > 0:
+        f.append(f[-1])  # backwards diff for last package.
 
     return np.array(f)
 
@@ -388,7 +399,18 @@ def seltime(ds, start, end):
     ip0 = np.argmax(pdt >= fstart)
     ip1 = np.argmax(pdt > fend)
 
-    return ds.sel(time=slice(start, end)).isel(package=slice(ip0, ip1))
+    tdt = ds.time.values.astype('datetime64[ms]').astype(float)
+    it0 = np.argmax(tdt >= fstart)
+    it1 = np.argmax(tdt > fend)
+    # print(ip0, ip1)
+
+    assert end <= ds.time.values[-1]
+    assert start >= ds.time.values[0]
+
+    # assert ds.time.dt.is_monotonic_increasing
+    # print(pd.to_datetime(ds.time.values).is_monotonic_increasing)
+
+    return ds.isel(time=slice(it0, it1)).isel(package=slice(ip0, ip1))
 
 
 def splitby_segments(ds, eps_gap=3.) -> list[xr.Dataset]:
@@ -574,6 +596,51 @@ def retime(ds, eps_gap=3.):
     assert len(t) == len(ds.time)
 
     oldtime = ds.time.values
+
+    ds = ds.assign_coords(
+        retime=('time', t),
+        oldtime=('time', oldtime)).set_index(time='retime').assign_attrs({
+            'estimated_frequency':
+            fs,
+            'estimated_frequency:unit':
+            'Hz'
+        })
+
+    return ds
+
+
+def retime_individual(ds):
+    """
+    Re-time, but only within each package. This better preserves the time, but will cause overlapping samples in case of
+    negative time jumps.
+    """
+    fs = np.median(estimate_frequency(ds))
+    logger.info(f'Re-timing dataset with frequency: {fs:.3} Hz.')
+
+    N = ds.attrs.get('package_length', 1024)
+    tp = pd.to_timedelta(np.arange(0, N) / fs * 1000., 'ms')
+
+    t = np.full(ds.time.shape, np.nan, dtype='datetime64[ns]')
+    for ip in range(len(ds.package_start)):
+        t0 = ds.time.values[ip * N]
+        ttp = t0 + tp
+        t[ip * N:(ip+1)*N] = ttp
+
+    assert len(t) == len(ds.w_z)
+    assert len(t) == len(ds.time)
+    assert np.all(~np.isnan(t))
+
+    oldtime = ds.time.values
+
+    if np.any(np.diff(t).astype(float) <= 0):
+        logger.error('Some samples have overlapping timestamps.')
+
+    tu = np.unique(t)
+    if len(tu) != len(t):
+        logger.error(f'Non-unique timestamps: {len(t) - len(tu)}')
+
+    if not pd.to_datetime(t).is_monotonic_increasing:
+        logger.error('Time is not monotonic increasing.')
 
     ds = ds.assign_coords(
         retime=('time', t),

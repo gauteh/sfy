@@ -289,18 +289,25 @@ class AxlTimeseries:
         # ds = sxr.unique_positions(ds)
         if retime:
             logger.info('Re-timing dataset based on estimated frequency..')
-            ds = sxr.retime(ds)
+            ds = sxr.retime_individual(ds)
+        else:
+            fs = np.median(sxr.estimate_frequency(ds))
+            logger.info(f'Not re-timing, estimated frequency to: {fs:.3f} Hz')
+            ds = ds.assign_attrs({
+                'estimated_frequency': fs,
+                'estimated_frequency:unit': 'Hz'
+            })
 
         return ds
 
-    def to_netcdf(self, filename: Path, displacement: bool = False):
+    def to_netcdf(self, filename: Path, displacement: bool = False, retime=True):
         """
         Write a CF-compliant NetCDF file to filename.
         """
         compression = {'zlib': True}
         encoding = {}
 
-        ds = self.to_dataset(displacement=displacement)
+        ds = self.to_dataset(displacement=displacement,retime=retime)
         for v in ds.variables:
             encoding[v] = compression
 

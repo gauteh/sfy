@@ -87,7 +87,12 @@ def list_buoys(dev, tx_start, tx_end):
               is_flag=True,
               help='Include integrated displacement',
               type=bool)
-def ts(dev, tx_start, tx_end, start, end, file, gap, freq, displacement):
+@click.option('--no-retime',
+              default=False,
+              is_flag=True,
+              help='Do not retime based on estimated frequency.',
+              type=bool)
+def ts(dev, tx_start, tx_end, start, end, file, gap, freq, displacement, no_retime):
     hub = Hub.from_env()
     buoy = hub.buoy(dev)
 
@@ -180,7 +185,7 @@ def ts(dev, tx_start, tx_end, start, end, file, gap, freq, displacement):
     if file:
         logger.info(f"Saving to {file}..")
 
-        pcks.to_netcdf(file, displacement=displacement)
+        pcks.to_netcdf(file, displacement=displacement, retime=(not no_retime))
 
 @axl.command()
 @click.argument('dev')
