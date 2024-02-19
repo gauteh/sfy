@@ -240,11 +240,14 @@ def spec_stats(ds: xr.Dataset,
 
 
 def displacement(ds: xr.Dataset, filter_freqs=None):
+    """
+    Calculates displacement.
+    """
     logger.info(
         f'Integrating displacment, filter frequencies: {filter_freqs}.')
 
     # sea-surface displacement should point upwards:
-    u_z = -signal.integrate(
+    u_z = signal.integrate(
         ds.w_z, ds.dt, order=2, freqs=filter_freqs, method='dft')
 
     u_x = signal.integrate(ds.w_x,
@@ -349,7 +352,8 @@ def estimate_frequency(ds, N=None):
         assert ddt > 0
         ffs = float(m) / (ddt / 1000.)
         if (ffs > (iFs * 1.1)) or (ffs < (iFs * 0.9)):
-            logger.warning(f'More than 10% frequency deviation: {ffs}, skipping')
+            logger.warning(
+                f'More than 10% frequency deviation: {ffs}, skipping')
         else:
             f.append(ffs)
 
@@ -390,27 +394,29 @@ def seltime(ds, start, end):
     """
     Trim dataset to between start and end (both along time and packages)
     """
-    pdt = ds.package_start.values.astype('datetime64[ms]').astype(float)
     fstart = pd.to_datetime(start).to_datetime64().astype(
         'datetime64[ms]').astype(float)
     fend = pd.to_datetime(end).to_datetime64().astype('datetime64[ms]').astype(
         float)
-
-    ip0 = np.argmax(pdt >= fstart)
-    ip1 = np.argmax(pdt > fend)
 
     tdt = ds.time.values.astype('datetime64[ms]').astype(float)
     it0 = np.argmax(tdt >= fstart)
     it1 = np.argmax(tdt > fend)
     # print(ip0, ip1)
 
-    assert end <= ds.time.values[-1]
-    assert start >= ds.time.values[0]
-
     # assert ds.time.dt.is_monotonic_increasing
     # print(pd.to_datetime(ds.time.values).is_monotonic_increasing)
 
-    return ds.isel(time=slice(it0, it1)).isel(package=slice(ip0, ip1))
+    ds = ds.isel(time=slice(it0, it1))
+
+    if 'package_start' in ds.variables:
+        pdt = ds.package_start.values.astype('datetime64[ms]').astype(float)
+        ip0 = np.argmax(pdt >= fstart)
+        ip1 = np.argmax(pdt > fend)
+
+        ds = ds.isel(package=slice(ip0, ip1))
+
+    return ds
 
 
 def splitby_segments(ds, eps_gap=3.) -> list[xr.Dataset]:
@@ -624,7 +630,7 @@ def retime_individual(ds):
     for ip in range(len(ds.package_start)):
         t0 = ds.time.values[ip * N]
         ttp = t0 + tp
-        t[ip * N:(ip+1)*N] = ttp
+        t[ip * N:(ip + 1) * N] = ttp
 
     assert len(t) == len(ds.w_z)
     assert len(t) == len(ds.time)
@@ -723,8 +729,10 @@ def reproject_pca(ds: xr.Dataset, low=None, high=None):
         ds['u_x'][:] = xx
         ds['u_y'][:] = yy
 
-        ds['u_x']['variance'] = v0
-        ds['u_y']['variance'] = v1
+        ds['u_x'].attrs['variance'] = v0
+        ds['u_y'].attrs['variance'] = v1
+
+        logger.debug(f'Displacement variance: {v0} / {v1} = {v0/v1}')
 
     if 'w_x' in ds:
         # re-project acceleration
@@ -734,7 +742,9 @@ def reproject_pca(ds: xr.Dataset, low=None, high=None):
         ds['w_x'][:] = xx
         ds['w_y'][:] = yy
 
-        ds['w_x']['variance'] = v0
-        ds['w_y']['variance'] = v1
+        ds['w_x'].attrs['variance'] = v0
+        ds['w_y'].attrs['variance'] = v1
+
+        logger.debug(f'Acceleration variance: {v0} / {v1} = {v0/v1}')
 
     return ds

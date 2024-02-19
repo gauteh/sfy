@@ -32,7 +32,7 @@ class AxlTimeseries:
             f'Integrating displacment, filter frequencies: {filter_freqs}.')
 
         u_z = signal.integrate(
-            -self.z,  # flip upward
+            self.z,
             self.dt,
             order=2,
             freqs=filter_freqs,
@@ -69,8 +69,8 @@ class AxlTimeseries:
                     'unit': 'm/s^2',
                     'long_name': 'sea_water_wave_z_acceleration',
                     'description':
-                    'Vertical acceleration (downward, including gravity)',
-                    'direction': 'down',
+                    'Vertical acceleration (upward, including gravity)',
+                    'direction': 'up',
                 }),
             'w_x':
             xr.Variable(
@@ -289,7 +289,7 @@ class AxlTimeseries:
         # ds = sxr.unique_positions(ds)
         if retime:
             logger.info('Re-timing dataset based on estimated frequency..')
-            ds = sxr.retime_individual(ds)
+            ds = sxr.retime(ds)
         else:
             fs = np.median(sxr.estimate_frequency(ds))
             logger.info(f'Not re-timing, estimated frequency to: {fs:.3f} Hz')

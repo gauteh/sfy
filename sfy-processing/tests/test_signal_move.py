@@ -144,7 +144,7 @@ def test_direction_integrate(plot):
     fs = 52
     dt = 1/fs
     t = np.arange(0, 200, dt)
-    win = 0.2 * np.hamming(3 * fs) + 9.81
+    win = 0.2 * np.hamming(10 * fs) + 9.81
     print(win.shape)
     print(t.shape)
 
@@ -218,3 +218,51 @@ def test_v6_16g_range_window_20cm_1m_test(sfyhub, plot):
 
         plt.show()
 
+@needs_hub
+def test_at_rest(sfyhub, plot):
+    b = sfyhub.buoy('dev867648043600996')
+    pcks = b.axl_packages_range(
+        datetime(2024, 2, 19, 9, 0, tzinfo=timezone.utc),
+        datetime(2024, 2, 19, 10, 11, tzinfo=timezone.utc))
+
+    c = axl.AxlCollection(pcks)
+    ds = c.to_dataset()
+    print(ds)
+
+    ds = ds.sel(time=slice('2024-02-19T9:05', '2024-02-19T9:21'))
+
+    print(ds.w_z.mean())
+
+
+    if plot:
+        plt.figure()
+        ds.w_z.plot()
+        plt.show()
+
+    assert ds.w_z.mean() == approx(9.81, abs=0.3)
+
+@needs_hub
+def test_lift(sfyhub, plot):
+    b = sfyhub.buoy('dev867648043600996')
+    pcks = b.axl_packages_range(
+        datetime(2024, 2, 19, 9, 5, tzinfo=timezone.utc),
+        datetime(2024, 2, 19, 10, 11, tzinfo=timezone.utc))
+
+    c = axl.AxlCollection(pcks)
+    ds = c.to_dataset()
+    print(ds)
+
+    # time 9:42 UTC
+    ds = ds.sel(time=slice('2024-02-19T9:39', '2024-02-19T9:45'))
+
+    u = sxr.displacement(ds)
+
+    if plot:
+        plt.figure()
+        ds.w_z.plot()
+        u.u_z.plot()
+        plt.show()
+
+    print(ds.w_z.mean())
+
+    assert ds.w_z.mean() == approx(9.81, abs=0.3)

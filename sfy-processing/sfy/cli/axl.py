@@ -218,7 +218,12 @@ def ts(dev, tx_start, tx_end, start, end, file, gap, freq, displacement, no_reti
               is_flag=True,
               help='Files contain raw accelerometer and gyroscope readings.',
               type=bool)
-def raw(dev, start, end, gap, displacement, raw, file, raw_files):
+@click.option('--no-retime',
+              default=False,
+              is_flag=True,
+              help='Do not retime based on estimated frequency.',
+              type=bool)
+def raw(dev, start, end, gap, displacement, raw, file, raw_files, no_retime):
     """
     Read raw files from SD-card and collect into a collection.
     """
@@ -278,7 +283,7 @@ def raw(dev, start, end, gap, displacement, raw, file, raw_files):
     if file:
         logger.info(f"Saving to {file}..")
 
-        pcks.to_netcdf(file, displacement=displacement)
+        pcks.to_netcdf(file, displacement=displacement, retime=(not no_retime))
 
 @axl.command(help='Monitor buoy')
 @click.argument('dev')
