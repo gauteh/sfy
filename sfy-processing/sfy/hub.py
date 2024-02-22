@@ -71,6 +71,8 @@ class Hub:
     def __request__(self, path):
         url = urljoin(self.endpoint, path)
 
+        logger.debug(f'Requesting: {url}')
+
         r = requests.get(url, headers={'SFY_AUTH_TOKEN': self.key})
         r.raise_for_status()
 

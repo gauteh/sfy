@@ -62,8 +62,8 @@ def list():
 def json(dev, file):
     hub = Hub.from_env()
     buoy = hub.buoy(dev)
-    ax = buoy.package(file)
-    print(str(ax.json()))
+    pck = buoy.json_package(file)
+    print(pck)
 
 @sfy.command(help='List all events')
 @click.argument('dev')
