@@ -48,6 +48,7 @@ impl Into<String> for BuoyType {
 pub enum OmbMessageType {
     GPS,
     IMU,
+    Thermistor,
     Unknown,
 }
 
@@ -56,6 +57,7 @@ impl OmbMessageType {
         match self {
             OmbMessageType::GPS => "gps",
             OmbMessageType::IMU => "imu",
+            OmbMessageType::Thermistor => "thermistor",
             OmbMessageType::Unknown => "unknown",
         }
     }
@@ -66,6 +68,7 @@ impl From<&str> for OmbMessageType {
         match s {
             "gps" => OmbMessageType::GPS,
             "imu" => OmbMessageType::IMU,
+            "thermistor" => OmbMessageType::Thermistor,
             _ => OmbMessageType::Unknown,
         }
     }
