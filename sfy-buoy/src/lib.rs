@@ -40,6 +40,9 @@ pub mod note;
 pub mod storage;
 pub mod waves;
 
+#[cfg(feature = "temp")]
+pub mod temp;
+
 use axl::AxlPacket;
 #[cfg(feature = "storage")]
 use storage::Storage;

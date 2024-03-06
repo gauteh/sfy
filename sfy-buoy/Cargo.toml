@@ -32,6 +32,8 @@ libm = { version = "0.2", features = [ "unstable" ] }
 rtcc = "0.3.0"
 anyhow = { version = "1", optional = true }
 argh = { version = "*", optional = true }
+one-wire-bus = { version = "*", optional = true }
+ds18b20 = { version = "0.1.1", optional = true }
 
 [dependencies.ahrs-fusion]
 git = "https://github.com/gauteh/ahrs-fusion"
@@ -50,6 +52,7 @@ raw = [ "storage" ]
 fir = []
 storage = []
 surf = []
+temp = [ "dep:one-wire-bus", "dep:ds18b20" ]
 target-test = [ "storage" ]
 build-bin = [ "fir", "storage", "raw", "anyhow", "argh", "serde-json-core/std", "serde_json", "chrono/std" ]
 
