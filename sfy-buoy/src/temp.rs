@@ -73,6 +73,10 @@ impl<P: OutputPin<Error = E> + InputPin<Error = E>, E: Debug> Temps<P, E> {
         })
     }
 
+    /// Initiate temp reading on all sensors and wait for required time. May be up to 750 ms at max
+    /// resolution.
+    ///
+    /// XXX: need to make non-blocking
     pub fn read_all_temps(
         &mut self,
         delay: &mut (impl DelayUs<u16> + DelayMs<u16>),
@@ -82,7 +86,8 @@ impl<P: OutputPin<Error = E> + InputPin<Error = E>, E: Debug> Temps<P, E> {
         if !self.probes.is_empty() {
             ds18b20::start_simultaneous_temp_measurement(&mut self.wire, delay)?;
 
-            self.resolution.delay_for_measurement_time(delay);
+            self.resolution.delay_for_measurement_time(delay); // XXX: would be nice to await this.
+                                                               // probably need to do in non-block.
 
             for p in &self.probes {
                 let data = p.sensor.read_data(&mut self.wire, delay)?;
