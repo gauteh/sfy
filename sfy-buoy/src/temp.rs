@@ -5,12 +5,22 @@ use embedded_hal::digital::v2::{InputPin, OutputPin};
 use heapless::Vec;
 use one_wire_bus::{Address, OneWire, OneWireError};
 
+use crate::waves::wire::ScaledF32;
+
 const MAX_PROBES: usize = 8;
+
+#[derive(Copy, Clone)]
+enum TempsState {
+    Ready(i64),    // Ready to sample: time since start of last sample
+    Sampling(i64), // currently sampling, waiting for sample to be ready
+    Failed(i64),   // failure, with timestamp (millis) since failure
+}
 
 pub struct Temps<P: OutputPin<Error = E> + InputPin<Error = E>, E: Debug> {
     wire: OneWire<P>,
     probes: Vec<Probe, MAX_PROBES>,
     resolution: ds18b20::Resolution,
+    state: TempsState,
 }
 
 pub struct Probe {
@@ -62,7 +72,7 @@ impl<P: OutputPin<Error = E> + InputPin<Error = E>, E: Debug> Temps<P, E> {
         for addr in addresses {
             probes
                 .push(Probe::new(addr, &mut wire, resolution, delay)?)
-                .map_err(|_| ()) // Probe doesn't impl Debug
+                .map_err(|_| ()) // ds18b20 doesn't impl Debug
                 .unwrap(); // already checked size
         }
 
@@ -70,6 +80,7 @@ impl<P: OutputPin<Error = E> + InputPin<Error = E>, E: Debug> Temps<P, E> {
             wire,
             probes,
             resolution,
+            state: TempsState::Ready(0),
         })
     }
 
@@ -97,6 +108,45 @@ impl<P: OutputPin<Error = E> + InputPin<Error = E>, E: Debug> Temps<P, E> {
 
         Ok(temps)
     }
+
+    /// Non-blocking sampling
+    pub fn sample(
+        &mut self,
+        delay: &mut (impl DelayUs<u16> + DelayMs<u16>),
+        now: i64,
+    ) -> Result<(), OneWireError<E>> {
+        match self.state {
+            TempsState::Ready(last) => {
+                if now - last >= 1000 {
+                    defmt::trace!("triggering simultaneous temp measurement..");
+                    ds18b20::start_simultaneous_temp_measurement(&mut self.wire, delay)?;
+                    self.state = TempsState::Sampling(now);
+                } else if last > now {
+                    // negative time jump
+                    self.state = TempsState::Failed(now);
+                }
+            }
+            TempsState::Sampling(start) => {
+                if now - start >= self.resolution.max_measurement_time_millis().into() {
+                    defmt::trace!("reading all temp measurements..");
+
+                    for p in &self.probes {
+                        let data = p.sensor.read_data(&mut self.wire, delay)?;
+                        // temps.push(data.temperature).unwrap(); // cannot be more probes than MAX_PROBES
+                        todo!("read");
+                    }
+
+                    self.state = TempsState::Ready(now);
+                } else if start > now {
+                    // negative time jump
+                    self.state = TempsState::Failed(now);
+                }
+            }
+            _ => todo!(),
+        }
+
+        Ok(())
+    }
 }
 
 impl Probe {
@@ -112,5 +162,41 @@ impl Probe {
         sensor.set_config(i8::MIN, i8::MAX, resolution, wire, delay)?;
 
         Ok(Probe { address, sensor })
+    }
+}
+
+/// An temperature value packed into an u16 between pre-determined limits.
+#[repr(transparent)]
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub struct T16(u16);
+
+unsafe impl bytemuck::Zeroable for T16 {}
+unsafe impl bytemuck::Pod for T16 {}
+
+pub const TEMP_MAX: f32 = 125.; // in C
+                                //
+impl ScaledF32 for T16 {
+    const MAX: f32 = TEMP_MAX; // celsius
+
+    fn from_u16(u: u16) -> Self {
+        T16(u)
+    }
+
+    fn to_u16(&self) -> u16 {
+        self.0
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn serialize_u16() {
+        // 12 bits has accuracy 0.0625°C according to datasheet
+        assert!((T16::from_f32(-3.).to_f32() - -3.).abs() < 0.001);
+        assert!((T16::from_f32(-10.).to_f32() - -10.).abs() < 0.001);
+        assert!((T16::from_f32(10.).to_f32() - 10.).abs() < 0.001);
+        assert!((T16::from_f32(30.).to_f32() - 30.).abs() < 0.01);
     }
 }
