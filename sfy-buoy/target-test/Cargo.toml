@@ -34,6 +34,10 @@ harness = false
 name = "cellular_sensor_data"
 harness = false
 
+[[test]]
+name = "temp_sensor"
+harness = false
+
 [dependencies]
 sfy = { path = "../", default-features = false, features = [ "target-test" ] }
 heapless = { version = "0.7", features = [ "serde", "ufmt-impl", "defmt-impl" ] }
