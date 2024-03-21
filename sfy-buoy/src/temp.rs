@@ -35,15 +35,14 @@ impl<P: OutputPin<Error = E> + InputPin<Error = E>, E: Debug> Temps<P, E> {
     pub fn new(w: P, delay: &mut impl DelayUs<u16>) -> Result<Temps<P, E>, OneWireError<E>> {
         defmt::info!("setting up temperature sensors..");
         let mut wire = OneWire::new(w)?;
+        let resolution = ds18b20::Resolution::Bits12;
+        let mut addresses = heapless::Vec::<_, MAX_PROBES>::new();
 
         defmt::info!("scanning for temperature probes..");
 
-        let resolution = ds18b20::Resolution::Bits12;
-
-        let mut addresses = heapless::Vec::<_, MAX_PROBES>::new();
-
         for device in wire.devices(false, delay) {
             let device = device?;
+            defmt::trace!("device: {:?}", device.0);
             if device.family_code() == ds18b20::FAMILY_CODE {
                 defmt::info!(
                     "found device at: {:#x} with family code: {:#x}",
@@ -66,6 +65,8 @@ impl<P: OutputPin<Error = E> + InputPin<Error = E>, E: Debug> Temps<P, E> {
                 );
             }
         }
+
+        defmt::info!("found {} devices, configuring..", addresses.len());
 
         let mut probes = heapless::Vec::new();
 

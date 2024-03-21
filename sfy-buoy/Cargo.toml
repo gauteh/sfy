@@ -53,7 +53,7 @@ fir = []
 storage = []
 surf = []
 temp = [ "dep:one-wire-bus", "dep:ds18b20" ]
-target-test = [ "storage" ]
+target-test = [ "storage", "temp" ]
 build-bin = [ "fir", "storage", "raw", "anyhow", "argh", "serde-json-core/std", "serde_json", "chrono/std" ]
 
 
@@ -62,6 +62,7 @@ ism330dhcx = { git = "https://github.com/gauteh/ism330dhcx", branch = "gyro-acce
 # ism330dhcx = { path = "../../../../dev/embedded/ism330dhcx" }
 cmsis_dsp = { git = "https://github.com/samcrow/cmsis_dsp.rs" }
 embedded-sdmmc = { git = "https://github.com/rust-embedded-community/embedded-sdmmc-rs", rev="3b5c026d" }
+one-wire-bus = { path = "../../../../dev/embedded/one-wire-bus" }
 # embedded-sdmmc = { git = "https://github.com/gauteh/embedded-sdmmc-rs", branch = "sdmmc-spi-borrow" }
 # embedded-sdmmc = { path = "../../../../dev/embedded/embedded-sdmmc-rs" }
 
@@ -71,8 +72,8 @@ embedded-sdmmc = { git = "https://github.com/rust-embedded-community/embedded-sd
 # [patch.'https://github.com/gauteh/notecard-rs']
 # blues-notecard = { path = "../../../../dev/embedded/notecard-rs" }
 
-# [patch.'https://github.com/gauteh/ambiq-rs']
-# ambiq-hal = { path = "../../../../dev/embedded/ambiq-rs/ambiq-hal" }
+[patch.'https://github.com/gauteh/ambiq-rs']
+ambiq-hal = { path = "../../../../dev/embedded/ambiq-rs/ambiq-hal" }
 
 # cargo build/run
 [profile.dev]
