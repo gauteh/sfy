@@ -124,10 +124,10 @@ mod tests {
         let mut led = pins.d19.into_push_pull_output();
 
         // pin D8 (on artemis nano)
-        // let mut tp = pins.d8.into_input_output();
-        let mut tp = pins.d10.into_input_output();
+        let mut tp = pins.d8.into_input();
+        // let mut tp = pins.d10.into_input_output();
         // tp.internal_pull_up(true);
-        tp.open_drain();
+        // tp.open_drain();
         // tp.set_high().ok();
         // assert_eq!(tp.is_high().unwrap(), true);
 

@@ -63,6 +63,7 @@ ism330dhcx = { git = "https://github.com/gauteh/ism330dhcx", branch = "gyro-acce
 cmsis_dsp = { git = "https://github.com/samcrow/cmsis_dsp.rs" }
 embedded-sdmmc = { git = "https://github.com/rust-embedded-community/embedded-sdmmc-rs", rev="3b5c026d" }
 one-wire-bus = { path = "../../../../dev/embedded/one-wire-bus" }
+ds18b20 = { path = "../../../../dev/embedded/ds18b20" }
 # embedded-sdmmc = { git = "https://github.com/gauteh/embedded-sdmmc-rs", branch = "sdmmc-spi-borrow" }
 # embedded-sdmmc = { path = "../../../../dev/embedded/embedded-sdmmc-rs" }
 

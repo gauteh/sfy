@@ -1,4 +1,6 @@
+use core::convert::Infallible;
 use core::fmt::Debug;
+use core::marker::PhantomData;
 use embedded_hal::blocking::delay::{DelayMs, DelayUs};
 use embedded_hal::digital::v2::{InputPin, OutputPin};
 
@@ -16,8 +18,10 @@ enum TempsState {
     Failed(i64),   // failure, with timestamp (millis) since failure
 }
 
-pub struct Temps<P: OutputPin<Error = E> + InputPin<Error = E>, E: Debug> {
-    wire: OneWire<P>,
+type E = Infallible;
+
+pub struct Temps {
+    wire: OneWire,
     probes: Vec<Probe, MAX_PROBES>,
     resolution: ds18b20::Resolution,
     state: TempsState,
@@ -28,11 +32,11 @@ pub struct Probe {
     pub sensor: ds18b20::Ds18b20,
 }
 
-impl<P: OutputPin<Error = E> + InputPin<Error = E>, E: Debug> Temps<P, E> {
+impl Temps {
     /// Scan for devices, init and set up logging.
     ///
     /// Can be re-run to reset.
-    pub fn new(w: P, delay: &mut impl DelayUs<u16>) -> Result<Temps<P, E>, OneWireError<E>> {
+    pub fn new(w: one_wire_bus::TI, delay: &mut impl DelayUs<u16>) -> Result<Temps, OneWireError<E>> {
         defmt::info!("setting up temperature sensors..");
         let mut wire = OneWire::new(w)?;
         let resolution = ds18b20::Resolution::Bits12;
@@ -151,9 +155,9 @@ impl<P: OutputPin<Error = E> + InputPin<Error = E>, E: Debug> Temps<P, E> {
 }
 
 impl Probe {
-    pub fn new<P: OutputPin<Error = E> + InputPin<Error = E>, E: Debug>(
+    pub fn new(
         address: Address,
-        wire: &mut OneWire<P>,
+        wire: &mut OneWire,
         resolution: ds18b20::Resolution,
         delay: &mut impl DelayUs<u16>,
     ) -> Result<Probe, OneWireError<E>> {
