@@ -10,12 +10,13 @@ use panic_probe as _; // memory layout + panic handler
 use embedded_hal::{
     blocking::delay::DelayUs,
     blocking::spi::{write::Default as DefaultWrite, Transfer},
-    digital::v2::{OutputPin, InputPin},
+    digital::v2::{InputPin, OutputPin},
     spi::FullDuplex,
 };
 use embedded_sdmmc::{
     Error as GenericSdMmcError, Mode, SdCard, SdCardError, VolumeIdx, VolumeManager,
 };
+use one_wire_bus::BaudRate;
 use sfy::storage::{self, Storage};
 
 pub static COUNT: AtomicI32 = AtomicI32::new(0);
@@ -123,6 +124,11 @@ mod tests {
 
         let mut led = pins.d19.into_push_pull_output();
 
+        let tx = pins.a16;
+        let rx = pins.a0;
+
+        let uart = hal::uart::new_12_13(dp.UART1, tx, rx, 115200);
+
         // pin D8 (on artemis nano)
         let mut tp = pins.d8.into_input();
         // let mut tp = pins.d10.into_input_output();
@@ -158,7 +164,20 @@ mod tests {
         defmt::info!("setting up dsb driver");
         defmt::flush();
         delay.delay_ms(1000_u32);
-        let temp = sfy::temp::Temps::new(tp, &mut delay).unwrap();
+        let temp = sfy::temp::Temps::new(
+            uart,
+            |uart, br| match br {
+                BaudRate::B9600 => {
+                    uart.set_baudrate(9600);
+                }
+                BaudRate::B115200 => {
+                    uart.set_baudrate(115200);
+                }
+            },
+            &mut delay,
+        ).unwrap();
+
+        defmt::info!("devices: {}", temp.probes.len());
 
         for _ in 0..1000 {
             defmt::info!("loop");
@@ -170,4 +189,3 @@ mod tests {
         }
     }
 }
-

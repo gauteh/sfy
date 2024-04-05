@@ -4,8 +4,9 @@ use core::marker::PhantomData;
 use embedded_hal::blocking::delay::{DelayMs, DelayUs};
 use embedded_hal::digital::v2::{InputPin, OutputPin};
 
+use embedded_hal::serial::{Read, Write};
 use heapless::Vec;
-use one_wire_bus::{Address, OneWire, OneWireError};
+use one_wire_bus::{Address, BaudRate, OneWire, OneWireError};
 
 use crate::waves::wire::ScaledF32;
 
@@ -18,11 +19,9 @@ enum TempsState {
     Failed(i64),   // failure, with timestamp (millis) since failure
 }
 
-type E = Infallible;
-
-pub struct Temps {
-    wire: OneWire,
-    probes: Vec<Probe, MAX_PROBES>,
+pub struct Temps<U> {
+    wire: OneWire<U>,
+    pub probes: Vec<Probe, MAX_PROBES>,
     resolution: ds18b20::Resolution,
     state: TempsState,
 }
@@ -32,13 +31,20 @@ pub struct Probe {
     pub sensor: ds18b20::Ds18b20,
 }
 
-impl Temps {
+impl<U, E> Temps<U>
+where
+    U: Read<u8, Error = E> + Write<u8, Error = E>,
+{
     /// Scan for devices, init and set up logging.
     ///
     /// Can be re-run to reset.
-    pub fn new(w: one_wire_bus::TI, delay: &mut impl DelayUs<u16>) -> Result<Temps, OneWireError<E>> {
+    pub fn new(
+        w: U,
+        set_baudrate: fn(&mut U, BaudRate) -> (),
+        delay: &mut impl DelayUs<u16>,
+    ) -> Result<Temps<U>, OneWireError<E>> {
         defmt::info!("setting up temperature sensors..");
-        let mut wire = OneWire::new(w)?;
+        let mut wire = OneWire::new(w, set_baudrate)?;
         let resolution = ds18b20::Resolution::Bits12;
         let mut addresses = heapless::Vec::<_, MAX_PROBES>::new();
 
@@ -77,8 +83,8 @@ impl Temps {
         for addr in addresses {
             probes
                 .push(Probe::new(addr, &mut wire, resolution, delay)?)
-                .map_err(|_| ()) // ds18b20 doesn't impl Debug
-                .unwrap(); // already checked size
+                .ok();
+            // .unwrap(); // already checked size
         }
 
         Ok(Temps {
@@ -155,12 +161,15 @@ impl Temps {
 }
 
 impl Probe {
-    pub fn new(
+    pub fn new<U, E>(
         address: Address,
-        wire: &mut OneWire,
+        wire: &mut OneWire<U>,
         resolution: ds18b20::Resolution,
         delay: &mut impl DelayUs<u16>,
-    ) -> Result<Probe, OneWireError<E>> {
+    ) -> Result<Probe, OneWireError<E>>
+    where
+        U: Read<u8, Error = E> + Write<u8, Error = E>,
+    {
         let sensor = ds18b20::Ds18b20::new(address)?;
 
         // configure

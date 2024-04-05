@@ -957,6 +957,7 @@ dependencies = [
  "ambiq-hal",
  "defmt",
  "embedded-hal",
+ "nb 1.1.0",
 ]
 
 [[package]]
@@ -1402,6 +1403,7 @@ dependencies = [
  "heapless",
  "ism330dhcx",
  "micromath",
+ "one-wire-bus",
  "panic-probe",
  "serde",
  "serde-json-core",

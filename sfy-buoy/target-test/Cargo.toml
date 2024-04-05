@@ -59,6 +59,7 @@ embedded-hal = "0.2.6"
 cmsis_dsp = { version = "0.1.0", features = [ "micromath" ] }
 embedded-sdmmc = { version = "0.6.0", default-features = false, features = ["defmt-log"] }
 micromath = "2.1.0"
+one-wire-bus = "*"
 
 [dependencies.ambiq-hal]
 version = "0.3"
