@@ -1,4 +1,4 @@
-VERSION=6.1.1.16332$$20231222144855
+VERSION=6.2.2.16520$$20240410160742
 FW=fw/notecard-$(VERSION).bin
 FLASH=/home/gauteh/dev/embedded/STM32Cube/bin/STM32_Programmer_CLI
 USB ?= /dev/ttyACM0
