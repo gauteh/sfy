@@ -11,6 +11,7 @@
             <img src="https://arxiv.org/html/2401.02286v1/extracted/5326289/Fig01.png" />
         </td>
         <td>
+            
 * [sfy-buoy](sfy-buoy/) - the firmware for the wave buoy.
 * [sfy-drifter](sfy-drifter/) - a minimal, modem & gps, only drifter buoy.
 * [hardware](hardware/Hardware.md) | [build-tutorial](https://www.hackster.io/gaute-hope/ocean-buoy-to-measure-waves-drift-using-low-power-cellular-16ad09) | [bill-of-materials](https://docs.google.com/spreadsheets/d/e/2PACX-1vRE62P6-pCVzig-hSsqVcr2DABZ5LlB4lt1ZFfrct_tdcxoljO3zjmq7vGT1-jjqNiVCXLdns6XSkHF/pubhtml?gid=0&single=true) - hardware and assembly instructions.
