@@ -7,6 +7,17 @@ from . import signal
 
 logger = logging.getLogger(__name__)
 
+def findfirst(ba):
+    """
+    ba: boolean array, find index of first True or return last.
+    """
+
+    i = np.argmax(ba)
+
+    if not ba[i]:
+        return len(ba)
+    else:
+        return i
 
 def welch(ds: xr.Dataset):
     return signal.welch(ds.estimated_frequency, ds.w_z)
@@ -399,10 +410,14 @@ def seltime(ds, start, end):
     fend = pd.to_datetime(end).to_datetime64().astype('datetime64[ms]').astype(
         float)
 
+    assert fend > fstart
+
     tdt = ds.time.values.astype('datetime64[ms]').astype(float)
-    it0 = np.argmax(tdt >= fstart)
-    it1 = np.argmax(tdt > fend)
-    # print(ip0, ip1)
+    it0 = findfirst(tdt >= fstart)
+    it1 = findfirst(tdt > fend)
+    print(it0, it1)
+
+    assert it1 > it0, "start comes after end"
 
     # assert ds.time.dt.is_monotonic_increasing
     # print(pd.to_datetime(ds.time.values).is_monotonic_increasing)
@@ -411,8 +426,10 @@ def seltime(ds, start, end):
 
     if 'package_start' in ds.variables:
         pdt = ds.package_start.values.astype('datetime64[ms]').astype(float)
-        ip0 = np.argmax(pdt >= fstart)
-        ip1 = np.argmax(pdt > fend)
+        ip0 = findfirst(pdt >= fstart)
+        ip1 = findfirst(pdt > fend)
+
+        assert ip1 > ip0, "start comes after end"
 
         ds = ds.isel(package=slice(ip0, ip1))
 
