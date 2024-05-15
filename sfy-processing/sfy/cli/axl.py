@@ -8,6 +8,7 @@ import numpy as np
 import time
 import os
 
+import sfy
 from sfy.hub import Hub
 from sfy.axl import Axl, AxlCollection
 from sfy import signal
@@ -92,7 +93,8 @@ def list_buoys(dev, tx_start, tx_end):
               is_flag=True,
               help='Do not retime based on estimated frequency.',
               type=bool)
-def ts(dev, tx_start, tx_end, start, end, file, gap, freq, displacement, no_retime):
+def ts(dev, tx_start, tx_end, start, end, file, gap, freq, displacement,
+       no_retime):
     hub = Hub.from_env()
     buoy = hub.buoy(dev)
 
@@ -185,7 +187,163 @@ def ts(dev, tx_start, tx_end, start, end, file, gap, freq, displacement, no_reti
     if file:
         logger.info(f"Saving to {file}..")
 
-        pcks.to_netcdf(file, displacement=displacement, retime=(not no_retime))
+        if len(pcks) > 0:
+            pcks.to_netcdf(file, displacement=displacement, retime=(not no_retime))
+        else:
+            logger.error("No data to save.")
+
+
+@axl.command()
+@click.argument('dev')
+@click.option('--tx-start',
+              default=None,
+              help='Search in packages after this time (default: 24h ago)',
+              type=click.DateTime())
+@click.option('--tx-end',
+              default=None,
+              help='Search in packages before this time (default: now)',
+              type=click.DateTime())
+@click.option('--start',
+              default=None,
+              help='Clip results before this (default: tx-start)',
+              type=click.DateTime())
+@click.option('--end',
+              default=None,
+              help='Clip results after this (default: tx-end)',
+              type=click.DateTime())
+@click.option('--file',
+              default=None,
+              help='Store to this file',
+              type=click.Path())
+@click.option(
+    '--gap',
+    default=None,
+    help=
+    'Maximum gap allowed between packages before splitting into new segment (seconds).',
+    type=float)
+@click.option(
+    '--freq',
+    default=None,
+    help=
+    'Only use packages with this frequency (usually 52 or 20.8, within 2 Hz)',
+    type=float)
+@click.option('--raw',
+              default=False,
+              is_flag=True,
+              help='Do not try to filter automatically',
+              type=bool)
+@click.option('--no-retime',
+              default=False,
+              is_flag=True,
+              help='Do not retime based on estimated frequency.',
+              type=bool)
+def stats(dev, tx_start, tx_end, start, end, file, gap, freq, raw, no_retime):
+    hub = Hub.from_env()
+    buoy = hub.buoy(dev)
+
+    if tx_start is None:
+        tx_start = datetime.utcnow() - timedelta(days=1)
+
+    if tx_end is None:
+        if end is not None:
+            tx_end = end + timedelta(days=14)
+        else:
+            tx_end = datetime.utcnow()
+
+    if start is None:
+        start = tx_start
+
+    if end is None:
+        end = datetime.utcnow()
+
+    if tx_start > start:
+        tx_start = start
+
+    if tx_end < end:
+        tx_end = end
+
+    tx_start = utcify(tx_start)
+    tx_end = utcify(tx_end)
+    start = utcify(start)
+    end = utcify(end)
+
+    logger.info(
+        f"Scanning for packages tx: {tx_start} <-> {tx_end} and clipping between {start} <-> {end}"
+    )
+
+    pcks = buoy.axl_packages_range(tx_start, tx_end)
+    logger.info(f"{len(pcks)} packages in tx range")
+
+    if freq:
+        pcks = list(filter(lambda p: abs(p.frequency - freq) <= 2, pcks))
+        logger.info(
+            f"Filtering packages on frequency: {freq}, {len(pcks)} packages matching."
+        )
+
+    logger.debug(f'Building collection..')
+    pcks = AxlCollection(pcks)
+
+    # filter packages between start and end
+    pcks.clip(start, end)
+    logger.info(
+        f"{len(pcks)} in start <-> end range, splitting into segments..")
+
+    gap = gap if gap is not None else AxlCollection.GAP_LIMIT
+
+    logger.debug('Splitting collection into segments..')
+    segments = list(pcks.segments(eps_gap=gap))
+    logger.info(f"Collection consists of: {len(segments)} segments")
+
+    assert len(pcks) == sum(len(s) for s in segments)
+
+    stable = [[
+        s.start,
+        s.end,
+        s.duration,
+        timedelta(seconds=s.duration),
+        s.max_gap(),
+        np.nan,
+        len(s),
+        s.pcks[0].storage_id,
+        s.pcks[-1].storage_id,
+    ] for s in segments]
+
+    for i, _ in enumerate(stable[1:]):
+        stable[i + 1][5] = (stable[i + 1][0] - stable[i][1])
+
+    print(
+        tabulate(stable,
+                 headers=[
+                     'Start',
+                     'End',
+                     'Duration (s)',
+                     'Duration',
+                     'Max Internal Gap',
+                     'Segment Gap',
+                     'Packages',
+                     'Start ID',
+                     'End ID',
+                 ]))
+
+    del segments
+
+    if len(pcks) > 0:
+        ds = pcks.to_dataset(retime=(not no_retime))
+        st = sfy.xr.spec_stats(ds, raw=raw)
+        print(st)
+
+        if file:
+            logger.info(f"Saving to {file}..")
+
+            compression = {'zlib': True}
+            encoding = {}
+            for v in st.variables:
+                encoding[v] = compression.copy()
+            encoding['time']['units'] = 'microseconds since 2023-01-01 00:00:00.0'
+            st.to_netcdf(file, format='NETCDF4', encoding=encoding)
+    else:
+        logger.error("No data.")
+
 
 @axl.command()
 @click.argument('dev')
@@ -231,9 +389,12 @@ def raw(dev, start, end, gap, displacement, raw, file, raw_files, no_retime):
     b = hub.buoy(dev)
     logger.info(f"Reading {len(raw_files)} raw files..")
 
-    pcks = [ AxlCollection.from_storage_file(b.name, b.dev, f, raw=raw) for f in raw_files ]
-    pcks = [ p.pcks for p in pcks if p is not None ]
-    pcks = [ p for li in pcks for p in li ]
+    pcks = [
+        AxlCollection.from_storage_file(b.name, b.dev, f, raw=raw)
+        for f in raw_files
+    ]
+    pcks = [p.pcks for p in pcks if p is not None]
+    pcks = [p for li in pcks for p in li]
     logger.info(f"{len(pcks)} packages in files")
 
     pcks = AxlCollection(pcks)
@@ -284,6 +445,7 @@ def raw(dev, start, end, gap, displacement, raw, file, raw_files, no_retime):
         logger.info(f"Saving to {file}..")
 
         pcks.to_netcdf(file, displacement=displacement, retime=(not no_retime))
+
 
 @axl.command(help='Monitor buoy')
 @click.argument('dev')
