@@ -11,10 +11,10 @@
             <img src="https://arxiv.org/html/2401.02286v1/extracted/5326289/Fig01.png" />
         </td>
         <td>
-            
+
 * [sfy-buoy](sfy-buoy/) - the firmware for the wave buoy.
 * [sfy-drifter](sfy-drifter/) - a minimal, modem & gps, only drifter buoy.
-* [hardware](hardware/Hardware.md) | [build-tutorial](https://www.hackster.io/gaute-hope/ocean-buoy-to-measure-waves-drift-using-low-power-cellular-16ad09) | [bill-of-materials](https://docs.google.com/spreadsheets/d/e/2PACX-1vRE62P6-pCVzig-hSsqVcr2DABZ5LlB4lt1ZFfrct_tdcxoljO3zjmq7vGT1-jjqNiVCXLdns6XSkHF/pubhtml?gid=0&single=true) - hardware and assembly instructions.
+* [hardware and build-tutorial](hardware/Hardware.md) - hardware and assembly instructions.
 * [sfy-data](sfy-data/) - the server scraping or receiving data from deployed
     buoys.
 * [sfy-processing](sfy-processing/) - python libraries and tools for reading and post-processing received data.
@@ -32,6 +32,11 @@ The buoys deployed in the surf on the coast of Norway:
 For more information and attribution, please refer to:
 * [Hope, Gaute, et al., 2024, (pre-print), SFY -- A lightweight, high-frequency and phase-resolving wave-buoy for coastal waters](https://arxiv.org/abs/2401.02286)
 * [Seldal, Torunn Irene, M. Sc. thesis, 2023, _SFY: A free-drifting wave buoy for measuring surf waves_](https://bora.uib.no/bora-xmlui/handle/11250/3072146)
+
+# Press
+
+* [met.no - Morgendagens fiskere utdanner seg til en framtid med store endringer](https://www.met.no/nyhetsarkiv/morgendagens-fiskere-utdanner-seg-til-en-framtid-med-store-endringer)
+* [met.no - Surfer rundt i verden for å måle hvordan bølger bryter](https://www.met.no/nyhetsarkiv/surfer-rundt-i-verden-for-a-male-hvordan-bolger-bryter)
 
 # Acknowledgements
 
