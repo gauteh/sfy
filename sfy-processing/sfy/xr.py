@@ -410,14 +410,14 @@ def seltime(ds, start, end):
     fend = pd.to_datetime(end).to_datetime64().astype('datetime64[ms]').astype(
         float)
 
-    assert fend > fstart
+    assert fend >= fstart
 
     tdt = ds.time.values.astype('datetime64[ms]').astype(float)
     it0 = findfirst(tdt >= fstart)
     it1 = findfirst(tdt > fend)
     print(it0, it1)
 
-    assert it1 > it0, "start comes after end"
+    assert it1 >= it0, "start comes after end"
 
     # assert ds.time.dt.is_monotonic_increasing
     # print(pd.to_datetime(ds.time.values).is_monotonic_increasing)
@@ -429,7 +429,7 @@ def seltime(ds, start, end):
         ip0 = findfirst(pdt >= fstart)
         ip1 = findfirst(pdt > fend)
 
-        assert ip1 > ip0, "start comes after end"
+        assert ip1 >= ip0, "start comes after end"
 
         ds = ds.isel(package=slice(ip0, ip1))
 
