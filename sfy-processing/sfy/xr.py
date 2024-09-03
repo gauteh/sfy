@@ -254,6 +254,12 @@ def displacement(ds: xr.Dataset, filter_freqs=None):
     """
     Calculates displacement.
     """
+    if filter_freqs is None:
+        if ds.attrs['frequency'] < 50:
+            filter_freqs = signal.DEFAULT_BANDPASS_FREQS_20Hz
+        else:
+            filter_freqs = signal.DEFAULT_BANDPASS_FREQS_52Hz
+
     logger.info(
         f'Integrating displacment, filter frequencies: {filter_freqs}.')
 
