@@ -117,7 +117,7 @@ def integrate(s,
 
     ## Integrate
     if method == 'trapz':
-        s = sc.integrate.cumtrapz(s, dx=dt)
+        s = sc.integrate.cumulative_trapezoid(s, dx=dt)
     elif method == 'dft':
         s = dft_integrate(s, fs)
     else:

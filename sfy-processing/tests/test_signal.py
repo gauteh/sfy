@@ -19,7 +19,7 @@ def test_integration_dft(plot):
     z = sc.signal.detrend(z)
 
     zz = signal.dft_integrate(z, a.frequency)
-    zc = sc.integrate.cumtrapz(z, dx=a.dt)
+    zc = sc.integrate.cumulative_trapezoid(z, dx=a.dt)
 
     assert len(zz) == len(z)
 
