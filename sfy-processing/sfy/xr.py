@@ -39,7 +39,8 @@ def spec_stats(ds: xr.Dataset,
                raw=False,
                window=(20 * 60),
                nperseg=4096,
-               order=2) -> xr.Dataset:
+               order=2,
+               f0=0.05) -> xr.Dataset:
     """
     Return Dataset with Hm0, Tc, Tz, m0, m2, m4 and elevation spectra.
 
@@ -103,14 +104,15 @@ def spec_stats(ds: xr.Dataset,
         f, Pz = signal.welch(freq, zz, nperseg, order)
         f, Py = signal.welch(freq, yy, nperseg, order)
         f, Px = signal.welch(freq, xx, nperseg, order)
+        fc = 0.0
         if not raw:
-            i0, _, Pz = signal.imu_cutoff_rabault2022(f, Pz)
+            i0, fc, Pz = signal.imu_cutoff_rabault2022(f, Pz, f0)
             Py[:i0] = 0
             Px[:i0] = 0
-        return *signal.spec_stats(f, Pz), f, Pz, Py, Px
+        return *signal.spec_stats(f, Pz), f, fc, Pz, Py, Px
 
     with ThreadPoolExecutor() as ex:
-        m_1, m0, m1, m2, m4, hm0, Tm01, Tm02, Tm_10, Tp, f, Pz, Py, Px = zip(
+        m_1, m0, m1, m2, m4, hm0, Tm01, Tm02, Tm_10, Tp, f, fc, Pz, Py, Px = zip(
             *ex.map(stat, z, y, x))
 
     i = np.append(i, len(zz) - 1)  # Add timestamp for last window as well.
@@ -137,10 +139,22 @@ def spec_stats(ds: xr.Dataset,
                 attrs={
                     'unit':
                     'm',
-                    'long_name':
+                    'standard_name':
                     'sea_surface_wave_significant_height',
                     'description':
                     'Significant wave height calculated in the frequency domain from the zeroth moment (4 * sqrt(m0)).'
+                }),
+            'fc':
+            xr.DataArray(
+                np.array(fc),
+                dims=[
+                    'time',
+                ],
+                attrs={
+                    'unit':
+                    'Hz',
+                    'description':
+                    'High-pass cut-off frequency.'
                 }),
             'Tm01':
             xr.DataArray(
@@ -148,7 +162,7 @@ def spec_stats(ds: xr.Dataset,
                 dims=['time'],
                 attrs={
                     'unit': 's',
-                    'long_name':
+                    'standard_name':
                     'sea_surface_wave_mean_period_from_variance_spectral_density_first_frequency_moment',
                     'description': 'First wave period (m0/m1)'
                 }),
@@ -158,7 +172,7 @@ def spec_stats(ds: xr.Dataset,
                 dims=['time'],
                 attrs={
                     'unit': 's',
-                    'long_name':
+                    'standard_name':
                     'sea_surface_wave_mean_period_from_variance_spectral_density_second_frequency_moment',
                     'description': 'Second wave period (sqrt(m0/m2))'
                 }),
@@ -168,7 +182,7 @@ def spec_stats(ds: xr.Dataset,
                 dims=['time'],
                 attrs={
                     'unit': 's',
-                    'long_name':
+                    'standard_name':
                     'sea_surface_wave_mean_period_from_variance_spectral_density_inverse_frequency_moment',
                     'description': 'Inverse wave period ((m-1/m0))'
                 }),
@@ -179,7 +193,7 @@ def spec_stats(ds: xr.Dataset,
                 attrs={
                     'unit':
                     's',
-                    'long_name':
+                    'standard_name':
                     'sea_surface_wave_period_at_variance_spectral_density_maximum',
                     'description':
                     'Peak period (period with maximum elevation energy)'
@@ -216,7 +230,7 @@ def spec_stats(ds: xr.Dataset,
                 attrs={
                     'unit':
                     'm^2/Hz',
-                    'long_name':
+                    'standard_name':
                     'sea_surface_wave_variance_spectral_density',
                     'description':
                     'Sea surface elevation spectrum (variance density spectrum) calculated using Welch method.',
@@ -228,7 +242,7 @@ def spec_stats(ds: xr.Dataset,
                 attrs={
                     'unit':
                     'm^2/Hz',
-                    'long_name':
+                    'standard_name':
                     'sea_surface_wave_variance_spectral_density',
                     'description':
                     'First horizontal component of sea surface elevation spectrum (variance density spectrum) calculated using Welch method.',
@@ -240,6 +254,8 @@ def spec_stats(ds: xr.Dataset,
                 attrs={
                     'unit':
                     'm^2/Hz',
+                    'standard_name':
+                    'sea_surface_wave_variance_spectral_density',
                     'description':
                     'Second horizontal component of sea surface elevation spectrum (variance density spectrum) calculated using Welch method.',
                 }),
