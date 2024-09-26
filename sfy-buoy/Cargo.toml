@@ -10,7 +10,7 @@ path = "src/bin/sfypack.rs"
 required-features = [ "build-bin", "raw" ]
 
 [workspace]
-members = [ "target-test", "sfy-artemis" ]
+members = [ "target-test", "sfy-artemis", "sfy-ext-gps" ]
 
 [dependencies]
 base64 = { version = "0.13.0", default-features = false }
