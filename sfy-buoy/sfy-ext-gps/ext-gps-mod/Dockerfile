@@ -6,9 +6,9 @@ RUN apt-get update && apt-get install -y curl git build-essential ffmpeg arduino
 
 RUN curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | BINDIR=/usr/local/bin sh
 
-WORKDIR /work
+WORKDIR /ext-gps-mod
 
-ADD . .
+ADD Makefile .
 
 RUN make dependencies
 
