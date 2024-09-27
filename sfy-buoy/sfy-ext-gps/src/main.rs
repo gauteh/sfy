@@ -438,6 +438,13 @@ fn reset<I: Read + Write>(note: &mut Notecarrier<I>, delay: &mut impl DelayMs<u1
 #[cfg(not(feature = "host-tests"))]
 #[allow(non_snake_case)]
 #[interrupt]
+fn GPIO() {
+    defmt::info!("GPIO interrupt!");
+}
+
+#[cfg(not(feature = "host-tests"))]
+#[allow(non_snake_case)]
+#[interrupt]
 fn RTC() {
     #[allow(non_upper_case_globals)]
     static mut imu: Option<Imu<E, I>> = None;
