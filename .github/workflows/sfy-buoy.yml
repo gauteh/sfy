@@ -55,20 +55,20 @@ jobs:
         run: |
           mkdir -p target/bins
           make T=r bin
-          mv target/sfy-buoy.bin target/bins/sfy-fw-default-no-storage.bin
+          mv target/sfy-artemis.bin target/bins/sfy-fw-default-no-storage.bin
 
           CARGO_FLAGS="--features storage" make T=r bin
-          mv target/sfy-buoy.bin target/bins/sfy-fw-default-with-storage.bin
+          mv target/sfy-artemis.bin target/bins/sfy-fw-default-with-storage.bin
 
       - name: Build firmware (5 min GPS)
         working-directory: sfy-buoy/
         run: |
           mkdir -p target/bins
           GPS_PERIOD=300 GPS_HEARTBEAT=-5 SYNC_PERIOD=20 make T=r bin
-          mv target/sfy-buoy.bin target/bins/sfy-fw-5min-gps-no-storage.bin
+          mv target/sfy-artemis.bin target/bins/sfy-fw-5min-gps-no-storage.bin
 
           GPS_PERIOD=300 GPS_HEARTBEAT=-5 SYNC_PERIOD=20 CARGO_FLAGS="--features storage" make T=r bin
-          mv target/sfy-buoy.bin target/bins/sfy-fw-5min-gps-with-storage.bin
+          mv target/sfy-artemis.bin target/bins/sfy-fw-5min-gps-with-storage.bin
 
 
       - name: Build firmware (surf)
@@ -76,40 +76,40 @@ jobs:
         run: |
           mkdir -p target/bins
           GPS_PERIOD=300 GPS_HEARTBEAT=-5 SYNC_PERIOD=20 CARGO_FLAGS="--features surf" make T=r bin
-          mv target/sfy-buoy.bin target/bins/sfy-fw-surf-no-storage.bin
+          mv target/sfy-artemis.bin target/bins/sfy-fw-surf-no-storage.bin
 
           GPS_PERIOD=300 GPS_HEARTBEAT=-5 SYNC_PERIOD=20 CARGO_FLAGS="--features surf,storage" make T=r bin
-          mv target/sfy-buoy.bin target/bins/sfy-fw-surf-with-storage.bin
+          mv target/sfy-artemis.bin target/bins/sfy-fw-surf-with-storage.bin
 
       - name: Build firmware (26Hz, 10min GPS, drifter)
         working-directory: sfy-buoy/
         run: |
           mkdir -p target/bins
           GPS_PERIOD=300 GPS_HEARTBEAT=-5 SYNC_PERIOD=20 CARGO_FLAGS="--features 20Hz" make T=r bin
-          mv target/sfy-buoy.bin target/bins/sfy-fw-26Hz-drifter-no-storage.bin
+          mv target/sfy-artemis.bin target/bins/sfy-fw-26Hz-drifter-no-storage.bin
 
           GPS_PERIOD=300 GPS_HEARTBEAT=-5 SYNC_PERIOD=20 CARGO_FLAGS="--features 20Hz,storage" make T=r bin
-          mv target/sfy-buoy.bin target/bins/sfy-fw-26Hz-drifter-with-storage.bin
+          mv target/sfy-artemis.bin target/bins/sfy-fw-26Hz-drifter-with-storage.bin
 
       - name: Build firmware (Mooring, 1h gps, 26Hz)
         working-directory: sfy-buoy/
         run: |
           mkdir -p target/bins
           GPS_PERIOD=3600 GPS_HEARTBEAT=1 SYNC_PERIOD=40 CARGO_FLAGS="--features 20Hz" make T=r bin
-          mv target/sfy-buoy.bin target/bins/sfy-fw-26Hz-mooring-no-storage.bin
+          mv target/sfy-artemis.bin target/bins/sfy-fw-26Hz-mooring-no-storage.bin
 
           GPS_PERIOD=3600 GPS_HEARTBEAT=1 SYNC_PERIOD=40 CARGO_FLAGS="--features 20Hz,storage" make T=r bin
-          mv target/sfy-buoy.bin target/bins/sfy-fw-26Hz-mooring-with-storage.bin
+          mv target/sfy-artemis.bin target/bins/sfy-fw-26Hz-mooring-with-storage.bin
 
       - name: Build firmware (Mooring, 1h gps, 52Hz)
         working-directory: sfy-buoy/
         run: |
           mkdir -p target/bins
           GPS_PERIOD=3600 GPS_HEARTBEAT=1 SYNC_PERIOD=40 make T=r bin
-          mv target/sfy-buoy.bin target/bins/sfy-fw-52Hz-mooring-no-storage.bin
+          mv target/sfy-artemis.bin target/bins/sfy-fw-52Hz-mooring-no-storage.bin
 
           GPS_PERIOD=3600 GPS_HEARTBEAT=1 SYNC_PERIOD=40 CARGO_FLAGS="--features storage" make T=r bin
-          mv target/sfy-buoy.bin target/bins/sfy-fw-52Hz-mooring-with-storage.bin
+          mv target/sfy-artemis.bin target/bins/sfy-fw-52Hz-mooring-with-storage.bin
 
       - uses: actions/upload-artifact@v4
         with:
