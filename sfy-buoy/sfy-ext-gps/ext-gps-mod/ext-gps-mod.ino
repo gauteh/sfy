@@ -1,10 +1,13 @@
-
+# include "ArduinoJson.h"
 
 # ifdef GPS
 # include "gps.h"
 # endif
 
-Uart sfy{1, 40, 39};  // Serial to SFY
+// Serial to SFY
+// TX1: ~7 / 42
+// RX1: ~8 / 38
+Uart sfy{1, 38, 42};
 
 void setup()
 {
@@ -16,7 +19,10 @@ void setup()
 # endif
 
   sfy.begin(400000);
-  sfy.println("{'status':'startup'}");
+
+  JsonDocument doc;
+  doc["status"] = "startup";
+  serializeJson(doc, sfy);
 }
 
 //=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=

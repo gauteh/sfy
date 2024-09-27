@@ -12,6 +12,7 @@ dependencies:
 	arduino-cli core install "Sparkfun:apollo3@1.2.1"
 	arduino-cli lib update-index
 	arduino-cli lib install "SparkFun u-blox GNSS v3"
+	arduino-cli lib install "ArduinoJson"
 
 docker-build:
 	docker build -t sfy-rtk .
