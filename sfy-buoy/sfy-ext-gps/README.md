@@ -2,6 +2,8 @@
 
 [ sfy ] <-- [ ext-gps-mod ] <-- [ Ublox RTK-GPS ]
 
+<img src="sfy-rtk.png" width="500px">
+
 ## Communication
 
 ext-gps-mod runs arduino code to read ublox data. it decodes and transmits those
