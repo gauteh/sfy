@@ -1,6 +1,10 @@
+# ifdef GPS
 # include "gps.h"
 
-# ifdef GPS
+/* HardwareSerial serialGNSS(2); // ESP32 UART2: TX on 17, RX on 16 */
+SFE_UBLOX_GNSS myGNSS; // ZED-F9x
+SFE_UBLOX_GNSS myLBand; // NEO-D9S
+                        //
 void setup_gps() {
   serialGNSS.begin(38400); // UART2 on pins 16/17 for SPP. The ZED-F9P will be configured to use the same rate.
   Wire.begin(); //Start I2C
