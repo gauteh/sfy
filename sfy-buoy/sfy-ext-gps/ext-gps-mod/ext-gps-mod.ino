@@ -18,6 +18,9 @@ void setup()
   JsonDocument doc;
   doc["status"] = "startup";
   serializeJson(doc, sfy);
+
+  pinMode(PPS_PIN, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(PPS_PIN), main_pps, RISING);
 }
 
 //=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
@@ -25,4 +28,11 @@ void setup()
 void loop()
 {
   loop_gps();
+  Serial.print(".");
+  delay(50);
+}
+
+void main_pps() {
+  Serial.println("PPS!");
+  pps();
 }

@@ -22,3 +22,9 @@ docker-run:
 
 bin:
 	arduino-cli compile -e --output-dir build --build-cache-path /tmp/build -v -b SparkFun:apollo3:artemis .
+
+flash:
+	python ../../../tools/svl/svl.py  -f build/ext-gps-mod.ino.bin /dev/ttyUSB0
+
+com:
+	picocom -b 115000 /dev/ttyUSB0
