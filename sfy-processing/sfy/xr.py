@@ -99,7 +99,7 @@ def spec_stats(ds: xr.Dataset,
         if np.any(np.isnan(zz)):
             logger.warning(f'NaN values in signal, spectra is set to NaN')
             a = np.full((4096 // 2 + 1, ), np.nan)
-            return np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, a, a, a, a
+            return np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, a, np.nan, a, a, a
 
         f, Pz = signal.welch(freq, zz, nperseg, order)
         f, Py = signal.welch(freq, yy, nperseg, order)
