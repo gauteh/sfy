@@ -50,7 +50,7 @@ void setup_gps() {
   if (ok) ok = gnss.setI2CInput(COM_TYPE_UBX);
   if (ok) ok = gnss.setUART1Output(0);
   if (ok) ok = gnss.setUART1Input(0);
-  if (ok) ok = gnss.setNavigationFrequency(1); //Set output in Hz.
+  if (ok) ok = gnss.setNavigationFrequency(20); //Set output in Hz.
 
   Serial.print(F("GPS setup flag: "));
   Serial.println(ok);
@@ -61,8 +61,12 @@ void setup_gps() {
 
 void loop_gps() {
   // TODO: move these to PPS?
-  gnss.checkUblox();
-  gnss.checkCallbacks();
+  /* gnss.checkUblox(); */
+  /* gnss.checkCallbacks(); */
+  /* if (gnss.newdata()) { */
+  /*   data = gnss.getdata(); */
+  /*   getPVT(data); */
+  /* } */
 }
 
 
@@ -71,8 +75,9 @@ void pps() {
   pps_ts = micros();
 
   Serial.println("GNSS: PPS!");
+  gnss.checkUblox();
+  gnss.checkCallbacks();
 
-  // TODO: checkUblox + checkCallbacks
 }
 
 # endif

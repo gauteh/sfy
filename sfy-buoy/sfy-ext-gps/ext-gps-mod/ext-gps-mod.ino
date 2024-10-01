@@ -4,7 +4,10 @@
 // Serial to SFY
 // TX1: ~7 / 42
 // RX1: ~8 / 38
-Uart sfy{1, 38, 42};
+// ..
+// TX1: ~9 / 39
+// RX1: ~10 / 40
+Uart sfy{1, 40, 39};
 
 void setup()
 {
@@ -27,9 +30,17 @@ void setup()
 
 void loop()
 {
+  static int i = 0;
+
   loop_gps();
   Serial.print(".");
-  delay(50);
+  delay(100);
+
+  JsonDocument doc;
+  doc["loop"] = i;
+  serializeJson(doc, sfy);
+
+  i++;
 }
 
 void main_pps() {
