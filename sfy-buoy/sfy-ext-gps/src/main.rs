@@ -488,11 +488,11 @@ fn GPIO() {
                 Ok(w) => {
                     match w {
                         b'\n' => { break; },
-                        w => { buf.push(w); }
+                        w => { buf.push(w); } // TODO: abort if buf is full.
                     }
                 }
 
-                Err(nb::Error::WouldBlock) => { /* wait */ }
+                Err(nb::Error::WouldBlock) => { /* wait */ } // TODO: timeout
                 Err(nb::Error::Other(e)) => {
                     break;
                 }
@@ -500,6 +500,11 @@ fn GPIO() {
         }
 
         // ready to parse `buf` (on main?).
+
+        // make sure there is nothing in the uart now, otherwise it should be drained.
+        while let Ok(_) = gps.read() {
+            defmt::error!("ext-gps: more data on uart after PPS parsing. discarding.");
+        }
     });
 }
 
