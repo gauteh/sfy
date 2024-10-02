@@ -485,19 +485,22 @@ fn GPIO() {
 
         loop {
             match gps.read() {
-                Ok(w) => {
-                    match w {
-                        b'\n' => {
+                Ok(w) => match w {
+                    b'\n' => {
+                        break;
+                    }
+                    w => match buf.push(w) {
+                        Ok(_) => {}
+                        Err(_) => {
+                            defmt::error!("ext-gps: gps read buf is full.");
                             break;
                         }
-                        w => {
-                            buf.push(w);
-                        } // TODO: abort if buf is full.
-                    }
-                }
+                    },
+                },
 
                 Err(nb::Error::WouldBlock) => { /* wait */ } // TODO: timeout
                 Err(nb::Error::Other(e)) => {
+                    defmt::error!("ext-gps: error reading from uart: {}", e);
                     break;
                 }
             }
