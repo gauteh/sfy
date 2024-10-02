@@ -40,7 +40,11 @@ use embedded_hal::spi::MODE_0;
 use hal::spi::{Freq, Spi};
 
 use git_version::git_version;
-use hal::{i2c, pac::interrupt};
+use hal::{
+    gpio::{InterruptOpt, Mode},
+    i2c,
+    pac::interrupt,
+};
 
 use sfy::log::log;
 use sfy::note::Notecarrier;
@@ -52,8 +56,8 @@ use sfy::{
 };
 use sfy::{Imu, Location, SharedState, State, NOTEQ};
 
-mod log;
 mod gps;
+mod log;
 
 /// This static is used to transfer ownership of the IMU subsystem to the interrupt handler.
 type I = hal::i2c::Iom3;
@@ -66,6 +70,11 @@ defmt::timestamp!("{=i32}", COUNT.load(Ordering::Relaxed));
 /// The STATE contains the Real-Time-Clock which needs to be shared, as well as up-to-date
 /// longitude and latitude.
 pub static STATE: Mutex<RefCell<Option<SharedState<hal::rtc::Rtc>>>> =
+    Mutex::new(RefCell::new(None));
+
+/// Serial and interrupt pin for external GPS.
+static GPS: Mutex<RefCell<Option<hal::uart::Uart1<12, 13>>>> = Mutex::new(RefCell::new(None));
+static A2: Mutex<RefCell<Option<hal::gpio::pin::P11<{ Mode::Input }>>>> =
     Mutex::new(RefCell::new(None));
 
 #[entry]
@@ -143,6 +152,21 @@ fn main() -> ! {
     rtc.enable_alarm();
 
     let mut location = Location::new();
+
+    // Set up GPS GPIO interrupt on pin A2
+    let mut a2 = pins.a2.into_input();
+    a2.configure_interrupt(hal::gpio::InterruptOpt::LowToHigh);
+    a2.clear_interrupt();
+    a2.enable_interrupt();
+    hal::gpio::enable_gpio_interrupts();
+
+    // Set up GPS serial
+    let gps_serial = hal::uart::new_12_13(dp.UART1, pins.a16, pins.a0, 400_000);
+
+    free(|cs| {
+        A2.borrow(cs).replace(Some(a2));
+        GPS.borrow(cs).replace(Some(gps_serial));
+    });
 
     let mut led = pins.d19.into_push_pull_output();
 
@@ -439,7 +463,44 @@ fn reset<I: Read + Write>(note: &mut Notecarrier<I>, delay: &mut impl DelayMs<u1
 #[allow(non_snake_case)]
 #[interrupt]
 fn GPIO() {
-    defmt::info!("GPIO interrupt!");
+    let pps_time = free(|cs| {
+        let mut a2 = A2.borrow(cs).borrow_mut();
+        a2.as_mut().unwrap().clear_interrupt();
+
+        let state = STATE.borrow(cs).borrow();
+        let state = state.as_ref().unwrap();
+
+        let now = state.rtc.now().timestamp_millis();
+        defmt::info!("ext-gps: pps: {}", now);
+
+        now
+    });
+
+    // pull a single JSON gps sample from the uart
+    free(|cs| {
+        let mut gps = GPS.borrow(cs).borrow_mut();
+        let gps: &mut _ = gps.as_mut().unwrap();
+
+        let mut buf = heapless::Vec::<u8, 1024>::new();
+
+        loop {
+            match gps.read() {
+                Ok(w) => {
+                    match w {
+                        b'\n' => { break; },
+                        w => { buf.push(w); }
+                    }
+                }
+
+                Err(nb::Error::WouldBlock) => { /* wait */ }
+                Err(nb::Error::Other(e)) => {
+                    break;
+                }
+            }
+        }
+
+        // ready to parse `buf` (on main?).
+    });
 }
 
 #[cfg(not(feature = "host-tests"))]
