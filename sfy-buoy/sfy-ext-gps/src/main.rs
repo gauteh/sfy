@@ -481,14 +481,18 @@ fn GPIO() {
         let mut gps = GPS.borrow(cs).borrow_mut();
         let gps: &mut _ = gps.as_mut().unwrap();
 
-        let mut buf = heapless::Vec::<u8, 1024>::new();
+        let mut buf = heapless::Vec::<u8, 1024>::new(); // reduce?
 
         loop {
             match gps.read() {
                 Ok(w) => {
                     match w {
-                        b'\n' => { break; },
-                        w => { buf.push(w); } // TODO: abort if buf is full.
+                        b'\n' => {
+                            break;
+                        }
+                        w => {
+                            buf.push(w);
+                        } // TODO: abort if buf is full.
                     }
                 }
 
