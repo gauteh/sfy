@@ -1,5 +1,6 @@
 # include "ArduinoJson.h"
 # include "gps.h"
+# include "spartn_keys.h"
 
 // Serial to SFY
 // TX1: ~7 / 42
