@@ -188,7 +188,9 @@ def ts(dev, tx_start, tx_end, start, end, file, gap, freq, displacement,
         logger.info(f"Saving to {file}..")
 
         if len(pcks) > 0:
-            pcks.to_netcdf(file, displacement=displacement, retime=(not no_retime))
+            pcks.to_netcdf(file,
+                           displacement=displacement,
+                           retime=(not no_retime))
         else:
             logger.error("No data to save.")
 
@@ -339,7 +341,8 @@ def stats(dev, tx_start, tx_end, start, end, file, gap, freq, raw, no_retime):
             encoding = {}
             for v in st.variables:
                 encoding[v] = compression.copy()
-            encoding['time']['units'] = 'microseconds since 2023-01-01 00:00:00.0'
+            encoding['time'][
+                'units'] = 'microseconds since 2023-01-01 00:00:00.0'
             st.to_netcdf(file, format='NETCDF4', encoding=encoding)
     else:
         logger.error("No data.")
@@ -445,76 +448,3 @@ def raw(dev, start, end, gap, displacement, raw, file, raw_files, no_retime):
         logger.info(f"Saving to {file}..")
 
         pcks.to_netcdf(file, displacement=displacement, retime=(not no_retime))
-
-
-@axl.command(help='Monitor buoy')
-@click.argument('dev')
-@click.option('--sleep',
-              help='Time to sleep between update',
-              default=5.0,
-              type=float)
-@click.option('--window',
-              help='Time window to show (seconds).',
-              default=60.0,
-              type=float)
-@click.option('--delay',
-              help='Delay in data, use to re-play data in the past (seconds).',
-              default=0.0,
-              type=float)
-@click.option('--ylim', help='Height of y-axis (m)', default=1.0, type=float)
-def monitor(dev, sleep, window, delay, ylim):
-    hub = Hub.from_env()
-    buoy = hub.buoy(dev)
-
-    plt.ion()
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
-    plt.grid()
-    plt.xlabel('Time')
-    plt.ylabel('Vertical displacement ($m$)')
-
-    la, = ax.plot([], [])
-
-    while True:
-        # Get packages from time-window
-        end = datetime.utcnow() - timedelta(seconds=delay)
-        start = end - timedelta(seconds=window)
-        start, end = utcify(start), utcify(end)
-
-        logger.info(f"Getting packages in window.. {start} -> {end}")
-        pcks = buoy.axl_packages_range(start - timedelta(minutes=20), end)
-        if len(pcks) > 0:
-            logger.info(f"Last package: {pcks[-1]}")
-
-            pcks = AxlCollection(pcks)
-            logger.debug(f"{len(pcks)} packages in tx range")
-
-            pcks.clip(
-                start - timedelta(seconds=window), end
-            )  # add some margin to start, so that we get a full trace for the window.
-            logger.info(f"{len(pcks)} in start <-> end range")
-
-            if len(pcks) > 0:
-                plt.title(
-                    f"Buoy: {buoy.dev}\n{pcks.start} -> {pcks.end} length: {pcks.duration}s f={pcks.frequency}Hz"
-                )
-
-                for p in pcks.pcks:
-                    logger.debug(f"{p}")
-
-                logger.debug("Integrating to displacement..")
-                wz = signal.integrate(pcks.z,
-                                      pcks.dt,
-                                      order=2,
-                                      method='dft',
-                                      freqs=[0.1, 25])
-
-                logger.debug("Plotting..")
-                la.set_data(pcks.time[:-1], wz)
-
-                x1 = pcks.time[-2]
-                x0 = x1 - timedelta(seconds=window)
-                plt.xlim([x0, x1])
-                plt.ylim([-ylim, ylim])
-
-        plt.pause(sleep)

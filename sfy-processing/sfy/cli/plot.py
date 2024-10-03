@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from tabulate import tabulate
 from datetime import timedelta, datetime
 import numpy as np
+import pandas as pd
 
 from sfy.hub import Hub
 from sfy.axl import AxlCollection
@@ -248,3 +249,105 @@ def welch(ctx, loglog, acceleration, raw):
     plt.ylabel('Energy [m^2/Hz]')
     plt.legend()
     plt.show()
+
+
+@plot.command(help='Monitor buoy')
+@click.pass_context
+@click.option('--sleep',
+              help='Time to sleep between update (0 means don\'t update)',
+              default=5.0,
+              type=float)
+@click.option('--window',
+              help='Time window to show (seconds).',
+              default=60.0,
+              type=float)
+@click.option('--delay',
+              help='Delay in data, use to re-play data in the past (seconds).',
+              default=0.0,
+              type=float)
+@click.option('--loglog',
+              is_flag=True,
+              help='Use logarithmic scales',
+              default=False)
+@click.option('--ylim', help='Height of y-axis (m)', default=1.0, type=float)
+def monitor(ctx, loglog, sleep, window, delay, ylim):
+    buoy = ctx.obj['buoy']
+
+    # if sleep:
+    #     plt.ion()
+
+    fig = plt.figure()
+
+    ax = fig.add_subplot(211)
+    plt.grid()
+    plt.xlabel('Time')
+    plt.ylabel('Vertical displacement [$m$]')
+
+    ax2 = fig.add_subplot(212)
+    plt.grid()
+    plt.xlabel('Frequency [Hz]')
+    plt.ylabel('Energy [$m^2/Hz$]')
+
+    la, = ax.plot([], [])
+    if not loglog:
+        lv, = ax2.plot([], [], color='C1')
+    else:
+        lv, = ax2.loglog([], [], color='C2')
+
+    while True:
+        # Get packages from time-window
+        end = datetime.utcnow() - timedelta(seconds=delay)
+        start = end - timedelta(seconds=window)
+        start, end = utcify(start), utcify(end)
+
+        logger.info(f"Getting packages in window.. {start} -> {end}")
+        pcks = buoy.axl_packages_range(start - timedelta(minutes=20), end)
+
+        if len(pcks) > 0:
+            logger.info(f"Last package: {pcks[-1]}")
+
+            pcks = AxlCollection(pcks)
+            logger.debug(f"{len(pcks)} packages in tx range")
+
+            pcks.clip(
+                start - timedelta(seconds=window), end
+            )  # add some margin to start, so that we get a full trace for the window.
+            logger.info(f"{len(pcks)} in start <-> end range")
+
+            if len(pcks) > 0:
+                ax.set_title(
+                    f"Buoy: {buoy.dev}\n{pcks.start} -> {pcks.end} length: {pcks.duration}s f={pcks.frequency}Hz"
+                )
+
+                for p in pcks.pcks:
+                    logger.debug(f"{p}")
+
+                logger.debug("Integrating to displacement..")
+                ds = pcks.to_dataset(displacement=True)
+                # wz = signal.integrate(pcks.z,
+                #                       pcks.dt,
+                #                       order=2,
+                #                       method='dft',
+                #                       freqs=[0.1, 12])
+
+                logger.debug("Plotting..")
+                la.set_data(ds.time, ds.u_z)
+                print(ds.u_z)
+
+                x1 = ds.time[-1]
+                x0 = x1 - pd.to_timedelta(window, 's')
+                ax.set_xlim([x0, x1])
+                ax.set_ylim([-ylim, ylim])
+
+                ## plot welch
+                f, P = sfy.xr.welch(ds)
+                lv.set_data(f, P)
+                ax2.set_xlim([0.01, ds.frequency/2])
+                ax2.set_ylim([0.0000001, 10])
+
+
+        if sleep > 0:
+            plt.pause(sleep)
+        else:
+            plt.show()
+            break
