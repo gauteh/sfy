@@ -40,7 +40,7 @@ git = "https://github.com/gauteh/ahrs-fusion"
 git = "https://github.com/gauteh/notecard-rs"
 
 [dev-dependencies]
-half = { version = "1.8.2", features = [ "use-intrinsics", "bytemuck", "serde" ] }
+half = { version = "2.4", features = [ "use-intrinsics", "bytemuck", "serde" ] }
 
 [features]
 default = [ "build-bin" ]

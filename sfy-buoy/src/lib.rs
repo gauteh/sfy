@@ -1,6 +1,4 @@
 #![feature(test)]
-#![feature(inline_const)]
-#![feature(result_option_inspect)]
 #![feature(try_blocks)]
 #![feature(portable_simd)]
 #![feature(array_chunks)]
@@ -25,7 +23,7 @@ use embedded_hal::blocking::{
 
 #[cfg(feature = "storage")]
 use embedded_hal::{
-    blocking::spi::{Write as DefaultWrite, Transfer},
+    blocking::spi::{Transfer, Write as DefaultWrite},
     digital::v2::OutputPin,
 };
 
@@ -371,7 +369,8 @@ where
     ) -> Result<Option<u32>, storage::StorageErr> {
         let mut e: Result<Option<u32>, storage::StorageErr> = Ok(None);
 
-        defmt::trace!("Draining storage queue: {} (note queue: {})",
+        defmt::trace!(
+            "Draining storage queue: {} (note queue: {})",
             self.storage_queue.len(),
             self.note_queue.len(),
         );

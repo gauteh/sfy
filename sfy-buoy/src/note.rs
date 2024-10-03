@@ -54,7 +54,8 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         // Use extrnal SIM first
         if let Some(apn) = EXT_APN {
             defmt::info!("Configuring for external SIM..");
-            let w = note.card()
+            let w = note
+                .card()
                 .wireless(
                     delay,
                     None,

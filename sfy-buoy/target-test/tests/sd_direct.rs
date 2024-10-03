@@ -44,66 +44,66 @@ mod tests {
         }
     }
 
-//     struct State {
-//         // note: Notecarrier<hal::i2c::Iom2>,
-//         #[allow(unused)]
-//         delay: hal::delay::Delay,
-//         #[allow(unused)]
-//         rtc: hal::rtc::Rtc,
+    //     struct State {
+    //         // note: Notecarrier<hal::i2c::Iom2>,
+    //         #[allow(unused)]
+    //         delay: hal::delay::Delay,
+    //         #[allow(unused)]
+    //         rtc: hal::rtc::Rtc,
 
-//         sd: VolumeManager<Spi0, CS, DL>,
-//     }
+    //         sd: VolumeManager<Spi0, CS, DL>,
+    //     }
 
-//     #[init]
-//     fn setup() -> State {
-//         defmt::debug!("Setting up peripherals");
-//         let core = hal::pac::CorePeripherals::take().unwrap();
-//         let mut dp = hal::pac::Peripherals::take().unwrap();
-//         let pins = hal::gpio::Pins::new(dp.GPIO);
+    //     #[init]
+    //     fn setup() -> State {
+    //         defmt::debug!("Setting up peripherals");
+    //         let core = hal::pac::CorePeripherals::take().unwrap();
+    //         let mut dp = hal::pac::Peripherals::take().unwrap();
+    //         let pins = hal::gpio::Pins::new(dp.GPIO);
 
-//         let rtc = hal::rtc::Rtc::new(dp.RTC, &mut dp.CLKGEN);
-//         let mut delay = hal::delay::Delay::new(core.SYST, &mut dp.CLKGEN);
+    //         let rtc = hal::rtc::Rtc::new(dp.RTC, &mut dp.CLKGEN);
+    //         let mut delay = hal::delay::Delay::new(core.SYST, &mut dp.CLKGEN);
 
-//         let cs = pins.a14;
-//         let mut cs = cs.into_push_pull_output();
-//         cs.internal_pull_up(true);
-//         // cs.set_high();
+    //         let cs = pins.a14;
+    //         let mut cs = cs.into_push_pull_output();
+    //         cs.internal_pull_up(true);
+    //         // cs.set_high();
 
-//         delay.delay_ms(300_u32);
+    //         delay.delay_ms(300_u32);
 
-//         defmt::info!("Setting up SPI");
-//         let spi = Spi::new(
-//             dp.IOM0,
-//             pins.d12,
-//             pins.d13,
-//             pins.d11,
-//             Freq::F100kHz,
-//             spi::MODE_0,
-//         );
+    //         defmt::info!("Setting up SPI");
+    //         let spi = Spi::new(
+    //             dp.IOM0,
+    //             pins.d12,
+    //             pins.d13,
+    //             pins.d11,
+    //             Freq::F100kHz,
+    //             spi::MODE_0,
+    //         );
 
-//         delay.delay_ms(300_u32);
+    //         delay.delay_ms(300_u32);
 
-//         let mut storage = Storage::open(
-//             spi,
-//             cs,
-//             sfy::storage::clock::CountClock(&COUNT),
-//             |spi, speed| match speed {
-//                 SdSpiSpeed::Low => spi.set_freq(Freq::F100kHz),
-//                 SdSpiSpeed::High => spi.set_freq(Freq::F48mHz),
-//             },
-//             hal::delay::FlashDelay,
-//         );
+    //         let mut storage = Storage::open(
+    //             spi,
+    //             cs,
+    //             sfy::storage::clock::CountClock(&COUNT),
+    //             |spi, speed| match speed {
+    //                 SdSpiSpeed::Low => spi.set_freq(Freq::F100kHz),
+    //                 SdSpiSpeed::High => spi.set_freq(Freq::F48mHz),
+    //             },
+    //             hal::delay::FlashDelay,
+    //         );
 
-//         // clean up previous tests
-//         assert_eq!(sfy::storage::STORAGE_VERSION_STR, "t");
-//         clean_up_collection(&mut storage);
+    //         // clean up previous tests
+    //         assert_eq!(sfy::storage::STORAGE_VERSION_STR, "t");
+    //         clean_up_collection(&mut storage);
 
-//         State {
-//             delay,
-//             rtc,
-//             storage,
-//         }
-//     }
+    //         State {
+    //             delay,
+    //             rtc,
+    //             storage,
+    //         }
+    //     }
 
     #[test]
     fn initialize_storage() {
@@ -149,4 +149,3 @@ mod tests {
         delay.delay_ms(300_u32);
     }
 }
-

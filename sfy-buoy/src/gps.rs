@@ -22,6 +22,4 @@ impl Gps {
     }
 }
 
-pub fn sample(serial: &mut impl embedded_hal::serial::Read<u8>) {
-}
-
+pub fn sample(serial: &mut impl embedded_hal::serial::Read<u8>) {}

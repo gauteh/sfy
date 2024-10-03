@@ -16,11 +16,12 @@ use core::sync::atomic::Ordering;
 use cortex_m::interrupt::free;
 use embedded_hal::{
     blocking::delay::DelayUs,
-    blocking::spi::{Write as DefaultWrite, Transfer},
+    blocking::spi::{Transfer, Write as DefaultWrite},
     digital::v2::OutputPin,
 };
 use embedded_sdmmc::{
-    Error as GenericSdMmcError, Mode, SdCard, SdCardError, VolumeIdx, VolumeManager, sdcard::AcquireOpts,
+    sdcard::AcquireOpts, Error as GenericSdMmcError, Mode, SdCard, SdCardError, VolumeIdx,
+    VolumeManager,
 };
 use heapless::{String, Vec};
 
@@ -117,7 +118,15 @@ where
     ) -> Storage<Spi, CS, DL> {
         defmt::info!("Opening SD card..");
 
-        let sd = SdCard::new_with_options(spi, cs, delay, AcquireOpts { use_crc: true, acquire_retries: 10 });
+        let sd = SdCard::new_with_options(
+            spi,
+            cs,
+            delay,
+            AcquireOpts {
+                use_crc: true,
+                acquire_retries: 10,
+            },
+        );
         let sd = VolumeManager::new(sd, clock);
 
         Storage {

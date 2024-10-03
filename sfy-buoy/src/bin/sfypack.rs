@@ -5,7 +5,6 @@ use std::ops::Deref;
 use std::path::{Path, PathBuf};
 
 use sfy::axl;
-use sfy::axl::AXL_POSTCARD_SZ as PACKAGE_SZ;
 use sfy::storage::PACKAGE_SZ as RAW_PACKAGE_SZ;
 use sfy::waves::VecRawAxl;
 

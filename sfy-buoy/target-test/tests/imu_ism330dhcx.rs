@@ -9,9 +9,9 @@ use panic_probe as _; // memory layout + panic handler
 #[defmt_test::tests]
 mod tests {
     use super::*;
-    use micromath::F32Ext;
     #[allow(unused)]
     use defmt::{assert, assert_eq, info};
+    use micromath::F32Ext;
 
     use hal::{
         i2c::{Freq, I2c},

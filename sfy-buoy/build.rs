@@ -29,7 +29,9 @@ fn main() {
     }
 
     if option_env!("BUOYPR").is_none() {
-        println!("cargo:warning=BUOYPR: No notehub modem product supplied, using previously configured.");
+        println!(
+            "cargo:warning=BUOYPR: No notehub modem product supplied, using previously configured."
+        );
     }
 
     println!("cargo:rerun-if-changed=build.rs");
