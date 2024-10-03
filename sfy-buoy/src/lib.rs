@@ -40,6 +40,9 @@ pub mod note;
 pub mod storage;
 pub mod waves;
 
+#[cfg(feature = "ext-gps")]
+pub mod gps;
+
 use axl::AxlPacket;
 #[cfg(feature = "storage")]
 use storage::Storage;

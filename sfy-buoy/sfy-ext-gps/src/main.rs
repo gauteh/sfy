@@ -56,7 +56,6 @@ use sfy::{
 };
 use sfy::{Imu, Location, SharedState, State, NOTEQ};
 
-mod gps;
 mod log;
 
 /// This static is used to transfer ownership of the IMU subsystem to the interrupt handler.
@@ -507,6 +506,11 @@ fn GPIO() {
         }
 
         // ready to parse `buf` (on main?).
+
+        // set the RTC:
+        // let now = ...;
+        // let current = sample.time + (now - pps_time);
+        // drift = current - now
 
         // make sure there is nothing in the uart now, otherwise it should be drained.
         while let Ok(_) = gps.read() {
