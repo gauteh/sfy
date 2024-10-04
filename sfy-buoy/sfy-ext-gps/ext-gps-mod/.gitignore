@@ -1,3 +1,6 @@
 secrets.h
 build
 *.axf
+
+# Ignore the spartn keys file since these are private codes
+spartn_keys.h
