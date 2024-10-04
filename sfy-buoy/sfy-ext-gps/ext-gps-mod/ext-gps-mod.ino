@@ -1,14 +1,5 @@
 # include "ArduinoJson.h"
 # include "gps.h"
-# include "spartn_keys.h"
-
-// Serial to SFY
-// TX1: ~7 / 42
-// RX1: ~8 / 38
-// ..
-// TX1: ~9 / 39
-// RX1: ~10 / 40
-Uart sfy{1, 40, 39};
 
 void setup()
 {
@@ -17,14 +8,12 @@ void setup()
 
   setup_gps();
 
-  sfy.begin(400000);
-
-  JsonDocument doc;
-  doc["status"] = "startup";
-  serializeJson(doc, sfy);
+  // JsonDocument doc;
+  // doc["status"] = "startup";
+  // serializeJson(doc, sfy);
 
   pinMode(PPS_PIN, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(PPS_PIN), main_pps, RISING);
+  attachInterrupt(digitalPinToInterrupt(PPS_PIN), main_pps, FALLING);
 }
 
 //=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
@@ -37,9 +26,9 @@ void loop()
   Serial.print(".");
   delay(100);
 
-  JsonDocument doc;
-  doc["loop"] = i;
-  serializeJson(doc, sfy);
+  // JsonDocument doc;
+  // doc["loop"] = i;
+  // serializeJson(doc, sfy);
 
   i++;
 }
