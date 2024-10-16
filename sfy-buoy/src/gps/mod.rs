@@ -1,8 +1,18 @@
 //! GPS interface
 //!
+use chrono::{NaiveDate, NaiveDateTime};
 #[allow(unused_imports)]
 use defmt::{debug, error, info, println, trace, warn};
 use heapless::Vec;
+
+pub const GPS_PACKET_V: u8 = 1;
+pub const GPS_PACKET_SZ: usize = 3 * 1024;
+pub const GPS_FREQ: f32 = 20.0;
+
+mod wire;
+pub use wire::*;
+
+use crate::waves::wire::ScaledF32;
 
 #[derive(serde::Deserialize, PartialEq, defmt::Format, Debug)]
 pub struct Sample {
@@ -12,7 +22,7 @@ pub struct Sample {
     hour: u8,
     minute: u8,
     sec: u8,
-    nano: i32,
+    nano: u32,
 
     #[serde(alias = "Time Accuracy (ns)")]
     time_acc: f64,
@@ -39,13 +49,90 @@ pub struct Sample {
     carrier_solution: u8,
 }
 
+impl Sample {
+    pub fn timestamp(&self) -> NaiveDateTime {
+        NaiveDate::from_ymd_opt(self.year.into(), self.month.into(), self.day.into())
+            .unwrap()
+            .and_hms_nano(
+                self.hour.into(),
+                self.minute.into(),
+                self.sec.into(),
+                self.nano.into(),
+            )
+    }
+}
+
+/// A packet of GPS samples
+#[derive(serde::Serialize, serde::Deserialize, PartialEq)]
+pub struct GpsPacket {
+    /// Timestamp of first sample
+    pub timestamp: i64,
+
+    pub freq: f32,
+
+    pub version: u8,
+
+    /// Reference position for which the data is relative to. Mean of all samples.
+    pub lon: f64,
+    pub lat: f64,
+    pub msl: f64,
+
+    /// GPS data. This is moved to payload when transmitting.
+    pub data: Vec<u16, { 3 * GPS_PACKET_SZ }>,
+}
+
+impl GpsPacket {
+    pub fn len(&self) -> usize {
+        self.data.len() / 3
+    }
+}
+
 pub struct Gps {
-    buf: Vec<Sample, 1024>,
+    buf: Vec<Sample, { GPS_PACKET_SZ }>,
 }
 
 impl Gps {
     pub const fn new() -> Gps {
         Gps { buf: Vec::new() }
+    }
+
+    pub fn collect(&mut self) -> GpsPacket {
+        let N = self.buf.len() as f64;
+
+        let (lon, lat, msl) = self
+            .buf
+            .iter()
+            .map(|s| (s.lon, s.lat, s.msl))
+            .reduce(|(mlon, mlat, mmsl), (lon, lat, msl)| (mlon + lon, mlat + lat, mmsl + msl))
+            .unwrap();
+        let (lon, lat, msl) = (lon / N, lat / N, msl / N);
+
+        let data: Vec<u16, { 3 * GPS_PACKET_SZ }> = self
+            .buf
+            .iter()
+            .map(|s| {
+                [
+                    Lon16::from_f64(s.lon - lon).to_u16(),
+                    Lat16::from_f64(s.lat - lat).to_u16(),
+                    Msl16::from_f64(s.msl - msl).to_u16(),
+                ]
+            })
+            .flatten()
+            .collect();
+
+        let timestamp = self.buf[0].timestamp().timestamp_millis();
+
+        self.buf.clear();
+
+        GpsPacket {
+            timestamp,
+            freq: GPS_FREQ,
+            version: GPS_PACKET_V,
+            lon,
+            lat,
+            msl,
+            data,
+        }
     }
 
     pub fn sample<R>(&mut self, gps: &mut R)

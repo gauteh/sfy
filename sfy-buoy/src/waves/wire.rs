@@ -38,6 +38,11 @@ pub trait ScaledF32: Sized {
     fn to_f32(&self) -> f32 {
         scale_u16_to_f32(Self::MAX, self.to_u16())
     }
+
+    /// Lossily convert to f32.
+    fn from_f64(v: f64) -> Self {
+        Self::from_u16(scale_f32_to_u16(Self::MAX, v as f32))
+    }
 }
 
 impl ScaledF32 for A16 {

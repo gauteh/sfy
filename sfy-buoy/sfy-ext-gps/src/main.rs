@@ -72,7 +72,8 @@ pub static STATE: Mutex<RefCell<Option<SharedState<hal::rtc::Rtc>>>> =
     Mutex::new(RefCell::new(None));
 
 /// Serial and interrupt pin for external GPS.
-static GPS_SERIAL: Mutex<RefCell<Option<hal::uart::Uart1<12, 13>>>> = Mutex::new(RefCell::new(None));
+static GPS_SERIAL: Mutex<RefCell<Option<hal::uart::Uart1<12, 13>>>> =
+    Mutex::new(RefCell::new(None));
 static A2: Mutex<RefCell<Option<hal::gpio::pin::P11<{ Mode::Input }>>>> =
     Mutex::new(RefCell::new(None));
 
