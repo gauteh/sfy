@@ -72,7 +72,7 @@ pub static STATE: Mutex<RefCell<Option<SharedState<hal::rtc::Rtc>>>> =
     Mutex::new(RefCell::new(None));
 
 /// Serial and interrupt pin for external GPS.
-static GPS: Mutex<RefCell<Option<hal::uart::Uart1<12, 13>>>> = Mutex::new(RefCell::new(None));
+static GPS_SERIAL: Mutex<RefCell<Option<hal::uart::Uart1<12, 13>>>> = Mutex::new(RefCell::new(None));
 static A2: Mutex<RefCell<Option<hal::gpio::pin::P11<{ Mode::Input }>>>> =
     Mutex::new(RefCell::new(None));
 
@@ -124,6 +124,7 @@ fn main() -> ! {
     println!("continuous ..: {}", cfg!(feature = "continuous"));
     println!("deploy ......: {}", cfg!(feature = "deploy"));
     println!("defmt-serial : {}", cfg!(feature = "defmt-serial"));
+    println!("EXT-GPS .....: true");
     println!("NOTEQ_SZ ....: {}", sfy::NOTEQ_SZ);
     println!("IMUQ_SZ .....: {}", sfy::IMUQ_SZ);
     println!("STORAGEQ_SZ .: {}", sfy::STORAGEQ_SZ);
@@ -152,19 +153,23 @@ fn main() -> ! {
 
     let mut location = Location::new();
 
+    // Set up GPS serial
+    info!("Setting up GPS serial..");
+    let gps_serial = hal::uart::new_12_13(dp.UART1, pins.a16, pins.a0, 400_000);
+
+    free(|cs| {
+        GPS_SERIAL.borrow(cs).replace(Some(gps_serial));
+    });
+
     // Set up GPS GPIO interrupt on pin A2
+    info!("Setting up GPS interrupt.");
     let mut a2 = pins.a2.into_input();
     a2.configure_interrupt(hal::gpio::InterruptOpt::LowToHigh);
     a2.clear_interrupt();
     a2.enable_interrupt();
-    hal::gpio::enable_gpio_interrupts();
-
-    // Set up GPS serial
-    let gps_serial = hal::uart::new_12_13(dp.UART1, pins.a16, pins.a0, 400_000);
 
     free(|cs| {
         A2.borrow(cs).replace(Some(a2));
-        GPS.borrow(cs).replace(Some(gps_serial));
     });
 
     let mut led = pins.d19.into_push_pull_output();
@@ -301,6 +306,7 @@ fn main() -> ! {
 
     defmt::info!("Enable interrupts");
     unsafe {
+        hal::gpio::enable_gpio_interrupts();
         cortex_m::interrupt::enable();
     }
 
@@ -462,6 +468,8 @@ fn reset<I: Read + Write>(note: &mut Notecarrier<I>, delay: &mut impl DelayMs<u1
 #[allow(non_snake_case)]
 #[interrupt]
 fn GPIO() {
+    static mut GPS: sfy::gps::Gps = sfy::gps::Gps::new();
+
     let pps_time = free(|cs| {
         let mut a2 = A2.borrow(cs).borrow_mut();
         a2.as_mut().unwrap().clear_interrupt();
@@ -477,45 +485,10 @@ fn GPIO() {
 
     // pull a single JSON gps sample from the uart
     free(|cs| {
-        let mut gps = GPS.borrow(cs).borrow_mut();
+        let mut gps = GPS_SERIAL.borrow(cs).borrow_mut();
         let gps: &mut _ = gps.as_mut().unwrap();
 
-        let mut buf = heapless::Vec::<u8, 1024>::new(); // reduce?
-
-        loop {
-            match gps.read() {
-                Ok(w) => match w {
-                    b'\n' => {
-                        break;
-                    }
-                    w => match buf.push(w) {
-                        Ok(_) => {}
-                        Err(_) => {
-                            defmt::error!("ext-gps: gps read buf is full.");
-                            break;
-                        }
-                    },
-                },
-
-                Err(nb::Error::WouldBlock) => { /* wait */ } // TODO: timeout
-                Err(nb::Error::Other(e)) => {
-                    defmt::error!("ext-gps: error reading from uart: {}", e);
-                    break;
-                }
-            }
-        }
-
-        // ready to parse `buf` (on main?).
-
-        // set the RTC:
-        // let now = ...;
-        // let current = sample.time + (now - pps_time);
-        // drift = current - now
-
-        // make sure there is nothing in the uart now, otherwise it should be drained.
-        while let Ok(_) = gps.read() {
-            defmt::error!("ext-gps: more data on uart after PPS parsing. discarding.");
-        }
+        GPS.sample(gps);
     });
 }
 

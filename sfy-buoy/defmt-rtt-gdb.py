@@ -54,7 +54,7 @@ class DefmtPrinter(Thread):
         self.exe = exe
 
     def run(self):
-        print("Attaching to GDB server for RTT | defmt output..")
+        print(f"Attaching to GDB server for RTT | defmt output (exe: {self.exe}..")
         self.prc1 = Popen(["nc", "localhost", "19021"],
                           bufsize=0,
                           stdin=DEVNULL,

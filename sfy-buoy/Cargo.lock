@@ -1253,6 +1253,7 @@ dependencies = [
  "ism330dhcx",
  "libm",
  "micromath",
+ "nb 1.1.0",
  "postcard",
  "rtcc",
  "serde",
