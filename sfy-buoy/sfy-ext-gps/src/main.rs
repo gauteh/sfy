@@ -471,6 +471,7 @@ fn GPIO() {
     static mut GPS: sfy::gps::Gps = sfy::gps::Gps::new();
 
     let pps_time = free(|cs| {
+        // Clear interrupt
         let mut a2 = A2.borrow(cs).borrow_mut();
         a2.as_mut().unwrap().clear_interrupt();
 

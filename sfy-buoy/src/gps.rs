@@ -95,18 +95,24 @@ impl Gps {
                         defmt::error!("GPS sample buffer is full! Discarding samples.")
                     })
                     .ok();
+
+                // TODO: set the RTC:
+                // let now = ...;
+                // let current = sample.time + (now - pps_time);
+                // drift = current - now
             }
             Err(_) => error!("Failed to parse GPS telegram: {}", &buf),
         }
 
-        // set the RTC:
-        // let now = ...;
-        // let current = sample.time + (now - pps_time);
-        // drift = current - now
-
-        // make sure there is nothing in the uart now, otherwise it should be drained.
+        // Make sure there is nothing in the uart now, otherwise it should be drained.
+        //
+        // It is likely that the latest telegram is responsible for the PPS, so we are now likely
+        // out-of-sync with the PPS and telegrams. Should hopefully resolve itself on the next
+        // sample.
         while let Ok(_) = gps.read() {
-            defmt::error!("ext-gps: more data on uart after PPS parsing. discarding.");
+            defmt::error!(
+                "ext-gps: more data on uart after PPS parsing. discarding, PPS may be out of sync."
+            );
         }
     }
 }
