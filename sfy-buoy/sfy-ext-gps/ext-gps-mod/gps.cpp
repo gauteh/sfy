@@ -25,7 +25,7 @@ void pushRXMPMP(UBX_RXM_PMP_message_data_t *pmpData)
 #ifndef noPush
 
   Serial.println(F(" Bytes. Pushing it to the GNSS..."));
-  
+
   //Push the PMP data to the GNSS
   //The payload length could be variable, so we need to push the header and payload, then checksum
   myGNSS.pushRawData(&pmpData->sync1, (size_t)payloadLen + 6); // Push the sync chars, class, ID, length and payload
@@ -117,10 +117,17 @@ void printPVTdata(UBX_NAV_PVT_data_t *ubxDataStruct)
   Serial.print(vAcc);
   Serial.print(F(" (mm)"));
 
-  Serial.println(); 
+  Serial.println();
 
-  // Serialize Data and Pipe to SFY 
+  // Serialize Data and Pipe to SFY
   JsonDocument doc;
+  doc["year"] = year;
+  doc["month"] = month;
+  doc["day"] = day;
+  doc["hour"] = hour;
+  doc["minute"] = minute;
+  doc["sec"] = sec;
+  doc["nano_sec"] = nano;
   doc["Time (UTC)"] = datetime;
   doc["Time Accuracy (ns)"] = tAcc;
   doc["Lat (deg * 10e-7)"] = latitude;
@@ -206,7 +213,7 @@ void pps() {
   myLBand.checkCallbacks(); // Check if any LBand callbacks are waiting to be processed.
 
 }
-                  
+
 void setup_gps() {
 
   sfy.begin(400000);
@@ -234,14 +241,14 @@ void setup_gps() {
     Serial.print(myGNSS.getFirmwareVersionHigh()); // Returns uint8_t
     Serial.print(F("."));
     Serial.println(myGNSS.getFirmwareVersionLow()); // Returns uint8_t
-    
+
     Serial.print(F("Firmware: "));
     Serial.println(myGNSS.getFirmwareType()); // Returns HPG, SPG etc. as (const char *)
 
     if (strcmp(myGNSS.getFirmwareType(), "HPG") == 0)
       if ((myGNSS.getFirmwareVersionHigh() == 1) && (myGNSS.getFirmwareVersionLow() < 30))
         Serial.println("Your module is running old firmware which may not support SPARTN. Please upgrade.");
-        
+
     if (strcmp(myGNSS.getFirmwareType(), "HPS") == 0)
       if ((myGNSS.getFirmwareVersionHigh() == 1) && (myGNSS.getFirmwareVersionLow() < 21))
         Serial.println("Your module is running old firmware which may not support SPARTN. Please upgrade.");
@@ -276,15 +283,15 @@ void setup_gps() {
   // Let's say that we want our 1 pulse every 30 seconds to be as accurate as possible. So, let's tell the module
   // to generate no signal while it is _locking_ to GNSS time. We want the signal to start only when the module is
   // _locked_ to GNSS time.
-  myGNSS.addCfgValset(UBLOX_CFG_TP_PERIOD_TP1, 0); 
+  myGNSS.addCfgValset(UBLOX_CFG_TP_PERIOD_TP1, 0);
   myGNSS.addCfgValset(UBLOX_CFG_TP_LEN_TP1, 0); // Set the pulse length to zero
-  
+
   // When the module is _locked_ to GNSS time, make it generate a  second pulse every 30 seconds
   // myGNSS.addCfgValset(UBLOX_CFG_TP_PERIOD_LOCK_TP1, 50000); // Set the period to 30,000,000 us
   // myGNSS.addCfgValset(UBLOX_CFG_TP_LEN_LOCK_TP1, 10000); // Set the pulse length to 1,000,000 us
   myGNSS.addCfgValset(UBLOX_CFG_TP_PERIOD_LOCK_TP1, 1000000); // Set the period to 30,000,000 us
   myGNSS.addCfgValset(UBLOX_CFG_TP_LEN_LOCK_TP1, 100000); // Set the pulse length to 1,000,000 us
-  
+
   // Now set the time pulse parameters
   if (myGNSS.sendCfgValset() == false)
   {
@@ -333,13 +340,13 @@ void setup_gps() {
   myLBand.newCfgValset(); // Create a new Configuration Interface message - this defaults to VAL_LAYER_RAM_BBR (change in RAM and BBR)
   myLBand.addCfgValset(UBLOX_CFG_PMP_CENTER_FREQUENCY,     myLBandFreq); // Default 1539812500 Hz
   myLBand.addCfgValset(UBLOX_CFG_PMP_SEARCH_WINDOW,        2200);        // Default 2200 Hz
-  myLBand.addCfgValset(UBLOX_CFG_PMP_USE_SERVICE_ID,       1);           // Default 1 
+  myLBand.addCfgValset(UBLOX_CFG_PMP_USE_SERVICE_ID,       1);           // Default 1
   myLBand.addCfgValset(UBLOX_CFG_PMP_SERVICE_ID,           21845);       // Default 50821
   myLBand.addCfgValset(UBLOX_CFG_PMP_DATA_RATE,            2400);        // Default 2400 bps
   myLBand.addCfgValset(UBLOX_CFG_PMP_USE_DESCRAMBLER,      1);           // Default 1
   myLBand.addCfgValset(UBLOX_CFG_PMP_DESCRAMBLER_INIT,     26969);       // Default 23560
   myLBand.addCfgValset(UBLOX_CFG_PMP_USE_PRESCRAMBLING,    0);           // Default 0
-  myLBand.addCfgValset(UBLOX_CFG_PMP_UNIQUE_WORD,          16238547128276412563ull); 
+  myLBand.addCfgValset(UBLOX_CFG_PMP_UNIQUE_WORD,          16238547128276412563ull);
   myLBand.addCfgValset(UBLOX_CFG_UART2OUTPROT_UBX,         1);           // Enable UBX output on UART2
   myLBand.addCfgValset(UBLOX_CFG_MSGOUT_UBX_RXM_PMP_UART2, 1);           // Output UBX-RXM-PMP on UART2
   myLBand.addCfgValset(UBLOX_CFG_UART2_BAUDRATE,           38400);       // match baudrate with ZED default
