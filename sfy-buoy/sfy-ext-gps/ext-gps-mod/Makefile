@@ -1,4 +1,5 @@
 .DEFAULT_GOAL := bin
+USB ?= /dev/ttyUSB0
 
 dep-arduion-cli:
 	curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | BINDIR=/usr/local/bin sh
@@ -24,7 +25,7 @@ bin:
 	arduino-cli compile -e --output-dir build --build-cache-path /tmp/build -v -b SparkFun:apollo3:artemis .
 
 flash:
-	python ../../../tools/svl/svl.py  -f build/ext-gps-mod.ino.bin /dev/ttyUSB0
+	python ../../../tools/svl/svl.py  -f build/ext-gps-mod.ino.bin $(USB)
 
 com:
-	picocom -b 115000 /dev/ttyUSB0
+	picocom -b 115000 $(USB)

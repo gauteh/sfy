@@ -68,11 +68,16 @@ pub const NOTEQ_SZ: usize = 12;
 #[cfg(feature = "storage")]
 pub const IMUQ_SZ: usize = STORAGEQ_SZ;
 
-#[cfg(all(not(feature = "raw"), not(feature = "storage")))]
+#[cfg(feature = "ext-gps")]
+pub const NOTEQ_SZ: usize = 12;
+
+#[cfg(all(not(feature = "raw"), not(feature = "storage"), not(feature = "ext-gps")))]
 pub const NOTEQ_SZ: usize = 24;
 
 #[cfg(not(feature = "storage"))]
 pub const IMUQ_SZ: usize = NOTEQ_SZ;
+
+
 
 /// These queues are filled up by the IMU interrupt in read batches of time-series. It is then consumed
 /// the main thread and first drained to the SD storage (if enabled), and then queued for the notecard.

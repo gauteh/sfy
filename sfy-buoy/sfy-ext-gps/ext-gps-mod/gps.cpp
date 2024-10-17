@@ -1,6 +1,6 @@
 # include "gps.h"
 # include "ArduinoJson.h"
-# include "spartn_keys.h"
+/* # include "spartn_keys.h" */
 
 SFE_UBLOX_GNSS myGNSS; // ZED-F9x
 SFE_UBLOX_GNSS myLBand; // NEO-D9S
@@ -139,6 +139,10 @@ void printPVTdata(UBX_NAV_PVT_data_t *ubxDataStruct)
   doc["Fix Type"] = fixType;
   serializeJson(doc, sfy);
   sfy.println();
+
+  Serial.print("Sent GPS telegram: ");
+  serializeJson(doc, Serial);
+  Serial.println();
 }
 //=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 // Callback: printRXMCOR will be called when new RXM COR data arrives
@@ -307,8 +311,8 @@ void setup_gps() {
   //"Every time the 'current' key is expired, 'next' takes its place."
   //"Therefore the host should then retrieve the new 'next' key and send only that." - Use setDynamicSPARTNKey for this.
   // The key can be provided in binary (uint8_t) format or in ASCII Hex (char) format, but in both cases keyLengthBytes _must_ represent the binary key length in bytes.
-  ok = myGNSS.setDynamicSPARTNKeys(currentKeyLengthBytes, currentKeyGPSWeek, currentKeyGPSToW, currentDynamicKey,
-                                           nextKeyLengthBytes, nextKeyGPSWeek, nextKeyGPSToW, nextDynamicKey);
+  /* ok = myGNSS.setDynamicSPARTNKeys(currentKeyLengthBytes, currentKeyGPSWeek, currentKeyGPSToW, currentDynamicKey, */
+  /*                                          nextKeyLengthBytes, nextKeyGPSWeek, nextKeyGPSToW, nextDynamicKey); */
   Serial.println(OK(ok));
   //if (ok) ok = myGNSS.saveConfiguration(VAL_CFG_SUBSEC_IOPORT | VAL_CFG_SUBSEC_MSGCONF); //Optional: Save the ioPort and message settings to NVM and BBR
 

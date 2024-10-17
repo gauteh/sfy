@@ -20,6 +20,7 @@ extern crate cmsis_dsp;
 use ambiq_hal::{self as hal, prelude::*};
 use chrono::NaiveDate;
 use core::cell::RefCell;
+use core::ops::DerefMut;
 use core::fmt::Write as _;
 use core::panic::PanicInfo;
 use core::sync::atomic::{AtomicI32, Ordering};
@@ -163,11 +164,11 @@ fn main() -> ! {
     let mut a2 = pins.a2.into_input();
     a2.configure_interrupt(hal::gpio::InterruptOpt::LowToHigh);
     a2.clear_interrupt();
+    a2.enable_interrupt();
 
     free(|cs| {
         GPS_SERIAL.borrow(cs).replace(Some(gps_serial));
         A2.borrow(cs).replace(Some(a2));
-        assert!(A2.borrow(cs).borrow().is_some());
     });
 
 
@@ -180,10 +181,6 @@ fn main() -> ! {
     delay.delay_ms(5_000u32);
 
     led.set_low().unwrap();
-
-    free(|cs| {
-        assert!(A2.borrow(cs).borrow().is_some());
-    });
 
     #[cfg(feature = "storage")]
     let storage = {
@@ -235,20 +232,12 @@ fn main() -> ! {
     #[cfg(not(feature = "storage"))]
     let (imu_p, mut imu_queue) = unsafe { NOTEQ.split() };
 
-    free(|cs| {
-        assert!(A2.borrow(cs).borrow().is_some());
-    });
-
     info!("Setting up Notecarrier..");
     let mut note = Notecarrier::new(i2c4, &mut delay).unwrap();
 
-    free(|cs| {
-        assert!(A2.borrow(cs).borrow().is_some());
-    });
-
     info!("Send startup-message over cellular.");
 
-    let mut w = heapless::String::<70>::new();
+    let mut w = heapless::String::<100>::new();
     w.push_str("SFY (v").unwrap();
     w.push_str(git_version!()).unwrap();
     w.push_str(") (sn: ").unwrap();
@@ -259,35 +248,24 @@ fn main() -> ! {
     w.push_str(") started up.").unwrap();
     info!("{}", w);
 
-    free(|cs| {
-        assert!(A2.borrow(cs).borrow().is_some());
-    });
-
     note.hub()
         .log(&mut delay, w.as_str(), false, false)
         .and_then(|r| r.wait(&mut delay))
         .ok(); // this will fail if more than 100 notes is added.
                //
-    free(|cs| {
-        assert!(A2.borrow(cs).borrow().is_some());
-    });
-
     // Move state into globally available variables and set reference to NOTE for
     // logging on panic and hard resets.
     //
     // TODO: Should maybe `pin_mut!` NOTE to prevent it being moved on the stack.
     free(|cs| unsafe {
-        assert!(A2.borrow(cs).borrow().is_some());
         log::NOTE = Some(&mut note as *mut _);
 
-        assert!(A2.borrow(cs).borrow().is_some());
         STATE.borrow(cs).replace(Some(SharedState {
             rtc,
             position_time: 0,
             lon: 0.0,
             lat: 0.0,
         }));
-        assert!(A2.borrow(cs).borrow().is_some());
     });
 
     info!("Try to fetch location and time before starting main loop..");
@@ -323,18 +301,13 @@ fn main() -> ! {
     // Move IMU into temporary variable for moving it into the `RTC` interrupt
     // routine, _before_ we enable interrupts.
     free(|cs| {
-        assert!(A2.borrow(cs).borrow().is_some());
         unsafe { IMU = Some(imu) };
-        assert!(A2.borrow(cs).borrow().is_some());
     });
 
     defmt::info!("Enable interrupts");
     free(|cs| unsafe {
-        assert!(A2.borrow(cs).borrow().is_some());
         hal::gpio::enable_gpio_interrupts();
         cortex_m::interrupt::enable();
-        assert!(A2.borrow(cs).borrow().is_some());
-        A2.borrow(cs).borrow_mut().as_mut().unwrap().enable_interrupt();
     });
 
     info!("Entering main loop");
@@ -500,10 +473,10 @@ fn GPIO() {
     static mut GPS: sfy::gps::Gps = sfy::gps::Gps::new();
 
     if a2.is_none() {
-        defmt::debug!("Taking A2.");
-        // unsafe {
-        //     a2.replace(A2.take().unwrap());
-        // }
+        defmt::debug!("Moving A2 into interrupt..");
+        free(|cs| {
+            a2.replace(A2.borrow(cs).borrow_mut().deref_mut().take().unwrap());
+        });
     } else {
         // Clear interrupt
         a2.as_mut().unwrap().clear_interrupt();
