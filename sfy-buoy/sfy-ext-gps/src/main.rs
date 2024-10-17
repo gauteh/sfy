@@ -158,20 +158,18 @@ fn main() -> ! {
     info!("Setting up GPS serial..");
     let gps_serial = hal::uart::new_12_13(dp.UART1, pins.a16, pins.a0, 400_000);
 
-    free(|cs| {
-        GPS_SERIAL.borrow(cs).replace(Some(gps_serial));
-    });
-
     // Set up GPS GPIO interrupt on pin A2
     info!("Setting up GPS interrupt.");
     let mut a2 = pins.a2.into_input();
     a2.configure_interrupt(hal::gpio::InterruptOpt::LowToHigh);
     a2.clear_interrupt();
-    a2.enable_interrupt();
 
     free(|cs| {
+        GPS_SERIAL.borrow(cs).replace(Some(gps_serial));
         A2.borrow(cs).replace(Some(a2));
+        assert!(A2.borrow(cs).borrow().is_some());
     });
+
 
     let mut led = pins.d19.into_push_pull_output();
 
@@ -182,6 +180,10 @@ fn main() -> ! {
     delay.delay_ms(5_000u32);
 
     led.set_low().unwrap();
+
+    free(|cs| {
+        assert!(A2.borrow(cs).borrow().is_some());
+    });
 
     #[cfg(feature = "storage")]
     let storage = {
@@ -233,12 +235,20 @@ fn main() -> ! {
     #[cfg(not(feature = "storage"))]
     let (imu_p, mut imu_queue) = unsafe { NOTEQ.split() };
 
+    free(|cs| {
+        assert!(A2.borrow(cs).borrow().is_some());
+    });
+
     info!("Setting up Notecarrier..");
     let mut note = Notecarrier::new(i2c4, &mut delay).unwrap();
 
+    free(|cs| {
+        assert!(A2.borrow(cs).borrow().is_some());
+    });
+
     info!("Send startup-message over cellular.");
 
-    let mut w = heapless::String::<100>::new();
+    let mut w = heapless::String::<70>::new();
     w.push_str("SFY (v").unwrap();
     w.push_str(git_version!()).unwrap();
     w.push_str(") (sn: ").unwrap();
@@ -249,24 +259,35 @@ fn main() -> ! {
     w.push_str(") started up.").unwrap();
     info!("{}", w);
 
+    free(|cs| {
+        assert!(A2.borrow(cs).borrow().is_some());
+    });
+
     note.hub()
         .log(&mut delay, w.as_str(), false, false)
         .and_then(|r| r.wait(&mut delay))
         .ok(); // this will fail if more than 100 notes is added.
+               //
+    free(|cs| {
+        assert!(A2.borrow(cs).borrow().is_some());
+    });
 
     // Move state into globally available variables and set reference to NOTE for
     // logging on panic and hard resets.
     //
     // TODO: Should maybe `pin_mut!` NOTE to prevent it being moved on the stack.
     free(|cs| unsafe {
+        assert!(A2.borrow(cs).borrow().is_some());
         log::NOTE = Some(&mut note as *mut _);
 
+        assert!(A2.borrow(cs).borrow().is_some());
         STATE.borrow(cs).replace(Some(SharedState {
             rtc,
             position_time: 0,
             lon: 0.0,
             lat: 0.0,
         }));
+        assert!(A2.borrow(cs).borrow().is_some());
     });
 
     info!("Try to fetch location and time before starting main loop..");
@@ -301,15 +322,20 @@ fn main() -> ! {
 
     // Move IMU into temporary variable for moving it into the `RTC` interrupt
     // routine, _before_ we enable interrupts.
-    free(|_| {
+    free(|cs| {
+        assert!(A2.borrow(cs).borrow().is_some());
         unsafe { IMU = Some(imu) };
+        assert!(A2.borrow(cs).borrow().is_some());
     });
 
     defmt::info!("Enable interrupts");
-    unsafe {
+    free(|cs| unsafe {
+        assert!(A2.borrow(cs).borrow().is_some());
         hal::gpio::enable_gpio_interrupts();
         cortex_m::interrupt::enable();
-    }
+        assert!(A2.borrow(cs).borrow().is_some());
+        A2.borrow(cs).borrow_mut().as_mut().unwrap().enable_interrupt();
+    });
 
     info!("Entering main loop");
     const GOOD_TRIES: u32 = 15;
@@ -469,13 +495,21 @@ fn reset<I: Read + Write>(note: &mut Notecarrier<I>, delay: &mut impl DelayMs<u1
 #[allow(non_snake_case)]
 #[interrupt]
 fn GPIO() {
+    #[allow(non_upper_case_globals)]
+    static mut a2: Option<hal::gpio::pin::P11<{ Mode::Input }>> = None;
     static mut GPS: sfy::gps::Gps = sfy::gps::Gps::new();
 
-    let pps_time = free(|cs| {
+    if a2.is_none() {
+        defmt::debug!("Taking A2.");
+        // unsafe {
+        //     a2.replace(A2.take().unwrap());
+        // }
+    } else {
         // Clear interrupt
-        let mut a2 = A2.borrow(cs).borrow_mut();
         a2.as_mut().unwrap().clear_interrupt();
+    }
 
+    let pps_time = free(|cs| {
         let state = STATE.borrow(cs).borrow();
         let state = state.as_ref().unwrap();
 
