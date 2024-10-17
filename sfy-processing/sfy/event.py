@@ -62,6 +62,7 @@ class Event:
     body: Any = None
     payload: Any = None
     payload_length: Any = None
+    transport: Any = None
 
     @property
     def longitude(self):
