@@ -70,8 +70,8 @@ embedded-sdmmc = { git = "https://github.com/rust-embedded-community/embedded-sd
 # [patch.'https://github.com/gauteh/notecard-rs']
 # blues-notecard = { path = "../../../../dev/embedded/notecard-rs" }
 
-# [patch.'https://github.com/gauteh/ambiq-rs']
-# ambiq-hal = { path = "../../../../dev/embedded/ambiq-rs/ambiq-hal" }
+[patch.'https://github.com/gauteh/ambiq-rs']
+ambiq-hal = { path = "../../../../dev/embedded/ambiq-rs/ambiq-hal" }
 
 # cargo build/run
 [profile.dev]
