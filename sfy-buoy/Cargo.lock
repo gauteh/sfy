@@ -30,7 +30,7 @@ dependencies = [
 [[package]]
 name = "ambiq-apollo3-pac2"
 version = "0.2.0"
-source = "git+https://github.com/gauteh/ambiq-rs#aa86d93155d1d84523003ca5111bcc549fadcd40"
+source = "git+https://github.com/gauteh/ambiq-rs#1ea63d6cffbfb7be8469ba5c9e68e9878d67f0bd"
 dependencies = [
  "bare-metal 0.2.5",
  "cortex-m",
@@ -41,7 +41,7 @@ dependencies = [
 [[package]]
 name = "ambiq-hal"
 version = "0.3.3"
-source = "git+https://github.com/gauteh/ambiq-rs#aa86d93155d1d84523003ca5111bcc549fadcd40"
+source = "git+https://github.com/gauteh/ambiq-rs#1ea63d6cffbfb7be8469ba5c9e68e9878d67f0bd"
 dependencies = [
  "ambiq-apollo3-pac2",
  "ambiq-hal-sys",
@@ -60,7 +60,7 @@ dependencies = [
 [[package]]
 name = "ambiq-hal-sys"
 version = "0.1.0"
-source = "git+https://github.com/gauteh/ambiq-rs#aa86d93155d1d84523003ca5111bcc549fadcd40"
+source = "git+https://github.com/gauteh/ambiq-rs#1ea63d6cffbfb7be8469ba5c9e68e9878d67f0bd"
 dependencies = [
  "bindgen 0.59.2",
  "cc",
