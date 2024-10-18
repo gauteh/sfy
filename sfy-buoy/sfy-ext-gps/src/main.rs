@@ -73,7 +73,7 @@ pub static STATE: Mutex<RefCell<Option<SharedState<hal::rtc::Rtc>>>> =
     Mutex::new(RefCell::new(None));
 
 /// Serial and interrupt pin for external GPS.
-static GPS_SERIAL: Mutex<RefCell<Option<hal::uart::Uart0<12, 13>>>> =
+static GPS_SERIAL: Mutex<RefCell<Option<hal::uart::Uart1<12, 13>>>> =
     Mutex::new(RefCell::new(None));
 static A2: Mutex<RefCell<Option<hal::gpio::pin::P11<{ Mode::Input }>>>> =
     Mutex::new(RefCell::new(None));
@@ -157,7 +157,7 @@ fn main() -> ! {
 
     // Set up GPS serial
     info!("Setting up GPS serial..");
-    let gps_serial = hal::uart::new_12_13(dp.UART0, pins.a16, pins.a0, 400_000);
+    let gps_serial = hal::uart::new_12_13(dp.UART1, pins.a16, pins.a0, 400_000);
 
     // Set up GPS GPIO interrupt on pin A2
     info!("Setting up GPS interrupt.");
@@ -492,6 +492,8 @@ fn GPIO() {
         now
     });
 
+    let mut delay = hal::delay::FlashDelay;
+    delay.delay_ms(100_u16);
     // pull a single JSON gps sample from the uart
     free(|cs| {
         let mut gps = GPS_SERIAL.borrow(cs).borrow_mut();

@@ -4,6 +4,7 @@ use chrono::{NaiveDate, NaiveDateTime};
 #[allow(unused_imports)]
 use defmt::{debug, error, info, println, trace, warn};
 use heapless::Vec;
+use embedded_hal::blocking::delay::DelayMs;
 
 pub const GPS_PACKET_V: u8 = 1;
 pub const GPS_PACKET_SZ: usize = 3 * 1024;
@@ -137,8 +138,8 @@ impl Gps {
 
     pub fn sample<R>(&mut self, gps: &mut R)
     where
-        R: embedded_hal::serial::Read<u8>,
-        R::Error: defmt::Format,
+        R: embedded_hal::serial::Read<u8> + embedded_hal::serial::Write<u8>,
+        // R::Error: defmt::Format,
     {
         let mut buf = heapless::Vec::<u8, 1024>::new(); // reduce?
 
@@ -147,9 +148,11 @@ impl Gps {
             match gps.read() {
                 Ok(w) => {
                     debug!("read: {}", w);
+                    gps.write(w);
                     defmt::flush();
                     match w {
-                        b'\n' => {
+                        b'}' => {
+                            buf.push(w);
                             break;
                         }
                         w => match buf.push(w) {
@@ -164,14 +167,14 @@ impl Gps {
 
                 Err(nb::Error::WouldBlock) => { /* wait */ } // TODO: timeout!
                 Err(nb::Error::Other(e)) => {
-                    defmt::error!("ext-gps: error reading from uart: {}", e);
-                    break;
+                    defmt::error!("ext-gps: error reading from uart");
+                    // break;
                 }
             }
         }
 
         // ready to parse `buf`.
-        defmt::debug!("Parsing GPS package..");
+        defmt::debug!("Parsing GPS package..: {}", unsafe {core::str::from_utf8_unchecked(&buf)});
 
         match serde_json_core::from_slice::<Sample>(&buf) {
             Ok((sample, _sz)) => {
@@ -196,7 +199,8 @@ impl Gps {
         // It is likely that the latest telegram is responsible for the PPS, so we are now likely
         // out-of-sync with the PPS and telegrams. Should hopefully resolve itself on the next
         // sample.
-        while let Ok(_) = gps.read() {
+        while let Ok(w) = gps.read() {
+            defmt::debug!("{}", unsafe { char::from_u32_unchecked(w as u32)});
             defmt::error!(
                 "ext-gps: more data on uart after PPS parsing. discarding, PPS may be out of sync."
             );
