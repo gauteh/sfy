@@ -297,7 +297,7 @@ fn main() -> ! {
     let imu = sfy::Imu::new(waves, imu_p);
 
     info!("Setting up ext-gps..");
-    let (gps_p, gps_queue) = unsafe { sfy::gps::EGPSQ.split() };
+    let (gps_p, mut gps_queue) = unsafe { sfy::gps::EGPSQ.split() };
     let gps = sfy::gps::Gps::new(gps_serial, gps_p);
 
     // Move IMU and GPS into temporary variables for moving it into the `RTC`  and GPIO
@@ -400,13 +400,14 @@ fn main() -> ! {
             let ng = note.drain_egps_queue(&mut gps_queue, &mut delay);
             let ns = note.check_and_sync(&mut delay);
 
-            match (l, nd, ns) {
-                (Ok(_), Ok(_), Ok(_)) => good_tries = GOOD_TRIES,
-                (l, dq, cs) => {
+            match (l, nd, ng, ns) {
+                (Ok(_), Ok(_), Ok(_), Ok(_)) => good_tries = GOOD_TRIES,
+                (l, dq, dg, cs) => {
                     error!(
-                        "Fatal error occured during main loop: location: {:?}, note/drain_queue: {:?}, note/check_and_sync: {:?}. Tries left: {}",
+                        "Fatal error occured during main loop: location: {:?}, note/drain_queue: {:?}, note/drain_egps_queue: {:?}, note/check_and_sync: {:?}. Tries left: {}",
                         l,
                         dq,
+                        dg,
                         cs,
                         good_tries
                     );

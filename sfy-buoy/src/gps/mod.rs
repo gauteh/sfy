@@ -13,6 +13,8 @@ use heapless::{
 pub const GPS_PACKET_V: u8 = 1;
 pub const GPS_PACKET_SZ: usize = 3 * 1024;
 pub const GPS_FREQ: f32 = 20.0;
+/// Maximum length of base64 string from
+pub const GPS_OUTN: usize = { GPS_PACKET_SZ * 2 } * 4 / 3 + 4;
 
 mod wire;
 pub use wire::*;
@@ -90,9 +92,62 @@ pub struct GpsPacket {
     pub data: Vec<u16, { 3 * GPS_PACKET_SZ }>,
 }
 
+#[derive(serde::Serialize, Default)]
+pub struct GpsPacketMeta {
+    /// Timestamp of first sample
+    pub timestamp: i64,
+
+    pub freq: f32,
+
+    pub version: u8,
+
+    /// Reference position for which the data is relative to. Mean of all samples.
+    pub lon: f64,
+    pub lat: f64,
+    pub msl: f64,
+
+    pub lonlat_range: f32, // 1e-7 deg
+    pub msl_range: f32,    // mm
+    pub length: u32,
+}
+
 impl GpsPacket {
     pub fn len(&self) -> usize {
         self.data.len() / 3
+    }
+
+    pub fn base64(&self) -> Vec<u8, GPS_OUTN> {
+        let mut b64: Vec<_, GPS_OUTN> = Vec::new();
+        b64.resize_default(GPS_OUTN).unwrap();
+
+        // Check endianness (TODO:  swap order if compiled for big endian machine).
+        #[cfg(target_endian = "big")]
+        compile_error!("serializied samples are assumed to be in little endian, target platform is big endian and no conversion is implemented.");
+
+        let data = bytemuck::cast_slice(&self.data);
+        let written = base64::encode_config_slice(data, base64::STANDARD, &mut b64);
+        b64.truncate(written);
+
+        b64
+    }
+
+    /// Split package into metadata and payload.
+    pub fn split(&self) -> (GpsPacketMeta, Vec<u8, GPS_OUTN>) {
+        let b64 = self.base64();
+
+        let meta = GpsPacketMeta {
+            timestamp: self.timestamp,
+            length: b64.len() as u32,
+            freq: self.freq,
+            lonlat_range: wire::LON_RANGE,
+            msl_range: wire::MSL_RANGE,
+            version: GPS_PACKET_V,
+            lon: self.lon,
+            lat: self.lat,
+            msl: self.msl,
+        };
+
+        (meta, b64)
     }
 }
 
