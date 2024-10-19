@@ -14,7 +14,7 @@ pub const GPS_PACKET_V: u8 = 1;
 pub const GPS_PACKET_SZ: usize = 3 * 1024;
 pub const GPS_FREQ: f32 = 20.0;
 /// Maximum length of base64 string from
-pub const GPS_OUTN: usize = { GPS_PACKET_SZ * 2 } * 4 / 3 + 4;
+pub const GPS_OUTN: usize = { 3 * GPS_PACKET_SZ * 2 } * 4 / 3 + 4;
 
 mod wire;
 pub use wire::*;
@@ -304,7 +304,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::Sample;
+    use super::{Sample, GpsPacket, GPS_PACKET_SZ};
 
     #[test]
     fn test_deser_sample() {
@@ -347,5 +347,23 @@ mod tests {
         let s: Sample = serde_json_core::from_str(sample).unwrap().0;
 
         println!("sample: {s:#?}");
+    }
+
+    #[test]
+    fn base64_data_package() {
+        let p = GpsPacket {
+            timestamp: 0,
+            lat: 0.0,
+            lon: 0.0,
+            msl: 20.0,
+            freq: 100.0,
+            version: super::GPS_PACKET_V,
+            data: (0..(3*GPS_PACKET_SZ))
+                .map(|v| v as u16)
+                .collect::<heapless::Vec<_, { 3 * GPS_PACKET_SZ }>>(),
+        };
+
+        let b64 = p.base64();
+        println!("{}", core::str::from_utf8(&b64).unwrap());
     }
 }

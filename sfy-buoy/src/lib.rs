@@ -57,7 +57,7 @@ pub type ImuAxlPacketT = axl::AxlPacket;
 // need to be queued.
 #[cfg(feature = "raw")]
 pub const STORAGEQ_SZ: usize = 3;
-#[cfg(feature = "raw")]
+#[cfg(all(feature = "raw", not(feature = "ext-gps")))]
 pub const NOTEQ_SZ: usize = 6;
 
 #[cfg(not(feature = "raw"))]
