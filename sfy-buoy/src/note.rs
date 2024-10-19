@@ -205,6 +205,51 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             )?
             .wait(delay)?;
 
+        #[cfg(feature = "ext-gps")]
+        {
+            defmt::debug!("setting up egps templates..");
+
+            #[derive(serde::Serialize, Default)]
+            struct GpsPacketMetaTemplate {
+                timestamp: u32,
+
+                freq: f32,
+                version: u32,
+
+                lon: f32,
+                lat: f32,
+                msl: f32,
+
+                lonlat_range: f32,
+                msl_range: f32,
+                length: u32,
+            }
+
+            let meta_template = GpsPacketMetaTemplate {
+                timestamp: 18,
+                freq: 14.1,
+                version: 14,
+
+                lon: 18.1,
+                lat: 18.1,
+                msl: 18.1,
+
+                lonlat_range: 14.1,
+                msl_range: 14.1,
+                length: 14,
+            };
+
+            defmt::debug!("setting up template for GpsPacketMeta");
+            self.note()
+                .template(
+                    delay,
+                    Some("egps.qo"),
+                    Some(meta_template),
+                    Some(crate::gps::GPS_OUTN as u32),
+                )?
+                .wait(delay)?;
+        }
+
         Ok(())
     }
 

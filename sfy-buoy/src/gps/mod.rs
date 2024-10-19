@@ -92,6 +92,7 @@ pub struct GpsPacket {
     pub data: Vec<u16, { 3 * GPS_PACKET_SZ }>,
 }
 
+// XXX: Match with template in note
 #[derive(serde::Serialize, Default)]
 pub struct GpsPacketMeta {
     /// Timestamp of first sample
