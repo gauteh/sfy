@@ -123,7 +123,13 @@ where
         }
     }
 
-    pub fn collect(&mut self) -> GpsPacket {
+    pub fn check_collect(&mut self) {
+        if self.buf.is_full() {
+            self.collect();
+        }
+    }
+
+    pub fn collect(&mut self) {
         let N: f64 = self.buf.len() as f64;
 
         // Mean of lon, lat and msl
@@ -153,7 +159,7 @@ where
 
         self.buf.clear();
 
-        GpsPacket {
+        let p = GpsPacket {
             timestamp,
             freq: GPS_FREQ,
             version: GPS_PACKET_V,
@@ -161,7 +167,9 @@ where
             lat,
             msl,
             data,
-        }
+        };
+
+        self.queue.enqueue(p);
     }
 
     pub fn sample(&mut self) {

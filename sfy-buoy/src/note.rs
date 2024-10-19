@@ -242,6 +242,41 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         Ok(b64.len())
     }
 
+    #[cfg(feature = "ext-gps")]
+    pub fn send_egps(
+        &mut self,
+        pck: &crate::gps::GpsPacket,
+        delay: &mut impl DelayMs<u16>,
+    ) -> Result<usize, NoteError> {
+        let (meta, b64) = pck.split();
+
+        let r = self
+            .note
+            .note()
+            .add(
+                delay,
+                Some("egps.qo"),
+                None,
+                Some(meta),
+                Some(core::str::from_utf8(&b64).unwrap()),
+                if cfg!(feature = "continuous") {
+                    true
+                } else {
+                    false
+                },
+            )?
+            .wait(delay)?;
+
+        defmt::info!(
+            "Sent egps package: {}, bytes: {} (note: {:?})",
+            pck.timestamp,
+            b64.len(),
+            r
+        );
+
+        Ok(b64.len())
+    }
+
     /// Send log messages
     pub fn drain_log(
         &mut self,
@@ -346,19 +381,6 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         let mut tsz = 0;
 
         while let Some(pck) = queue.dequeue() {
-            // #[cfg(not(feature = "continuous"))]
-            // {
-            //     let sync_status = self.note.hub().sync_status(delay)?.wait(delay)?;
-
-            //     if sync_status.requested.is_some() {
-            //         defmt::warn!(
-            //             "notecard is syncing, not sending any data-packages until done: queue sz: {}",
-            //             queue.len()
-            //         );
-            //         return Ok(sz);
-            //     }
-            // }
-
             // TODO: if status was over 75 last time, don't spam notecard with status requests.
             let status = self.note.card().status(delay)?.wait(delay)?;
 
@@ -387,6 +409,54 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                         }
                         Err(e) => {
                             defmt::error!("Error while sending package to notecard: {:?}, discarding package.", e);
+                            return Err(e);
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(tsz)
+    }
+
+    /// Send queued ext-gps packages to the notecard.
+    #[cfg(feature = "ext-gps")]
+    pub fn drain_egps_queue(
+        &mut self,
+        queue: &mut heapless::spsc::Consumer<'static, crate::gps::GpsPacket, { crate::EPGS_SZ }>,
+        delay: &mut impl DelayMs<u16>,
+    ) -> Result<usize, NoteError> {
+        let mut tsz = 0;
+
+        while let Some(pck) = queue.dequeue() {
+            // TODO: if status was over 75 last time, don't spam notecard with status requests.
+            let status = self.note.card().status(delay)?.wait(delay)?;
+
+            if status.storage > 75 {
+                // wait until notecard has synced.
+                defmt::warn!("notecard is more than 75% full, not adding more notes until sync is done: queue sz: {}", queue.len());
+                return Ok(0);
+            }
+
+            defmt::info!(
+                "sending egps package: note queue sz (after dequeue): {}",
+                queue.len()
+            );
+            match self.send_egps(&pck, delay) {
+                Ok(sz) => {
+                    tsz += sz;
+                }
+                Err(e) => {
+                    defmt::error!(
+                        "Error while sending egps package to notecard: {:?}, retrying..",
+                        e
+                    );
+                    match self.send_egps(&pck, delay) {
+                        Ok(sz) => {
+                            tsz += sz;
+                        }
+                        Err(e) => {
+                            defmt::error!("Error while egps sending package to notecard: {:?}, discarding package.", e);
                             return Err(e);
                         }
                     }

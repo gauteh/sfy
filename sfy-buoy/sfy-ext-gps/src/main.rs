@@ -397,6 +397,7 @@ fn main() -> ! {
                 .ok();
 
             let nd = note.drain_queue(&mut imu_queue, &mut delay);
+            let ng = note.drain_egps_queue(&mut gps_queue, &mut delay);
             let ns = note.check_and_sync(&mut delay);
 
             match (l, nd, ns) {
@@ -500,6 +501,10 @@ fn GPIO() {
         let mut delay = hal::delay::FlashDelay;
         delay.delay_ms(100_u16);
         gps.sample();
+
+        // TODO: Set RTC.
+
+        gps.check_collect();
     }
 }
 
