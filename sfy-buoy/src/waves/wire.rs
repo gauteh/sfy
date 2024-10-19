@@ -70,7 +70,7 @@ impl ScaledF32 for G16 {
 }
 
 /// Move an f32 on the range -max to max to 0 to u16::MAX
-fn scale_f32_to_u16(max: f32, v: f32) -> u16 {
+pub fn scale_f32_to_u16(max: f32, v: f32) -> u16 {
     debug_assert!(max > 0.);
     let max = max as f64;
     let v = v as f64;
@@ -87,7 +87,7 @@ fn scale_f32_to_u16(max: f32, v: f32) -> u16 {
 
 /// Move an u16 on given -max to max range to its real value in f32.
 #[allow(unused)]
-fn scale_u16_to_f32(max: f32, u: u16) -> f32 {
+pub fn scale_u16_to_f32(max: f32, u: u16) -> f32 {
     debug_assert!(max > 0.);
     let max = max as f64;
     let v = u as f64;

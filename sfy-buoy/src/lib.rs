@@ -3,6 +3,7 @@
 #![feature(portable_simd)]
 #![feature(array_chunks)]
 #![cfg_attr(not(test), no_std)]
+#![allow(non_upper_case_globals)]
 
 #[cfg(test)]
 extern crate test;
