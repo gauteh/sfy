@@ -1,3 +1,4 @@
+#![allow(non_upper_case_globals)]
 #![no_std]
 #![no_main]
 
@@ -19,8 +20,8 @@ extern crate cmsis_dsp;
 use ambiq_hal::{self as hal, prelude::*};
 use chrono::NaiveDate;
 use core::cell::RefCell;
-use core::ops::DerefMut;
 use core::fmt::Write as _;
+use core::ops::DerefMut;
 use core::panic::PanicInfo;
 use core::sync::atomic::{AtomicI32, Ordering};
 #[allow(unused_imports)]
@@ -72,8 +73,8 @@ pub static STATE: Mutex<RefCell<Option<SharedState<hal::rtc::Rtc>>>> =
     Mutex::new(RefCell::new(None));
 
 /// Serial and interrupt pin for external GPS.
-static GPS_SERIAL: Mutex<RefCell<Option<hal::uart::Uart1<12, 13>>>> =
-    Mutex::new(RefCell::new(None));
+type U = hal::uart::Uart1<12, 13>;
+static GPS: Mutex<RefCell<Option<sfy::gps::Gps<U>>>> = Mutex::new(RefCell::new(None));
 static A2: Mutex<RefCell<Option<hal::gpio::pin::P11<{ Mode::Input }>>>> =
     Mutex::new(RefCell::new(None));
 
@@ -166,10 +167,8 @@ fn main() -> ! {
     a2.enable_interrupt();
 
     free(|cs| {
-        GPS_SERIAL.borrow(cs).replace(Some(gps_serial));
         A2.borrow(cs).replace(Some(a2));
     });
-
 
     let mut led = pins.d19.into_push_pull_output();
 
@@ -252,10 +251,10 @@ fn main() -> ! {
         .and_then(|r| r.wait(&mut delay))
         .ok(); // this will fail if more than 100 notes is added.
                //
-    // Move state into globally available variables and set reference to NOTE for
-    // logging on panic and hard resets.
-    //
-    // TODO: Should maybe `pin_mut!` NOTE to prevent it being moved on the stack.
+               // Move state into globally available variables and set reference to NOTE for
+               // logging on panic and hard resets.
+               //
+               // TODO: Should maybe `pin_mut!` NOTE to prevent it being moved on the stack.
     free(|cs| unsafe {
         log::NOTE = Some(&mut note as *mut _);
 
@@ -297,10 +296,15 @@ fn main() -> ! {
 
     let imu = sfy::Imu::new(waves, imu_p);
 
-    // Move IMU into temporary variable for moving it into the `RTC` interrupt
-    // routine, _before_ we enable interrupts.
+    info!("Setting up ext-gps..");
+    let (gps_p, gps_queue) = unsafe { sfy::gps::EGPSQ.split() };
+    let gps = sfy::gps::Gps::new(gps_serial, gps_p);
+
+    // Move IMU and GPS into temporary variables for moving it into the `RTC`  and GPIO
+    // interrupt routines, _before_ we enable interrupts.
     free(|cs| {
         unsafe { IMU = Some(imu) };
+        GPS.borrow(cs).replace(Some(gps));
     });
 
     defmt::info!("Enable interrupts");
@@ -467,14 +471,14 @@ fn reset<I: Read + Write>(note: &mut Notecarrier<I>, delay: &mut impl DelayMs<u1
 #[allow(non_snake_case)]
 #[interrupt]
 fn GPIO() {
-    #[allow(non_upper_case_globals)]
     static mut a2: Option<hal::gpio::pin::P11<{ Mode::Input }>> = None;
-    static mut GPS: sfy::gps::Gps = sfy::gps::Gps::new();
+    static mut gps: Option<sfy::gps::Gps<U>> = None;
 
     if a2.is_none() {
-        defmt::debug!("Moving A2 into interrupt..");
+        defmt::debug!("Moving A2 and GPS into interrupt..");
         free(|cs| {
             a2.replace(A2.borrow(cs).borrow_mut().deref_mut().take().unwrap());
+            gps.replace(GPS.borrow(cs).borrow_mut().deref_mut().take().unwrap());
         });
     } else {
         // Clear interrupt
@@ -491,22 +495,18 @@ fn GPIO() {
         now
     });
 
-    let mut delay = hal::delay::FlashDelay;
-    delay.delay_ms(100_u16);
-    // pull a single JSON gps sample from the uart
-    free(|cs| {
-        let mut gps = GPS_SERIAL.borrow(cs).borrow_mut();
-        let gps: &mut _ = gps.as_mut().unwrap();
-
-        GPS.sample(gps);
-    });
+    // Pull a single JSON gps sample from the uart
+    if let Some(gps) = gps {
+        let mut delay = hal::delay::FlashDelay;
+        delay.delay_ms(100_u16);
+        gps.sample();
+    }
 }
 
 #[cfg(not(feature = "host-tests"))]
 #[allow(non_snake_case)]
 #[interrupt]
 fn RTC() {
-    #[allow(non_upper_case_globals)]
     static mut imu: Option<Imu<E, I>> = None;
     static mut GOOD_TRIES: u16 = 5;
 

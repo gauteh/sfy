@@ -4,7 +4,11 @@ use chrono::{NaiveDate, NaiveDateTime};
 #[allow(unused_imports)]
 use defmt::{debug, error, info, println, trace, warn};
 use embedded_hal::blocking::delay::DelayMs;
-use heapless::Vec;
+use embedded_hal::serial::{Read, Write};
+use heapless::{
+    spsc::{Producer, Queue},
+    Vec,
+};
 
 pub const GPS_PACKET_V: u8 = 1;
 pub const GPS_PACKET_SZ: usize = 3 * 1024;
@@ -14,6 +18,10 @@ mod wire;
 pub use wire::*;
 
 use crate::waves::wire::ScaledF32;
+use crate::EPGS_SZ;
+
+/// Queue from GPS to Notecard
+pub static mut EGPSQ: Queue<GpsPacket, { crate::EPGS_SZ }> = Queue::new();
 
 #[derive(serde::Deserialize, PartialEq, defmt::Format, Debug)]
 pub struct Sample {
@@ -88,7 +96,12 @@ impl GpsPacket {
     }
 }
 
-pub struct Gps {
+pub struct Gps<U>
+where
+    U: Read<u8> + Write<u8>,
+{
+    gps: U,
+    queue: Producer<'static, GpsPacket, EPGS_SZ>,
     buf: Vec<Sample, { GPS_PACKET_SZ }>,
 }
 
@@ -98,14 +111,22 @@ enum ParseState {
     EndBracket,
 }
 
-impl Gps {
-    pub const fn new() -> Gps {
-        Gps { buf: Vec::new() }
+impl<U> Gps<U>
+where
+    U: Read<u8> + Write<u8>,
+{
+    pub fn new(gps: U, queue: Producer<'static, GpsPacket, EPGS_SZ>) -> Gps<U> {
+        Gps {
+            gps,
+            queue,
+            buf: Vec::new(),
+        }
     }
 
     pub fn collect(&mut self) -> GpsPacket {
         let N: f64 = self.buf.len() as f64;
 
+        // Mean of lon, lat and msl
         let (lon, lat, msl) = self
             .buf
             .iter()
@@ -114,6 +135,7 @@ impl Gps {
             .unwrap();
         let (lon, lat, msl) = (lon / N, lat / N, msl / N);
 
+        // Subtract mean and serialize as interleaved u16's
         let data: Vec<u16, { 3 * GPS_PACKET_SZ }> = self
             .buf
             .iter()
@@ -142,11 +164,7 @@ impl Gps {
         }
     }
 
-    pub fn sample<R>(&mut self, gps: &mut R)
-    where
-        R: embedded_hal::serial::Read<u8> + embedded_hal::serial::Write<u8>,
-        // R::Error: defmt::Format,
-    {
+    pub fn sample(&mut self) {
         let mut buf = heapless::Vec::<u8, 1024>::new(); // reduce?
 
         defmt::debug!("Reading GPS package from serial..");
@@ -158,7 +176,7 @@ impl Gps {
                 break;
             }
 
-            match gps.read() {
+            match self.gps.read() {
                 Ok(w) => {
                     debug!("read: {}", w);
                     match state {
@@ -166,6 +184,10 @@ impl Gps {
                             if w == b'{' {
                                 buf.push(w).ok();
                                 state = ParseState::Body;
+                            } else {
+                                debug!("extra char discarded: {}", unsafe {
+                                    char::from_u32_unchecked(w as u32)
+                                });
                             }
                         }
                         ParseState::Body => {
@@ -200,7 +222,7 @@ impl Gps {
                 self.buf
                     .push(sample)
                     .inspect_err(|_| {
-                        defmt::error!("GPS sample buffer is full! Discarding samples.")
+                        defmt::error!("GPS sample buffer is full! Discarding latest sample.")
                     })
                     .ok();
 
@@ -212,17 +234,7 @@ impl Gps {
             Err(_) => error!("Failed to parse GPS telegram: {}", &buf),
         }
 
-        // Make sure there is nothing in the uart now, otherwise it should be drained.
-        //
-        // It is likely that the latest telegram is responsible for the PPS, so we are now likely
-        // out-of-sync with the PPS and telegrams. Should hopefully resolve itself on the next
-        // sample.
-        while let Ok(w) = gps.read() {
-            defmt::debug!("{}", unsafe { char::from_u32_unchecked(w as u32) });
-            defmt::error!(
-                "ext-gps: more data on uart after PPS parsing. discarding, PPS may be out of sync."
-            );
-        }
+        // TODO: Not really handling extra data.
     }
 }
 
