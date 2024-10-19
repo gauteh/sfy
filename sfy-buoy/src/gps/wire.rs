@@ -100,4 +100,36 @@ mod tests {
         assert!(max < 0.01);
         // panic!();
     }
+
+    #[test]
+    fn round_trip_msl() {
+        let mut max: f32 = 0.0;
+        let mut avg: f32 = 0.0;
+
+        const N: i32 = 1000000i32;
+
+        for i in 0..N {
+            let v = (i as f32) * MSL_RANGE / N as f32;
+            let u = scale_f32_to_u16(MSL_RANGE, v);
+            let fu = scale_u16_to_f32(MSL_RANGE, u);
+
+            let uu = Msl16::from_f32(v);
+            let fuu = uu.to_f32();
+
+            assert_eq!(u, uu.to_u16());
+            assert_eq!(fu, fuu);
+
+            let d = (v - fu).abs();
+            max = max.max(d);
+            avg = avg + d;
+        }
+
+        avg = avg / N as f32;
+        println!("msl range: {}", MSL_RANGE);
+        println!("msl u16 avg diff: {}", avg);
+        println!("msl u16 max diff: {}", max);
+
+        assert!(max < 0.01);
+        // panic!();
+    }
 }
