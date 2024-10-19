@@ -3,8 +3,8 @@
 use chrono::{NaiveDate, NaiveDateTime};
 #[allow(unused_imports)]
 use defmt::{debug, error, info, println, trace, warn};
-use heapless::Vec;
 use embedded_hal::blocking::delay::DelayMs;
+use heapless::Vec;
 
 pub const GPS_PACKET_V: u8 = 1;
 pub const GPS_PACKET_SZ: usize = 3 * 1024;
@@ -92,13 +92,19 @@ pub struct Gps {
     buf: Vec<Sample, { GPS_PACKET_SZ }>,
 }
 
+enum ParseState {
+    StartBracket,
+    Body,
+    EndBracket,
+}
+
 impl Gps {
     pub const fn new() -> Gps {
         Gps { buf: Vec::new() }
     }
 
     pub fn collect(&mut self) -> GpsPacket {
-        let N = self.buf.len() as f64;
+        let N: f64 = self.buf.len() as f64;
 
         let (lon, lat, msl) = self
             .buf
@@ -144,37 +150,49 @@ impl Gps {
         let mut buf = heapless::Vec::<u8, 1024>::new(); // reduce?
 
         defmt::debug!("Reading GPS package from serial..");
-        loop {
+        let mut state = ParseState::StartBracket;
+
+        while !matches!(state, ParseState::EndBracket) {
+            if self.buf.len() == self.buf.capacity() {
+                defmt::error!("gps telegram buffer is full.");
+                break;
+            }
+
             match gps.read() {
                 Ok(w) => {
                     debug!("read: {}", w);
-                    gps.write(w);
-                    defmt::flush();
-                    match w {
-                        b'}' => {
-                            buf.push(w);
+                    match state {
+                        ParseState::StartBracket => {
+                            if w == b'{' {
+                                buf.push(w).ok();
+                                state = ParseState::Body;
+                            }
+                        }
+                        ParseState::Body => {
+                            if w == b'}' {
+                                buf.push(w).ok();
+                                state = ParseState::EndBracket;
+                            } else {
+                                buf.push(w).ok();
+                            }
+                        }
+                        ParseState::EndBracket => {
                             break;
                         }
-                        w => match buf.push(w) {
-                            Ok(_) => {}
-                            Err(_) => {
-                                defmt::error!("ext-gps: gps read buf is full.");
-                                break;
-                            }
-                        },
                     }
                 }
 
                 Err(nb::Error::WouldBlock) => { /* wait */ } // TODO: timeout!
-                Err(nb::Error::Other(e)) => {
+                Err(nb::Error::Other(_)) => {
                     defmt::error!("ext-gps: error reading from uart");
-                    // break;
                 }
             }
         }
 
         // ready to parse `buf`.
-        defmt::debug!("Parsing GPS package..: {}", unsafe {core::str::from_utf8_unchecked(&buf)});
+        defmt::debug!("Parsing GPS package..: {}", unsafe {
+            core::str::from_utf8_unchecked(&buf)
+        });
 
         match serde_json_core::from_slice::<Sample>(&buf) {
             Ok((sample, _sz)) => {
@@ -200,7 +218,7 @@ impl Gps {
         // out-of-sync with the PPS and telegrams. Should hopefully resolve itself on the next
         // sample.
         while let Ok(w) = gps.read() {
-            defmt::debug!("{}", unsafe { char::from_u32_unchecked(w as u32)});
+            defmt::debug!("{}", unsafe { char::from_u32_unchecked(w as u32) });
             defmt::error!(
                 "ext-gps: more data on uart after PPS parsing. discarding, PPS may be out of sync."
             );

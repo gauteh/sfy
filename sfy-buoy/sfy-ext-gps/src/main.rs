@@ -1,4 +1,3 @@
-#![feature(result_option_inspect)]
 #![no_std]
 #![no_main]
 
@@ -162,7 +161,7 @@ fn main() -> ! {
     // Set up GPS GPIO interrupt on pin A2
     info!("Setting up GPS interrupt.");
     let mut a2 = pins.a2.into_input();
-    a2.configure_interrupt(hal::gpio::InterruptOpt::LowToHigh);
+    a2.configure_interrupt(InterruptOpt::LowToHigh);
     a2.clear_interrupt();
     a2.enable_interrupt();
 

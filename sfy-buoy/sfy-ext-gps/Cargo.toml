@@ -42,5 +42,6 @@ fir = [ "sfy/fir" ]
 storage = [ "sfy/storage" ]
 surf = [ "sfy/surf" ]
 deploy = []
+host-tests = []
 # defmt-serial = [ "dep:ufmt", "dep:defmt-serial" ]
 
