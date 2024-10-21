@@ -364,8 +364,8 @@ fn main() -> ! {
 
         // XXX: This needs to be adapted to frequency, and queue length. Maybe just remove when we
         // have the remaining space check? Check after Hjeltefjorden deployment.
-        const LOOP_DELAY: u32 = 1_00;
-        const SHORT_LOOP_DELAY: u32 = 1_00;
+        const LOOP_DELAY: u32 = 3_000;
+        const SHORT_LOOP_DELAY: u32 = 3_000;
 
         // Process data and communication for the Notecard.
         if ((now - last) > LOOP_DELAY as i64)
@@ -386,7 +386,7 @@ fn main() -> ! {
             let l = location.check_retrieve(&STATE, &mut delay, &mut note);
 
             #[cfg(feature = "storage")]
-            defmt::debug!(
+            defmt::warn!(
                 "notecard iteration, now: {}, note queue: {}, storage queue: {}",
                 now,
                 imu_queue.len(),
@@ -394,7 +394,7 @@ fn main() -> ! {
             );
 
             #[cfg(not(feature = "storage"))]
-            defmt::debug!(
+            defmt::warn!(
                 "notecard iteration, now: {}, note queue: {}, gps queue: {}",
                 now,
                 imu_queue.len(),

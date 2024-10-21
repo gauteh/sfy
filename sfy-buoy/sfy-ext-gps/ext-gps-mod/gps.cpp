@@ -56,7 +56,7 @@ void printPVTdata(UBX_NAV_PVT_data_t *ubxDataStruct)
   uint8_t hour = ubxDataStruct->hour;
   uint8_t minute = ubxDataStruct->min;
   uint8_t sec = ubxDataStruct->sec;
-  int32_t nano = ubxDataStruct->nano;
+  uint32_t nano = ubxDataStruct->nano;
 
   String datetime = String(year) + "-" + String(month) + "-" + String(day) + ":" + String(hour) + ":" + String(minute) + ":" + String(sec) + "." + String(nano);
   Serial.print(F("Time: "));
@@ -293,8 +293,14 @@ void setup_gps() {
   // When the module is _locked_ to GNSS time, make it generate a  second pulse every 30 seconds
   // myGNSS.addCfgValset(UBLOX_CFG_TP_PERIOD_LOCK_TP1, 50000); // Set the period to 30,000,000 us
   // myGNSS.addCfgValset(UBLOX_CFG_TP_LEN_LOCK_TP1, 10000); // Set the pulse length to 1,000,000 us
+
+  // 1 Hz
   myGNSS.addCfgValset(UBLOX_CFG_TP_PERIOD_LOCK_TP1, 1000000); // Set the period to 30,000,000 us
   myGNSS.addCfgValset(UBLOX_CFG_TP_LEN_LOCK_TP1, 100000); // Set the pulse length to 1,000,000 us
+
+  // 5 Hz
+  myGNSS.addCfgValset(UBLOX_CFG_TP_PERIOD_LOCK_TP1, (1000000/5)); // Set the period to 30,000,000 us
+  myGNSS.addCfgValset(UBLOX_CFG_TP_LEN_LOCK_TP1, (100000/5)); // Set the pulse length to 1,000,000 us
 
   // Now set the time pulse parameters
   if (myGNSS.sendCfgValset() == false)

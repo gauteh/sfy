@@ -223,14 +223,22 @@ where
         defmt::debug!("Reading GPS package from serial.. sample buf: {}", self.buf.len());
         let mut state = ParseState::StartBracket;
 
+        let mut timeout = 0_u32;
+
         while !matches!(state, ParseState::EndBracket) {
             if self.buf.len() == self.buf.capacity() {
                 defmt::error!("gps telegram buffer is full.");
                 break;
             }
 
+            if timeout > 1_000_000 {
+                defmt::error!("gps: uart timed out.");
+                break;
+            }
+
             match self.gps.read() {
                 Ok(w) => {
+                    timeout = 0;
                     match state {
                         ParseState::StartBracket => {
                             if w == b'{' {
@@ -252,9 +260,10 @@ where
                     }
                 }
 
-                Err(nb::Error::WouldBlock) => { /* wait */ } // TODO: timeout!
+                Err(nb::Error::WouldBlock) => { timeout += 1; } // TODO: timeout!
                 Err(nb::Error::Other(_)) => {
                     defmt::error!("ext-gps: error reading from uart");
+                    timeout += 1;
                 }
             }
         }
@@ -280,7 +289,7 @@ where
                 // let current = sample.time + (now - pps_time);
                 // drift = current - now
             }
-            Err(_) => error!("Failed to parse GPS telegram: {}", &buf),
+            Err(_) => error!("Failed to parse GPS telegram."),
         }
 
         // TODO: Not really handling extra data.
