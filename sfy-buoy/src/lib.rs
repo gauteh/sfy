@@ -70,7 +70,7 @@ pub const NOTEQ_SZ: usize = 12;
 pub const IMUQ_SZ: usize = STORAGEQ_SZ;
 
 #[cfg(feature = "ext-gps")]
-pub const NOTEQ_SZ: usize = 12;
+pub const NOTEQ_SZ: usize = 6;
 
 #[cfg(feature = "ext-gps")]
 pub const EPGS_SZ: usize = 6;

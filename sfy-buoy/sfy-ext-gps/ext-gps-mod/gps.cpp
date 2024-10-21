@@ -220,7 +220,7 @@ void pps() {
 
 void setup_gps() {
 
-  sfy.begin(400000);
+  sfy.begin(100000);
 
   // serialGNSS.begin(38400); // UART2 on pins 16/17 for SPP. The ZED-F9P will be configured to use the same rate.
   // Wire.begin(); //Start I2C

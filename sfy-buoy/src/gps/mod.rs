@@ -11,7 +11,7 @@ use heapless::{
 };
 
 pub const GPS_PACKET_V: u8 = 1;
-pub const GPS_PACKET_SZ: usize = 3 * 1024;
+pub const GPS_PACKET_SZ: usize = 124;
 pub const GPS_FREQ: f32 = 20.0;
 /// Maximum length of base64 string from
 pub const GPS_OUTN: usize = { 3 * GPS_PACKET_SZ * 2 } * 4 / 3 + 4;
@@ -25,7 +25,7 @@ use crate::EPGS_SZ;
 /// Queue from GPS to Notecard
 pub static mut EGPSQ: Queue<GpsPacket, { crate::EPGS_SZ }> = Queue::new();
 
-#[derive(serde::Deserialize, PartialEq, defmt::Format, Debug)]
+#[derive(serde::Deserialize, PartialEq)]
 pub struct Sample {
     year: u16,
     month: u8,
@@ -168,6 +168,7 @@ where
 
     pub fn check_collect(&mut self) {
         if self.buf.is_full() {
+            defmt::info!("GPS buf is full, collecting into GpsPacket, queue len: {}", self.queue.len());
             self.collect();
         }
     }
@@ -213,13 +214,13 @@ where
             data,
         };
 
-        self.queue.enqueue(p);
+        self.queue.enqueue(p).inspect_err(|e| defmt::error!("could not enqueq GpsPacket.."));
     }
 
     pub fn sample(&mut self) {
         let mut buf = heapless::Vec::<u8, 1024>::new(); // reduce?
 
-        defmt::debug!("Reading GPS package from serial..");
+        defmt::debug!("Reading GPS package from serial.. sample buf: {}", self.buf.len());
         let mut state = ParseState::StartBracket;
 
         while !matches!(state, ParseState::EndBracket) {
@@ -230,16 +231,11 @@ where
 
             match self.gps.read() {
                 Ok(w) => {
-                    debug!("read: {}", w);
                     match state {
                         ParseState::StartBracket => {
                             if w == b'{' {
                                 buf.push(w).ok();
                                 state = ParseState::Body;
-                            } else {
-                                debug!("extra char discarded: {}", unsafe {
-                                    char::from_u32_unchecked(w as u32)
-                                });
                             }
                         }
                         ParseState::Body => {
@@ -270,13 +266,14 @@ where
 
         match serde_json_core::from_slice::<Sample>(&buf) {
             Ok((sample, _sz)) => {
-                defmt::debug!("Sample: {}", sample);
+                // defmt::debug!("Sample: {}", sample);
                 self.buf
                     .push(sample)
                     .inspect_err(|_| {
                         defmt::error!("GPS sample buffer is full! Discarding latest sample.")
                     })
                     .ok();
+
 
                 // TODO: set the RTC:
                 // let now = ...;
@@ -333,7 +330,7 @@ mod tests {
 
         let s: Sample = serde_json_core::from_str(sample).unwrap().0;
 
-        println!("sample: {s:#?}");
+        // println!("sample: {s:#?}");
     }
 
     #[test]

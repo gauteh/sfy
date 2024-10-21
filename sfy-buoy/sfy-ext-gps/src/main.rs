@@ -93,6 +93,19 @@ fn main() -> ! {
 
         // Configure the board for low power operation.
         halc::am_bsp_low_power_init();
+
+        let mut avail: halc::am_hal_burst_avail_e = halc::am_hal_burst_avail_e::default();
+        let bi = halc::am_hal_burst_mode_initialize(&mut avail);
+        let mut bmode: halc::am_hal_burst_mode_e = halc::am_hal_burst_mode_e::default();
+        let be = halc::am_hal_burst_mode_enable(&mut bmode);
+
+        defmt::info!(
+            "burst: avail: {}, init: {}, mode: {}, enable: {}",
+            avail,
+            bi,
+            bmode,
+            be
+        );
     }
 
     let mut dp = hal::pac::Peripherals::take().unwrap();
@@ -100,8 +113,6 @@ fn main() -> ! {
     let mut delay = hal::delay::Delay::new(core.SYST, &mut dp.CLKGEN);
 
     let pins = hal::gpio::Pins::new(dp.GPIO);
-    #[cfg(not(feature = "deploy"))]
-    let mut led = pins.d19.into_push_pull_output(); // d14 on redboard_artemis
 
     // set up serial as defmt target.
     #[cfg(feature = "defmt-serial")]
@@ -157,7 +168,7 @@ fn main() -> ! {
 
     // Set up GPS serial
     info!("Setting up GPS serial..");
-    let gps_serial = hal::uart::new_12_13(dp.UART1, pins.a16, pins.a0, 400_000);
+    let gps_serial = hal::uart::new_12_13(dp.UART1, pins.a16, pins.a0, 100_000);
 
     // Set up GPS GPIO interrupt on pin A2
     info!("Setting up GPS interrupt.");
@@ -353,8 +364,8 @@ fn main() -> ! {
 
         // XXX: This needs to be adapted to frequency, and queue length. Maybe just remove when we
         // have the remaining space check? Check after Hjeltefjorden deployment.
-        const LOOP_DELAY: u32 = 14 * 20_000;
-        const SHORT_LOOP_DELAY: u32 = 30_000;
+        const LOOP_DELAY: u32 = 1_00;
+        const SHORT_LOOP_DELAY: u32 = 1_00;
 
         // Process data and communication for the Notecard.
         if ((now - last) > LOOP_DELAY as i64)
@@ -384,9 +395,10 @@ fn main() -> ! {
 
             #[cfg(not(feature = "storage"))]
             defmt::debug!(
-                "notecard iteration, now: {}, note queue: {}",
+                "notecard iteration, now: {}, note queue: {}, gps queue: {}",
                 now,
                 imu_queue.len(),
+                gps_queue.len(),
             );
 
             #[cfg(not(feature = "deploy"))]
@@ -399,6 +411,8 @@ fn main() -> ! {
             let nd = note.drain_queue(&mut imu_queue, &mut delay);
             let ng = note.drain_egps_queue(&mut gps_queue, &mut delay);
             let ns = note.check_and_sync(&mut delay);
+
+            defmt::debug!("ng: {:?}", ng);
 
             match (l, nd, ng, ns) {
                 (Ok(_), Ok(_), Ok(_), Ok(_)) => good_tries = GOOD_TRIES,
@@ -484,7 +498,11 @@ fn GPIO() {
         });
     } else {
         // Clear interrupt
-        a2.as_mut().unwrap().clear_interrupt();
+        defmt::debug!("A2: clear interrupt.");
+        free(|cs| {
+            a2.as_mut().unwrap().disable_interrupt();
+            a2.as_mut().unwrap().clear_interrupt();
+        });
     }
 
     let pps_time = free(|cs| {
@@ -499,14 +517,21 @@ fn GPIO() {
 
     // Pull a single JSON gps sample from the uart
     if let Some(gps) = gps {
-        let mut delay = hal::delay::FlashDelay;
-        delay.delay_ms(100_u16);
-        gps.sample();
+        // let mut delay = hal::delay::FlashDelay;
+        // delay.delay_ms(100_u16);
+        free(|cs| {
+            gps.sample();
+        });
 
         // TODO: Set RTC.
 
         gps.check_collect();
     }
+
+    free(|cs| {
+        a2.as_mut().unwrap().clear_interrupt();
+        a2.as_mut().unwrap().enable_interrupt();
+    });
 }
 
 #[cfg(not(feature = "host-tests"))]
@@ -545,33 +570,38 @@ fn RTC() {
         //
         // It seems that the IMU I2C communication sometimes fails with a NAK, causing a module
         // reset, which again might cause a HardFault.
-        match imu.check_retrieve(now, position_time, lon, lat) {
-            Ok(_) => {
-                *GOOD_TRIES = 5;
-            }
-            Err(e) => {
-                error!("IMU ISR failed: {:?}, resetting IMU..", e);
-
-                let mut delay = hal::delay::FlashDelay;
-
-                let r = imu.reset(now, position_time, lon, lat, &mut delay);
-                warn!("IMU reset: {:?}", r);
-
-                let mut msg = heapless::String::<256>::new();
-                write!(&mut msg, "IMU failure: {:?}, reset: {:?}", e, r)
-                    .inspect_err(|e| {
-                        defmt::error!("failed to format IMU failure: {:?}", defmt::Debug2Format(e))
-                    })
-                    .ok();
-                log(&msg);
-
-                if *GOOD_TRIES == 0 {
-                    panic!("IMU has failed repeatedly: {:?}, resetting system.", e);
+        free(
+            |cs| match imu.check_retrieve(now, position_time, lon, lat) {
+                Ok(_) => {
+                    *GOOD_TRIES = 5;
                 }
+                Err(e) => {
+                    error!("IMU ISR failed: {:?}, resetting IMU..", e);
 
-                *GOOD_TRIES -= 1;
-            }
-        }
+                    let mut delay = hal::delay::FlashDelay;
+
+                    let r = imu.reset(now, position_time, lon, lat, &mut delay);
+                    warn!("IMU reset: {:?}", r);
+
+                    let mut msg = heapless::String::<256>::new();
+                    write!(&mut msg, "IMU failure: {:?}, reset: {:?}", e, r)
+                        .inspect_err(|e| {
+                            defmt::error!(
+                                "failed to format IMU failure: {:?}",
+                                defmt::Debug2Format(e)
+                            )
+                        })
+                        .ok();
+                    log(&msg);
+
+                    if *GOOD_TRIES == 0 {
+                        panic!("IMU has failed repeatedly: {:?}, resetting system.", e);
+                    }
+
+                    *GOOD_TRIES -= 1;
+                }
+            },
+        );
     } else {
         unsafe {
             imu.replace(IMU.take().unwrap());
