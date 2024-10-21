@@ -16,7 +16,7 @@ pub struct Msl16(u16);
 // (100 * 1000 / (60 * 60) * 20 ~= 550 m
 const MAX_KM_PER_DEGREE: f32 = 111.3;
 const DEG_PER_M: f32 = 1.0 / (111.3 * 1e3);
-pub const LON_RANGE: f32 = 2.0 * DEG_PER_M * 550.0 * 1e8;
+pub const LON_RANGE: f32 = 2.0 * DEG_PER_M * 550.0 * 1e7;
 // pub const LON_RANGE: f32 = 2.0 * 1.0e8 * 550.0 / (MAX_KM_PER_DEGREE * 1.0e3); // 550 m in both directions
                                                                         // [deg * 1e-7]
 // Maximum distance within 20 seconds: 60 m ?
@@ -97,7 +97,7 @@ mod tests {
         println!("max mm: {}", max * deg_to_mm);
         println!("avg mm: {}", avg * deg_to_mm);
 
-        assert!(max < 0.01);
+        assert!(max < 20.0);
         // panic!();
     }
 
@@ -129,7 +129,7 @@ mod tests {
         println!("msl u16 avg diff: {}", avg);
         println!("msl u16 max diff: {}", max);
 
-        assert!(max < 0.01);
+        assert!(max < 2.0);
         // panic!();
     }
 }

@@ -35,6 +35,10 @@ pub trait ScaledF32: Sized {
         Self::from_u16(scale_f32_to_u16(Self::MAX, v))
     }
 
+    fn from_i32(v: i32) -> Self {
+        Self::from_u16(scale_i32_to_u16(Self::MAX, v))
+    }
+
     fn to_f32(&self) -> f32 {
         scale_u16_to_f32(Self::MAX, self.to_u16())
     }
@@ -67,6 +71,22 @@ impl ScaledF32 for G16 {
     fn to_u16(&self) -> u16 {
         self.0
     }
+}
+
+/// Move an f32 on the range -max to max to 0 to u16::MAX
+pub fn scale_i32_to_u16(max: f32, v: i32) -> u16 {
+    debug_assert!(max > 0.);
+    let max = max as f64;
+    let v = v as f64;
+
+    // clip to bounds.
+    let v = v.min(max);
+    let v = v.max(-max);
+
+    // v should be in the range from [-max to max]
+    let v = v + max; // v -> [0, 2*max]
+    let u = v * u16::MAX as f64 / (2. * max); // v -> [0, u16::MAX]
+    return libm::round(u) as u16; // will maybe panic if u is out-of-bounds?
 }
 
 /// Move an f32 on the range -max to max to 0 to u16::MAX

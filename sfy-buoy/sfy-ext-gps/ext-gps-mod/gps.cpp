@@ -1,6 +1,6 @@
 # include "gps.h"
 # include "ArduinoJson.h"
-/* # include "spartn_keys.h" */
+# include "spartn_keys.h"
 
 SFE_UBLOX_GNSS myGNSS; // ZED-F9x
 SFE_UBLOX_GNSS myLBand; // NEO-D9S
@@ -57,23 +57,24 @@ void printPVTdata(UBX_NAV_PVT_data_t *ubxDataStruct)
   uint8_t minute = ubxDataStruct->min;
   uint8_t sec = ubxDataStruct->sec;
   int32_t nano = ubxDataStruct->nano;
+
   String datetime = String(year) + "-" + String(month) + "-" + String(day) + ":" + String(hour) + ":" + String(minute) + ":" + String(sec) + "." + String(nano);
   Serial.print(F("Time: "));
   Serial.println(datetime);
 
-  double tAcc = ubxDataStruct->tAcc;
+  uint32_t tAcc = ubxDataStruct->tAcc;
   Serial.print(F("  Time accuracy (ns): "));
   Serial.println(tAcc);
 
-  double latitude = ubxDataStruct->lat; // Print the latitude
+  int32_t latitude = ubxDataStruct->lat; // Print the latitude
   Serial.print(F("  Lat: "));
   Serial.print(latitude / 10000000.0, 7);
 
-  double longitude = ubxDataStruct->lon; // Print the longitude
+  int32_t longitude = ubxDataStruct->lon; // Print the longitude
   Serial.print(F("  Long: "));
   Serial.print(longitude / 10000000.0, 7);
 
-  double altitude = ubxDataStruct->hMSL; // Print the height above mean sea level
+  int32_t altitude = ubxDataStruct->hMSL; // Print the height above mean sea level
   Serial.print(F("  Height: "));
   Serial.print(altitude / 1000.0, 3);
 
@@ -127,16 +128,15 @@ void printPVTdata(UBX_NAV_PVT_data_t *ubxDataStruct)
   doc["hour"] = hour;
   doc["minute"] = minute;
   doc["sec"] = sec;
-  doc["nano_sec"] = nano;
-  doc["Time (UTC)"] = datetime;
-  doc["Time Accuracy (ns)"] = tAcc;
-  doc["Lat (deg * 10e-7)"] = latitude;
-  doc["Lon (deg * 10e-7)"] = longitude;
-  doc["Height above MSL(mm)"] = altitude;
-  doc["Horizontal Accuracy (mm)"] = hAcc;
-  doc["Vertical Accuracy (mm)"] = vAcc;
-  doc["Carrier Soln"] = carrSoln;
-  doc["Fix Type"] = fixType;
+  doc["nano"] = nano;
+  doc["time_acc"] = tAcc;
+  doc["lat"] = latitude;  // 1e7 * deg
+  doc["lon"] = longitude; // 1e7 * deg
+  doc["msl"] = altitude; // mm
+  doc["hor_acc"] = hAcc; // mm
+  doc["vert_acc"] = vAcc; // mm
+  doc["soln"] = carrSoln;
+  doc["fix"] = fixType;
   serializeJson(doc, sfy);
   sfy.println();
 
@@ -311,8 +311,8 @@ void setup_gps() {
   //"Every time the 'current' key is expired, 'next' takes its place."
   //"Therefore the host should then retrieve the new 'next' key and send only that." - Use setDynamicSPARTNKey for this.
   // The key can be provided in binary (uint8_t) format or in ASCII Hex (char) format, but in both cases keyLengthBytes _must_ represent the binary key length in bytes.
-  /* ok = myGNSS.setDynamicSPARTNKeys(currentKeyLengthBytes, currentKeyGPSWeek, currentKeyGPSToW, currentDynamicKey, */
-  /*                                          nextKeyLengthBytes, nextKeyGPSWeek, nextKeyGPSToW, nextDynamicKey); */
+  ok = myGNSS.setDynamicSPARTNKeys(currentKeyLengthBytes, currentKeyGPSWeek, currentKeyGPSToW, currentDynamicKey,
+                                           nextKeyLengthBytes, nextKeyGPSWeek, nextKeyGPSToW, nextDynamicKey);
   Serial.println(OK(ok));
   //if (ok) ok = myGNSS.saveConfiguration(VAL_CFG_SUBSEC_IOPORT | VAL_CFG_SUBSEC_MSGCONF); //Optional: Save the ioPort and message settings to NVM and BBR
 

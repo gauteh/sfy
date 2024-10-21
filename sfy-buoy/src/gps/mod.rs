@@ -35,29 +35,16 @@ pub struct Sample {
     sec: u8,
     nano: u32,
 
-    #[serde(alias = "Time Accuracy (ns)")]
-    time_acc: f64,
+    time_acc: u32, // ns
 
-    #[serde(alias = "Lon (deg * 10e-7)")]
-    lon: f64,
+    lon: i32, // deg * 1e7
+    lat: i32, // deg * 1e7
+    msl: i32, // mm
+    hor_acc: u32, // mm
+    vert_acc: u32, // mm
 
-    #[serde(alias = "Lat (deg * 10e-7)")]
-    lat: f64,
-
-    #[serde(alias = "Height above MSL(mm)")]
-    msl: f64,
-
-    #[serde(alias = "Horizontal Accuracy (mm)")]
-    horizontal_acc: u32,
-
-    #[serde(alias = "Vertical Accuracy (mm)")]
-    vertical_acc: u32,
-
-    #[serde(alias = "Fix Type")]
-    fix_type: u8,
-
-    #[serde(alias = "Carrier Soln")]
-    carrier_solution: u8,
+    fix: u8,
+    soln: u8,
 }
 
 impl Sample {
@@ -84,9 +71,9 @@ pub struct GpsPacket {
     pub version: u8,
 
     /// Reference position for which the data is relative to. Mean of all samples.
-    pub lon: f64,
-    pub lat: f64,
-    pub msl: f64,
+    pub lon: i32,
+    pub lat: i32,
+    pub msl: i32,
 
     /// GPS data. This is moved to payload when transmitting.
     pub data: Vec<u16, { 3 * GPS_PACKET_SZ }>,
@@ -103,9 +90,9 @@ pub struct GpsPacketMeta {
     pub version: u8,
 
     /// Reference position for which the data is relative to. Mean of all samples.
-    pub lon: f64,
-    pub lat: f64,
-    pub msl: f64,
+    pub lon: i32,
+    pub lat: i32,
+    pub msl: i32,
 
     pub lonlat_range: f32, // 1e-7 deg
     pub msl_range: f32,    // mm
@@ -195,7 +182,8 @@ where
             .map(|s| (s.lon, s.lat, s.msl))
             .reduce(|(mlon, mlat, mmsl), (lon, lat, msl)| (mlon + lon, mlat + lat, mmsl + msl))
             .unwrap();
-        let (lon, lat, msl) = (lon / N, lat / N, msl / N);
+        let (lon, lat, msl) = (lon as f64 / N, lat as f64 / N, msl as f64 / N);
+        let (lon, lat, msl) = (lon as i32, lat as i32, msl as i32);
 
         // Subtract mean and serialize as interleaved u16's
         let data: Vec<u16, { 3 * GPS_PACKET_SZ }> = self
@@ -203,9 +191,9 @@ where
             .iter()
             .map(|s| {
                 [
-                    Lon16::from_f64(s.lon - lon).to_u16(),
-                    Lat16::from_f64(s.lat - lat).to_u16(),
-                    Msl16::from_f64(s.msl - msl).to_u16(),
+                    Lon16::from_i32(s.lon - lon).to_u16(),
+                    Lat16::from_i32(s.lat - lat).to_u16(),
+                    Msl16::from_i32(s.msl - msl).to_u16(),
                 ]
             })
             .flatten()
@@ -333,15 +321,14 @@ mod tests {
   "minute": 13,
   "sec": 54,
   "nano": 12332,
-  "Time (UTC)": "2024-10-23-12-13-54-12332",
-  "Time Accuracy (ns)": 504.0,
-  "Lat (deg * 10e-7)": 654003034.0,
-  "Lon (deg * 10e-7)": 42342344.0,
-  "Height above MSL(mm)": 3000,
-  "Horizontal Accuracy (mm)": 200,
-  "Vertical Accuracy (mm)": 700,
-  "Carrier Soln": 1,
-  "Fix Type": 1 }
+  "time_acc": 504,
+  "lat": 654003034,
+  "lon": 42342344,
+  "msl": 3000,
+  "hor_acc": 200,
+  "vert_acc": 700,
+  "soln": 1,
+  "fix": 1 }
             "#;
 
         let s: Sample = serde_json_core::from_str(sample).unwrap().0;
@@ -353,9 +340,9 @@ mod tests {
     fn base64_data_package() {
         let p = GpsPacket {
             timestamp: 0,
-            lat: 0.0,
-            lon: 0.0,
-            msl: 20.0,
+            lat: 0,
+            lon: 0,
+            msl: 20,
             freq: 100.0,
             version: super::GPS_PACKET_V,
             data: (0..(3*GPS_PACKET_SZ))
