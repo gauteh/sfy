@@ -184,19 +184,11 @@ where
     }
 
     pub fn collect(&mut self) {
-        let N: f64 = self.buf.len() as f64;
+        // Use first sample as reference of lon, lat and msl
+        let s = &self.buf[0];
+        let (lon, lat, msl) = (s.lon, s.lat, s.msl);
 
-        // Mean of lon, lat and msl
-        let (lon, lat, msl) = self
-            .buf
-            .iter()
-            .map(|s| (s.lon, s.lat, s.msl))
-            .reduce(|(mlon, mlat, mmsl), (lon, lat, msl)| (mlon + lon, mlat + lat, mmsl + msl))
-            .unwrap();
-        let (lon, lat, msl) = (lon as f64 / N, lat as f64 / N, msl as f64 / N);
-        let (lon, lat, msl) = (lon as i32, lat as i32, msl as i32);
-
-        // Subtract mean and serialize as interleaved u16's
+        // Subtract ref and serialize as interleaved u16's
         let data: Vec<u16, { 3 * GPS_PACKET_SZ }> = self
             .buf
             .iter()
