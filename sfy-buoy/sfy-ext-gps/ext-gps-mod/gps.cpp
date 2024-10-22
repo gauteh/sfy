@@ -56,7 +56,7 @@ void printPVTdata(UBX_NAV_PVT_data_t *ubxDataStruct)
   uint8_t hour = ubxDataStruct->hour;
   uint8_t minute = ubxDataStruct->min;
   uint8_t sec = ubxDataStruct->sec;
-  uint32_t nano = ubxDataStruct->nano;
+  int32_t nano = ubxDataStruct->nano;
 
   String datetime = String(year) + "-" + String(month) + "-" + String(day) + ":" + String(hour) + ":" + String(minute) + ":" + String(sec) + "." + String(nano);
   Serial.print(F("Time: "));

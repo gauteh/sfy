@@ -33,7 +33,7 @@ pub struct Sample {
     hour: u8,
     minute: u8,
     sec: u8,
-    nano: u32,
+    nano: i32,
 
     time_acc: u32, // ns
 
@@ -49,13 +49,23 @@ pub struct Sample {
 
 impl Sample {
     pub fn timestamp(&self) -> NaiveDateTime {
+        let mut sec = self.sec;
+        let mut nano = self.nano;
+
+        if nano < 0 {
+            sec -= 1;
+            nano = 1_000_000_000 + nano;
+        }
+
+        let nano = nano as u32;
+
         NaiveDate::from_ymd_opt(self.year.into(), self.month.into(), self.day.into())
             .unwrap()
             .and_hms_nano(
                 self.hour.into(),
                 self.minute.into(),
-                self.sec.into(),
-                self.nano.into(),
+                sec.into(),
+                nano.into(),
             )
     }
 }
