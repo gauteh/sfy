@@ -19,8 +19,8 @@ const DEG_PER_M: f32 = 1.0 / (111.3 * 1e3);
 pub const LON_RANGE: f32 = 2.0 * DEG_PER_M * 550.0 * 1e7;
 // pub const LON_RANGE: f32 = 2.0 * 1.0e8 * 550.0 / (MAX_KM_PER_DEGREE * 1.0e3); // 550 m in both directions
                                                                         // [deg * 1e-7]
-// Maximum distance within 20 seconds: 60 m ?
-pub const MSL_RANGE: f32 = 2.0 * 60.0 * 1.0e3; // 60 m in both directions [mm]
+// Maximum distance within 20 seconds: 2 * 60 m ?
+pub const MSL_RANGE: f32 = 2.0 * 120.0 * 1.0e3; // 60 m in both directions [mm]
 
 impl ScaledF32 for Lon16 {
     const MAX: f32 = LON_RANGE;
@@ -129,7 +129,7 @@ mod tests {
         println!("msl u16 avg diff: {}", avg);
         println!("msl u16 max diff: {}", max);
 
-        assert!(max < 2.0);
+        assert!(max < 4.0);
         // panic!();
     }
 }
