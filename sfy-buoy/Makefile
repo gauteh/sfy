@@ -13,6 +13,12 @@ else
     ELF:= target/thumbv7em-none-eabihf/debug/$(VARIANT)
 endif
 
+docker-build:
+	docker build -t sfy ..
+
+docker-run:
+	docker run -it --rm --name sr -v $(shell pwd)/:/ext-gps-mod sfy
+
 bump-jlink:
 	-python3 ../tools/bump-jlink
 
