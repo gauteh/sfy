@@ -10,11 +10,11 @@ use heapless::{
     Vec,
 };
 
-pub const GPS_PACKET_V: u8 = 1;
+pub const GPS_PACKET_V: u8 = 2;
 pub const GPS_PACKET_SZ: usize = 124;
 pub const GPS_FREQ: f32 = 20.0;
 /// Maximum length of base64 string from
-pub const GPS_OUTN: usize = { 3 * GPS_PACKET_SZ * 2 } * 4 / 3 + 4;
+pub const GPS_OUTN: usize = { 6 * GPS_PACKET_SZ * 2 } * 4 / 3 + 4;
 
 mod wire;
 pub use wire::*;
@@ -37,11 +37,16 @@ pub struct Sample {
 
     time_acc: u32, // ns
 
-    lon: i32, // deg * 1e7
-    lat: i32, // deg * 1e7
-    msl: i32, // mm
-    hor_acc: u32, // mm
+    lon: i32,      // deg * 1e7
+    lat: i32,      // deg * 1e7
+    msl: i32,      // mm
+    hor_acc: u32,  // mm
     vert_acc: u32, // mm
+
+    velN: i32, // mm/s
+    velE: i32, // mm/s
+    velD: i32, // mm/s
+    sAcc: i32, // mm/s
 
     fix: u8,
     soln: u8,
@@ -86,7 +91,7 @@ pub struct GpsPacket {
     pub msl: i32,
 
     /// GPS data. This is moved to payload when transmitting.
-    pub data: Vec<u16, { 3 * GPS_PACKET_SZ }>,
+    pub data: Vec<u16, { 6 * GPS_PACKET_SZ }>,
 }
 
 // XXX: Match with template in note
@@ -178,7 +183,10 @@ where
 
     pub fn check_collect(&mut self) {
         if self.buf.is_full() {
-            defmt::info!("GPS buf is full, collecting into GpsPacket, queue len: {}", self.queue.len());
+            defmt::info!(
+                "GPS buf is full, collecting into GpsPacket, queue len: {}",
+                self.queue.len()
+            );
             self.collect();
         }
     }
@@ -189,7 +197,7 @@ where
         let (lon, lat, msl) = (s.lon, s.lat, s.msl);
 
         // Subtract ref and serialize as interleaved u16's
-        let data: Vec<u16, { 3 * GPS_PACKET_SZ }> = self
+        let data: Vec<u16, { 6 * GPS_PACKET_SZ }> = self
             .buf
             .iter()
             .map(|s| {
@@ -197,6 +205,9 @@ where
                     Lon16::from_i32(s.lon - lon).to_u16(),
                     Lat16::from_i32(s.lat - lat).to_u16(),
                     Msl16::from_i32(s.msl - msl).to_u16(),
+                    Vel16::from_i32(s.velN).to_u16(),
+                    Vel16::from_i32(s.velE).to_u16(),
+                    Vel16::from_i32(s.velD).to_u16(),
                 ]
             })
             .flatten()
@@ -204,11 +215,18 @@ where
 
         let timestamp = self.buf[0].timestamp().timestamp_millis();
 
+        // TODO: skip this iteration, maybe just use the first two..
+        let freq: f32 = self
+            .buf
+            .windows(2)
+            .map(|a| a[1].timestamp().timestamp_millis() - a[0].timestamp().timestamp_millis())
+            .sum::<i64>() as f32 / self.buf.len() as f32;
+
         self.buf.clear();
 
         let p = GpsPacket {
             timestamp,
-            freq: GPS_FREQ,
+            freq,
             version: GPS_PACKET_V,
             lon,
             lat,
@@ -216,13 +234,18 @@ where
             data,
         };
 
-        self.queue.enqueue(p).inspect_err(|e| defmt::error!("could not enqueq GpsPacket.."));
+        self.queue
+            .enqueue(p)
+            .inspect_err(|e| defmt::error!("could not enqueq GpsPacket.."));
     }
 
     pub fn sample(&mut self) {
         let mut buf = heapless::Vec::<u8, 1024>::new(); // reduce?
 
-        defmt::debug!("Reading GPS package from serial.. sample buf: {}", self.buf.len());
+        defmt::debug!(
+            "Reading GPS package from serial.. sample buf: {}",
+            self.buf.len()
+        );
         let mut state = ParseState::StartBracket;
 
         let mut timeout = 0_u32;
@@ -262,7 +285,9 @@ where
                     }
                 }
 
-                Err(nb::Error::WouldBlock) => { timeout += 1; } // TODO: timeout!
+                Err(nb::Error::WouldBlock) => {
+                    timeout += 1;
+                } // TODO: timeout!
                 Err(nb::Error::Other(_)) => {
                     defmt::error!("ext-gps: error reading from uart");
                     timeout += 1;
@@ -285,7 +310,6 @@ where
                     })
                     .ok();
 
-
                 // TODO: set the RTC:
                 // let now = ...;
                 // let current = sample.time + (now - pps_time);
@@ -300,7 +324,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::{Sample, GpsPacket, GPS_PACKET_SZ};
+    use super::{GpsPacket, Sample, GPS_PACKET_SZ};
 
     #[test]
     fn test_deser_sample() {
@@ -353,7 +377,7 @@ mod tests {
             msl: 20,
             freq: 100.0,
             version: super::GPS_PACKET_V,
-            data: (0..(3*GPS_PACKET_SZ))
+            data: (0..(3 * GPS_PACKET_SZ))
                 .map(|v| v as u16)
                 .collect::<heapless::Vec<_, { 3 * GPS_PACKET_SZ }>>(),
         };

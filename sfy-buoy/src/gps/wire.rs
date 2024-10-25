@@ -12,15 +12,22 @@ pub struct Lat16(u16);
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Msl16(u16);
 
+#[repr(transparent)]
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub struct Vel16(u16);
+
 // The distance movable within one packet length of maximum 20 seconds. For 100 km/h this is
 // (100 * 1000 / (60 * 60) * 20 ~= 550 m
 const MAX_KM_PER_DEGREE: f32 = 111.3;
 const DEG_PER_M: f32 = 1.0 / (111.3 * 1e3);
 pub const LON_RANGE: f32 = 2.0 * DEG_PER_M * 550.0 * 1e7;
 // pub const LON_RANGE: f32 = 2.0 * 1.0e8 * 550.0 / (MAX_KM_PER_DEGREE * 1.0e3); // 550 m in both directions
-                                                                        // [deg * 1e-7]
+// [deg * 1e-7]
 // Maximum distance within 20 seconds: 2 * 60 m ?
 pub const MSL_RANGE: f32 = 2.0 * 120.0 * 1.0e3; // 60 m in both directions [mm]
+
+// Maximum speed
+pub const VEL_RANGE: f32 = 200.0 * 1.0e6 / 60.0 / 60.0;
 
 impl ScaledF32 for Lon16 {
     const MAX: f32 = LON_RANGE;
@@ -48,6 +55,18 @@ impl ScaledF32 for Lat16 {
 
 impl ScaledF32 for Msl16 {
     const MAX: f32 = MSL_RANGE;
+
+    fn from_u16(u: u16) -> Self {
+        Self(u)
+    }
+
+    fn to_u16(&self) -> u16 {
+        self.0
+    }
+}
+
+impl ScaledF32 for Vel16 {
+    const MAX: f32 = VEL_RANGE;
 
     fn from_u16(u: u16) -> Self {
         Self(u)

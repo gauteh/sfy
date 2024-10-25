@@ -121,22 +121,22 @@ void printPVTdata(UBX_NAV_PVT_data_t *ubxDataStruct)
   Serial.println();
 
   int32_t velN = ubxDataStruct->velN; // North velocity, mm/s
-  ial.print(F("  North Velocity: "));
+  Serial.print(F("  North Velocity: "));
   Serial.print(velN);
   Serial.print(F(" (mm/s)"));
 
   int32_t velE = ubxDataStruct->velE; // East velocity, mm/s
-  ial.print(F("  East Velocity: "));
+  Serial.print(F("  East Velocity: "));
   Serial.print(velE);
   Serial.print(F(" (mm/s)"));
 
   int32_t velD = ubxDataStruct->velD; // Down velocity, mm/s
-  ial.print(F("  Down Velocity: "));
+  Serial.print(F("  Down Velocity: "));
   Serial.print(velD);
   Serial.print(F(" (mm/s)"));
 
   int32_t sAcc = ubxDataStruct->sAcc; // Speed Accuracy, mm/s
-  ial.print(F("  Speed Accuracy: "));
+  Serial.print(F("  Speed Accuracy: "));
   Serial.print(sAcc);
   Serial.print(F(" (mm/s)"));
 
@@ -241,7 +241,7 @@ void pps() {
   myGNSS.checkUblox(); // Check for the arrival of new GNSS data and process it.
   myGNSS.checkCallbacks(); // Check if any GNSS callbacks are waiting to be processed.
 
-  
+
 }
 
 void setup_gps() {
