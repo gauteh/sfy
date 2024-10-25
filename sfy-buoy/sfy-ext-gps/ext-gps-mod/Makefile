@@ -9,8 +9,8 @@ dep-arduion-cli:
 deps: dependencies
 
 dependencies:
-	arduino-cli core update-index
-	arduino-cli core install "Sparkfun:apollo3@1.2.1"
+	arduino-cli core --additional-urls https://raw.githubusercontent.com/sparkfun/Arduino_Apollo3/main/package_sparkfun_apollo3_index.json update-index
+	arduino-cli core --additional-urls https://raw.githubusercontent.com/sparkfun/Arduino_Apollo3/main/package_sparkfun_apollo3_index.json install "Sparkfun:apollo3@1.2.1"
 	arduino-cli lib update-index
 	arduino-cli lib install "SparkFun u-blox GNSS v3"
 	arduino-cli lib install "ArduinoJson"
