@@ -511,7 +511,7 @@ fn GPIO() {
         let state = STATE.borrow(cs).borrow();
         let state = state.as_ref().unwrap();
 
-        let now = state.rtc.now().timestamp_millis();
+        let now = state.rtc.now().unwrap().timestamp_millis();
         defmt::info!("ext-gps: pps: {}", now);
 
         now
@@ -524,21 +524,32 @@ fn GPIO() {
         free(|cs| {
             let sample = gps.sample();
 
-            // Set RTC.
-            let mut state = STATE.borrow(cs).borrow_mut();
-            let state: &mut _ = state.deref_mut().as_mut().unwrap();
+            if let Some(sample) = sample {
+                // Set RTC.
+                let mut state = STATE.borrow(cs).borrow_mut();
+                let state: &mut _ = state.deref_mut().as_mut().unwrap();
 
-            use chrono::{NaiveDate, NaiveDateTime};
-            use rtcc::DateTimeAccess;
+                use chrono::{NaiveDate, NaiveDateTime};
+                use rtcc::DateTimeAccess;
 
-            let now = state.rtc.now().timestamp_millis();
-            let time = sample.timestamp().timestamp_millis() + (now - pps_time);
-            state.rtc.set_datetime(&NaiveDateTime::from_timestamp_millis(time).unwrap());
+                // TODO: maybe not do this every sample..
+                let now = state.rtc.now().unwrap().timestamp_millis();
+                let time = sample.timestamp().timestamp_millis() + (now - pps_time);
+                debug!("Set RTC: {}", time);
+                let dt = NaiveDateTime::from_timestamp_millis(time).unwrap();
+                state.rtc.set_datetime(&dt);
 
-            state.position_time = (time / 1000) as u32;
-            (state.lon, state.lat) = sample.lonlat();
+                // Clear RTC interrupt
+                unsafe {
+                    (*(hal::pac::RTC::ptr()))
+                        .intclr
+                        .write(|w| w.alm().set_bit());
+                }
+
+                state.position_time = (time / 1000) as u32;
+                (state.lon, state.lat) = sample.lonlat();
+            }
         });
-
 
         gps.check_collect();
     }
@@ -567,17 +578,24 @@ fn RTC() {
     }
 
     if let Some(imu) = imu {
-        let (now, position_time, lon, lat) = free(|cs| {
-            let state = STATE.borrow(cs).borrow();
-            let state = state.as_ref().unwrap();
+        let (now, position_time, lon, lat) = if let Some((now, position_time, lon, lat)) =
+            free(|cs| {
+                let state = STATE.borrow(cs).borrow();
+                let state = state.as_ref().unwrap();
 
-            let now = state.rtc.now().timestamp_millis();
-            let position_time = state.position_time;
-            let lon = state.lon;
-            let lat = state.lat;
-
+                state.rtc.now().map(|t| {
+                    let now = t.timestamp_millis();
+                    let position_time = state.position_time;
+                    let lon = state.lon;
+                    let lat = state.lat;
+                    (now, position_time, lon, lat)
+                })
+            }) {
             (now, position_time, lon, lat)
-        });
+        } else {
+            error!("RTC: failed, skipping RTC interrupt.");
+            return;
+        };
 
         COUNT.store((now / 1000).try_into().unwrap_or(0), Ordering::Relaxed);
 

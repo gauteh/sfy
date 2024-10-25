@@ -226,7 +226,8 @@ where
             .buf
             .windows(2)
             .map(|a| a[1].timestamp().timestamp_millis() - a[0].timestamp().timestamp_millis())
-            .sum::<i64>() as f32 / self.buf.len() as f32;
+            .sum::<i64>() as f32
+            / self.buf.len() as f32;
 
         self.buf.clear();
 
@@ -242,10 +243,10 @@ where
 
         self.queue
             .enqueue(p)
-            .inspect_err(|e| defmt::error!("could not enqueq GpsPacket.."));
+            .inspect_err(|e| defmt::error!("could not enque GpsPacket.."));
     }
 
-    pub fn sample(&mut self) -> &Sample {
+    pub fn sample(&mut self) -> Option<&Sample> {
         let mut buf = heapless::Vec::<u8, 1024>::new(); // reduce?
 
         defmt::debug!(
@@ -325,7 +326,7 @@ where
         }
 
         // TODO: Not really handling extra data.
-        return self.buf.last().unwrap();
+        self.buf.last()
     }
 }
 
