@@ -120,6 +120,26 @@ void printPVTdata(UBX_NAV_PVT_data_t *ubxDataStruct)
 
   Serial.println();
 
+  int32_t velN = ubxDataStruct->velN; // North velocity, mm/s
+  ial.print(F("  North Velocity: "));
+  Serial.print(velN);
+  Serial.print(F(" (mm/s)"));
+
+  int32_t velE = ubxDataStruct->velE; // East velocity, mm/s
+  ial.print(F("  East Velocity: "));
+  Serial.print(velE);
+  Serial.print(F(" (mm/s)"));
+
+  int32_t velD = ubxDataStruct->velD; // Down velocity, mm/s
+  ial.print(F("  Down Velocity: "));
+  Serial.print(velD);
+  Serial.print(F(" (mm/s)"));
+
+  int32_t sAcc = ubxDataStruct->sAcc; // Speed Accuracy, mm/s
+  ial.print(F("  Speed Accuracy: "));
+  Serial.print(sAcc);
+  Serial.print(F(" (mm/s)"));
+
   // Serialize Data and Pipe to SFY
   JsonDocument doc;
   doc["year"] = year;
@@ -137,6 +157,11 @@ void printPVTdata(UBX_NAV_PVT_data_t *ubxDataStruct)
   doc["vert_acc"] = vAcc; // mm
   doc["soln"] = carrSoln;
   doc["fix"] = fixType;
+  doc["velN"] = velN; // mm/s
+  doc["velE"] = velE; // mm/s
+  doc["velD"] = velD; // mm/s
+  doc["sAcc"] = sAcc; // mm/s
+
   serializeJson(doc, sfy);
   sfy.println();
 
@@ -210,12 +235,13 @@ void pps() {
   // pps_ts = micros();
 
   Serial.println("GNSS: PPS!");
-  myGNSS.checkUblox(); // Check for the arrival of new GNSS data and process it.
-  myGNSS.checkCallbacks(); // Check if any GNSS callbacks are waiting to be processed.
-
   myLBand.checkUblox(); // Check for the arrival of new PMP data and process it.
   myLBand.checkCallbacks(); // Check if any LBand callbacks are waiting to be processed.
 
+  myGNSS.checkUblox(); // Check for the arrival of new GNSS data and process it.
+  myGNSS.checkCallbacks(); // Check if any GNSS callbacks are waiting to be processed.
+
+  
 }
 
 void setup_gps() {
@@ -274,7 +300,7 @@ void setup_gps() {
   Serial.println(OK(ok));
   ok = myGNSS.setDGNSSConfiguration(SFE_UBLOX_DGNSS_MODE_FIXED); // Set the differential mode - ambiguities are fixed whenever possible
   Serial.println(OK(ok));
-  ok = myGNSS.setNavigationFrequency(20); //Set output in Hz.
+  ok = myGNSS.setNavigationFrequency(1); //Set output in Hz.
   Serial.println(OK(ok));
   ok = myGNSS.setVal8(UBLOX_CFG_SPARTN_USE_SOURCE, 1); // Set to 1 for using L-Band Correction
   Serial.println(OK(ok));
@@ -299,8 +325,8 @@ void setup_gps() {
   myGNSS.addCfgValset(UBLOX_CFG_TP_LEN_LOCK_TP1, 100000); // Set the pulse length to 1,000,000 us
 
   // 5 Hz
-  myGNSS.addCfgValset(UBLOX_CFG_TP_PERIOD_LOCK_TP1, (1000000/5)); // Set the period to 30,000,000 us
-  myGNSS.addCfgValset(UBLOX_CFG_TP_LEN_LOCK_TP1, (100000/5)); // Set the pulse length to 1,000,000 us
+  // myGNSS.addCfgValset(UBLOX_CFG_TP_PERIOD_LOCK_TP1, (1000000/5)); // Set the period to 30,000,000 us
+  // myGNSS.addCfgValset(UBLOX_CFG_TP_LEN_LOCK_TP1, (100000/5)); // Set the pulse length to 1,000,000 us
 
   // Now set the time pulse parameters
   if (myGNSS.sendCfgValset() == false)
@@ -332,7 +358,7 @@ void setup_gps() {
   //=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
   // Begin and configure the NEO-D9S L-Band receiver
 
-  //myLBand.enableDebugging(); // Uncomment this line to enable helpful debug messages on Serial
+  myLBand.enableDebugging(); // Uncomment this line to enable helpful debug messages on Serial
 
   while (myLBand.begin(GnssWire, 0x43) == false) //Connect to the u-blox NEO-D9S using Wire port. The D9S default I2C address is 0x43 (not 0x42)
   {
