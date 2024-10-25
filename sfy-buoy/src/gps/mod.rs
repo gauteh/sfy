@@ -72,6 +72,13 @@ impl Sample {
                 nano.into(),
             )
     }
+
+    pub fn lonlat(&self) -> (f64, f64) {
+        let lon = self.lon as f64 / 1.0e7;
+        let lat = self.lat as f64 / 1.0e7;
+
+        (lon, lat)
+    }
 }
 
 /// A packet of GPS samples

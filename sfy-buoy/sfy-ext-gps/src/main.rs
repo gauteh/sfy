@@ -381,9 +381,12 @@ fn main() -> ! {
                 "loop is too slow, NOTEQ will overflow: loop: {} ms vs queue: {} ms (length: {}, sample_no: {}, freq: {})", LOOP_DELAY, queue_time * 1000., sfy::NOTEQ_SZ, sfy::axl::SAMPLE_NO, sfy::waves::OUTPUT_FREQ
             );
 
+            // Set the GPS from the extgps if possible.
+            location.set_from_rtc(&STATE);
+
             // This updates the RTC. It should happen in the same block as `last`, otherwise we
             // could theoretically get a negative time jump. In practice that should not be possible.
-            let l = location.check_retrieve(&STATE, &mut delay, &mut note);
+            // let l = location.check_retrieve(&STATE, &mut delay, &mut note);
 
             #[cfg(feature = "storage")]
             defmt::warn!(
@@ -414,12 +417,11 @@ fn main() -> ! {
 
             defmt::debug!("ng: {:?}", ng);
 
-            match (l, nd, ng, ns) {
-                (Ok(_), Ok(_), Ok(_), Ok(_)) => good_tries = GOOD_TRIES,
-                (l, dq, dg, cs) => {
+            match (nd, ng, ns) {
+                (Ok(_), Ok(_), Ok(_)) => good_tries = GOOD_TRIES,
+                (dq, dg, cs) => {
                     error!(
-                        "Fatal error occured during main loop: location: {:?}, note/drain_queue: {:?}, note/drain_egps_queue: {:?}, note/check_and_sync: {:?}. Tries left: {}",
-                        l,
+                        "Fatal error occured during main loop: note/drain_queue: {:?}, note/drain_egps_queue: {:?}, note/check_and_sync: {:?}. Tries left: {}",
                         dq,
                         dg,
                         cs,
@@ -432,7 +434,7 @@ fn main() -> ! {
                     delay.delay_ms(100u16);
 
                     let mut msg = heapless::String::<512>::new();
-                    write!(&mut msg, "Fatal error in main loop: location: {:?}, note/drain_queue: {:?}, note/check_and_sync: {:?}. Tries left: {}", l, dq, cs, good_tries)
+                    write!(&mut msg, "Fatal error in main loop: note/drain_queue: {:?}, note/check_and_sync: {:?}. Tries left: {}", dq, cs, good_tries)
                         .inspect_err(|e| defmt::error!("failed to format error: {:?}", defmt::Debug2Format(e)))
                         .ok();
 
@@ -529,8 +531,12 @@ fn GPIO() {
             use chrono::{NaiveDate, NaiveDateTime};
             use rtcc::DateTimeAccess;
 
-            let time = sample.timestamp().timestamp_millis() + pps_time;
-            state.rtc.set_datetime(&NaiveDateTime::from_timestamp_opt(time, 0).unwrap());
+            let now = state.rtc.now().timestamp_millis();
+            let time = sample.timestamp().timestamp_millis() + (now - pps_time);
+            state.rtc.set_datetime(&NaiveDateTime::from_timestamp_millis(time).unwrap());
+
+            state.position_time = (time / 1000) as u32;
+            (state.lon, state.lat) = sample.lonlat();
         });
 
 

@@ -174,6 +174,22 @@ impl Location {
         }
     }
 
+    pub fn set_from_rtc<D: DateTimeAccess>(
+        &mut self,
+        state: &Mutex<RefCell<Option<SharedState<D>>>>,
+    ) {
+        info!("Setting location from RTC (from EGPS).");
+        free(|cs| {
+            let mut state = state.borrow(cs).borrow_mut();
+            let state: &mut _ = state.deref_mut().as_mut().unwrap();
+            self.time = state.now().timestamp() as u32;
+            self.state = LocationState::Retrieved((state.position_time / 1000) as i64);
+            self.position_time = state.position_time / 1000;
+            self.lat = state.lat;
+            self.lon = state.lon;
+        });
+    }
+
     /// Get latest time and position.
     ///
     /// > NOTE: This function is called very frequently and should not communicate with the
