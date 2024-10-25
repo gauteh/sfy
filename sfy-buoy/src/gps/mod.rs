@@ -12,7 +12,6 @@ use heapless::{
 
 pub const GPS_PACKET_V: u8 = 2;
 pub const GPS_PACKET_SZ: usize = 124;
-pub const GPS_FREQ: f32 = 20.0;
 /// Maximum length of base64 string from
 pub const GPS_OUTN: usize = { 6 * GPS_PACKET_SZ * 2 } * 4 / 3 + 4;
 
