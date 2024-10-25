@@ -520,10 +520,19 @@ fn GPIO() {
         // let mut delay = hal::delay::FlashDelay;
         // delay.delay_ms(100_u16);
         free(|cs| {
-            gps.sample();
+            let sample = gps.sample();
+
+            // Set RTC.
+            let mut state = STATE.borrow(cs).borrow_mut();
+            let state: &mut _ = state.deref_mut().as_mut().unwrap();
+
+            use chrono::{NaiveDate, NaiveDateTime};
+            use rtcc::DateTimeAccess;
+
+            let time = sample.timestamp().timestamp_millis() + pps_time;
+            state.rtc.set_datetime(&NaiveDateTime::from_timestamp_opt(time, 0).unwrap());
         });
 
-        // TODO: Set RTC.
 
         gps.check_collect();
     }

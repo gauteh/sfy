@@ -24,7 +24,7 @@ use crate::EPGS_SZ;
 /// Queue from GPS to Notecard
 pub static mut EGPSQ: Queue<GpsPacket, { crate::EPGS_SZ }> = Queue::new();
 
-#[derive(serde::Deserialize, PartialEq)]
+#[derive(serde::Deserialize, PartialEq, Clone)]
 pub struct Sample {
     year: u16,
     month: u8,
@@ -238,7 +238,7 @@ where
             .inspect_err(|e| defmt::error!("could not enqueq GpsPacket.."));
     }
 
-    pub fn sample(&mut self) {
+    pub fn sample(&mut self) -> &Sample {
         let mut buf = heapless::Vec::<u8, 1024>::new(); // reduce?
 
         defmt::debug!(
@@ -318,6 +318,7 @@ where
         }
 
         // TODO: Not really handling extra data.
+        return self.buf.last().unwrap();
     }
 }
 
