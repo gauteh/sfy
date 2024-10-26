@@ -206,6 +206,10 @@ where
     }
 
     pub fn collect(&mut self) {
+        if self.buf.is_empty() {
+            return;
+        }
+
         // Use first sample as reference of lon, lat and msl
         let s = &self.buf[0];
         let (lon, lat, msl) = (s.lon, s.lat, s.msl);
@@ -236,6 +240,7 @@ where
             .map(|a| a[1].timestamp().timestamp_millis() - a[0].timestamp().timestamp_millis())
             .sum::<i64>() as f32
             / self.buf.len() as f32;
+        let freq = 1000.0 / freq;
 
         self.buf.clear();
 
@@ -278,7 +283,7 @@ where
                 break;
             }
 
-            if timeout > 1_000_000 {
+            if timeout > 5_000_000 {
                 defmt::error!("gps: uart timed out.");
                 break;
             }
@@ -332,9 +337,15 @@ where
                     })
                     .ok();
             }
-            Err(_) => error!("Failed to parse GPS telegram: {}", unsafe {
-                core::str::from_utf8_unchecked(&buf)
-            }),
+            Err(_) => {
+                error!("Failed to parse GPS telegram: {}", unsafe {
+                    core::str::from_utf8_unchecked(&buf)
+                });
+
+                // collecting package to avoid getting mis-timed samples
+                warn!("collecting egps package, to avoid mis-timed samples.");
+                self.collect();
+            }
         }
 
         // TODO: Not really handling extra data.
