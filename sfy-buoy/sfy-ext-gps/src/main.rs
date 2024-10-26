@@ -50,12 +50,12 @@ use hal::{
 use sfy::log::log;
 use sfy::note::Notecarrier;
 use sfy::waves::Waves;
+use sfy::{gps::EgpsTime, Imu, Location, SharedState, State, NOTEQ};
 #[cfg(feature = "storage")]
 use sfy::{
     storage::{SdSpiSpeed, Storage},
     STORAGEQ,
 };
-use sfy::{Imu, Location, SharedState, State, NOTEQ};
 
 mod log;
 
@@ -66,6 +66,9 @@ static mut IMU: Option<sfy::Imu<E, I>> = None;
 
 pub static COUNT: AtomicI32 = AtomicI32::new(0);
 defmt::timestamp!("{=i32}", COUNT.load(Ordering::Relaxed));
+
+/// Used for updating the RTC on the main thread from the ext-gps interrupt:
+pub static EGPS_TIME: Mutex<RefCell<Option<EgpsTime>>> = Mutex::new(RefCell::new(None));
 
 /// The STATE contains the Real-Time-Clock which needs to be shared, as well as up-to-date
 /// longitude and latitude.
@@ -382,7 +385,7 @@ fn main() -> ! {
             );
 
             // Set the GPS from the extgps if possible.
-            location.set_from_rtc(&STATE);
+            location.set_from_egps(&STATE, &EGPS_TIME);
 
             // This updates the RTC. It should happen in the same block as `last`, otherwise we
             // could theoretically get a negative time jump. In practice that should not be possible.
@@ -525,29 +528,16 @@ fn GPIO() {
             let sample = gps.sample();
 
             if let Some(sample) = sample {
-                // Set RTC.
-                let mut state = STATE.borrow(cs).borrow_mut();
-                let state: &mut _ = state.deref_mut().as_mut().unwrap();
+                let (lon, lat) = sample.lonlat();
 
-                use chrono::{NaiveDate, NaiveDateTime};
-                use rtcc::DateTimeAccess;
+                let t = EgpsTime {
+                    time: sample.timestamp().timestamp_millis(),
+                    pps_time,
+                    lon,
+                    lat,
+                };
 
-                // TODO: maybe not do this every sample..
-                let now = state.rtc.now().unwrap().timestamp_millis();
-                let time = sample.timestamp().timestamp_millis() + (now - pps_time);
-                debug!("Set RTC: {}", time);
-                let dt = NaiveDateTime::from_timestamp_millis(time).unwrap();
-                state.rtc.set_datetime(&dt);
-
-                // Clear RTC interrupt
-                unsafe {
-                    (*(hal::pac::RTC::ptr()))
-                        .intclr
-                        .write(|w| w.alm().set_bit());
-                }
-
-                state.position_time = (time / 1000) as u32;
-                (state.lon, state.lat) = sample.lonlat();
+                EGPS_TIME.borrow(cs).borrow_mut().replace(t);
             }
         });
 

@@ -24,6 +24,14 @@ use crate::EPGS_SZ;
 /// Queue from GPS to Notecard
 pub static mut EGPSQ: Queue<GpsPacket, { crate::EPGS_SZ }> = Queue::new();
 
+#[derive(serde::Deserialize, PartialEq, Clone, defmt::Format)]
+pub struct EgpsTime {
+    pub time: i64, // The time received from the GPS (milliseconds).
+    pub pps_time: i64, // The time of the RTC at the time of the interrupt.
+    pub lon: f64,
+    pub lat: f64,
+}
+
 #[derive(serde::Deserialize, PartialEq, Clone)]
 pub struct Sample {
     year: u16,

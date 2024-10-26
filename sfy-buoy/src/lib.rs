@@ -75,13 +75,15 @@ pub const NOTEQ_SZ: usize = 6;
 #[cfg(feature = "ext-gps")]
 pub const EPGS_SZ: usize = 6;
 
-#[cfg(all(not(feature = "raw"), not(feature = "storage"), not(feature = "ext-gps")))]
+#[cfg(all(
+    not(feature = "raw"),
+    not(feature = "storage"),
+    not(feature = "ext-gps")
+))]
 pub const NOTEQ_SZ: usize = 24;
 
 #[cfg(not(feature = "storage"))]
 pub const IMUQ_SZ: usize = NOTEQ_SZ;
-
-
 
 /// These queues are filled up by the IMU interrupt in read batches of time-series. It is then consumed
 /// the main thread and first drained to the SD storage (if enabled), and then queued for the notecard.
@@ -96,7 +98,7 @@ pub static mut NOTEQ: heapless::spsc::Queue<AxlPacket, NOTEQ_SZ> = heapless::sps
 
 pub struct SharedState<D: DateTimeAccess> {
     pub rtc: D,
-    pub position_time: u32,
+    pub position_time: u32, // unix epoch [s]
     pub lon: f64,
     pub lat: f64,
 }
@@ -157,8 +159,7 @@ pub enum LocationState {
 pub struct Location {
     pub lat: f64,
     pub lon: f64,
-    pub position_time: u32,
-    pub time: u32,
+    pub position_time: u32, // unix epoch [s]
 
     pub state: LocationState,
 }
@@ -169,24 +170,60 @@ impl Location {
             lat: 0.0,
             lon: 0.0,
             position_time: 0,
-            time: 0,
             state: LocationState::Trying(-999),
         }
     }
 
-    pub fn set_from_rtc<D: DateTimeAccess>(
+    pub fn set_from_egps<D: DateTimeAccess>(
         &mut self,
         state: &Mutex<RefCell<Option<SharedState<D>>>>,
+        egps: &Mutex<RefCell<Option<gps::EgpsTime>>>,
     ) {
-        info!("Setting location from RTC (from EGPS).");
+        use LocationState::*;
+
+        const LOCATION_DIFF: i64 = 10_000; // [ms]
+        let now = state.now().timestamp_millis();
+
         free(|cs| {
+            info!("Setting location from RTC (from EGPS).");
             let mut state = state.borrow(cs).borrow_mut();
             let state: &mut _ = state.deref_mut().as_mut().unwrap();
-            self.time = state.now().timestamp() as u32;
-            self.state = LocationState::Retrieved((state.position_time / 1000) as i64);
-            self.position_time = state.position_time / 1000;
-            self.lat = state.lat;
-            self.lon = state.lon;
+
+            let egps = egps.borrow(cs).borrow();
+            let egps = egps.as_ref();
+
+            if let Some(egps) = egps {
+                info!("Updating postion from ext-gps: {:?}", egps);
+                // Update internal state from EGPS
+                self.state = LocationState::Retrieved(egps.time);
+                self.position_time = (egps.time / 1000) as u32;
+                self.lat = egps.lat;
+                self.lon = egps.lon;
+
+                // Update global STATE from egps
+                state.position_time = self.position_time;
+                state.lon = self.lon;
+                state.lat = self.lat;
+
+                match self.state {
+                    Retrieved(t) | Trying(t) if (now - t) > LOCATION_DIFF => {
+                        info!(
+                            "More than {} passed since last clock set, setting..",
+                            LOCATION_DIFF
+                        );
+                        let diff = now - egps.pps_time;
+                        if let Some(dt) = NaiveDateTime::from_timestamp_millis(egps.time + diff) {
+                            state.rtc.set_datetime(&dt).ok();
+                        } else {
+                            error!(
+                                "Could not construct datetime from: {}, diff: {}",
+                                egps.time, diff
+                            );
+                        }
+                    }
+                    _ => (),
+                }
+            }
         });
     }
 
@@ -221,7 +258,6 @@ impl Location {
                     info!("Got time, setting RTC.");
                     let dt = NaiveDateTime::from_timestamp_opt(time as i64, 0)
                         .ok_or_else(|| notecard::NoteError::NotecardErr("Bad time".into()))?;
-                    self.time = time;
 
                     free(|cs| {
                         let mut state = state.borrow(cs).borrow_mut();
