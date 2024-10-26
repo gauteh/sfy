@@ -300,7 +300,7 @@ void setup_gps() {
   Serial.println(OK(ok));
   ok = myGNSS.setDGNSSConfiguration(SFE_UBLOX_DGNSS_MODE_FIXED); // Set the differential mode - ambiguities are fixed whenever possible
   Serial.println(OK(ok));
-  ok = myGNSS.setNavigationFrequency(1); //Set output in Hz.
+  ok = myGNSS.setNavigationFrequency(SOL_FREQ); //Set output in Hz.
   Serial.println(OK(ok));
   ok = myGNSS.setVal8(UBLOX_CFG_SPARTN_USE_SOURCE, 1); // Set to 1 for using L-Band Correction
   Serial.println(OK(ok));
@@ -320,9 +320,13 @@ void setup_gps() {
   // myGNSS.addCfgValset(UBLOX_CFG_TP_PERIOD_LOCK_TP1, 50000); // Set the period to 30,000,000 us
   // myGNSS.addCfgValset(UBLOX_CFG_TP_LEN_LOCK_TP1, 10000); // Set the pulse length to 1,000,000 us
 
-  // 1 Hz
-  myGNSS.addCfgValset(UBLOX_CFG_TP_PERIOD_LOCK_TP1, 1000000); // Set the period to 30,000,000 us
+  // From gps.h
+  myGNSS.addCfgValset(UBLOX_CFG_TP_PERIOD_LOCK_TP1, 1000000 / TP_FREQ); // Set the period to 30,000,000 us
   myGNSS.addCfgValset(UBLOX_CFG_TP_LEN_LOCK_TP1, 100000); // Set the pulse length to 1,000,000 us
+
+  // 1 Hz
+  /* myGNSS.addCfgValset(UBLOX_CFG_TP_PERIOD_LOCK_TP1, 1000000); // Set the period to 30,000,000 us */
+  /* myGNSS.addCfgValset(UBLOX_CFG_TP_LEN_LOCK_TP1, 100000); // Set the pulse length to 1,000,000 us */
 
   // 5 Hz
   // myGNSS.addCfgValset(UBLOX_CFG_TP_PERIOD_LOCK_TP1, (1000000/5)); // Set the period to 30,000,000 us

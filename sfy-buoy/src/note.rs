@@ -475,7 +475,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         delay: &mut impl DelayMs<u16>,
     ) -> Result<usize, NoteError> {
         let mut tsz = 0;
-        defmt::info!("drainging egps queue: {}", queue.len());
+        defmt::info!("draining egps queue: {}", queue.len());
 
         while let Some(pck) = queue.dequeue() {
             // TODO: if status was over 75 last time, don't spam notecard with status requests.
@@ -513,7 +513,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             }
         }
 
-        defmt::info!("done drainging egps queue: {}", queue.len());
+        defmt::info!("done draining egps queue: {}", queue.len());
         Ok(tsz)
     }
 

@@ -249,6 +249,8 @@ where
             data,
         };
 
+        debug!("Collected egps packet, freq: {}, timestamp: {}, total len (u16s): {}", p.freq, p.timestamp, p.data.len());
+
         self.queue
             .enqueue(p)
             .inspect_err(|e| defmt::error!("could not enque GpsPacket.."));
@@ -376,12 +378,20 @@ mod tests {
   "hor_acc": 200,
   "vert_acc": 700,
   "soln": 1,
-  "fix": 1 }
+  "fix": 1 ,"velN":-41,"velE":53,"velD":0,"sAcc":455}
             "#;
 
         let s: Sample = serde_json_core::from_str(sample).unwrap().0;
 
         // println!("sample: {s:#?}");
+    }
+
+    #[test]
+    #[should_panic]
+    fn parse_veln() {
+        let s = r#"{"year":2024,"month":10,"day":26"year":2024,"month":10,"day":26,"hour":7,"minute":16,"sec":34,"nano":400139504,"time_acc":47,"lat":603283447,"lon":53677011,"msl":91506,"hor_acc":11058,"vert_acc":14322,"soln":0,"fix":3,"velN":-41,"velE":53,"velD":0,"sAcc":455}"#;
+
+        let s: Sample = serde_json_core::from_str(s).unwrap().0;
     }
 
     #[test]
@@ -393,9 +403,9 @@ mod tests {
             msl: 20,
             freq: 100.0,
             version: super::GPS_PACKET_V,
-            data: (0..(3 * GPS_PACKET_SZ))
+            data: (0..(6 * GPS_PACKET_SZ))
                 .map(|v| v as u16)
-                .collect::<heapless::Vec<_, { 3 * GPS_PACKET_SZ }>>(),
+                .collect::<heapless::Vec<_, { 6 * GPS_PACKET_SZ }>>(),
         };
 
         let b64 = p.base64();

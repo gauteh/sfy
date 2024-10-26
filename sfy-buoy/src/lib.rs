@@ -195,7 +195,6 @@ impl Location {
             if let Some(egps) = egps {
                 info!("Updating postion from ext-gps: {:?}", egps);
                 // Update internal state from EGPS
-                self.state = LocationState::Retrieved(egps.time);
                 self.position_time = (egps.time / 1000) as u32;
                 self.lat = egps.lat;
                 self.lon = egps.lon;
@@ -220,6 +219,8 @@ impl Location {
                                 egps.time, diff
                             );
                         }
+
+                        self.state = LocationState::Retrieved(egps.time);
                     }
                     _ => (),
                 }
