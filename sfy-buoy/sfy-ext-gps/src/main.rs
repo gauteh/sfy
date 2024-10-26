@@ -418,8 +418,6 @@ fn main() -> ! {
             let ng = note.drain_egps_queue(&mut gps_queue, &mut delay);
             let ns = note.check_and_sync(&mut delay);
 
-            defmt::debug!("ng: {:?}", ng);
-
             match (nd, ng, ns) {
                 (Ok(_), Ok(_), Ok(_)) => good_tries = GOOD_TRIES,
                 (dq, dg, cs) => {
@@ -503,22 +501,30 @@ fn GPIO() {
         });
     } else {
         // Clear interrupt
-        defmt::debug!("A2: clear interrupt.");
         free(|cs| {
             a2.as_mut().unwrap().disable_interrupt();
             a2.as_mut().unwrap().clear_interrupt();
         });
     }
 
-    let pps_time = free(|cs| {
+    let pps_time = if let Some(now) = free(|cs| {
         let state = STATE.borrow(cs).borrow();
         let state = state.as_ref().unwrap();
 
-        let now = state.rtc.now().unwrap().timestamp_millis();
+        let now = state.rtc.now().map(|t| t.timestamp_millis());
         defmt::info!("ext-gps: pps: {}", now);
 
         now
-    });
+    }) {
+        now
+    } else {
+        error!("RTC: failed, skipping GPIO interrupt.");
+        free(|cs| {
+            a2.as_mut().unwrap().clear_interrupt();
+            a2.as_mut().unwrap().enable_interrupt();
+        });
+        return;
+    };
 
     // Pull a single JSON gps sample from the uart
     if let Some(gps) = gps {

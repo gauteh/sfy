@@ -423,7 +423,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         // before running main-loop again and letting other tasks run. The main-loop will keep
         // going immediately again if there are more data in the queue.
 
-        defmt::debug!("draining imu queue: {}", queue.len());
+        // defmt::debug!("draining imu queue: {}", queue.len());
 
         let mut tsz = 0;
 
@@ -463,7 +463,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             }
         }
 
-        defmt::debug!("done draining imu queue: {}", queue.len());
+        // defmt::debug!("done draining imu queue: {}", queue.len());
         Ok(tsz)
     }
 
@@ -475,7 +475,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         delay: &mut impl DelayMs<u16>,
     ) -> Result<usize, NoteError> {
         let mut tsz = 0;
-        defmt::info!("draining egps queue: {}", queue.len());
+        // defmt::info!("draining egps queue: {}", queue.len());
 
         while let Some(pck) = queue.dequeue() {
             // TODO: if status was over 75 last time, don't spam notecard with status requests.
@@ -513,7 +513,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             }
         }
 
-        defmt::info!("done draining egps queue: {}", queue.len());
+        // defmt::info!("done draining egps queue: {}", queue.len());
         Ok(tsz)
     }
 

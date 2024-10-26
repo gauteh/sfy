@@ -211,16 +211,21 @@ impl Location {
                             LOCATION_DIFF
                         );
                         let diff = now - egps.pps_time;
-                        if let Some(dt) = NaiveDateTime::from_timestamp_millis(egps.time + diff) {
-                            state.rtc.set_datetime(&dt).ok();
-                        } else {
-                            error!(
-                                "Could not construct datetime from: {}, diff: {}",
-                                egps.time, diff
-                            );
-                        }
 
-                        self.state = LocationState::Retrieved(egps.time);
+                        if diff > 5_000 {
+                            debug!("egps time is old, not using.");
+                        } else {
+                            if let Some(dt) = NaiveDateTime::from_timestamp_millis(egps.time + diff) {
+                                state.rtc.set_datetime(&dt).ok();
+                            } else {
+                                error!(
+                                    "Could not construct datetime from: {}, diff: {}",
+                                    egps.time, diff
+                                );
+                            }
+
+                            self.state = LocationState::Retrieved(egps.time);
+                        }
                     }
                     _ => (),
                 }

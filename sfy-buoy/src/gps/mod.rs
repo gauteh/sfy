@@ -26,7 +26,7 @@ pub static mut EGPSQ: Queue<GpsPacket, { crate::EPGS_SZ }> = Queue::new();
 
 #[derive(serde::Deserialize, PartialEq, Clone, defmt::Format)]
 pub struct EgpsTime {
-    pub time: i64, // The time received from the GPS (milliseconds).
+    pub time: i64,     // The time received from the GPS (milliseconds).
     pub pps_time: i64, // The time of the RTC at the time of the interrupt.
     pub lon: f64,
     pub lat: f64,
@@ -249,7 +249,12 @@ where
             data,
         };
 
-        debug!("Collected egps packet, freq: {}, timestamp: {}, total len (u16s): {}", p.freq, p.timestamp, p.data.len());
+        debug!(
+            "Collected egps packet, freq: {}, timestamp: {}, total len (u16s): {}",
+            p.freq,
+            p.timestamp,
+            p.data.len()
+        );
 
         self.queue
             .enqueue(p)
@@ -259,10 +264,10 @@ where
     pub fn sample(&mut self) -> Option<&Sample> {
         let mut buf = heapless::Vec::<u8, 1024>::new(); // reduce?
 
-        defmt::debug!(
-            "Reading GPS package from serial.. sample buf: {}",
-            self.buf.len()
-        );
+        // defmt::debug!(
+        //     "Reading GPS package from serial.. sample buf: {}",
+        //     self.buf.len()
+        // );
         let mut state = ParseState::StartBracket;
 
         let mut timeout = 0_u32;
@@ -313,9 +318,9 @@ where
         }
 
         // ready to parse `buf`.
-        defmt::debug!("Parsing GPS package..: {}", unsafe {
-            core::str::from_utf8_unchecked(&buf)
-        });
+        // defmt::debug!("Parsing GPS package..: {}", unsafe {
+        //     core::str::from_utf8_unchecked(&buf)
+        // });
 
         match serde_json_core::from_slice::<Sample>(&buf) {
             Ok((sample, _sz)) => {
@@ -326,13 +331,10 @@ where
                         defmt::error!("GPS sample buffer is full! Discarding latest sample.")
                     })
                     .ok();
-
-                // TODO: set the RTC:
-                // let now = ...;
-                // let current = sample.time + (now - pps_time);
-                // drift = current - now
             }
-            Err(_) => error!("Failed to parse GPS telegram."),
+            Err(_) => error!("Failed to parse GPS telegram: {}", unsafe {
+                core::str::from_utf8_unchecked(&buf)
+            }),
         }
 
         // TODO: Not really handling extra data.
