@@ -31,12 +31,11 @@ class AxlTimeseries:
         logger.info(
             f'Integrating displacment, filter frequencies: {filter_freqs}.')
 
-        u_z = signal.integrate(
-            self.z,
-            self.dt,
-            order=2,
-            freqs=filter_freqs,
-            method='dft')
+        u_z = signal.integrate(self.z,
+                               self.dt,
+                               order=2,
+                               freqs=filter_freqs,
+                               method='dft')
         u_x = signal.integrate(self.x,
                                self.dt,
                                order=2,
@@ -300,14 +299,188 @@ class AxlTimeseries:
 
         return ds
 
-    def to_netcdf(self, filename: Path, displacement: bool = False, retime=True):
+    def to_netcdf(self,
+                  filename: Path,
+                  displacement: bool = False,
+                  retime=True):
         """
         Write a CF-compliant NetCDF file to filename.
         """
         compression = {'zlib': True}
         encoding = {}
 
-        ds = self.to_dataset(displacement=displacement,retime=retime)
+        ds = self.to_dataset(displacement=displacement, retime=retime)
+        for v in ds.variables:
+            encoding[v] = compression
+
+        logger.info(f'Writing dataset to {filename}..')
+        ds.to_netcdf(filename, format='NETCDF4', encoding=encoding)
+
+
+class EgpsTimeseries():
+
+    @property
+    def dt(self):
+        return 1. / self.frequency
+
+    def extra_attrs(self):
+        return {}
+
+    def to_dataset(self, retime=False):
+        logger.debug(f'Making xarray Dataset from {self.samples()} samples..')
+
+        ds = xr.Dataset(data_vars={
+            'z':
+            xr.Variable(
+                ('time'),
+                self.z.astype(np.float32),
+                attrs={
+                    'unit': 'm',
+                    'standard_name': 'sea_water_wave_z_elevation',
+                    'direction': 'up',
+                }),
+            'lat':
+            xr.Variable(('time'),
+                        self.n.astype(np.float32),
+                        attrs={
+                            'unit': 'degrees_north',
+                            'long_name': 'latitude',
+                        }),
+            'lon':
+            xr.Variable(('time'),
+                        self.e.astype(np.float32),
+                        attrs={
+                            'unit': 'degrees_east',
+                            'standard_name': 'longitude',
+                        }),
+            'vz':
+            xr.Variable(
+                ('time'),
+                self.vz.astype(np.float32),
+                attrs={
+                    'unit': 'mm/s',
+                    'standard_name': 'sea_water_wave_z_velocity',
+                    'direction': 'up',
+                }),
+            'vn':
+            xr.Variable(('time'),
+                        self.vn.astype(np.float32),
+                        attrs={
+                            'unit': 'mm/s',
+                            'standard_name': 'sea_water_wave_north_velocity',
+                        }),
+            've':
+            xr.Variable(('time'),
+                        self.ve.astype(np.float32),
+                        attrs={
+                            'unit': 'mm/s',
+                            'standard_name': 'sea_water_wave_east_velocity',
+                        }),
+            'pck_lon':
+            xr.Variable(
+                ('package'),
+                np.array(self.lons, dtype=np.float64),
+                attrs={
+                    'units': "degrees_east",
+                    'standard_name': "longitude",
+                    'long_name': "longitude"
+                }),
+            'pck_lat':
+            xr.Variable(
+                ('package'),
+                np.array(self.lats, dtype=np.float64),
+                attrs={
+                    'units': "degrees_north",
+                    'standard_name': "latitude",
+                    'long_name': "latitude"
+                }),
+            'package_start':
+            xr.Variable(
+                ('package'), [
+                    np.datetime64(int(s.timestamp() * 1000.),
+                                  'ms').astype('datetime64[ns]') if s else None
+                    for s in self.start_times
+                ],
+                attrs={
+                    'description':
+                    'Timestamp at `offset` sample from the start of each batch (package) of samples.'
+                }),
+            'added':
+            xr.Variable(
+                ('package'), [
+                    np.datetime64(int(s.timestamp() * 1000.),
+                                  'ms').astype('datetime64[ns]') if s else None
+                    for s in self.added_times
+                ],
+                attrs={'description': 'Time package was added to notecard.'}),
+            'received':
+            xr.Variable(
+                ('package'), [
+                    np.datetime64(int(s.timestamp() * 1000.),
+                                  'ms').astype('datetime64[ns]')
+                    for s in self.received_times
+                ],
+                attrs={'description':
+                       'Time package was received by data-hub'}),
+            'position_time':
+            xr.Variable(
+                ('package'), [
+                    np.datetime64(int(s), 's').astype('datetime64[ns]')
+                    if s else np.nan for s in self.position_times
+                ],
+                attrs={'description':
+                       'Time of position fix for each package'}),
+        },
+                        coords={
+                            'time':
+                            xr.Variable(
+                                ('time'),
+                                self.mseconds.astype('datetime64[ms]').astype(
+                                    'datetime64[ns]')),
+                            'package':
+                            xr.Variable(
+                                ('package'),
+                                np.arange(0, len(self.position_times)),
+                                attrs={'description': 'Package number'}),
+                        },
+                        attrs={
+                            'frequency': self.frequency,
+                            'frequency:unit': 'Hz',
+                            'dt': self.dt,
+                            'dt:unit': 's',
+                            'package_length': self.package_length,
+                            'homepage': 'https://github.com/gauteh/sfy',
+                            'buoy_type': 'sfy',
+                            'buoy_device': self.device,
+                            'buoy_name': self.sn,
+                            **self.extra_attrs()
+                        })
+
+        # ds = sxr.unique_positions(ds)
+        if retime:
+            logger.info('Re-timing dataset based on estimated frequency..')
+            ds = sxr.retime(ds)
+        else:
+            fs = np.median(sxr.estimate_frequency(ds))
+            logger.info(f'Not re-timing, estimated frequency to: {fs:.3f} Hz')
+            ds = ds.assign_attrs({
+                'estimated_frequency': fs,
+                'estimated_frequency:unit': 'Hz'
+            })
+
+        return ds
+
+    def to_netcdf(self,
+                  filename: Path,
+                  displacement: bool = False,
+                  retime=True):
+        """
+        Write a CF-compliant NetCDF file to filename.
+        """
+        compression = {'zlib': True}
+        encoding = {}
+
+        ds = self.to_dataset(displacement=displacement, retime=retime)
         for v in ds.variables:
             encoding[v] = compression
 

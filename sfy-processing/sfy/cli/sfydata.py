@@ -5,6 +5,7 @@ from tqdm import tqdm
 from datetime import datetime, timezone
 import coloredlogs
 import logging
+import json as pyjson
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +64,7 @@ def json(dev, file):
     hub = Hub.from_env()
     buoy = hub.buoy(dev)
     pck = buoy.json_package(file)
-    print(pck)
+    print(pyjson.dumps(pck))
 
 @sfy.command(help='List all events')
 @click.argument('dev')

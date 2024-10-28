@@ -12,6 +12,7 @@ import base64
 logger = logging.getLogger(__name__)
 
 from .axl import Axl
+from .egps import Egps
 from .event import Event
 from .timeutil import utcify
 
@@ -332,6 +333,19 @@ class SfyBuoy(Buoy):
         logger.debug(f"Found {len(pcks)} axl packages")
 
         pcks = [Axl.try_parse(pck[2]) for pck in tqdm(pcks)]
+        pcks = [pck for pck in pcks if pck is not None]
+        logger.debug(f"Loaded {len(pcks)} packages.")
+
+        return pcks
+
+    def egps_packages_range(self, start=None, end=None):
+        logger.debug(f"fetching egps packages between {start} and {end}")
+
+        pcks = self.fetch_packages_range(start, end)
+        pcks = [pck for pck in pcks if 'egps.qo.json' in pck[1]]
+        logger.debug(f"Found {len(pcks)} egps packages")
+
+        pcks = [Egps.try_parse(pck[2]) for pck in tqdm(pcks)]
         pcks = [pck for pck in pcks if pck is not None]
         logger.debug(f"Loaded {len(pcks)} packages.")
 
