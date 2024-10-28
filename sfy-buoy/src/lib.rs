@@ -18,7 +18,7 @@ use core::fmt::Debug;
 use core::ops::DerefMut;
 use cortex_m::interrupt::{free, Mutex};
 use embedded_hal::blocking::{
-    delay::{DelayMs, DelayUs},
+    delay::DelayMs,
     i2c::{Read, Write, WriteRead},
 };
 
@@ -96,6 +96,8 @@ pub static mut STORAGEQ: heapless::spsc::Queue<AxlPacketT, STORAGEQ_SZ> =
 /// Queue from Storage to Notecard
 pub static mut NOTEQ: heapless::spsc::Queue<AxlPacket, NOTEQ_SZ> = heapless::spsc::Queue::new();
 
+pub const FUTURE: NaiveDateTime = NaiveDateTime::from_timestamp(2550564072, 0);
+
 pub struct SharedState<D: DateTimeAccess> {
     pub rtc: D,
     pub position_time: u32, // unix epoch [s]
@@ -104,24 +106,20 @@ pub struct SharedState<D: DateTimeAccess> {
 }
 
 pub trait State {
-    fn now(&self) -> NaiveDateTime;
+    fn now(&self) -> Option<NaiveDateTime>;
 
     /// Returns now, posistion_time, lat, lon.
-    fn get(&self) -> (NaiveDateTime, u32, f64, f64);
+    fn get(&self) -> (Option<NaiveDateTime>, u32, f64, f64);
 }
 
 impl<D: DateTimeAccess> SharedState<D> {
-    fn now(&mut self) -> NaiveDateTime {
-        self.rtc
-            .datetime()
-            .unwrap_or(NaiveDateTime::from_timestamp_opt(0, 0).unwrap())
+    fn now(&mut self) -> Option<NaiveDateTime> {
+        self.rtc.datetime().ok()
     }
 
-    fn get(&mut self) -> (NaiveDateTime, u32, f64, f64) {
+    fn get(&mut self) -> (Option<NaiveDateTime>, u32, f64, f64) {
         (
-            self.rtc
-                .datetime()
-                .unwrap_or(NaiveDateTime::from_timestamp_opt(0, 0).unwrap()),
+            self.rtc.datetime().ok(),
             self.position_time,
             self.lat,
             self.lon,
@@ -130,7 +128,7 @@ impl<D: DateTimeAccess> SharedState<D> {
 }
 
 impl<D: DateTimeAccess> State for Mutex<RefCell<Option<SharedState<D>>>> {
-    fn now(&self) -> NaiveDateTime {
+    fn now(&self) -> Option<NaiveDateTime> {
         free(|cs| {
             let mut state = self.borrow(cs).borrow_mut();
             let state: &mut _ = state.deref_mut().as_mut().unwrap();
@@ -139,7 +137,7 @@ impl<D: DateTimeAccess> State for Mutex<RefCell<Option<SharedState<D>>>> {
         })
     }
 
-    fn get(&self) -> (NaiveDateTime, u32, f64, f64) {
+    fn get(&self) -> (Option<NaiveDateTime>, u32, f64, f64) {
         free(|cs| {
             let mut state = self.borrow(cs).borrow_mut();
             let state: &mut _ = state.deref_mut().as_mut().unwrap();
@@ -182,7 +180,7 @@ impl Location {
         use LocationState::*;
 
         const LOCATION_DIFF: i64 = 10_000; // [ms]
-        let now = state.now().timestamp_millis();
+        let now = state.now().unwrap_or(FUTURE).and_utc().timestamp_millis();
 
         free(|cs| {
             info!("Setting location from RTC (from EGPS).");
@@ -215,7 +213,8 @@ impl Location {
                         if diff > 5_000 {
                             debug!("egps time is old, not using.");
                         } else {
-                            if let Some(dt) = NaiveDateTime::from_timestamp_millis(egps.time + diff) {
+                            if let Some(dt) = NaiveDateTime::from_timestamp_millis(egps.time + diff)
+                            {
                                 state.rtc.set_datetime(&dt).ok();
                             } else {
                                 error!(
@@ -248,7 +247,7 @@ impl Location {
 
         const LOCATION_DIFF: i64 = 1 * 60_000; // [ms]: 1 minute
 
-        let now = state.now().timestamp_millis();
+        let now = state.now().unwrap_or(FUTURE).and_utc().timestamp_millis();
 
         match self.state {
             Retrieved(t) | Trying(t) if (now - t) > LOCATION_DIFF => {
@@ -296,13 +295,15 @@ impl Location {
                     });
                 }
 
-                if let (Ok(Time { time: Some(_), .. }), Location { lat: Some(_), .. }) = (tm, gps) {
+                if let (
+                    Ok(Time {
+                        time: Some(time), ..
+                    }),
+                    Location { lat: Some(_), .. },
+                ) = (tm, gps)
+                {
                     info!("Both time and location retrieved.");
-                    free(|cs| {
-                        let mut state = state.borrow(cs).borrow_mut();
-                        let state: &mut _ = state.deref_mut().as_mut().unwrap();
-                        self.state = Retrieved(state.now().timestamp_millis());
-                    });
+                    self.state = Retrieved((time * 1000) as i64);
                 } else {
                     self.state = Trying(now);
                 }

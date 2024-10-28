@@ -3,7 +3,6 @@
 use chrono::{NaiveDate, NaiveDateTime};
 #[allow(unused_imports)]
 use defmt::{debug, error, info, println, trace, warn};
-use embedded_hal::blocking::delay::DelayMs;
 use embedded_hal::serial::{Read, Write};
 use heapless::{
     spsc::{Producer, Queue},
@@ -71,14 +70,16 @@ impl Sample {
 
         let nano = nano as u32;
 
-        NaiveDate::from_ymd_opt(self.year.into(), self.month.into(), self.day.into()).map(|t| {
-            t.and_hms_nano(
-                self.hour.into(),
-                self.minute.into(),
-                sec.into(),
-                nano.into(),
-            )
-        })
+        NaiveDate::from_ymd_opt(self.year.into(), self.month.into(), self.day.into()).and_then(
+            |t| {
+                t.and_hms_nano_opt(
+                    self.hour.into(),
+                    self.minute.into(),
+                    sec.into(),
+                    nano.into(),
+                )
+            },
+        )
     }
 
     pub fn lonlat(&self) -> (f64, f64) {
@@ -232,13 +233,20 @@ where
             .collect();
 
         // unwrap: is not added to buf unless timestamp is parsable.
-        let timestamp = self.buf[0].timestamp().unwrap().timestamp_millis();
+        let timestamp = self.buf[0]
+            .timestamp()
+            .unwrap()
+            .and_utc()
+            .timestamp_millis();
 
         // TODO: skip this iteration, maybe just use the first two..
         let freq: f32 = self
             .buf
             .windows(2)
-            .map(|a| a[1].timestamp().unwrap().timestamp_millis() - a[0].timestamp().unwrap().timestamp_millis())
+            .map(|a| {
+                a[1].timestamp().unwrap().and_utc().timestamp_millis()
+                    - a[0].timestamp().unwrap().and_utc().timestamp_millis()
+            })
             .sum::<i64>() as f32
             / self.buf.len() as f32;
         let freq = 1000.0 / freq;
@@ -264,7 +272,7 @@ where
 
         self.queue
             .enqueue(p)
-            .inspect_err(|e| defmt::error!("could not enque GpsPacket.."));
+            .inspect_err(|_| defmt::error!("could not enque GpsPacket.."));
     }
 
     pub fn sample(&mut self) -> Option<&Sample> {

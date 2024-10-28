@@ -288,12 +288,12 @@ fn main() -> ! {
 
     let (now, position_time, lat, lon) = STATE.get();
     COUNT.store(
-        (now.timestamp_millis() / 1000).try_into().unwrap_or(0),
+        (now.map(|t| (t.timestamp_millis() / 1000) as i32)).unwrap_or(0),
         Ordering::Relaxed,
     );
     info!(
-        "Now: {} ms, position_time: {}, lat: {}, lon: {}",
-        now.timestamp_millis(),
+        "Now: {:?} ms, position_time: {}, lat: {}, lon: {}",
+        now.map(|t| t.timestamp_millis()),
         position_time,
         lat,
         lon
@@ -302,7 +302,12 @@ fn main() -> ! {
     info!("Setting up IMU..");
     let mut waves = Waves::new(i2c3).unwrap();
     waves
-        .take_buf(now.timestamp_millis(), position_time, lon, lat)
+        .take_buf(
+            now.map(|t| t.timestamp_millis()).unwrap_or(0),
+            position_time,
+            lon,
+            lat,
+        )
         .unwrap(); // set timestamp.
 
     info!("Enable IMU.");
@@ -336,7 +341,7 @@ fn main() -> ! {
     let mut sd_good: bool = true; // Do not spam with log messags.
 
     loop {
-        let now = STATE.now().timestamp_millis();
+        let now = STATE.now().map(|t| t.timestamp_millis());
 
         // Move data to SD card and enqueue for Notecard.
         #[cfg(feature = "storage")]
@@ -371,9 +376,9 @@ fn main() -> ! {
         const SHORT_LOOP_DELAY: u32 = 3_000;
 
         // Process data and communication for the Notecard.
-        if ((now - last) > LOOP_DELAY as i64)
+        if ((now.unwrap_or(sfy::FUTURE.timestamp_millis()) - last) > LOOP_DELAY as i64)
             || ((imu_queue.capacity() - imu_queue.len()) < 3
-                && (now - last) > SHORT_LOOP_DELAY as i64)
+                && (now.unwrap_or(sfy::FUTURE.timestamp_millis()) - last) > SHORT_LOOP_DELAY as i64)
         {
             let queue_time: f64 = f64::from(sfy::axl::SAMPLE_NO as u32)
                 * f64::from(sfy::NOTEQ_SZ as u32)
@@ -453,7 +458,7 @@ fn main() -> ! {
                     }
                 }
             };
-            last = now;
+            last = now.unwrap_or(0);
         }
 
         #[cfg(not(feature = "deploy"))]
