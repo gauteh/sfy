@@ -80,12 +80,7 @@ def list_buoys(dev, tx_start, tx_end):
     help=
     'Only use packages with this frequency (usually 52 or 20.8, within 2 Hz)',
     type=float)
-@click.option('--retime',
-              default=False,
-              is_flag=True,
-              help='Retime based on estimated frequency.',
-              type=bool)
-def ts(dev, tx_start, tx_end, start, end, file, gap, freq, retime):
+def ts(dev, tx_start, tx_end, start, end, file, gap, freq):
     hub = Hub.from_env()
     buoy = hub.buoy(dev)
 
@@ -175,6 +170,6 @@ def ts(dev, tx_start, tx_end, start, end, file, gap, freq, retime):
         logger.info(f"Saving to {file}..")
 
         if len(pcks) > 0:
-            pcks.to_netcdf(file, retime=retime)
+            pcks.to_netcdf(file)
         else:
             logger.error("No data to save.")

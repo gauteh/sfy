@@ -16,6 +16,7 @@ from .axl import scale_u16_to_f32
 
 logger = logging.getLogger(__name__)
 
+
 class EgpsCollection(EgpsTimeseries):
     GAP_LIMIT = 10.  # limit in seconds before data is not considered continuous
     pcks: ['Egps']
@@ -71,7 +72,8 @@ class EgpsCollection(EgpsTimeseries):
                         pcks[0].start.timestamp()) <= eps_gap:
                 segment.append(pcks.pop(0))
             else:
-                yield EgpsCollection(segment, sorted_and_duplicates_removed=True)
+                yield EgpsCollection(segment,
+                                     sorted_and_duplicates_removed=True)
                 segment = []
 
         if len(segment) > 0:
@@ -104,8 +106,7 @@ class EgpsCollection(EgpsTimeseries):
 
     @property
     def package_length(self):
-        assert all((self.pcks[0].package_length == p.package_length for p in self.pcks)), "all packages must have the same length."
-        return self.pcks[0].package_length
+        return [pck.package_length for pck in self.pcks]
 
     @property
     def offsets(self):
@@ -199,20 +200,18 @@ class EgpsCollection(EgpsTimeseries):
             'number_of_packages': len(self.pcks)
         }
 
-        accel_range = [ pck.accel_range for pck in self.pcks if pck.accel_range is not None ]
-        gyro_range = [ pck.gyro_range for pck in self.pcks if pck.gyro_range is not None ]
+        lonlat_range = [pck.lonlat_range for pck in self.pcks]
+        msl_range = [pck.msl_range for pck in self.pcks]
+        vel_range = [pck.vel_range for pck in self.pcks]
 
-        if len(accel_range):
-            assert all((accel_range[0] == a for a in accel_range)), "varying acceleration range"
-            assert all((gyro_range[0] == g for g in gyro_range)), "varying gyro range"
-            accel_range = accel_range[0]
-            gyro_range = gyro_range[0]
+        attrs['lonlat_range'] = lonlat_range[0]
+        attrs['lonlat_range:unit'] = 'deg * 1e7'
 
-            attrs['accel_range'] = accel_range
-            attrs['accel_range:unit'] = 'g'
+        attrs['msl_range'] = msl_range
+        attrs['msl_range:unit'] = 'mm'
 
-            attrs['gyro_range'] = gyro_range
-            attrs['gyro_range:unit'] = 'dps'
+        attrs['vel_range'] = vel_range[0]
+        attrs['vel_range:unit'] = 'mm/s'
 
         return attrs
 
@@ -311,7 +310,9 @@ class Egps(Event):
         """
         UTC Datetime of end of samples.
         """
-        return datetime.fromtimestamp((self.timestamp + 1000. / self.freq * len(self.n)) / 1000., tz=pytz.utc)
+        return datetime.fromtimestamp(
+            (self.timestamp + 1000. / self.freq * len(self.n)) / 1000.,
+            tz=pytz.utc)
 
     @property
     def time(self):
@@ -391,7 +392,8 @@ class Egps(Event):
         data['freq'] = data['body']['freq']
         data['lonlat_range'] = data['body']['lonlat_range']
         data['msl_range'] = data['body']['msl_range']
-        data['vel_range'] = data['body'].get('vel_range', 200.0 * 1.0e6 / 60. / 60)
+        data['vel_range'] = data['body'].get('vel_range',
+                                             200.0 * 1.0e6 / 60. / 60)
         del data['body']
 
         # decode x, y, z
@@ -407,8 +409,7 @@ class Egps(Event):
 
         if sys.byteorder == 'big':
             logger.warning(
-                'host is big-endian, swapping bytes: this is not well-tested.'
-            )
+                'host is big-endian, swapping bytes: this is not well-tested.')
             payload.byteswap(inplace=True)
 
         n = scale_u16_to_f32(data['lonlat_range'], payload[0::6]) + data['lat']
@@ -416,7 +417,7 @@ class Egps(Event):
         z = scale_u16_to_f32(data['msl_range'], payload[2::6]) + data['msl']
         vn = scale_u16_to_f32(data['vel_range'], payload[3::6])
         ve = scale_u16_to_f32(data['vel_range'], payload[4::6])
-        vz = scale_u16_to_f32(data['vel_range'], payload[6::6])
+        vz = scale_u16_to_f32(data['vel_range'], payload[5::6])
 
         assert len(n) == N / 6
 
@@ -432,4 +433,3 @@ class Egps(Event):
     def from_file(path) -> 'Egps':
         with open(path, 'r') as fd:
             return Egps.parse(fd.read())
-

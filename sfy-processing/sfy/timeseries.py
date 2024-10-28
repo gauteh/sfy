@@ -326,7 +326,7 @@ class EgpsTimeseries():
     def extra_attrs(self):
         return {}
 
-    def to_dataset(self, retime=False):
+    def to_dataset(self):
         logger.debug(f'Making xarray Dataset from {self.samples()} samples..')
 
         ds = xr.Dataset(data_vars={
@@ -405,6 +405,10 @@ class EgpsTimeseries():
                     'description':
                     'Timestamp at `offset` sample from the start of each batch (package) of samples.'
                 }),
+            'package_length':
+            xr.Variable(('package'),
+                        self.package_length,
+                        attrs={'description': 'Length of package'}),
             'added':
             xr.Variable(
                 ('package'), [
@@ -455,32 +459,16 @@ class EgpsTimeseries():
                             'buoy_name': self.sn,
                             **self.extra_attrs()
                         })
-
-        # ds = sxr.unique_positions(ds)
-        if retime:
-            logger.info('Re-timing dataset based on estimated frequency..')
-            ds = sxr.retime(ds)
-        else:
-            fs = np.median(sxr.estimate_frequency(ds))
-            logger.info(f'Not re-timing, estimated frequency to: {fs:.3f} Hz')
-            ds = ds.assign_attrs({
-                'estimated_frequency': fs,
-                'estimated_frequency:unit': 'Hz'
-            })
-
         return ds
 
-    def to_netcdf(self,
-                  filename: Path,
-                  displacement: bool = False,
-                  retime=True):
+    def to_netcdf(self, filename: Path):
         """
         Write a CF-compliant NetCDF file to filename.
         """
         compression = {'zlib': True}
         encoding = {}
 
-        ds = self.to_dataset(displacement=displacement, retime=retime)
+        ds = self.to_dataset()
         for v in ds.variables:
             encoding[v] = compression
 

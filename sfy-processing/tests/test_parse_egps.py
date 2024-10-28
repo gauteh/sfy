@@ -16,6 +16,10 @@ def test_parse_table():
     assert len(e.e) == 124
     assert len(e.z) == 124
 
+    assert len(e.vz) == 124
+    assert len(e.ve) == 124
+    assert len(e.vn) == 124
+
 @needs_hub
 def test_collect(sfyhub):
     b = sfyhub.buoy("dev864593051335148")
