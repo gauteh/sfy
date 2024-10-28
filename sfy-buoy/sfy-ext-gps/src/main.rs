@@ -537,7 +537,7 @@ fn GPIO() {
                 let (lon, lat) = sample.lonlat();
 
                 let t = EgpsTime {
-                    time: sample.timestamp().timestamp_millis(),
+                    time: sample.timestamp().unwrap().timestamp_millis(), // unwrap: tested in sample
                     pps_time,
                     lon,
                     lat,

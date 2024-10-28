@@ -60,7 +60,7 @@ pub struct Sample {
 }
 
 impl Sample {
-    pub fn timestamp(&self) -> NaiveDateTime {
+    pub fn timestamp(&self) -> Option<NaiveDateTime> {
         let mut sec = self.sec;
         let mut nano = self.nano;
 
@@ -71,14 +71,14 @@ impl Sample {
 
         let nano = nano as u32;
 
-        NaiveDate::from_ymd_opt(self.year.into(), self.month.into(), self.day.into())
-            .unwrap()
-            .and_hms_nano(
+        NaiveDate::from_ymd_opt(self.year.into(), self.month.into(), self.day.into()).map(|t| {
+            t.and_hms_nano(
                 self.hour.into(),
                 self.minute.into(),
                 sec.into(),
                 nano.into(),
             )
+        })
     }
 
     pub fn lonlat(&self) -> (f64, f64) {
@@ -231,13 +231,14 @@ where
             .flatten()
             .collect();
 
-        let timestamp = self.buf[0].timestamp().timestamp_millis();
+        // unwrap: is not added to buf unless timestamp is parsable.
+        let timestamp = self.buf[0].timestamp().unwrap().timestamp_millis();
 
         // TODO: skip this iteration, maybe just use the first two..
         let freq: f32 = self
             .buf
             .windows(2)
-            .map(|a| a[1].timestamp().timestamp_millis() - a[0].timestamp().timestamp_millis())
+            .map(|a| a[1].timestamp().unwrap().timestamp_millis() - a[0].timestamp().unwrap().timestamp_millis())
             .sum::<i64>() as f32
             / self.buf.len() as f32;
         let freq = 1000.0 / freq;
@@ -327,8 +328,18 @@ where
         //     core::str::from_utf8_unchecked(&buf)
         // });
 
-        match serde_json_core::from_slice::<Sample>(&buf) {
-            Ok((sample, _sz)) => {
+        let sample = serde_json_core::from_slice::<Sample>(&buf);
+
+        let sample = sample.and_then(|(sample, _sz)| {
+            if sample.timestamp().is_some() {
+                Ok(sample)
+            } else {
+                Err(serde_json_core::de::Error::CustomError)
+            }
+        });
+
+        match sample {
+            Ok(sample) => {
                 // defmt::debug!("Sample: {}", sample);
                 self.buf
                     .push(sample)
@@ -345,6 +356,7 @@ where
                 // collecting package to avoid getting mis-timed samples
                 warn!("collecting egps package, to avoid mis-timed samples.");
                 self.collect();
+                return None;
             }
         }
 
