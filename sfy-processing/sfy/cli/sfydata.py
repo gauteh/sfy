@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 from sfy.hub import Hub
 from sfy.cli.track import track
 from sfy.cli.axl import axl
+from sfy.cli.egps import egps
 from sfy.cli.ctrl import ctrl
 from sfy.cli.hub import hub
 from sfy.cli.store import store
@@ -27,6 +28,7 @@ def sfy(log):
 
 sfy.add_command(track)
 sfy.add_command(axl)
+sfy.add_command(egps)
 sfy.add_command(ctrl)
 sfy.add_command(hub)
 sfy.add_command(store)
