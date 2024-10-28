@@ -207,7 +207,7 @@ class EgpsCollection(EgpsTimeseries):
         attrs['lonlat_range'] = lonlat_range[0]
         attrs['lonlat_range:unit'] = 'deg * 1e7'
 
-        attrs['msl_range'] = msl_range
+        attrs['msl_range'] = msl_range[0]
         attrs['msl_range:unit'] = 'mm'
 
         attrs['vel_range'] = vel_range[0]
