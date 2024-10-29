@@ -172,6 +172,7 @@ impl Location {
         }
     }
 
+    #[cfg(feature = "ext-gps")]
     pub fn set_from_egps<D: DateTimeAccess>(
         &mut self,
         state: &Mutex<RefCell<Option<SharedState<D>>>>,
