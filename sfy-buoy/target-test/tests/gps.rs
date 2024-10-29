@@ -66,21 +66,21 @@ mod tests {
     #[test]
     fn set_rtc(s: &mut State) {
         s.rtc.enable();
-        let before = s.rtc.now().timestamp_millis();
+        let before = s.rtc.now().unwrap().timestamp_millis();
         defmt::info!("now: {}", before);
 
         let d = NaiveDate::from_ymd(2020, 1, 1).and_hms(0, 0, 0);
         s.rtc.set(&d);
-        let now = s.rtc.now().timestamp_millis();
+        let now = s.rtc.now().unwrap().timestamp_millis();
         defmt::info!("after change: {}", now);
         assert_ne!(before, now);
-        assert_eq!(d.timestamp(), s.rtc.now().timestamp());
+        assert_eq!(d.timestamp(), s.rtc.now().unwrap().timestamp());
     }
 
     #[test]
     fn set_rtc_from_gps(s: &mut State) {
         s.rtc.enable();
-        let before = s.rtc.now().timestamp_millis();
+        let before = s.rtc.now().unwrap().timestamp_millis();
         defmt::info!("now: {}", before);
 
         let tm = s
@@ -97,10 +97,10 @@ mod tests {
             assert_eq!(d.timestamp(), time as i64);
 
             s.rtc.set(&d);
-            let now = s.rtc.now().timestamp_millis();
+            let now = s.rtc.now().unwrap().timestamp_millis();
 
             defmt::info!("after change: {}", now);
-            assert_eq!(time as i64, s.rtc.now().timestamp());
+            assert_eq!(time as i64, s.rtc.now().unwrap().timestamp());
         } else {
             defmt::error!("no time from gps, test skipped.");
         }
