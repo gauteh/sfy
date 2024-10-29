@@ -1,9 +1,9 @@
 //! End-points for buoys.
 
 use crate::State;
-use serde::{Deserialize, Serialize};
 use futures_util::future;
 use sanitize_filename::sanitize;
+use serde::{Deserialize, Serialize};
 use serde_json as json;
 use std::convert::Infallible;
 use std::sync::Arc;
@@ -208,7 +208,6 @@ struct Event {
     body: json::Value,
 }
 
-
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct B64Event {
     pub received: i64,
@@ -357,7 +356,11 @@ pub mod handlers {
             .await
             .map_err(|_| reject::custom(AppendErrors::Internal))?
             .into_iter()
-            .map(|e| B64Event { event: e.event, received: e.received, data: e.data.map(base64::encode) })
+            .map(|e| B64Event {
+                event: e.event,
+                received: e.received,
+                data: e.data.map(base64::encode),
+            })
             .collect();
 
         Ok(warp::reply::json(&entries))
@@ -394,62 +397,70 @@ pub mod handlers {
     ) -> Result<impl warp::Reply, warp::Rejection> {
         trace!("got message: {:#?}", body);
 
-        if let Ok(event) = parse_data(&body) {
-            let device = sanitize(&event.device);
+        match parse_data(&body) {
+            Ok(event) => {
+                let device = sanitize(&event.device);
 
-            info!(
-                "event: {} from {}({}) to file: {:?}",
-                event.event, event.device, device, event.file
-            );
+                info!(
+                    "event: {} from {}({}) to file: {:?}",
+                    event.event, event.device, device, event.file
+                );
 
-            let mut b = state.db.buoy(&device).await.map_err(|e| {
-                error!("failed to open database for device: {}: {:?}", &device, e);
-                reject::custom(AppendErrors::Database)
-            })?;
-
-            let file = &format!(
-                "{}_{}.json",
-                event.event,
-                event.file.clone().unwrap_or_else(|| "__unnamed__".into())
-            );
-            let file = sanitize(&file);
-            debug!("writing to: {}", file);
-
-            b.append(event.name, &file, event.received, event.file, &body)
-                .await
-                .map_err(|e| {
-                    error!("failed to write file: {:?}", e);
+                let mut b = state.db.buoy(&device).await.map_err(|e| {
+                    error!("failed to open database for device: {}: {:?}", &device, e);
                     reject::custom(AppendErrors::Database)
                 })?;
 
-            Ok("".into_response())
-        } else {
-            warn!("could not parse event, storing event in lost+found");
+                let file = &format!(
+                    "{}_{}.json",
+                    event.event,
+                    event.file.clone().unwrap_or_else(|| "__unnamed__".into())
+                );
+                let file = sanitize(&file);
+                debug!("writing to: {}", file);
 
-            let mut b = state.db.buoy("lost+found").await.map_err(|e| {
-                error!("failed to open database for lost+found: {:?}", e);
-                reject::custom(AppendErrors::Database)
-            })?;
+                b.append(event.name, &file, event.received, event.file, &body)
+                    .await
+                    .map_err(|e| {
+                        error!("failed to write file: {:?}", e);
+                        reject::custom(AppendErrors::Database)
+                    })?;
 
-            use std::time::{SystemTime, UNIX_EPOCH};
-            let now = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .map_err(|_| reject::custom(AppendErrors::Internal))?;
+                Ok("".into_response())
+            }
 
-            let now = if cfg!(test) { 0 } else { now.as_millis() };
+            Err(e) => {
+                warn!(
+                    "could not parse event, error: {:?}, storing event in lost+found",
+                    e
+                );
+                debug!("event: {:?}", &body);
 
-            let file = &format!("{}.json", now,);
-            let file = sanitize(&file);
-            debug!("writing to: {}", file);
-
-            b.append(None, &file, now as u64, None, &body)
-                .await
-                .map_err(|e| {
-                    error!("failed to write file: {:?}", e);
+                let mut b = state.db.buoy("lost+found").await.map_err(|e| {
+                    error!("failed to open database for lost+found: {:?}", e);
                     reject::custom(AppendErrors::Database)
                 })?;
 
-            Ok(StatusCode::BAD_REQUEST.into_response())
+                use std::time::{SystemTime, UNIX_EPOCH};
+                let now = SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .map_err(|_| reject::custom(AppendErrors::Internal))?;
+
+                let now = if cfg!(test) { 0 } else { now.as_millis() };
+
+                let file = &format!("{}.json", now,);
+                let file = sanitize(&file);
+                debug!("writing to: {}", file);
+
+                b.append(None, &file, now as u64, None, &body)
+                    .await
+                    .map_err(|e| {
+                        error!("failed to write file: {:?}", e);
+                        reject::custom(AppendErrors::Database)
+                    })?;
+
+                Ok(StatusCode::BAD_REQUEST.into_response())
+            }
         }
     }
 
@@ -620,7 +631,10 @@ mod tests {
             .await;
 
         assert_eq!(res.status(), 200);
-        assert_eq!(res.body(), "[[\"dev864475044203262\",\"cain\",\"sfy\",\"\"]]");
+        assert_eq!(
+            res.body(),
+            "[[\"dev864475044203262\",\"cain\",\"sfy\",\"\"]]"
+        );
     }
 
     #[tokio::test]
@@ -856,7 +870,10 @@ mod tests {
         println!("{revents:?}");
         assert_eq!(
             &revents,
-            &[("2000-event-2_axl.qo.json".into(), "axl.qo".into()), ("3000-event-3_axl.qo.json".into(), "axl.qo".into())]
+            &[
+                ("2000-event-2_axl.qo.json".into(), "axl.qo".into()),
+                ("3000-event-3_axl.qo.json".into(), "axl.qo".into())
+            ]
         );
     }
 }
