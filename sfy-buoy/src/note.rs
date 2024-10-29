@@ -260,6 +260,25 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
     ) -> Result<usize, NoteError> {
         let (meta, b64) = pck.split();
 
+        #[cfg(feature = "continuous-post")]
+        let r = self
+            .note
+            .web()
+            .post(
+                delay,
+                "sfy-hub",
+                None,
+                Some(meta),
+                Some(core::str::from_utf8(&b64).unwrap()),
+                None,
+                None,
+                None,
+                None,
+                Some(false), // async
+            )?
+            .wait(delay)?;
+
+        #[cfg(not(feature = "continuous-post"))]
         let r = self
             .note
             .note()
@@ -295,6 +314,25 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
     ) -> Result<usize, NoteError> {
         let (meta, b64) = pck.split();
 
+        #[cfg(feature = "continuous-post")]
+        let r = self
+            .note
+            .web()
+            .post(
+                delay,
+                "sfy-hub",
+                None,
+                Some(meta),
+                Some(core::str::from_utf8(&b64).unwrap()),
+                None,
+                None,
+                None,
+                None,
+                Some(false), // async
+            )?
+            .wait(delay)?;
+
+        #[cfg(not(feature = "continuous-post"))]
         let r = self
             .note
             .note()

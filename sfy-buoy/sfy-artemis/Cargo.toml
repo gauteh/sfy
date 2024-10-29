@@ -35,6 +35,7 @@ git = "https://github.com/gauteh/ambiq-rs"
 [features]
 default = [ "deploy", "fir" ]
 continuous = [ "sfy/continuous" ]
+continuous-post = [ "sfy/continuous-post" ]
 20Hz = [ "sfy/20Hz" ]
 raw = [ "sfy/raw" ]
 fir = [ "sfy/fir" ]

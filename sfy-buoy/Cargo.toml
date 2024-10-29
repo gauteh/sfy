@@ -46,6 +46,7 @@ half = { version = "2.4", features = [ "use-intrinsics", "bytemuck", "serde" ] }
 [features]
 default = [ "build-bin" ]
 continuous = []
+continuous-post = [ "continuous" ]
 20Hz = ["fir"]
 raw = [ "storage" ]
 fir = []
