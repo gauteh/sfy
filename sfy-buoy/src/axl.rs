@@ -216,6 +216,7 @@ mod tests {
         println!("{}", core::str::from_utf8(&b64).unwrap());
     }
 
+    #[cfg(feature = "continuous-post")]
     #[test]
     fn post_package() {
         //Some("dev:860264054655056"), sn: Some("WAVEBUG49"), pck: AxlPacket(timestamp: 1730205219000, offset: 0, storage_id: None, position_time: 1730204657, lon: 5.372730468749992, lat: 60.33562750000002, temp: 23.695312, freq: 52.0, accel_range: 16.0, gyro_range: 1000.0, data (length): 3072))
