@@ -230,14 +230,14 @@ checksum = "b048fb63fd8b5923fc5aa7b340d8e156aec7ec02f0c78fa8a6ddc2613f6f71de"
 
 [[package]]
 name = "blues-notecard"
-version = "0.3.2"
-source = "git+https://github.com/gauteh/notecard-rs#ab8fa27a639e5ca7241d9b38350d8023e7c641d9"
+version = "0.4.0"
+source = "git+https://github.com/gauteh/notecard-rs#c47d7095c8c85a89a3583638c58f780a7c26f5fb"
 dependencies = [
  "defmt",
  "embedded-hal",
  "heapless",
  "serde",
- "serde-json-core",
+ "serde-json-core 0.5.1",
 ]
 
 [[package]]
@@ -1174,6 +1174,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde-json-core"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3c9e1ab533c0bc414c34920ec7e5f097101d126ed5eac1a1aac711222e0bbb33"
+dependencies = [
+ "heapless",
+ "ryu",
+ "serde",
+]
+
+[[package]]
 name = "serde_derive"
 version = "1.0.210"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1220,7 +1231,7 @@ dependencies = [
  "postcard",
  "rtcc",
  "serde",
- "serde-json-core",
+ "serde-json-core 0.5.1",
  "serde_json",
  "static_assertions",
 ]
@@ -1354,7 +1365,7 @@ dependencies = [
  "micromath",
  "panic-probe",
  "serde",
- "serde-json-core",
+ "serde-json-core 0.4.0",
  "sfy",
 ]
 
