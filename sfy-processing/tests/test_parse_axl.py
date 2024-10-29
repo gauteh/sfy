@@ -55,3 +55,12 @@ def test_parse_json_parse(tmpdir):
     a2 = axl.Axl.parse(a.json())
 
     assert a == a2
+
+def test_parse_rt_post(tmpdir):
+    d = open(
+        'tests/data/cont/rt01.json'
+    ).read()
+    a = axl.Axl.parse(d)
+    print(a)
+    print(a.z)
+
