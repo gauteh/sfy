@@ -266,10 +266,11 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             .web()
             .post(
                 delay,
-                "sfy-hub",
+                "sfypost",
                 None,
                 Some(meta),
-                Some(core::str::from_utf8(&b64).unwrap()),
+                None,
+                // Some(core::str::from_utf8(&b64).unwrap()), // TODO: need to send actual data.
                 None,
                 None,
                 None,
@@ -320,7 +321,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             .web()
             .post(
                 delay,
-                "sfy-hub",
+                "sfypost",
                 None,
                 Some(meta),
                 Some(core::str::from_utf8(&b64).unwrap()),
