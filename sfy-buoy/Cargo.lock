@@ -54,7 +54,7 @@ dependencies = [
  "nb 1.1.0",
  "paste",
  "rtcc",
- "ufmt",
+ "ufmt 0.1.2",
 ]
 
 [[package]]
@@ -1234,6 +1234,7 @@ dependencies = [
  "serde-json-core 0.5.1",
  "serde_json",
  "static_assertions",
+ "ufmt 0.2.0",
 ]
 
 [[package]]
@@ -1252,7 +1253,7 @@ dependencies = [
  "heapless",
  "panic-probe",
  "sfy",
- "ufmt",
+ "ufmt 0.1.2",
 ]
 
 [[package]]
@@ -1273,7 +1274,7 @@ dependencies = [
  "panic-probe",
  "rtcc",
  "sfy",
- "ufmt",
+ "ufmt 0.1.2",
 ]
 
 [[package]]
@@ -1426,7 +1427,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "31d3c0c63312dfc9d8e5c71114d617018a19f6058674003c0da29ee8d8036cdd"
 dependencies = [
  "proc-macro-hack",
- "ufmt-macros",
+ "ufmt-macros 0.2.0",
+ "ufmt-write",
+]
+
+[[package]]
+name = "ufmt"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1a64846ec02b57e9108d6469d98d1648782ad6bb150a95a9baac26900bbeab9d"
+dependencies = [
+ "ufmt-macros 0.3.0",
  "ufmt-write",
 ]
 
@@ -1437,6 +1448,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e4ab6c92f30c996394a8bd525aef9f03ce01d0d7ac82d81902968057e37dd7d9"
 dependencies = [
  "proc-macro-hack",
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "ufmt-macros"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d337d3be617449165cb4633c8dece429afd83f84051024079f97ad32a9663716"
+dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",

@@ -21,7 +21,9 @@ include!(concat!(env!("OUT_DIR"), "/config.rs"));
 pub const NOTECARD_STORAGE_INIT_SYNC: u32 = 65;
 
 pub struct Notecarrier<I2C: Read + Write> {
-    note: Notecard<I2C>,
+    note: Notecard<I2C, { 28 * 1024 }>,
+    device: Option<heapless::String<40>>,
+    sn: Option<heapless::String<120>>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default, defmt::Format, PartialEq)]
@@ -118,7 +120,14 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         let version = note.card().version(delay)?.wait(delay)?;
         defmt::info!("Notecard version: {:?}", version);
 
-        let mut n = Notecarrier { note };
+        let dev = note.hub().get(delay)?.wait(delay)?;
+        defmt::info!("device: {}, sn: {}", dev.device, dev.sn);
+
+        let mut n = Notecarrier {
+            note,
+            device: dev.device,
+            sn: dev.sn,
+        };
         n.setup_templates(delay)?;
 
         defmt::info!("initializing initial sync ..");
@@ -258,53 +267,72 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         pck: &AxlPacket,
         delay: &mut impl DelayMs<u16>,
     ) -> Result<usize, NoteError> {
-        let (meta, b64) = pck.split();
 
         #[cfg(feature = "continuous-post")]
-        let r = self
-            .note
-            .web()
-            .post(
-                delay,
-                "sfypost",
-                None,
-                Some(meta),
-                None,
-                // Some(core::str::from_utf8(&b64).unwrap()), // TODO: need to send actual data.
-                None,
-                None,
-                None,
-                None,
-                Some(false), // async
-            )?
-            .wait(delay)?;
+        let len = {
+            defmt::debug!("dev: {:?}, sn: {:?}, pck: {:?}", self.device, self.sn, pck);
+
+            let post = pck.post(self.device.clone(), self.sn.clone());
+            let len = post.payload.len();
+
+            let r = self
+                .note
+                .web()
+                .post(
+                    delay,
+                    "sfypost",
+                    None,
+                    Some(post),
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    Some(false), // async
+                )?
+                .wait(delay)?;
+
+            defmt::info!(
+                "Sent data package: {}, bytes: {} (note: {:?})",
+                pck.storage_id,
+                len,
+                r
+            );
+
+            len
+        };
 
         #[cfg(not(feature = "continuous-post"))]
-        let r = self
-            .note
-            .note()
-            .add(
-                delay,
-                Some("axl.qo"),
-                None,
-                Some(meta),
-                Some(core::str::from_utf8(&b64).unwrap()),
-                if cfg!(feature = "continuous") {
-                    true
-                } else {
-                    false
-                },
-            )?
-            .wait(delay)?;
+        let len = {
+            let (meta, b64) = pck.split();
+            let r = self
+                .note
+                .note()
+                .add(
+                    delay,
+                    Some("axl.qo"),
+                    None,
+                    Some(meta),
+                    Some(core::str::from_utf8(&b64).unwrap()),
+                    if cfg!(feature = "continuous") {
+                        true
+                    } else {
+                        false
+                    },
+                )?
+                .wait(delay)?;
 
-        defmt::info!(
-            "Sent data package: {}, bytes: {} (note: {:?})",
-            pck.storage_id,
-            b64.len(),
-            r
-        );
+            defmt::info!(
+                "Sent data package: {}, bytes: {} (note: {:?})",
+                pck.storage_id,
+                b64.len(),
+                r
+            );
 
-        Ok(b64.len())
+            b64.len()
+        };
+
+        Ok(len)
     }
 
     #[cfg(feature = "ext-gps")]
@@ -594,7 +622,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
 }
 
 impl<I2C: Read + Write> Deref for Notecarrier<I2C> {
-    type Target = Notecard<I2C>;
+    type Target = Notecard<I2C, { 28 * 1024 } >;
 
     fn deref(&self) -> &Self::Target {
         &self.note

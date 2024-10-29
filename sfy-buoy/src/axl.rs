@@ -1,5 +1,5 @@
 use defmt::{write, Format, Formatter};
-use heapless::Vec;
+use heapless::{String, Vec};
 
 #[cfg(feature = "raw")]
 pub const SAMPLE_NO: usize = 1024;
@@ -152,6 +152,41 @@ impl AxlPacket {
 
         (meta, b64)
     }
+
+    #[cfg(feature = "continuous-post")]
+    pub fn post(&self, device: Option<String<40>>, sn: Option<String<120>>) -> AxlPacketPost {
+        let (body, payload) = self.split();
+        let device = device.unwrap_or_else(|| String::from("unknown"));
+        let sn = sn.unwrap_or_else(|| String::from("unknown"));
+        let payload = heapless::String::from(core::str::from_utf8(&payload).unwrap());
+
+        let mut event: String<100> = String::new();
+        event.push_str("post-event-");
+        event.push_str(&device);
+        ufmt::uwrite!(event, "{}", body.timestamp);
+
+        AxlPacketPost {
+            file: "axl.qo".into(),
+            received: (body.timestamp / 1000) as u32,
+            device,
+            event,
+            sn,
+            body,
+            payload,
+        }
+    }
+}
+
+#[cfg(feature = "continuous-post")]
+#[derive(serde::Serialize, Default)]
+pub struct AxlPacketPost {
+    pub device: String<40>,
+    pub sn: String<120>,
+    pub file: String<20>,
+    pub event: String<100>,
+    pub received: u32,
+    pub body: AxlPacketMeta,
+    pub payload: String<AXL_OUTN>,
 }
 
 #[cfg(test)]
@@ -179,6 +214,32 @@ mod tests {
 
         let b64 = p.base64();
         println!("{}", core::str::from_utf8(&b64).unwrap());
+    }
+
+    #[test]
+    fn post_package() {
+        //Some("dev:860264054655056"), sn: Some("WAVEBUG49"), pck: AxlPacket(timestamp: 1730205219000, offset: 0, storage_id: None, position_time: 1730204657, lon: 5.372730468749992, lat: 60.33562750000002, temp: 23.695312, freq: 52.0, accel_range: 16.0, gyro_range: 1000.0, data (length): 3072))
+        //
+        let p = AxlPacket {
+            timestamp: 1730205219000,
+            position_time: 1730204657,
+            lon: 5.372730468749992,
+            lat: 60.33562750000002,
+            freq: 52.0,
+            accel_range: 16.,
+            gyro_range: 1000.,
+            offset: 0,
+            storage_id: None,
+            storage_version: VERSION,
+            temperature: 23.695312,
+            data: (0..AXL_SZ)
+                .map(|v| v as u16)
+                .collect::<Vec<_, { AXL_SZ }>>(),
+        };
+
+        let post = p.post(Some("dev:860264054655056".into()), Some("WAVEBUG49".into()));
+        let string = serde_json_core::to_string::<_, { 28_000 }>(&post);
+        println!("{:?}", string);
     }
 
     #[test]

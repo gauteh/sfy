@@ -33,6 +33,7 @@ rtcc = "0.3.0"
 anyhow = { version = "1", optional = true }
 argh = { version = "*", optional = true }
 nb = "1.1.0"
+ufmt = { version = "0.2", optional = true }
 
 [dependencies.ahrs-fusion]
 git = "https://github.com/gauteh/ahrs-fusion"
@@ -46,7 +47,7 @@ half = { version = "2.4", features = [ "use-intrinsics", "bytemuck", "serde" ] }
 [features]
 default = [ "build-bin" ]
 continuous = []
-continuous-post = [ "continuous" ]
+continuous-post = [ "continuous", "dep:ufmt" ]
 20Hz = ["fir"]
 raw = [ "storage" ]
 fir = []
