@@ -21,7 +21,7 @@ include!(concat!(env!("OUT_DIR"), "/config.rs"));
 pub const NOTECARD_STORAGE_INIT_SYNC: u32 = 65;
 
 pub struct Notecarrier<I2C: Read + Write> {
-    note: Notecard<I2C, { 28 * 1024 }>,
+    note: Notecard<I2C>,
     device: Option<heapless::String<40>>,
     sn: Option<heapless::String<120>>,
 }
@@ -622,7 +622,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
 }
 
 impl<I2C: Read + Write> Deref for Notecarrier<I2C> {
-    type Target = Notecard<I2C, { 28 * 1024 } >;
+    type Target = Notecard<I2C>;
 
     fn deref(&self) -> &Self::Target {
         &self.note
