@@ -138,6 +138,7 @@ fn main() -> ! {
     println!("raw .........: {}", cfg!(feature = "raw"));
     println!("20Hz ........: {}", cfg!(feature = "20Hz"));
     println!("continuous ..: {}", cfg!(feature = "continuous"));
+    println!("cont-post ...: {}", cfg!(feature = "continuous-post"));
     println!("deploy ......: {}", cfg!(feature = "deploy"));
     println!("defmt-serial : {}", cfg!(feature = "defmt-serial"));
     println!("EXT-GPS .....: true");
