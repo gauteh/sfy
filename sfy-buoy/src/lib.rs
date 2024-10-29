@@ -24,6 +24,7 @@ use embedded_hal::blocking::{
 
 #[cfg(feature = "storage")]
 use embedded_hal::{
+    blocking::delay::DelayUs,
     blocking::spi::{Transfer, Write as DefaultWrite},
     digital::v2::OutputPin,
 };
