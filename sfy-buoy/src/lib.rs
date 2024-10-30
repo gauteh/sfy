@@ -252,7 +252,7 @@ impl Location {
         let now = state
             .now()
             .map(|t| t.and_utc().timestamp_millis())
-            .ok_or(notecard::NoteError::WrongState)?;
+            .ok_or_else(|| notecard::NoteError::NotecardErr("RTC failure".into()))?;
 
         match self.state {
             Retrieved(t) | Trying(t) if (now - t) > LOCATION_DIFF => {
