@@ -231,6 +231,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
 
                 lonlat_range: f32,
                 msl_range: f32,
+                vel_range: f32,
                 length: u32,
             }
 
@@ -245,6 +246,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
 
                 lonlat_range: 14.1,
                 msl_range: 14.1,
+                vel_range: 14.1,
                 length: 14,
             };
 

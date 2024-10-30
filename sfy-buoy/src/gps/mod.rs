@@ -126,6 +126,7 @@ pub struct GpsPacketMeta {
 
     pub lonlat_range: f32, // 1e-7 deg
     pub msl_range: f32,    // mm
+    pub vel_range: f32,    // mm/s
     pub length: u32,
 }
 
@@ -159,6 +160,7 @@ impl GpsPacket {
             freq: self.freq,
             lonlat_range: wire::LON_RANGE,
             msl_range: wire::MSL_RANGE,
+            vel_range: wire::VEL_RANGE,
             version: GPS_PACKET_V,
             lon: self.lon,
             lat: self.lat,
