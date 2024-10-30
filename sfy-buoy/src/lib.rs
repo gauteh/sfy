@@ -249,7 +249,10 @@ impl Location {
 
         const LOCATION_DIFF: i64 = 1 * 60_000; // [ms]: 1 minute
 
-        let now = state.now().unwrap_or(FUTURE).and_utc().timestamp_millis();
+        let now = state
+            .now()
+            .map(|t| t.and_utc().timestamp_millis())
+            .ok_or(notecard::NoteError::WrongState)?;
 
         match self.state {
             Retrieved(t) | Trying(t) if (now - t) > LOCATION_DIFF => {
