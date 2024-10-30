@@ -58,6 +58,8 @@ void printPVTdata(UBX_NAV_PVT_data_t *ubxDataStruct)
   uint8_t sec = ubxDataStruct->sec;
   int32_t nano = ubxDataStruct->nano;
 
+  Serial.print("PVT data received, micros: ");
+  Serial.println(micros());
   String datetime = String(year) + "-" + String(month) + "-" + String(day) + ":" + String(hour) + ":" + String(minute) + ":" + String(sec) + "." + String(nano);
   Serial.print(F("Time: "));
   Serial.println(datetime);
@@ -165,7 +167,9 @@ void printPVTdata(UBX_NAV_PVT_data_t *ubxDataStruct)
   serializeJson(doc, sfy);
   sfy.println();
 
-  Serial.print("Sent GPS telegram: ");
+  Serial.print("Sent GPS telegram, micros: ");
+  Serial.print(micros());
+  Serial.print(", ");
   serializeJson(doc, Serial);
   Serial.println();
 }
@@ -229,20 +233,6 @@ void printRXMCOR(UBX_RXM_COR_data_t *ubxDataStruct)
   Serial.println();
 }
 
-
-void pps() {
-  // pps pulse interrupt: should be triggered at the start of every gps second.
-  // pps_ts = micros();
-
-  Serial.println("GNSS: PPS!");
-  myLBand.checkUblox(); // Check for the arrival of new PMP data and process it.
-  myLBand.checkCallbacks(); // Check if any LBand callbacks are waiting to be processed.
-
-  myGNSS.checkUblox(); // Check for the arrival of new GNSS data and process it.
-  myGNSS.checkCallbacks(); // Check if any GNSS callbacks are waiting to be processed.
-
-
-}
 
 void setup_gps() {
 
@@ -359,6 +349,9 @@ void setup_gps() {
 
   myGNSS.setRXMCORcallbackPtr(&printRXMCOR); // Print the contents of UBX-RXM-COR messages so we can check if the PMP data is being decrypted successfully
 
+  // We are calling checkUblox from the interrupt, remove the i2cDelay as it will just introduce uncertainty and delay:
+  myGNSS.setI2CpollingWait(0);
+
   //=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
   // Begin and configure the NEO-D9S L-Band receiver
 
@@ -404,6 +397,22 @@ void loop_gps() {
   // myGNSS.checkUblox(); // Check for the arrival of new GNSS data and process it.
   // myGNSS.checkCallbacks(); // Check if any GNSS callbacks are waiting to be processed.
 
+  myLBand.checkUblox(); // Check for the arrival of new PMP data and process it.
+  myLBand.checkCallbacks(); // Check if any LBand callbacks are waiting to be processed.
+  myGNSS.checkCallbacks(); // Check if any GNSS callbacks are waiting to be processed.
+}
+
+void pps() {
+  // pps pulse interrupt: should be triggered at the start of every gps second.
+  // pps_ts = micros();
+
+  Serial.print("GNSS: PPS!: ");
+  Serial.println(micros());
   // myLBand.checkUblox(); // Check for the arrival of new PMP data and process it.
   // myLBand.checkCallbacks(); // Check if any LBand callbacks are waiting to be processed.
+
+  myGNSS.checkUblox(); // Check for the arrival of new GNSS data and process it.
+  myGNSS.checkCallbacks(); // Check if any GNSS callbacks are waiting to be processed.
+
+
 }
