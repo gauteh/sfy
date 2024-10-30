@@ -20,17 +20,7 @@ void setup()
 
 void loop()
 {
-  static int i = 0;
-
   loop_gps();
-  Serial.print(".");
-  delay(100);
-
-  // JsonDocument doc;
-  // doc["loop"] = i;
-  // serializeJson(doc, sfy);
-
-  i++;
 }
 
 void main_pps() {
