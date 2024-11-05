@@ -233,6 +233,16 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                 msl_range: f32,
                 vel_range: f32,
                 length: u32,
+
+                ha_min: f32,
+                ha_max: f32,
+                ha_mean: f32,
+                va_min: f32,
+                va_max: f32,
+                va_mean: f32,
+
+                fix: [u32; 8],
+                soln: [u32; 8],
             }
 
             let meta_template = GpsPacketMetaTemplate {
@@ -248,6 +258,16 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                 msl_range: 14.1,
                 vel_range: 14.1,
                 length: 14,
+
+                ha_mean: 18.1,
+                ha_min: 18.1,
+                ha_max: 18.1,
+                va_mean: 18.1,
+                va_min: 18.1,
+                va_max: 18.1,
+
+                fix: [14u32; 8],
+                soln: [14u32; 8],
             };
 
             defmt::debug!("setting up template for GpsPacketMeta");
@@ -269,7 +289,6 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         pck: &AxlPacket,
         delay: &mut impl DelayMs<u16>,
     ) -> Result<usize, NoteError> {
-
         #[cfg(feature = "continuous-post")]
         let len = {
             defmt::debug!("dev: {:?}, sn: {:?}, pck: {:?}", self.device, self.sn, pck);

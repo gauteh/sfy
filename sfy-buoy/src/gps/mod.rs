@@ -9,7 +9,7 @@ use heapless::{
     Vec,
 };
 
-pub const GPS_PACKET_V: u8 = 2;
+pub const GPS_PACKET_V: u8 = 3;
 pub const GPS_PACKET_SZ: usize = 124;
 /// Maximum length of base64 string from
 pub const GPS_OUTN: usize = { 6 * GPS_PACKET_SZ * 2 } * 4 / 3 + 4;
@@ -107,6 +107,17 @@ pub struct GpsPacket {
 
     /// GPS data. This is moved to payload when transmitting.
     pub data: Vec<u16, { 6 * GPS_PACKET_SZ }>,
+
+    pub ha_min: f32,
+    pub ha_max: f32,
+    pub ha_mean: f32,
+
+    pub va_min: f32,
+    pub va_max: f32,
+    pub va_mean: f32,
+
+    pub fix: [u8; 8],
+    pub soln: [u8; 8],
 }
 
 // XXX: Match with template in note
@@ -128,6 +139,17 @@ pub struct GpsPacketMeta {
     pub msl_range: f32,    // mm
     pub vel_range: f32,    // mm/s
     pub length: u32,
+
+    pub ha_min: f32,
+    pub ha_max: f32,
+    pub ha_mean: f32,
+
+    pub va_min: f32,
+    pub va_max: f32,
+    pub va_mean: f32,
+
+    pub fix: [u8; 8],
+    pub soln: [u8; 8],
 }
 
 impl GpsPacket {
@@ -165,6 +187,14 @@ impl GpsPacket {
             lon: self.lon,
             lat: self.lat,
             msl: self.msl,
+            ha_min: self.ha_min,
+            ha_max: self.ha_max,
+            ha_mean: self.ha_mean,
+            va_min: self.va_min,
+            va_max: self.va_max,
+            va_mean: self.va_mean,
+            fix: self.fix,
+            soln: self.soln,
         };
 
         (meta, b64)
@@ -253,6 +283,25 @@ where
             / self.buf.len() as f32;
         let freq = 1000.0 / freq;
 
+        // Calculate some stats on accuracy and fix
+        let (mut ha_min, mut ha_mean, mut ha_max) = (0.0f32, 0.0f32, 0.0f32);
+        let (mut va_min, mut va_mean, mut va_max) = (0.0f32, 0.0f32, 0.0f32);
+        let mut fix = [0u8; 8];
+        let mut soln = [0u8; 8];
+
+        for sample in self.buf.iter() {
+            ha_min = ha_min.min(sample.hor_acc);
+            ha_max = ha_min.max(sample.hor_acc);
+            ha_mean += sample.hor_acc / N;
+
+            va_min = va_min.min(sample.vert_acc);
+            va_max = va_min.max(sample.vert_acc);
+            va_mean += sample.vert_acc / N;
+
+            fix[sample.fix] += 1;
+            soln[sample.soln] += 1;
+        }
+
         self.buf.clear();
 
         let p = GpsPacket {
@@ -263,6 +312,17 @@ where
             lat,
             msl,
             data,
+
+            ha_min,
+            ha_max,
+            ha_mean,
+
+            va_min,
+            va_max,
+            va_mean,
+
+            fix,
+            soln,
         };
 
         debug!(
