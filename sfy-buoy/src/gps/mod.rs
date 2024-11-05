@@ -501,6 +501,14 @@ mod tests {
             data: (0..(6 * GPS_PACKET_SZ))
                 .map(|v| v as u16)
                 .collect::<heapless::Vec<_, { 6 * GPS_PACKET_SZ }>>(),
+            ha_mean: 10.0,
+            ha_min: 10.0,
+            ha_max: 10.0,
+            va_mean: 10.0,
+            va_min: 10.0,
+            va_max: 10.0,
+            fix: [0u8; 8],
+            soln: [0u8; 8],
         };
 
         let b64 = p.base64();
