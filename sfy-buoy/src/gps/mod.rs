@@ -290,16 +290,16 @@ where
         let mut soln = [0u8; 8];
 
         for sample in self.buf.iter() {
-            ha_min = ha_min.min(sample.hor_acc);
-            ha_max = ha_min.max(sample.hor_acc);
-            ha_mean += sample.hor_acc / N;
+            ha_min = ha_min.min(sample.hor_acc as f32);
+            ha_max = ha_min.max(sample.hor_acc as f32);
+            ha_mean += (sample.hor_acc as f32) / self.buf.len() as f32;
 
-            va_min = va_min.min(sample.vert_acc);
-            va_max = va_min.max(sample.vert_acc);
-            va_mean += sample.vert_acc / N;
+            va_min = va_min.min(sample.vert_acc as f32);
+            va_max = va_min.max(sample.vert_acc as f32);
+            va_mean += (sample.vert_acc as f32) / self.buf.len() as f32;
 
-            fix[sample.fix] += 1;
-            soln[sample.soln] += 1;
+            fix[sample.fix as usize] += 1;
+            soln[sample.soln as usize] += 1;
         }
 
         self.buf.clear();
