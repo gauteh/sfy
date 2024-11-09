@@ -46,7 +46,7 @@ def spec_stats(ds: xr.Dataset,
 
     Args:
 
-        window: window size to calculate hm0 for (seconds, default 20 minutes).
+        window: window size to calculate hm0 for (seconds, default 20 minutes, or 'full' to use entire signal).
     """
 
     zz = ds.w_z.values
@@ -58,9 +58,11 @@ def spec_stats(ds: xr.Dataset,
     assert len(xx) == len(yy)
 
     # The windows need to be the full size, otherwise the statistics will be invalid.
-
-    # split into windows
-    N = int(window * freq)
+    if window == 'full':
+        N = len(zz)
+    else:
+        # split into windows
+        N = int(window * freq)
 
     if len(zz) < N:
         logger.error(
