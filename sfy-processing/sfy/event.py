@@ -15,7 +15,7 @@ class Event:
     file: str
 
     device: str
-    sn: str
+    sn: str = None
 
     tower_when: int = None
     tower_timezone: str = None
