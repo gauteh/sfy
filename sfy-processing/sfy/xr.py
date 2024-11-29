@@ -384,8 +384,13 @@ def estimate_frequency(ds, N=None):
 
         ddt = (t1 - t0).astype('timedelta64[ms]').astype(float)
 
-        assert ddt > 0
+        if ddt <= 0:
+            logger.warning('negative or zero time step, skipping.')
+        else:
+            continue
+
         ffs = float(m) / (ddt / 1000.)
+
         if (ffs > (iFs * 1.1)) or (ffs < (iFs * 0.9)):
             logger.warning(
                 f'More than 10% frequency deviation: {ffs}, skipping')
