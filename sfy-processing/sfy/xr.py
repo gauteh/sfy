@@ -54,6 +54,9 @@ def spec_stats(ds: xr.Dataset,
     xx = ds.w_x.values
     freq = ds.attrs.get('estimated_frequency', ds.attrs['frequency'])
 
+    if np.isnan(freq):
+        freq = ds.attrs['frequency']
+
     assert len(zz) == len(yy)
     assert len(xx) == len(yy)
 
