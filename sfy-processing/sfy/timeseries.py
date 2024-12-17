@@ -290,7 +290,7 @@ class AxlTimeseries:
             logger.info('Re-timing dataset based on estimated frequency..')
             ds = sxr.retime(ds)
         else:
-            fs = np.median(sxr.estimate_frequency(ds))
+            fs = np.nanmedian(sxr.estimate_frequency(ds))
             logger.info(f'Not re-timing, estimated frequency to: {fs:.3f} Hz')
             ds = ds.assign_attrs({
                 'estimated_frequency': fs,

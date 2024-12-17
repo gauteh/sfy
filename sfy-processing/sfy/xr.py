@@ -389,7 +389,6 @@ def estimate_frequency(ds, N=None):
 
         if ddt <= 0:
             logger.warning('negative or zero time step, skipping.')
-        else:
             continue
 
         ffs = float(m) / (ddt / 1000.)
@@ -487,7 +486,7 @@ def splitby_segments(ds, eps_gap=3.) -> list[xr.Dataset]:
     ip = np.append(ip, n)
     ip = np.unique(ip)
 
-    assert N * n == ds.dims[
+    assert N * n == ds.sizes[
         'time'], "this dataset does not have time and packages corresponding anymore. try splitby_time"
 
     dss = []
@@ -501,7 +500,7 @@ def splitby_segments(ds, eps_gap=3.) -> list[xr.Dataset]:
         d = ds.isel(time=slice(ipp0, ipp1)) \
                 .isel(package=slice(ip0, ip1))
 
-        assert d.dims['time'] > 0
+        assert d.sizes['time'] > 0
 
         dss.append(d)
 
@@ -572,7 +571,7 @@ def concat(dss):
             values = np.full(package.shape, np.nan, dtype=dss[0][v].dtype)
             offset = 0
             for ds in dss:
-                if ds.dims['package'] > 0:
+                if ds.sizes['package'] > 0:
                     values[offset:offset + len(ds[v])] = ds[v].values
                     offset += len(ds[v])
             cds[v] = xr.DataArray(name=v,
@@ -601,7 +600,7 @@ def open_mfdataset(path):
     return concat([xr.open_dataset(p) for p in path])
 
 
-def retime(ds, eps_gap=3.):
+def retime(ds, eps_gap=3., fs=None):
     """
     Re-time a dataset based on the estimated frequency and a best fit of timestamps. Assuming the frequency is
     stable throughout the dataset.
@@ -631,7 +630,8 @@ def retime(ds, eps_gap=3.):
 
         return ds
 
-    fs = np.median(estimate_frequency(ds))
+    if fs is None:
+        fs = np.median(estimate_frequency(ds))
 
     # Find the best estimate for the start of the dataset based on the timestamps
     on = np.arange(0, n) * N + ds.offset.values
@@ -658,18 +658,21 @@ def retime(ds, eps_gap=3.):
             'estimated_frequency':
             fs,
             'estimated_frequency:unit':
-            'Hz'
+            'Hz',
+            'retimed' : 'full'
         })
 
     return ds
 
 
-def retime_individual(ds):
+def retime_individual(ds, fs=None):
     """
     Re-time, but only within each package. This better preserves the time, but will cause overlapping samples in case of
     negative time jumps.
     """
-    fs = np.median(estimate_frequency(ds))
+    if fs is None:
+        fs = np.median(estimate_frequency(ds))
+
     logger.info(f'Re-timing dataset with frequency: {fs:.3} Hz.')
 
     N = ds.attrs.get('package_length', 1024)
@@ -703,7 +706,8 @@ def retime_individual(ds):
             'estimated_frequency':
             fs,
             'estimated_frequency:unit':
-            'Hz'
+            'Hz',
+            'retimed' : 'individual'
         })
 
     return ds
