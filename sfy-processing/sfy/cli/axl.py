@@ -384,7 +384,14 @@ def stats(dev, tx_start, tx_end, start, end, file, gap, freq, raw, no_retime):
               is_flag=True,
               help='Do not retime based on estimated frequency.',
               type=bool)
-def raw(dev, start, end, gap, displacement, raw, file, raw_files, no_retime):
+@click.option(
+    '--freq',
+    default=None,
+    help=
+    'Only use packages with this frequency (usually 52 or 20.8, within 2 Hz)',
+    type=float)
+def raw(dev, start, end, gap, displacement, raw, file, raw_files, no_retime,
+        freq):
     """
     Read raw files from SD-card and collect into a collection.
     """
@@ -399,6 +406,12 @@ def raw(dev, start, end, gap, displacement, raw, file, raw_files, no_retime):
     pcks = [p.pcks for p in pcks if p is not None]
     pcks = [p for li in pcks for p in li]
     logger.info(f"{len(pcks)} packages in files")
+
+    if freq:
+        pcks = list(filter(lambda p: abs(p.frequency - freq) <= 2, pcks))
+        logger.info(
+            f"Filtering packages on frequency: {freq}, {len(pcks)} packages matching."
+        )
 
     pcks = AxlCollection(pcks)
 
