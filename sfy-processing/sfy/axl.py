@@ -65,7 +65,7 @@ class AxlCollection(AxlTimeseries):
         Load all packages from a binary storage file (SD-card) into a collection of Axl packages.
         """
         logger.info(f"Parsing collection from {file} ({name} - {dev})..")
-        assert os.path.exists(file), "file does not exist"
+        assert os.path.exists(file), f"{file} does not exist"
         if not raw:
             collection = subprocess.check_output(["sfypack", "--note", file])
         else:
