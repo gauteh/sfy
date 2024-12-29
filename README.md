@@ -35,6 +35,7 @@ For more information and attribution, please refer to:
 
 # Press
 
+* [met.no - Drømmen om monsterbølgene](https://www.met.no/nyhetsarkiv/drommen-om-monsterbolgene)
 * [surf-norge.no - Professor Bølges betraktninger](https://surf-norge.no/intervju/professor_bolge/)
 * [met.no - Morgendagens fiskere utdanner seg til en framtid med store endringer](https://www.met.no/nyhetsarkiv/morgendagens-fiskere-utdanner-seg-til-en-framtid-med-store-endringer) | [UiT](https://uit.no/nyheter/artikkel?p_document_id=847731)
 * [met.no - Surfer rundt i verden for å måle hvordan bølger bryter](https://www.met.no/nyhetsarkiv/surfer-rundt-i-verden-for-a-male-hvordan-bolger-bryter)
