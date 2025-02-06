@@ -42,5 +42,6 @@ fir = [ "sfy/fir" ]
 storage = [ "sfy/storage" ]
 surf = [ "sfy/surf" ]
 deploy = []
+spectrum = [ "sfy/spectrum" ]
 # defmt-serial = [ "dep:ufmt", "dep:defmt-serial" ]
 
