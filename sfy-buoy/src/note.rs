@@ -286,6 +286,44 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                 .wait(delay)?;
         }
 
+        #[cfg(feature = "spectrum")]
+        {
+            defmt::debug!("setting up spectrum templates..");
+
+            #[derive(serde::Serialize, Default)]
+            struct SpectrumMetaTemplate {
+                timestamp: u32,
+
+                _ltime: u32,
+                _lon: f32,
+                _lat: f32,
+
+                length: u32,
+            }
+
+            let meta_template = SpectrumMetaTemplate {
+                timestamp: 18,
+
+                _ltime: 14,
+                _lon: 14.1,
+                _lat: 14.1,
+
+                length: 14,
+            };
+
+            defmt::debug!("setting up template for spectrum");
+            self.note()
+                .template(
+                    delay,
+                    Some("spec.qo"),
+                    Some(meta_template),
+                    Some(crate::welch::WELCH_OUTN as u32),
+                    notecard::template::Compact, // sync over starnote/lora as well
+                    Some(10), // starnote/lora port
+                )?
+                .wait(delay)?;
+        }
+
         Ok(())
     }
 
