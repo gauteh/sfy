@@ -45,7 +45,7 @@ git = "https://github.com/gauteh/notecard-rs"
 half = { version = "2.4", features = [ "use-intrinsics", "bytemuck", "serde" ] }
 
 [features]
-default = [ "build-bin" ]
+default = [ "build-bin", "ext-gps", "spectrum" ]
 continuous = []
 continuous-post = [ "continuous", "dep:ufmt" ]
 20Hz = ["fir"]
