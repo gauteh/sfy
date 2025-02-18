@@ -148,10 +148,10 @@ impl<D: DateTimeAccess> State for Mutex<RefCell<Option<SharedState<D>>>> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone,Debug)]
 pub enum LocationState {
-    Trying(i64),
-    Retrieved(i64),
+    Trying(i64),    // time in ms
+    Retrieved(i64), // time in ms
 }
 
 #[derive(Clone)]
@@ -265,7 +265,7 @@ impl Location {
                     time: Some(time), ..
                 }) = tm
                 {
-                    info!("Got time, setting RTC.");
+                    info!("Got time, setting RTC: {}", time);
                     let dt = NaiveDateTime::from_timestamp_opt(time as i64, 0)
                         .ok_or_else(|| notecard::NoteError::NotecardErr("Bad time".into()))?;
 
@@ -307,8 +307,8 @@ impl Location {
                     Location { lat: Some(_), .. },
                 ) = (tm, gps)
                 {
-                    info!("Both time and location retrieved.");
-                    self.state = Retrieved((time * 1000) as i64);
+                    info!("Both time and location retrieved: {}", time);
+                    self.state = Retrieved((time as u64 * 1000) as i64);
                 } else {
                     self.state = Trying(now);
                 }
@@ -571,3 +571,16 @@ where
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn time_retrieved() {
+        let time = 1739884633_u32;
+        let state = LocationState::Retrieved((time as u64 * 1000) as i64);
+        println!("{:?}", state);
+    }
+}
+
