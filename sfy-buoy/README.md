@@ -64,6 +64,12 @@ AUXRX/AUXTX and pull AUXEN up](https://dev.blues.io/guides-and-tutorials/notecar
 * surf: increase accel and gyro range to expect greater forces impacted by
     breaking waves.
 
+* ice: increase sensitivity (opposite of surf), expect low movement and low
+    forces. typically used for ice deployments.
+
+* lowaccel: increase accel and gyro range to expect greater forces impacted by
+    breaking waves.
+
 * raw: store raw data on SD-card (experimental)
 
 * host-tests: used to disable code that doesn't compile on host, for running

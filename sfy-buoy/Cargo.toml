@@ -54,6 +54,7 @@ fir = []
 storage = []
 ext-gps = [ "dep:serde-json-core"]
 surf = []
+ice = []
 target-test = [ "storage" ]
 build-bin = [ "fir", "storage", "raw", "anyhow", "argh", "serde-json-core/std", "serde_json", "chrono/std" ]
 

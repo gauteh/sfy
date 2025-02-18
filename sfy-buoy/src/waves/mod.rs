@@ -30,15 +30,23 @@ pub type AxlPacketT = (AxlPacket,);
 
 pub const FREQ: Freq = Freq::Hz208;
 
+#[cfg(all(feature = "surf", feature = "ice"))]
+compile_error!("only one of the surf and ice features should be enabled at the same time.");
+
 // See discussion below in `boot`.
 #[cfg(feature = "surf")]
 pub const ACCEL_RANGE: f32 = 16.; // [g]
 #[cfg(feature = "surf")]
 pub const GYRO_RANGE: f32 = 1000.; // [dps]
                                    //
-#[cfg(not(feature = "surf"))]
+#[cfg(feature = "ice")]
+pub const ACCEL_RANGE: f32 = 2.; // [g]
+#[cfg(feature = "ice")]
+pub const GYRO_RANGE: f32 = 125.; // [dps]
+                                   //
+#[cfg(all(not(feature = "surf"), not(feature = "ice")))]
 pub const ACCEL_RANGE: f32 = 4.; // [g]
-#[cfg(not(feature = "surf"))]
+#[cfg(all(not(feature = "surf"), not(feature = "ice")))]
 pub const GYRO_RANGE: f32 = 500.; // [dps]
 
 #[cfg(all(feature = "20Hz", not(feature = "fir")))]
@@ -271,7 +279,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         //
         // Sinclair, Alexandra. “FlowRider: A Lagrangian Float to Measure 3-D Dynamics of Plunging Breakers in the Surf Zone.” Journal of Coastal Research 293 (January 2014): 205–9. https://doi.org/10.2112/JCOASTRES-D-13-00014.1.
 
-        #[cfg(not(feature = "surf"))]
+        #[cfg(all(not(feature = "surf"), not(feature = "ice")))]
         sensor
             .ctrl1xl
             .set_chain_full_scale(i2c, ctrl1xl::Fs_Xl::G4)?;
@@ -280,6 +288,11 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         sensor
             .ctrl1xl
             .set_chain_full_scale(i2c, ctrl1xl::Fs_Xl::G16)?;
+
+        #[cfg(feature = "ice")]
+        sensor
+            .ctrl1xl
+            .set_chain_full_scale(i2c, ctrl1xl::Fs_Xl::G2)?;
 
         defmt::info!(
             "accelerometer range: {} g",
@@ -315,7 +328,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         // gyro values.
         //
         // Feddersen, F., Andre Amador, Kanoa Pick, A. Vizuet, Kaden Quinn, Eric Wolfinger, J. H. MacMahan, and Adam Fincham. “The Wavedrifter: A Low-Cost IMU-Based Lagrangian Drifter to Observe Steepening and Overturning of Surface Gravity Waves and the Transition to Turbulence.” Coastal Engineering Journal, July 26, 2023, 1–14. https://doi.org/10.1080/21664250.2023.2238949.
-        #[cfg(not(feature = "surf"))]
+        #[cfg(all(not(feature = "surf"), not(feature = "ice")))]
         sensor
             .ctrl2g
             .set_chain_full_scale(i2c, ctrl2g::Fs::Dps500)?;
@@ -324,6 +337,11 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         sensor
             .ctrl2g
             .set_chain_full_scale(i2c, ctrl2g::Fs::Dps1000)?;
+
+        #[cfg(feature = "ice")]
+        sensor
+            .ctrl2g
+            .set_chain_full_scale(i2c, ctrl2g::Fs::Dps125)?;
 
         defmt::info!("gyroscope range: {} dps", sensor.ctrl2g.chain_full_scale());
         assert_eq!(sensor.ctrl2g.chain_full_scale().dps(), GYRO_RANGE);
