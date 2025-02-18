@@ -211,6 +211,9 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                 Some("axl.qo"),
                 Some(meta_template),
                 Some(AXL_OUTN as u32),
+                notecard::note::TemplateFormat::Default,
+                None,
+                None,
             )?
             .wait(delay)?;
 
