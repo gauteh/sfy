@@ -463,6 +463,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "defmt-serial"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9864dbe10e719fb214ece58a7b462f24a195245576d0b70d140b6ae7ba0cca88"
+dependencies = [
+ "critical-section",
+ "defmt",
+ "embedded-hal",
+]
+
+[[package]]
 name = "defmt-test"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -918,6 +929,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e3148f5046208a5d56bcfc03053e3ca6334e51da8dfb19b6cdc8b306fae3283e"
 
 [[package]]
+name = "portable-atomic"
+version = "1.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "280dc24453071f1b63954171985a0b0d30058d287960968b9b2aca264c8d4ee6"
+
+[[package]]
 name = "postcard"
 version = "1.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1248,11 +1265,13 @@ dependencies = [
  "cortex-m-rt",
  "defmt",
  "defmt-rtt",
+ "defmt-serial",
  "embedded-hal",
  "git-version",
  "heapless",
  "panic-probe",
  "sfy",
+ "static_cell",
  "ufmt 0.1.2",
 ]
 
@@ -1303,6 +1322,15 @@ name = "static_assertions"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
+
+[[package]]
+name = "static_cell"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d89b0684884a883431282db1e4343f34afc2ff6996fe1f4a1664519b66e14c1e"
+dependencies = [
+ "portable-atomic",
+]
 
 [[package]]
 name = "strsim"

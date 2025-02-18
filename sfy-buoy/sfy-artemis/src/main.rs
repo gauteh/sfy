@@ -51,6 +51,7 @@ use sfy::{
     STORAGEQ,
 };
 use sfy::{Imu, Location, SharedState, State, NOTEQ};
+use static_cell::StaticCell;
 
 mod log;
 
@@ -66,6 +67,8 @@ defmt::timestamp!("{=i32}", COUNT.load(Ordering::Relaxed));
 /// longitude and latitude.
 pub static STATE: Mutex<RefCell<Option<SharedState<hal::rtc::Rtc>>>> =
     Mutex::new(RefCell::new(None));
+
+static SERIAL: StaticCell<hal::uart::Uart0<48, 49>> = StaticCell::new();
 
 #[entry]
 fn main() -> ! {
@@ -94,9 +97,9 @@ fn main() -> ! {
 
     // set up serial as defmt target.
     #[cfg(feature = "defmt-serial")]
-    let serial = hal::uart::Uart0::new(dp.UART0, pins.tx0, pins.rx0);
+    let serial = hal::uart::new_48_49(dp.UART0, pins.tx0, pins.rx0, 115000);
     #[cfg(feature = "defmt-serial")]
-    defmt_serial::defmt_serial(serial);
+    defmt_serial::defmt_serial(SERIAL.init(serial));
 
     println!(
         "hello from sfy (v{}) (sn: {})!",
