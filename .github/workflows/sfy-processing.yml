@@ -19,30 +19,22 @@ jobs:
       max-parallel: 5
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
 
-    - uses: conda-incubator/setup-miniconda@v2
+    - uses: actions/cache@v3
       with:
-        miniforge-version: latest
-        miniforge-variant: Mambaforge
-        use-mamba: true
-
-    - name: Add conda to system path
-      run: |
-        # $CONDA is an environment variable pointing to the root of the miniconda directory
-        echo $CONDA/bin >> $GITHUB_PATH
-
-    - uses: actions/cache@v2
-      with:
-        path: /usr/share/miniconda
+        path: ~/conda_pkgs_dir
         key: ${{ runner.os }}-conda-${{ hashFiles('environment.yml') }}-${{ env.CACHE_NUMBER }}
       id: cache
 
-    - name: Install dependencies
-      run: |
-        mamba env list
-        mamba env update --file environment.yml --name base
-      if: steps.cache.outputs.cache-hit != 'true'
+    - uses: conda-incubator/setup-miniconda@v3
+      with:
+        mamba-version: "*"
+        channels: conda-forge
+        activate-environment: anaconda-client-env
+        use-mamba: true
+        environment-file: environment.yml
+        use-only-tar-bz2: true # IMPORTANT: This needs to be set for caching to work properly!
 
     - name: Test with pytest
       run: |
