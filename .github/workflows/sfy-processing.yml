@@ -38,6 +38,7 @@ jobs:
         environment-file: environment.yml
 
     - name: Test with pytest
+      shell: bash -el {0}
       run: |
         cd sfy-processing/
         mamba install -y pytest pytest-benchmark
