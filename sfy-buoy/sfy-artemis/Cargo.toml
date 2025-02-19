@@ -45,4 +45,5 @@ surf = [ "sfy/surf" ]
 ice = [ "sfy/ice" ]
 deploy = []
 defmt-serial = [ "dep:ufmt", "dep:defmt-serial" ]
+spectrum = [ "sfy/spectrum" ]
 
