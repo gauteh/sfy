@@ -29,8 +29,11 @@ jobs:
 
     - uses: conda-incubator/setup-miniconda@v3
       with:
+        python-version: 3.12
+        mamba-version: "*"
         channels: conda-forge
-        channel-priority: strict
+        conda-remove-defaults: "true"
+        channel-priority: true
         activate-environment: anaconda-client-env
         use-mamba: true
         environment-file: environment.yml
