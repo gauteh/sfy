@@ -29,8 +29,7 @@ jobs:
 
     - uses: conda-incubator/setup-miniconda@v3
       with:
-        python-version: 3.12
-        mamba-version: "*"
+        miniforge-version: latest
         channels: conda-forge
         conda-remove-defaults: "true"
         channel-priority: true
