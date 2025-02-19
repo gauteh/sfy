@@ -44,6 +44,9 @@ pub mod waves;
 #[cfg(feature = "ext-gps")]
 pub mod gps;
 
+#[cfg(feature = "spectrum")]
+pub mod welch;
+
 use axl::AxlPacket;
 #[cfg(feature = "storage")]
 use storage::Storage;
