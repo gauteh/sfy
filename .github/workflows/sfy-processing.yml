@@ -36,7 +36,6 @@ jobs:
         activate-environment: anaconda-client-env
         use-mamba: true
         environment-file: environment.yml
-        use-only-tar-bz2: true # IMPORTANT: This needs to be set for caching to work properly!
 
     - name: Test with pytest
       run: |
