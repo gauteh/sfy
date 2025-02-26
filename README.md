@@ -30,7 +30,7 @@ The buoys deployed in the surf on the coast of Norway:
 [![Wave buoys in the surf zone at Jæren](http://img.youtube.com/vi/qK1Di7pjYFI/0.jpg)](http://www.youtube.com/watch?v=qK1Di7pjYFI "Wave buoys in the surf zone at Jæren")
 
 For more information and attribution, please refer to:
-* [Hope, Gaute, et al., 2024, (pre-print), SFY -- A lightweight, high-frequency and phase-resolving wave-buoy for coastal waters](https://arxiv.org/abs/2401.02286)
+* [Hope, Gaute, et al., 2025, SFY—A Lightweight, High-Frequency, and Phase-Resolving Wave Buoy for Coastal Waters,  J. Atmos. Oceanic Technol., 42, 133–154](https://journals.ametsoc.org/view/journals/atot/42/2/JTECH-D-23-0170.1.xml)
 * [Seldal, Torunn Irene, M. Sc. thesis, 2023, _SFY: A free-drifting wave buoy for measuring surf waves_](https://bora.uib.no/bora-xmlui/handle/11250/3072146)
 
 # Press
