@@ -42,6 +42,8 @@ async fn main() -> eyre::Result<()> {
 
     info!("sfy-data server");
     let sfy: Sfy = argh::from_env();
+
+    info!("reading config: {:?}", sfy.config);
     let config = config::Config::from_path(sfy.config);
 
     let database = config.database.clone().expect("no database path specified");
