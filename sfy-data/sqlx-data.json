@@ -48,19 +48,6 @@
     },
     "query": "SELECT received, event, message_type FROM omb_events where dev = $1 ORDER BY received"
   },
-  "3aaf2ff16d0f2f7d166876087f9549c0559a61e3a877a0dd9b75246884f4ab15": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Text",
-          "Text"
-        ]
-      }
-    },
-    "query": "INSERT INTO buoys (dev, name, buoy_type) VALUES ( $1, $2, 'sfy' )"
-  },
   "4ddd4192872c4e3ee4590aac364999318875076fd44565de897985fa772709ec": {
     "describe": {
       "columns": [
@@ -214,6 +201,19 @@
       }
     },
     "query": "INSERT INTO omb_events (dev, received, account, message_type, data) VALUES ( $1, $2, $3, $4, $5 )"
+  },
+  "bd1db18609fcae7b5d60e4a1cd426e209224a4c3e02a29830a3fbd9081cb8041": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Text"
+        ]
+      }
+    },
+    "query": "INSERT INTO buoys (dev, name, buoy_type) VALUES ( $1, $2, 'sfy' ) ON CONFLICT (dev) DO UPDATE SET name = excluded.name, buoy_type = excluded.buoy_type"
   },
   "c25e9fa2de9771aeb4acb1cf034b6ef25b439c0807268fa0249dce8e4c8c93a8": {
     "describe": {
