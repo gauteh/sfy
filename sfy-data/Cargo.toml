@@ -28,5 +28,5 @@ base64 = "0.13.0"
 [features]
 sqlite = [ "sqlx/sqlite" ]
 postgres = [ "sqlx/postgres" ]
-default = ["sqlite"]
+default = ["postgres"]
 
