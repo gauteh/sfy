@@ -242,7 +242,7 @@ impl Buoy {
             );
 
             sqlx::query!(
-                "INSERT INTO buoys (dev, name, buoy_type) VALUES ( $1, $2, 'sfy' )",
+                "INSERT INTO buoys (dev, name, buoy_type) VALUES ( $1, $2, 'sfy' ) ON CONFLICT (dev) DO UPDATE SET name = excluded.name, buoy_type = excluded.buoy_type",
                 self.dev,
                 name
             )
