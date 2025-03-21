@@ -202,7 +202,7 @@
     },
     "query": "INSERT INTO omb_events (dev, received, account, message_type, data) VALUES ( $1, $2, $3, $4, $5 )"
   },
-  "bd1db18609fcae7b5d60e4a1cd426e209224a4c3e02a29830a3fbd9081cb8041": {
+  "ba59b455dea05e50374c2c4ebf912d626dd0fe50fba64e6655f6057dc0645e1b": {
     "describe": {
       "columns": [],
       "nullable": [],
@@ -213,7 +213,7 @@
         ]
       }
     },
-    "query": "INSERT INTO buoys (dev, name, buoy_type) VALUES ( $1, $2, 'sfy' ) ON CONFLICT (dev) DO UPDATE SET name = excluded.name, buoy_type = excluded.buoy_type"
+    "query": "INSERT INTO buoys (dev, name, buoy_type) VALUES ( $1, $2, 'sfy' ) ON CONFLICT (dev, buoy_type) DO UPDATE SET name = excluded.name, buoy_type = excluded.buoy_type"
   },
   "c25e9fa2de9771aeb4acb1cf034b6ef25b439c0807268fa0249dce8e4c8c93a8": {
     "describe": {
