@@ -522,6 +522,13 @@ mod tests {
         println!("{:?}", parsed);
     }
 
+    #[test]
+    fn test_parse_omb_imu_event() {
+        let event = std::fs::read("tests/events/02-omb-imu.json").unwrap();
+        let parsed = parse_omb_data(&event).unwrap();
+        println!("{:?}", parsed);
+    }
+
     #[tokio::test]
     async fn check_token_ok() {
         let state = crate::test_state().await;
