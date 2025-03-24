@@ -490,7 +490,7 @@ pub mod handlers {
 
             return Ok("".into_response());
         } else {
-            error!("failed to parse omb event: {:?}", event);
+            error!("failed to parse omb event: {:?}: {:?}", event, body);
         }
 
         Ok(StatusCode::BAD_REQUEST.into_response())
