@@ -470,7 +470,8 @@ pub mod handlers {
     ) -> Result<impl warp::Reply, warp::Rejection> {
         trace!("got message: {:#?}", body);
 
-        if let Ok(event) = parse_omb_data(&body) {
+        let event = parse_omb_data(&body);
+        if let Ok(event) = event {
             let device = sanitize(&event.device);
 
             info!("omb event: {:?}", event);
@@ -488,6 +489,8 @@ pub mod handlers {
                 })?;
 
             return Ok("".into_response());
+        } else {
+            error!("failed to parse omb event: {:?}", event);
         }
 
         Ok(StatusCode::BAD_REQUEST.into_response())
