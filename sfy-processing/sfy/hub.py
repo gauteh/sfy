@@ -272,7 +272,7 @@ class Buoy:
 
     def last(self):
         if self.buoy_type == 'omb':
-            return None
+            return self.__last__
         else:
             return self.__last__
 
