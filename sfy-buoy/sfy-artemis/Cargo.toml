@@ -45,4 +45,4 @@ surf = [ "sfy/surf" ]
 ice = [ "sfy/ice" ]
 deploy = []
 defmt-serial = [ "dep:ufmt", "dep:defmt-serial" ]
-
+host-tests = []

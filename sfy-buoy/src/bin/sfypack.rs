@@ -1,5 +1,5 @@
 use argh::FromArgs;
-use chrono::NaiveDateTime;
+use chrono::DateTime;
 use serde_json as json;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
@@ -39,10 +39,11 @@ fn main() -> anyhow::Result<()> {
 
     if pck.list {
         for p in c.iter() {
-            let ts = NaiveDateTime::from_timestamp(
+            let ts = DateTime::from_timestamp(
                 p.timestamp / 1000,
                 (p.timestamp % 1000 * 1_000_000).try_into().unwrap(),
-            );
+            )
+            .unwrap();
             eprintln!("{:?}: {:?}", ts, p);
         }
 

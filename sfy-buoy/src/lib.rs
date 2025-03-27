@@ -2,6 +2,7 @@
 #![feature(try_blocks)]
 #![feature(portable_simd)]
 #![feature(array_chunks)]
+#![feature(const_option)]
 #![cfg_attr(not(test), no_std)]
 #![allow(non_upper_case_globals)]
 
@@ -12,7 +13,7 @@ extern crate test;
 use defmt::{debug, error, info, trace, warn};
 
 use blues_notecard as notecard;
-use chrono::NaiveDateTime;
+use chrono::{DateTime, NaiveDateTime};
 use core::cell::RefCell;
 use core::fmt::Debug;
 use core::ops::DerefMut;
@@ -97,7 +98,7 @@ pub static mut STORAGEQ: heapless::spsc::Queue<AxlPacketT, STORAGEQ_SZ> =
 /// Queue from Storage to Notecard
 pub static mut NOTEQ: heapless::spsc::Queue<AxlPacket, NOTEQ_SZ> = heapless::spsc::Queue::new();
 
-pub const FUTURE: NaiveDateTime = NaiveDateTime::from_timestamp(2550564072, 0);
+pub const FUTURE: NaiveDateTime = DateTime::from_timestamp(2550564072, 0).unwrap().naive_utc();
 
 pub struct SharedState<D: DateTimeAccess> {
     pub rtc: D,
@@ -148,7 +149,7 @@ impl<D: DateTimeAccess> State for Mutex<RefCell<Option<SharedState<D>>>> {
     }
 }
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub enum LocationState {
     Trying(i64),    // time in ms
     Retrieved(i64), // time in ms
@@ -266,8 +267,9 @@ impl Location {
                 }) = tm
                 {
                     info!("Got time, setting RTC: {}", time);
-                    let dt = NaiveDateTime::from_timestamp_opt(time as i64, 0)
-                        .ok_or_else(|| notecard::NoteError::NotecardErr("Bad time".into()))?;
+                    let dt = DateTime::from_timestamp(time as i64, 0)
+                        .ok_or_else(|| notecard::NoteError::NotecardErr("Bad time".into()))?
+                        .naive_utc();
 
                     free(|cs| {
                         let mut state = state.borrow(cs).borrow_mut();
@@ -583,4 +585,3 @@ mod tests {
         println!("{:?}", state);
     }
 }
-

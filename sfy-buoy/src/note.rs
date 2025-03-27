@@ -22,7 +22,9 @@ pub const NOTECARD_STORAGE_INIT_SYNC: u32 = 65;
 
 pub struct Notecarrier<I2C: Read + Write> {
     note: Notecard<I2C>,
+    #[allow(unused)]
     device: Option<heapless::String<40>>,
+    #[allow(unused)]
     sn: Option<heapless::String<120>>,
 }
 

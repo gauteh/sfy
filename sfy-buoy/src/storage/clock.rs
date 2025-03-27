@@ -1,4 +1,4 @@
-use chrono::{Datelike, NaiveDateTime, Timelike};
+use chrono::{DateTime, Datelike, Timelike};
 use core::sync::atomic::{AtomicI32, Ordering};
 use embedded_sdmmc::{TimeSource, Timestamp};
 
@@ -24,7 +24,8 @@ pub struct CountClock(pub &'static AtomicI32);
 
 impl TimeSource for CountClock {
     fn get_timestamp(&self) -> Timestamp {
-        let dt = NaiveDateTime::from_timestamp(self.0.load(Ordering::Relaxed) as i64, 0);
+        let dt = DateTime::from_timestamp(self.0.load(Ordering::Relaxed) as i64, 0)
+            .unwrap_or_else(|| DateTime::from_timestamp(1, 1).unwrap());
         Timestamp {
             year_since_1970: (dt.year() - 1970) as u8,
             zero_indexed_month: dt.month0() as u8,

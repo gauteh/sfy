@@ -1,5 +1,7 @@
 use defmt::{write, Format, Formatter};
-use heapless::{String, Vec};
+#[cfg(feature = "continuous-post")]
+use heapless::String;
+use heapless::Vec;
 
 #[cfg(feature = "raw")]
 pub const SAMPLE_NO: usize = 1024;

@@ -1,4 +1,3 @@
-#![feature(result_option_inspect)]
 #![no_std]
 #![no_main]
 
@@ -51,6 +50,7 @@ use sfy::{
     STORAGEQ,
 };
 use sfy::{Imu, Location, SharedState, State, NOTEQ};
+#[cfg(feature = "defmt-serial")]
 use static_cell::StaticCell;
 
 mod log;
@@ -68,6 +68,7 @@ defmt::timestamp!("{=i32}", COUNT.load(Ordering::Relaxed));
 pub static STATE: Mutex<RefCell<Option<SharedState<hal::rtc::Rtc>>>> =
     Mutex::new(RefCell::new(None));
 
+#[cfg(feature = "defmt-serial")]
 static SERIAL: StaticCell<hal::uart::Uart0<48, 49>> = StaticCell::new();
 
 #[entry]
@@ -251,12 +252,12 @@ fn main() -> ! {
 
     let (now, position_time, lat, lon) = STATE.get();
     COUNT.store(
-        (now.map(|t| (t.timestamp_millis() / 1000) as i32)).unwrap_or(0),
+        (now.map(|t| (t.and_utc().timestamp_millis() / 1000) as i32)).unwrap_or(0),
         Ordering::Relaxed,
     );
     info!(
         "Now: {:?} ms, position_time: {}, lat: {}, lon: {}",
-        now.map(|t| t.timestamp_millis()),
+        now.map(|t| t.and_utc().timestamp_millis()),
         position_time,
         lat,
         lon
@@ -266,7 +267,7 @@ fn main() -> ! {
     let mut waves = Waves::new(i2c3).unwrap();
     waves
         .take_buf(
-            now.map(|t| t.timestamp_millis()).unwrap_or(0),
+            now.map(|t| t.and_utc().timestamp_millis()).unwrap_or(0),
             position_time,
             lon,
             lat,
@@ -298,7 +299,7 @@ fn main() -> ! {
     let mut sd_good: bool = true; // Do not spam with log messags.
 
     loop {
-        let now = STATE.now().map(|t| t.timestamp_millis());
+        let now = STATE.now().map(|t| t.and_utc().timestamp_millis());
 
         // Move data to SD card and enqueue for Notecard.
         #[cfg(feature = "storage")]
@@ -337,9 +338,10 @@ fn main() -> ! {
         const LOOP_DELAY: u32 = 1_000;
 
         // Process data and communication for the Notecard.
-        if ((now.unwrap_or(sfy::FUTURE.timestamp_millis()) - last) > LOOP_DELAY as i64)
+        if ((now.unwrap_or(sfy::FUTURE.and_utc().timestamp_millis()) - last) > LOOP_DELAY as i64)
             || ((imu_queue.capacity() - imu_queue.len()) < 3
-                && (now.unwrap_or(sfy::FUTURE.timestamp_millis()) - last) > SHORT_LOOP_DELAY as i64)
+                && (now.unwrap_or(sfy::FUTURE.and_utc().timestamp_millis()) - last)
+                    > SHORT_LOOP_DELAY as i64)
         {
             let queue_time: f64 = f64::from(sfy::axl::SAMPLE_NO as u32)
                 * f64::from(sfy::NOTEQ_SZ as u32)
@@ -472,7 +474,7 @@ fn RTC() {
                 let state = state.as_ref().unwrap();
 
                 state.rtc.now().map(|t| {
-                    let now = t.timestamp_millis();
+                    let now = t.and_utc().timestamp_millis();
                     let position_time = state.position_time;
                     let lon = state.lon;
                     let lat = state.lat;
