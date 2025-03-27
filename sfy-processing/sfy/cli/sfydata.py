@@ -97,7 +97,7 @@ def log(dev, start, end):
 
     pcks = buoy.fetch_packages_range(start, end)
     # pcks = buoy.packages_range(start, end)
-    pcks = [p for p in pcks if 'health.qo' in p[1]]
+    pcks = [p for p in pcks if 'health' in p[1]]
     pcks = [p[2] for p in tqdm(pcks)]
 
     pcks = [json.loads(p) for p in pcks]
