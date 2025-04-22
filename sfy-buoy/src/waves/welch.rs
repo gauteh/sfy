@@ -14,13 +14,13 @@ pub const WELCH_PACKET_SZ: usize = 124;
 pub const WELCH_OUTN: usize = { 6 * WELCH_PACKET_SZ * 2 } * 4 / 3 + 4;
 
 pub struct Welch {
-    buf: Vec<f64, NSEG>,
-    spec: Vec<f64, NFFT>,
+    buf: Vec<f32, NSEG>,
+    spec: Vec<f32, NFFT>,
     nseg: u16,
 }
 
 impl Welch {
-    pub fn new() {
+    pub fn new() -> Welch {
         Welch {
             buf: Vec::new(),
             spec: Vec::new(),
@@ -34,8 +34,8 @@ impl Welch {
     }
 
     /// Add new sample to buf: returns a spectrum if complete.
-    pub fn sample(&mut self, z: f32) -> Option<Vec<NFFT>> {
-        self.buf.push(z);
+    pub fn sample(&mut self, z: f32) -> Option<Vec<f32, NFFT>> {
+        unsafe { self.buf.push_unchecked(z) };
 
         if self.buf.is_full() {
             self.pop_buf();
@@ -47,10 +47,18 @@ impl Welch {
     }
 
     /// Compute FFT of segment and merge with spectrum. Returns a spectrum if complete.
-    pub fn pop_buf(&mut self) -> Option<Vec<NFFT>> {
+    pub fn pop_buf(&mut self) -> Option<Vec<f32, NFFT>> {
         // Compute FFT from buf
+        use microfft::real::rfft_4096;
+        let mut v = self.buf.clone().into_array().unwrap();
+
+        self.buf.clear();
+
+        let f = rfft_4096(&mut v);
+
         // Add to spec
         self.nseg += 1;
+
         // If spec is full, return spec and reset.
         if self.spec.is_full() {
             Some(self.pop_spec())
@@ -60,7 +68,7 @@ impl Welch {
     }
 
     /// Compute Welch-spectrum.
-    pub fn pop_spec(&mut self) -> Vec<NFFT> {
+    pub fn pop_spec(&mut self) -> Vec<f32, NFFT> {
         let spec = self.spec.clone();
         self.reset();
 

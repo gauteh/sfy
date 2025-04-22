@@ -333,7 +333,7 @@ dependencies = [
  "cmsis_dsp_sys_pregenerated",
  "fixed",
  "micromath",
- "num-complex",
+ "num-complex 0.3.1",
 ]
 
 [[package]]
@@ -933,6 +933,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "78ca9ab1a0babb1e7d5695e3530886289c18cf2f87ec19a575a0abdce112e3a3"
 
 [[package]]
+name = "microfft"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f2b6673eb0cc536241d6734c2ca45abfdbf90e9e7791c66a36a7ba3c315b76cf"
+dependencies = [
+ "cfg-if",
+ "num-complex 0.4.6",
+ "static_assertions",
+]
+
+[[package]]
 name = "micromath"
 version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -984,7 +995,7 @@ version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8b7a8e9be5e039e2ff869df49155f1c06bd01ade2117ec783e56ab0932b67a8f"
 dependencies = [
- "num-complex",
+ "num-complex 0.3.1",
  "num-integer",
  "num-iter",
  "num-rational",
@@ -996,6 +1007,15 @@ name = "num-complex"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "747d632c0c558b87dbabbe6a82f3b4ae03720d0646ac5b7b4dae89394be5f2c5"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
+name = "num-complex"
+version = "0.4.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "73f88a1307638156682bada9d7604135552957b7818057dcef22705b4d509495"
 dependencies = [
  "num-traits",
 ]
@@ -1398,6 +1418,7 @@ dependencies = [
  "heapless",
  "ism330dhcx",
  "libm",
+ "microfft",
  "micromath",
  "nb 1.1.0",
  "postcard",
