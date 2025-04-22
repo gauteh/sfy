@@ -19,6 +19,9 @@ use crate::fir;
 mod buf;
 pub mod wire;
 
+#[cfg(feature = "spectrum")]
+pub mod welch;
+
 use buf::ImuBuf;
 pub use buf::{VecAxl, VecRawAxl, RAW_AXL_BYTE_SZ, RAW_AXL_SZ};
 

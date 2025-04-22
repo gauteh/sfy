@@ -6,6 +6,9 @@ use crate::axl::{AXL_SZ, SAMPLE_SZ};
 #[cfg(feature = "fir")]
 use crate::fir;
 
+#[cfg(feature = "spectrum")]
+use super::welch::Welch;
+
 use super::wire::{ScaledF32, A16};
 
 #[cfg(feature = "raw")]
@@ -56,6 +59,9 @@ pub struct ImuBuf {
     /// Buffer with raw values, is emptied whenever axl is emptied.
     #[cfg(feature = "raw")]
     pub raw_axl: VecRawAxl,
+
+    #[cfg(feature = "spectrum")]
+    pub welch: Welch,
 }
 
 impl ImuBuf {
@@ -78,6 +84,9 @@ impl ImuBuf {
 
             #[cfg(feature = "raw")]
             raw_axl: VecRawAxl::new(),
+
+            #[cfg(feature = "spectrum")]
+            welch: Welch::new(),
         }
     }
 

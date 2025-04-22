@@ -120,6 +120,7 @@ fn main() -> ! {
     println!("cont-post ...: {}", cfg!(feature = "continuous-post"));
     println!("deploy ......: {}", cfg!(feature = "deploy"));
     println!("defmt-serial : {}", cfg!(feature = "defmt-serial"));
+    println!("spectrum ....: {}", cfg!(feature = "spectrum"));
     println!("NOTEQ_SZ ....: {}", sfy::NOTEQ_SZ);
     println!("IMUQ_SZ .....: {}", sfy::IMUQ_SZ);
     println!("STORAGEQ_SZ .: {}", sfy::STORAGEQ_SZ);

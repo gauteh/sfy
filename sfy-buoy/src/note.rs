@@ -1,5 +1,5 @@
 use crate::axl::{AxlPacket, AXL_OUTN};
-use blues_notecard::{self as notecard, NoteError, Notecard, NotecardConfig};
+use blues_notecard::{self as notecard, card::Transport, NoteError, Notecard, NotecardConfig};
 use core::ops::{Deref, DerefMut};
 use embedded_hal::blocking::delay::DelayMs;
 use embedded_hal::blocking::i2c::{Read, Write};
@@ -19,6 +19,8 @@ include!(concat!(env!("OUT_DIR"), "/config.rs"));
 
 /// Initialize sync when storage use is above this percentage.
 pub const NOTECARD_STORAGE_INIT_SYNC: u32 = 65;
+
+const STARNOTE_PORT_SPEC: u16 = 10;
 
 pub struct Notecarrier<I2C: Read + Write> {
     note: Notecard<I2C>,
@@ -54,6 +56,11 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             },
         );
         note.initialize(delay)?;
+
+        defmt::warn!("Testing! Configure for NTN only!");
+        note.card()
+            .transport(delay, Transport::Reset, None, None)?
+            .wait(delay)?;
 
         // Use extrnal SIM first
         if let Some(apn) = EXT_APN {
@@ -282,6 +289,9 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                     Some("egps.qo"),
                     Some(meta_template),
                     Some(crate::gps::GPS_OUTN as u32),
+                    notecard::note::TemplateFormat::Default,
+                    None,
+                    None,
                 )?
                 .wait(delay)?;
         }
@@ -295,6 +305,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                 timestamp: u32,
 
                 _ltime: u32,
+                _time: u32,
                 _lon: f32,
                 _lat: f32,
 
@@ -305,6 +316,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                 timestamp: 18,
 
                 _ltime: 14,
+                _time: 14,
                 _lon: 14.1,
                 _lat: 14.1,
 
@@ -317,9 +329,10 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                     delay,
                     Some("spec.qo"),
                     Some(meta_template),
-                    Some(crate::welch::WELCH_OUTN as u32),
-                    notecard::template::Compact, // sync over starnote/lora as well
-                    Some(10), // starnote/lora port
+                    Some(crate::waves::welch::WELCH_OUTN as u32),
+                    notecard::note::TemplateFormat::Compact, // sync over starnote/lora as well
+                    Some(STARNOTE_PORT_SPEC.into()),         // starnote/lora port
+                    None,
                 )?
                 .wait(delay)?;
         }
