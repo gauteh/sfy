@@ -52,11 +52,21 @@ impl Welch {
         use microfft::real::rfft_4096;
         let mut v = self.buf.clone().into_array().unwrap();
 
-        self.buf.clear();
+        // self.buf.clear();
 
+        // Overlap
+        static_assert!(NOVERLAP < NSEG);
+        // self.buf.extend_from_slice(&v[..NOVERLAP]).unwrap();
+        self.buf.as_mut_slice().copy_within((NSEG - NOVERLAP).., 0);
+        self.buf.truncate(NOVERLAP);
+
+        // Window?
+
+        // FFT
         let f = rfft_4096(&mut v);
 
         // Add to spec
+        unimplemented!();
         self.nseg += 1;
 
         // If spec is full, return spec and reset.
