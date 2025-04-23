@@ -1,3 +1,5 @@
+use core::f32::consts::PI;
+
 use heapless::Vec;
 use num_complex::ComplexFloat;
 use static_assertions as sa;
@@ -52,6 +54,11 @@ impl Welch {
         }
     }
 
+    /// Δf between frequency bins.
+    pub fn frequency_resolution(&self, fs: f32) -> f32 {
+        fs / NFFT as f32
+    }
+
     pub fn reset(&mut self) {
         self.buf.clear();
         self.spec.clear();
@@ -83,7 +90,10 @@ impl Welch {
         // Overlap
         self.buf.extend_from_slice(&v[..(NOVERLAP - 1)]).unwrap();
 
-        // Window?
+        // Window: Hanning window
+        for (i, vv) in v.iter_mut().enumerate() {
+            *vv = HANNING_AMPLITUDE_CORRECTION * hanning(i, NSEG) * *vv;
+        }
 
         // FFT
         let f = rfft_4096(&mut v);
@@ -121,6 +131,15 @@ impl Welch {
         spec
     }
 }
+
+/// Hanning-window.
+pub fn hanning(i: usize, N: usize) -> f32 {
+    assert!(i < N);
+    0.5 - 0.5 * f32::cos((2.0 * PI * i as f32) / (N - 1) as f32)
+}
+
+pub const HANNING_ENERGY_CORRECTION: f32 = 1.63;
+pub const HANNING_AMPLITUDE_CORRECTION: f32 = 2.0;
 
 #[cfg(test)]
 mod tests {
