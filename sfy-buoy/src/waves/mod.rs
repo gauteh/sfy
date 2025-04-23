@@ -196,7 +196,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
             imu,
             freq: FREQ,
             output_freq: OUTPUT_FREQ,
-            buf: ImuBuf::new(FREQ.value()),
+            buf: ImuBuf::new(FREQ.value(), OUTPUT_FREQ),
             timestamp: 0,
             position_time: 0,
             temperature: 0.0,

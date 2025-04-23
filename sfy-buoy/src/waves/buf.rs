@@ -65,7 +65,7 @@ pub struct ImuBuf {
 }
 
 impl ImuBuf {
-    pub fn new(freq: f32) -> ImuBuf {
+    pub fn new(imu_freq: f32, output_freq: f32) -> ImuBuf {
         #[cfg(feature = "fir")]
         let fir = [
             fir::FIR::new().into_decimator(),
@@ -73,7 +73,7 @@ impl ImuBuf {
             fir::FIR::new().into_decimator(),
         ];
 
-        let filter = NxpFusion::new(freq);
+        let filter = NxpFusion::new(imu_freq);
 
         ImuBuf {
             #[cfg(feature = "fir")]
@@ -86,7 +86,7 @@ impl ImuBuf {
             raw_axl: VecRawAxl::new(),
 
             #[cfg(feature = "spectrum")]
-            welch: Welch::new(),
+            welch: Welch::new(output_freq),
         }
     }
 
@@ -248,7 +248,7 @@ mod tests {
         use crate::axl::SAMPLE_NO;
         use ism330dhcx::{ctrl1xl, ctrl2g};
 
-        let mut buf = ImuBuf::new(200.);
+        let mut buf = ImuBuf::new(200., 52.);
 
         for _ in 0..SAMPLE_NO {
             buf.sample(

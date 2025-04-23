@@ -19,6 +19,9 @@ pub const WELCH_PACKET_SZ: usize = 124;
 pub const WELCH_OUTN: usize = { 6 * WELCH_PACKET_SZ * 2 } * 4 / 3 + 4;
 
 pub struct Welch {
+    /// Frequency
+    fs: f32,
+
     /// Rolling segment. When full, added to spec.
     buf: Vec<f32, NSEG>,
 
@@ -30,8 +33,9 @@ pub struct Welch {
 }
 
 impl Welch {
-    pub fn new() -> Welch {
+    pub fn new(fs: f32) -> Welch {
         let mut w = Welch {
+            fs,
             buf: Vec::new(),
             spec: Vec::new(),
             nseg: 0,
@@ -43,20 +47,20 @@ impl Welch {
     }
 
     /// Returns duration (in seconds) given sample rate.
-    pub fn length(&self, fs: f32) -> f32 {
+    pub fn length(&self) -> f32 {
         if self.nseg == 0 {
             return 0.0;
         } else {
             let N = self.nseg - 1;
             let N = NSEG as f32 + (NSEG - NOVERLAP) as f32 * N as f32;
 
-            return N / fs;
+            return N / self.fs;
         }
     }
 
     /// Δf between frequency bins.
-    pub fn frequency_resolution(&self, fs: f32) -> f32 {
-        fs / NFFT as f32
+    pub fn frequency_resolution(&self) -> f32 {
+        self.fs / NFFT as f32
     }
 
     pub fn reset(&mut self) {
@@ -80,6 +84,10 @@ impl Welch {
     }
 
     /// Compute FFT of segment and merge with spectrum. Returns a spectrum if complete.
+    ///
+    /// Computes the energy spectrum [m^2/Hz] for the current segment, and adds it to the
+    /// total spectrum (which needs to be divided by the number of segments to find the
+    /// average).
     pub fn compute_seg(&mut self) {
         // Compute FFT from buf
         use microfft::real::rfft_4096;
@@ -87,12 +95,16 @@ impl Welch {
 
         self.buf.clear();
 
-        // Overlap
-        self.buf.extend_from_slice(&v[..(NOVERLAP - 1)]).unwrap();
+        // Copy end to next segment, so that segments overlap.
+        self.buf
+            .extend_from_slice(&v[(NSEG - NOVERLAP + 1)..])
+            .unwrap();
 
-        // Window: Hanning window
+        // Window & detrend: Hanning window
         for (i, vv) in v.iter_mut().enumerate() {
-            *vv = HANNING_AMPLITUDE_CORRECTION * hanning(i, NSEG) * *vv;
+            *vv = HANNING_AMPLITUDE_CORRECTION
+                * hanning(i, NSEG)
+                * (*vv - super::buf::SENSORS_GRAVITY_STANDARD as f32);
         }
 
         // FFT
@@ -100,9 +112,12 @@ impl Welch {
         debug_assert_eq!(f.len(), self.spec.len());
         debug_assert_eq!(f.len(), NFFT / 2);
 
-        // Add to spec
+        // Add energy to spectrum
+        let fsr = self.frequency_resolution();
+
         for (v, s) in f.iter().zip(self.spec.iter_mut()) {
-            *s += v.abs();
+            let e = (v * v.conj()).re(); // energy
+            *s += e / (NFFT * NFFT) as f32 / fsr;
         }
 
         self.nseg += 1;
@@ -138,8 +153,8 @@ pub fn hanning(i: usize, N: usize) -> f32 {
     0.5 - 0.5 * f32::cos((2.0 * PI * i as f32) / (N - 1) as f32)
 }
 
-pub const HANNING_ENERGY_CORRECTION: f32 = 1.63;
-pub const HANNING_AMPLITUDE_CORRECTION: f32 = 2.0;
+pub const HANNING_ENERGY_CORRECTION: f32 = 1.63; // for large N
+pub const HANNING_AMPLITUDE_CORRECTION: f32 = 2.0; // for large N
 
 #[cfg(test)]
 mod tests {
@@ -148,31 +163,31 @@ mod tests {
 
     #[test]
     fn test_length() {
-        let w = Welch::new();
-        assert_eq!(w.length(26.), 0.0);
+        let w = Welch::new(26.);
+        assert_eq!(w.length(), 0.0);
 
-        let mut w = Welch::new();
+        let mut w = Welch::new(26.);
         for _ in 0..4096 {
             w.sample(0.0);
         }
-        assert_abs_diff_eq!(w.length(26.), 157.53847);
+        assert_abs_diff_eq!(w.length(), 157.53847);
 
         for _ in 0..4096 {
             w.sample(0.0);
         }
-        assert_abs_diff_eq!(w.length(26.), 2.0 * 157.53847);
+        assert_abs_diff_eq!(w.length(), 2.0 * 157.53847);
 
         for _ in 0..10 {
             for _ in 0..4096 {
                 w.sample(0.0);
             }
         }
-        assert_abs_diff_eq!(w.length(26.), 1890.46153);
+        assert_abs_diff_eq!(w.length(), 1890.46153);
     }
 
     #[test]
     fn test_overlap() {
-        let mut w = Welch::new();
+        let mut w = Welch::new(26.);
 
         let N = 26 * 20 * 60; // 20 minutes
         let mut n = 0;
@@ -206,6 +221,6 @@ mod tests {
         }
 
         let t = 20.0 * 60.0 - (w.buf.len() - NOVERLAP) as f32 / 26.;
-        assert_abs_diff_eq!(w.length(26.), t);
+        assert_abs_diff_eq!(w.length(), t);
     }
 }
