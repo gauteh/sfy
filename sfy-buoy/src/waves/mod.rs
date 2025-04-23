@@ -472,6 +472,11 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         self.buf.is_full()
     }
 
+    // #[cfg(feature = "spectrum")]
+    // pub fn is_spec_full(&self) -> bool {
+    //     self.buf.welch.is_full()
+    // }
+
     pub fn len(&self) -> usize {
         self.buf.len()
     }

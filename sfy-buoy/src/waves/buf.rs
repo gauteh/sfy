@@ -114,6 +114,9 @@ impl ImuBuf {
         #[cfg(feature = "raw")]
         self.raw_axl.clear();
 
+        #[cfg(feature = "spectrum")]
+        self.welch.reset();
+
         self.filter.reset();
 
         #[cfg(feature = "fir")]
@@ -219,6 +222,9 @@ impl ImuBuf {
                 self.axl.push(A16::from_f32(x).to_u16()).unwrap();
                 self.axl.push(A16::from_f32(y).to_u16()).unwrap();
                 self.axl.push(A16::from_f32(z).to_u16()).unwrap();
+
+                #[cfg(feature = "spectrum")]
+                self.welch.sample(z);
             }
             (None, None, None) => {} // No filter output.
             _ => {

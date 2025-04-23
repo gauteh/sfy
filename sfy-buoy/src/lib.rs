@@ -5,6 +5,7 @@
 #![feature(const_option)]
 #![cfg_attr(not(test), no_std)]
 #![allow(non_upper_case_globals)]
+#![allow(non_snake_case)]
 
 #[cfg(test)]
 extern crate test;
@@ -372,6 +373,8 @@ impl<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> Imu<E
                 })
                 .ok();
         }
+
+        // #cfg[(feature = "spectrum")]
 
         if samples == 0 {
             let elapsed = now - self.last_read; // ms
