@@ -2,7 +2,6 @@
 #![feature(try_blocks)]
 #![feature(portable_simd)]
 #![feature(array_chunks)]
-#![feature(const_option)]
 #![cfg_attr(not(test), no_std)]
 #![allow(non_upper_case_globals)]
 #![allow(non_snake_case)]

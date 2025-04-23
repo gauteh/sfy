@@ -1,4 +1,5 @@
 use heapless::Vec;
+use num_complex::ComplexFloat;
 use static_assertions as sa;
 
 pub const NFFT: usize = 4096;
@@ -16,18 +17,27 @@ pub const WELCH_PACKET_SZ: usize = 124;
 pub const WELCH_OUTN: usize = { 6 * WELCH_PACKET_SZ * 2 } * 4 / 3 + 4;
 
 pub struct Welch {
+    /// Rolling segment. When full, added to spec.
     buf: Vec<f32, NSEG>,
-    spec: Vec<f32, NFFT>,
+
+    /// Real side of spectrum.
+    spec: Vec<f32, { NFFT / 2 }>,
+
+    /// Total number of segments (buf's) that have gone into the spectrum.
     nseg: u16,
 }
 
 impl Welch {
     pub fn new() -> Welch {
-        Welch {
+        let mut w = Welch {
             buf: Vec::new(),
             spec: Vec::new(),
             nseg: 0,
-        }
+        };
+
+        w.reset();
+
+        w
     }
 
     /// Returns duration (in seconds) given sample rate.
@@ -45,6 +55,7 @@ impl Welch {
     pub fn reset(&mut self) {
         self.buf.clear();
         self.spec.clear();
+        self.spec.resize(NFFT / 2, 0.0).unwrap();
     }
 
     /// Add new sample to buf: returns true if segment is full, computed and cleared.
@@ -70,31 +81,44 @@ impl Welch {
         self.buf.clear();
 
         // Overlap
-        self.buf.extend_from_slice(&v[..NOVERLAP]).unwrap();
+        self.buf.extend_from_slice(&v[..(NOVERLAP - 1)]).unwrap();
 
         // Window?
 
         // FFT
         let f = rfft_4096(&mut v);
+        debug_assert_eq!(f.len(), self.spec.len());
+        debug_assert_eq!(f.len(), NFFT / 2);
 
         // Add to spec
-        // XXX:
+        for (v, s) in f.iter().zip(self.spec.iter_mut()) {
+            *s += v.abs();
+        }
+
         self.nseg += 1;
     }
 
-    /// Compute Welch-spectrum.
-    pub fn finalize_spectrum(&mut self) -> Vec<f32, NFFT> {
-        let spec = self.spec.clone();
-        self.reset();
+    /// Compute Welch-spectrum (WARNING: does not reset).
+    pub fn compute_spectrum(&mut self) -> Vec<f32, { NFFT / 2 }> {
+        let mut spec = self.spec.clone();
 
         if self.nseg == 0 {
             return spec;
         } else {
-            // XXX: divide by self.nseg (if > 0)
-            unimplemented!();
+            for v in &mut spec {
+                *v = *v / self.nseg as f32;
+            }
 
             spec
         }
+    }
+
+    /// Compute Welch-spectrum and reset spectrum.
+    pub fn take_spectrum(&mut self) -> Vec<f32, { NFFT / 2 }> {
+        let spec = self.compute_spectrum();
+        self.reset();
+
+        spec
     }
 }
 
@@ -125,5 +149,44 @@ mod tests {
             }
         }
         assert_abs_diff_eq!(w.length(26.), 1890.46153);
+    }
+
+    #[test]
+    fn test_overlap() {
+        let mut w = Welch::new();
+
+        let N = 26 * 20 * 60; // 20 minutes
+        let mut n = 0;
+
+        for i in 0..N {
+            let s = w.sample(0.0);
+            n += 1;
+
+            if s {
+                assert_eq!(w.buf.len(), NOVERLAP);
+            }
+
+            println!("{i} ({n}) => {s}");
+
+            // first segment, no overlap
+            if i < (NSEG - 1) {
+                assert!(!s);
+            } else {
+                if n == NSEG {
+                    assert!(s); // first segment
+                    n = 0;
+                } else {
+                    if n % (NSEG - NOVERLAP) == 0 {
+                        assert!(s); // new segment
+                        n = 0;
+                    } else {
+                        assert!(!s);
+                    }
+                }
+            }
+        }
+
+        let t = 20.0 * 60.0 - (w.buf.len() - NOVERLAP) as f32 / 26.;
+        assert_abs_diff_eq!(w.length(26.), t);
     }
 }

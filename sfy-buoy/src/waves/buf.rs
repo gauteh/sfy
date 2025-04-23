@@ -205,6 +205,9 @@ impl ImuBuf {
             self.axl
                 .push(A16::from_f32(axl.z - SENSORS_GRAVITY_STANDARD as f32).to_u16())
                 .unwrap();
+
+            #[cfg(feature = "spectrum")]
+            self.welch.sample(z);
         }
 
         // Filter and decimate the rotated acceleration.
