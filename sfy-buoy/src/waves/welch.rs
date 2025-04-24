@@ -29,6 +29,8 @@ pub mod hanning {
 // Cut-off frequencies for spectrum.
 pub const f0: f32 = 0.04; // Hz
 pub const f1: f32 = 1.9; // Hz
+pub const fi0: usize = 4;
+pub const fi1: usize = 150;
 
 pub const WELCH_PACKET_SZ: usize = 146;
 
@@ -187,6 +189,36 @@ impl Welch {
     }
 }
 
+pub fn u16_encode(spec: &[f32; NFFT / 2]) -> [u16; WELCH_PACKET_SZ] {
+    use super::wire;
+
+    let spec = &spec[fi0..fi1];
+    debug_assert_eq!(spec.len(), WELCH_PACKET_SZ);
+
+    let mut encode = [0u16; WELCH_PACKET_SZ];
+    let max = spec.iter().max_by(|a, b| a.total_cmp(b)).unwrap();
+
+    for (e, s) in encode.iter_mut().zip(spec) {
+        *e = wire::scale_f32_to_u16(*max, *s);
+    }
+
+    encode
+}
+
+pub fn base64(spec: &[f32; NFFT / 2]) -> Vec<u8, WELCH_OUTN> {
+    let espec = u16_encode(spec);
+
+    let mut b64: Vec<u8, WELCH_OUTN> = Vec::new();
+    b64.resize_default(WELCH_OUTN).unwrap();
+
+    let data = bytemuck::cast_slice(&espec);
+
+    let written = base64::encode_config_slice(data, base64::STANDARD, &mut b64);
+    b64.truncate(written);
+
+    b64
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -273,13 +305,10 @@ mod tests {
             epsilon = 0.001
         );
 
-        let ecorr: f32 = f32::sqrt(NSEG as f32 / hanning::COEFFS.iter().map(|v| v * v).sum::<f32>());
+        let ecorr: f32 =
+            f32::sqrt(NSEG as f32 / hanning::COEFFS.iter().map(|v| v * v).sum::<f32>());
         assert_abs_diff_eq!(ecorr, hanning::ECORR, epsilon = 0.000001);
-        assert_abs_diff_eq!(
-            ecorr,
-            hanning::HANNING_ENERGY_CORRECTION,
-            epsilon = 0.001
-        );
+        assert_abs_diff_eq!(ecorr, hanning::HANNING_ENERGY_CORRECTION, epsilon = 0.001);
     }
 
     #[test]
@@ -328,7 +357,7 @@ mod tests {
 
     #[test]
     fn test_cut_offs() {
-        let w = Welch::new(26.);
+        let mut w = Welch::new(26.);
         let rf = w.rfftfreq();
 
         let i0 = rf.iter().copied().position(|f| f > f0).unwrap();
@@ -340,5 +369,20 @@ mod tests {
         let N = i1 - i0;
         println!("bins: {N}");
         assert_eq!(N, WELCH_PACKET_SZ);
+        println!("payload size: {}", WELCH_OUTN);
+
+        let mut data = npyz::npz::NpzArchive::open("tests/data/welch/welch_test_1.npz").unwrap();
+        let s = data.by_name("s").unwrap().unwrap();
+        for v in s.data::<f64>().unwrap() {
+            w.sample(v.unwrap() as f32);
+        }
+
+        let spec = w.take_spectrum();
+
+        let encoded = u16_encode(&spec);
+        println!("encoded: {}", encoded.len());
+
+        let b64 = base64(&spec);
+        println!("written: {}", b64.len());
     }
 }
