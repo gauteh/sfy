@@ -135,6 +135,11 @@ impl ImuBuf {
         self.axl.is_full()
     }
 
+    #[cfg(feature = "spectrum")]
+    pub fn is_spec_full(&self) -> bool {
+        self.welch.length() > (20. * 60.)
+    }
+
     pub fn len(&self) -> usize {
         self.axl.len() / SAMPLE_SZ
     }

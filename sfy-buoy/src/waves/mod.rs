@@ -46,7 +46,7 @@ pub const GYRO_RANGE: f32 = 1000.; // [dps]
 pub const ACCEL_RANGE: f32 = 2.; // [g]
 #[cfg(feature = "ice")]
 pub const GYRO_RANGE: f32 = 125.; // [dps]
-                                   //
+                                  //
 #[cfg(all(not(feature = "surf"), not(feature = "ice")))]
 pub const ACCEL_RANGE: f32 = 4.; // [g]
 #[cfg(all(not(feature = "surf"), not(feature = "ice")))]
@@ -161,6 +161,11 @@ pub struct Waves<I2C: WriteRead + Write> {
     /// Offset in FIFO _in samples_ (that is one gyro and one accel sample) when timestamp
     /// was set.
     pub fifo_offset: u16,
+
+    #[cfg(feature = "spectrum")]
+    pub spectrum_timestamp: i64,
+    #[cfg(feature = "spectrum")]
+    pub spectrum_fifo_offset: u16,
 }
 
 #[derive(Debug, defmt::Format)]
@@ -203,6 +208,11 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
             lon: 0.0,
             lat: 0.0,
             fifo_offset: 0,
+
+            #[cfg(feature = "spectrum")]
+            spectrum_timestamp: 0,
+            #[cfg(feature = "spectrum")]
+            spectrum_fifo_offset: 0,
         };
 
         defmt::debug!("booting imu..");
@@ -236,6 +246,12 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         // first batch is going to be off in timing.
         self.timestamp = 0;
         self.fifo_offset = 0;
+
+        #[cfg(feature = "spectrum")]
+        {
+            self.spectrum_timestamp = 0;
+            self.spectrum_fifo_offset = 0;
+        }
 
         defmt::debug!("booting imu..");
         self.boot_imu()?;
@@ -468,14 +484,40 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         return Ok((pck,));
     }
 
+    #[cfg(feature = "spectrum")]
+    pub fn take_spectrum(&mut self, now: i64) -> Result<welch::WelchPacket, E> {
+        defmt::debug!("axl: taking spectrum..");
+
+        let time = self.spectrum_timestamp
+            - (self.spectrum_fifo_offset as i64 * self.freq.value() as i64) as i64;
+
+        let spec = self.buf.welch.take_spectrum();
+        self.spectrum_timestamp = now;
+        self.spectrum_fifo_offset = self.imu.fifostatus.diff_fifo(&mut self.i2c)? / 2;
+
+        let pck = welch::WelchPacket {
+            timestamp: time,
+            spec,
+        };
+
+        defmt::debug!(
+            "axl: spectrum ready, timestamp: {}, new timestamp: {}, new offset: {}",
+            time,
+            self.spectrum_timestamp,
+            self.spectrum_fifo_offset
+        );
+
+        Ok(pck)
+    }
+
     pub fn is_full(&self) -> bool {
         self.buf.is_full()
     }
 
-    // #[cfg(feature = "spectrum")]
-    // pub fn is_spec_full(&self) -> bool {
-    //     self.buf.welch.is_full()
-    // }
+    #[cfg(feature = "spectrum")]
+    pub fn is_spec_full(&self) -> bool {
+        self.buf.is_spec_full()
+    }
 
     pub fn len(&self) -> usize {
         self.buf.len()
@@ -515,6 +557,13 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         let mut samples = 0;
 
         for _ in 0..n {
+            #[cfg(feature = "spectrum")]
+            if self.buf.is_spec_full() || self.buf.is_full() {
+                defmt::debug!("axl or spec buf is full, waiting to be cleared..");
+                break;
+            }
+
+            #[cfg(not(feature = "spectrum"))]
             if self.buf.is_full() {
                 defmt::debug!("axl buf is full, waiting to be cleared..");
                 break;

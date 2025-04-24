@@ -373,6 +373,11 @@ impl<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> Imu<E
                 .ok();
         }
 
+        #[cfg(feature = "spectrum")]
+        if self.waves.is_spec_full() {
+
+        }
+
         if samples == 0 {
             let elapsed = now - self.last_read; // ms
                                                 // will be a large jump when getting time.

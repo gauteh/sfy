@@ -54,6 +54,11 @@ pub struct Welch {
     nseg: u16,
 }
 
+pub struct WelchPacket {
+    pub timestamp: i64, // [ms] start of samples
+    pub spec: [f32; NFFT / 2],
+}
+
 impl Welch {
     pub fn new(fs: f32) -> Welch {
         let scaling = 1.0 / (fs * hanning::CSQRSUM);
