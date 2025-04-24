@@ -223,6 +223,7 @@ pub fn base64(spec: &[f32; NFFT / 2]) -> Vec<u8, WELCH_OUTN> {
 mod tests {
     use super::*;
     use approx::*;
+    use test::Bencher;
 
     #[test]
     fn test_length() {
@@ -380,9 +381,62 @@ mod tests {
         let spec = w.take_spectrum();
 
         let encoded = u16_encode(&spec);
-        println!("encoded: {}", encoded.len()*2);
+        println!("encoded: {}", encoded.len() * 2);
 
         let b64 = base64(&spec);
         println!("written: {}", b64.len());
+    }
+
+    #[bench]
+    fn welch_synth1_20min_segments(b: &mut Bencher) {
+        let mut data = npyz::npz::NpzArchive::open("tests/data/welch/welch_test_1.npz").unwrap();
+        let s = data.by_name("s").unwrap().unwrap();
+        let s2 = s.into_vec::<f64>().unwrap();
+
+        let mut w = Welch::new(26.);
+
+        b.iter(|| {
+            for v in &s2 {
+                w.sample(*v as f32);
+            }
+
+            w.reset();
+        });
+    }
+
+    #[bench]
+    fn welch_synth1_20min_specgram(b: &mut Bencher) {
+        let mut data = npyz::npz::NpzArchive::open("tests/data/welch/welch_test_1.npz").unwrap();
+        let s = data.by_name("s").unwrap().unwrap();
+        let s2 = s.into_vec::<f64>().unwrap();
+
+        let mut w = Welch::new(26.);
+        for v in &s2 {
+            w.sample(*v as f32);
+        }
+
+        b.iter(|| {
+            test::black_box(w.compute_spectrum());
+        });
+    }
+
+    #[bench]
+    fn welch_synth1_20min_serialize(b: &mut Bencher) {
+        let mut data = npyz::npz::NpzArchive::open("tests/data/welch/welch_test_1.npz").unwrap();
+        let s = data.by_name("s").unwrap().unwrap();
+        let s2 = s.into_vec::<f64>().unwrap();
+
+        let mut w = Welch::new(26.);
+        for v in &s2 {
+            w.sample(*v as f32);
+        }
+
+        let spec = w.take_spectrum();
+
+        b.iter(|| {
+            // let encoded = u16_encode(&spec);
+            let b64 = base64(&spec);
+            b64
+        });
     }
 }
