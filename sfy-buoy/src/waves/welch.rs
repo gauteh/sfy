@@ -34,6 +34,7 @@ pub const WELCH_PACKET_SZ: usize = 124;
 /// Maximum length of base64 string
 pub const WELCH_OUTN: usize = { 6 * WELCH_PACKET_SZ * 2 } * 4 / 3 + 4;
 
+/// Rolling Welch spectrum computation (PSD, density mode). Based on scipy.welch implementation.
 pub struct Welch {
     /// Frequency
     fs: f32,
@@ -44,6 +45,7 @@ pub struct Welch {
 
     /// Real side of spectrum.
     spec: Vec<f32, { NFFT / 2 }>,
+    scaling: f32,
 
     /// Total number of segments (buf's) that have gone into the spectrum.
     nseg: u16,
@@ -51,11 +53,15 @@ pub struct Welch {
 
 impl Welch {
     pub fn new(fs: f32) -> Welch {
+        let scaling = 1.0 / (fs * hanning::CSQRSUM);
+        let scaling = 2.0 * scaling; // onesided / psd
+
         let mut w = Welch {
             fs,
             buf: Vec::new(),
             mean: 0.0,
             spec: Vec::new(),
+            scaling,
             nseg: 0,
         };
 
@@ -87,6 +93,20 @@ impl Welch {
     /// Δf between frequency bins.
     pub fn frequency_resolution(&self) -> f32 {
         self.fs / NFFT as f32
+    }
+
+    /// Frequency bins
+    pub fn rfftfreq(&self) -> [f32; NFFT / 2] {
+        sa::const_assert_eq!(NFFT % 2, 0);
+
+        let fsr = self.frequency_resolution();
+
+        let mut f = [0f32; NFFT / 2];
+        for (i, ff) in f.iter_mut().enumerate() {
+            *ff = i as f32 * fsr;
+        }
+
+        f
     }
 
     /// Add new sample to buf: returns true if segment is full, computed and cleared.
@@ -128,13 +148,15 @@ impl Welch {
         debug_assert_eq!(f.len(), self.spec.len());
         debug_assert_eq!(f.len(), NFFT / 2);
 
-        // Add energy to spectrum
-        let scaling = 1.0 / (self.fs * hanning::CSQRSUM);
-        let scaling = 2.0 * scaling; // onesided / psd
+        // quoting microfft docs:
+        // "since the real-valued coefficient at the Nyquist frequency is packed into the
+        //  imaginary part of the DC bin, it must be cleared before computing the amplitudes"
+        f[0].im = 0.0;
 
+        // Add energy to spectrum
         for (v, s) in f.iter().zip(self.spec.iter_mut()) {
             let e = (v * v.conj()).re(); // energy: v * ~v = r^2 = |v|^2
-            *s += e * scaling;
+            *s += e * self.scaling;
         }
 
         self.nseg += 1;
@@ -273,8 +295,33 @@ mod tests {
 
         use std::fmt::Write;
         let mut str = std::string::String::new();
-        writeln!(&mut str, "pxx = {:?}\n", spec);
+        writeln!(&mut str, "pxx = {:?}\n", spec).unwrap();
 
-        std::fs::write("tests/data/welch/welch_test_1_rust_pxx", &str);
+        std::fs::write("tests/data/welch/welch_test_1_rust_pxx", &str).unwrap();
+
+        // use same welch instance again, to test if reset works.
+        let mut data = npyz::npz::NpzArchive::open("tests/data/welch/welch_test_1.npz").unwrap();
+        let s = data.by_name("s").unwrap().unwrap();
+        for v in s.data::<f64>().unwrap() {
+            w.sample(v.unwrap() as f32);
+        }
+        let spec2 = w.take_spectrum();
+
+        assert_eq!(spec, spec2);
+    }
+
+    #[test]
+    fn test_welch_rfftfreq() {
+        let w = Welch::new(26.);
+        let mut data = npyz::npz::NpzArchive::open("tests/data/welch/welch_test_1.npz").unwrap();
+        let f = data.by_name("f").unwrap().unwrap();
+
+        let rf = w.rfftfreq();
+
+        assert_eq!(rf.len(), f.len() as usize - 1);
+
+        for (ff, rff) in f.data::<f64>().unwrap().zip(&rf) {
+            assert_abs_diff_eq!(ff.unwrap() as f32, rff);
+        }
     }
 }
