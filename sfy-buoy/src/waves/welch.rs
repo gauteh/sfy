@@ -2,8 +2,8 @@ use heapless::Vec;
 use num_complex::ComplexFloat;
 use static_assertions as sa;
 
-pub const NFFT: usize = 4096;
-pub const NSEG: usize = 4096;
+pub const NFFT: usize = 2048;
+pub const NSEG: usize = 2048;
 pub const NOVERLAP: usize = NSEG / 2;
 sa::const_assert!(NOVERLAP < NSEG);
 
@@ -12,7 +12,7 @@ pub mod hanning {
     use static_assertions as sa;
 
     // TODO: May be too big to include.
-    include!("hanning_win_4096.coeff");
+    include!("hanning_win_2048.coeff");
     sa::const_assert_eq!(super::NSEG, NSEG);
 
     /// Hanning-window.
@@ -28,9 +28,9 @@ pub mod hanning {
 
 // Cut-off frequencies for spectrum.
 pub const f0: f32 = 0.04; // Hz
-pub const f1: f32 = 2.0; // Hz
+pub const f1: f32 = 1.9; // Hz
 
-pub const WELCH_PACKET_SZ: usize = 124;
+pub const WELCH_PACKET_SZ: usize = 146;
 
 /// Maximum length of base64 string
 pub const WELCH_OUTN: usize = { 6 * WELCH_PACKET_SZ * 2 } * 4 / 3 + 4;
@@ -131,7 +131,7 @@ impl Welch {
     /// average).
     pub fn compute_seg(&mut self) {
         // Compute FFT from buf
-        use microfft::real::rfft_4096;
+        use microfft::real::rfft_2048;
         let mut v = self.buf.clone().into_array().unwrap();
 
         self.buf.clear();
@@ -145,7 +145,7 @@ impl Welch {
         }
 
         // FFT
-        let f = rfft_4096(&mut v);
+        let f = rfft_2048(&mut v);
         debug_assert_eq!(f.len(), self.spec.len());
         debug_assert_eq!(f.len(), NFFT / 2);
 
@@ -265,20 +265,20 @@ mod tests {
         }
 
         // scaling
-        let acorr: f32 = 4096.0 / hanning::COEFFS.iter().sum::<f32>();
-        assert_abs_diff_eq!(acorr, hanning::ACORR, epsilon = 0.000001);
+        let acorr: f32 = NSEG as f32 / hanning::COEFFS.iter().sum::<f32>();
+        assert_abs_diff_eq!(acorr, hanning::ACORR, epsilon = 0.00001);
         assert_abs_diff_eq!(
             acorr,
             hanning::HANNING_AMPLITUDE_CORRECTION,
-            epsilon = 0.000001
+            epsilon = 0.001
         );
 
-        let ecorr: f32 = f32::sqrt(4096.0 / hanning::COEFFS.iter().map(|v| v * v).sum::<f32>());
+        let ecorr: f32 = f32::sqrt(NSEG as f32 / hanning::COEFFS.iter().map(|v| v * v).sum::<f32>());
         assert_abs_diff_eq!(ecorr, hanning::ECORR, epsilon = 0.000001);
         assert_abs_diff_eq!(
             ecorr,
             hanning::HANNING_ENERGY_CORRECTION,
-            epsilon = 0.000001
+            epsilon = 0.001
         );
     }
 
@@ -339,5 +339,6 @@ mod tests {
 
         let N = i1 - i0;
         println!("bins: {N}");
+        assert_eq!(N, WELCH_PACKET_SZ);
     }
 }

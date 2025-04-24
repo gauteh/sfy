@@ -1,6 +1,6 @@
 import numpy as np
 
-NSEG = 4096
+NSEG = 2048
 
 win = np.hanning(NSEG)
 acorr = NSEG / np.sum(win)

@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 # make a few examples we can test against in sfy-buoy
 
 fs = 26.
-nseg = 4096
+nseg = 2048
 nfft = nseg
 noverlap = nseg / 2
 
