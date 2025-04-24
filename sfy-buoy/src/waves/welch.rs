@@ -11,6 +11,7 @@ pub mod hanning {
     use core::f32::consts::PI;
     use static_assertions as sa;
 
+    // TODO: May be too big to include.
     include!("hanning_win_4096.coeff");
     sa::const_assert_eq!(super::NSEG, NSEG);
 
@@ -26,8 +27,8 @@ pub mod hanning {
 }
 
 // Cut-off frequencies for spectrum.
-pub const f0: f32 = 0.01; // Hz
-pub const f1: f32 = 5.0; // Hz
+pub const f0: f32 = 0.04; // Hz
+pub const f1: f32 = 2.0; // Hz
 
 pub const WELCH_PACKET_SZ: usize = 124;
 
@@ -323,5 +324,20 @@ mod tests {
         for (ff, rff) in f.data::<f64>().unwrap().zip(&rf) {
             assert_abs_diff_eq!(ff.unwrap() as f32, rff);
         }
+    }
+
+    #[test]
+    fn test_cut_offs() {
+        let w = Welch::new(26.);
+        let rf = w.rfftfreq();
+
+        let i0 = rf.iter().copied().position(|f| f > f0).unwrap();
+        let i1 = rf.iter().copied().position(|f| f > f1).unwrap();
+
+        println!("i0 = {i0} => {}", rf[i0]);
+        println!("i1 = {i1} => {}", rf[i1]);
+
+        let N = i1 - i0;
+        println!("bins: {N}");
     }
 }
