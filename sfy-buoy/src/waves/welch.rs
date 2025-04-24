@@ -40,6 +40,7 @@ pub struct Welch {
 
     /// Rolling segment. When full, added to spec.
     buf: Vec<f32, NSEG>,
+    mean: f32,
 
     /// Real side of spectrum.
     spec: Vec<f32, { NFFT / 2 }>,
@@ -53,6 +54,7 @@ impl Welch {
         let mut w = Welch {
             fs,
             buf: Vec::new(),
+            mean: 0.0,
             spec: Vec::new(),
             nseg: 0,
         };
@@ -60,6 +62,14 @@ impl Welch {
         w.reset();
 
         w
+    }
+
+    pub fn reset(&mut self) {
+        self.buf.clear();
+        self.spec.clear();
+        self.spec.resize(NFFT / 2, 0.0).unwrap();
+        self.nseg = 0;
+        self.mean = 0.0;
     }
 
     /// Returns duration (in seconds) given sample rate.
@@ -79,19 +89,13 @@ impl Welch {
         self.fs / NFFT as f32
     }
 
-    pub fn reset(&mut self) {
-        self.buf.clear();
-        self.spec.clear();
-        self.spec.resize(NFFT / 2, 0.0).unwrap();
-    }
-
     /// Add new sample to buf: returns true if segment is full, computed and cleared.
     pub fn sample(&mut self, z: f32) -> bool {
         unsafe { self.buf.push_unchecked(z) };
+        self.mean += z / NSEG as f32;
 
         if self.buf.is_full() {
             self.compute_seg();
-            self.sample(z);
 
             return true;
         } else {
@@ -112,13 +116,11 @@ impl Welch {
         self.buf.clear();
 
         // Copy end to next segment, so that segments overlap.
-        self.buf
-            .extend_from_slice(&v[(NSEG - NOVERLAP + 1)..])
-            .unwrap();
+        self.buf.extend_from_slice(&v[(NSEG - NOVERLAP)..]).unwrap();
 
         // Window & detrend: Hanning window
         for (i, vv) in v.iter_mut().enumerate() {
-            *vv = hanning::COEFFS[i] * (*vv - super::buf::SENSORS_GRAVITY_STANDARD as f32);
+            *vv = hanning::COEFFS[i] * (*vv - self.mean);
         }
 
         // FFT
@@ -127,7 +129,8 @@ impl Welch {
         debug_assert_eq!(f.len(), NFFT / 2);
 
         // Add energy to spectrum
-        let scaling = 1.0 / self.fs / hanning::ECORR;
+        let scaling = 1.0 / (self.fs * hanning::CSQRSUM);
+        let scaling = 2.0 * scaling; // onesided / psd
 
         for (v, s) in f.iter().zip(self.spec.iter_mut()) {
             let e = (v * v.conj()).re(); // energy: v * ~v = r^2 = |v|^2
@@ -254,5 +257,24 @@ mod tests {
             hanning::HANNING_ENERGY_CORRECTION,
             epsilon = 0.000001
         );
+    }
+
+    #[test]
+    fn test_welch_synth1() {
+        let mut w = Welch::new(26.);
+        let mut data = npyz::npz::NpzArchive::open("tests/data/welch/welch_test_1.npz").unwrap();
+        let s = data.by_name("s").unwrap().unwrap();
+        for v in s.data::<f64>().unwrap() {
+            w.sample(v.unwrap() as f32);
+        }
+
+        let spec = w.take_spectrum();
+        println!("{:?}", spec);
+
+        use std::fmt::Write;
+        let mut str = std::string::String::new();
+        writeln!(&mut str, "pxx = {:?}\n", spec);
+
+        std::fs::write("tests/data/welch/welch_test_1_rust_pxx", &str);
     }
 }
