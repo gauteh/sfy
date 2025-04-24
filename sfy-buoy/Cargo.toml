@@ -46,6 +46,7 @@ git = "https://github.com/gauteh/notecard-rs"
 [dev-dependencies]
 half = { version = "2.4", features = [ "use-intrinsics", "bytemuck", "serde" ] }
 approx = { version = "0.5" }
+npyz = { version = "0.8", features = [ "npz" ] }
 
 [features]
 default = [ "build-bin", "ext-gps", "spectrum" ]

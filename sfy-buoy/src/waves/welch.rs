@@ -1,5 +1,3 @@
-use core::f32::consts::PI;
-
 use heapless::Vec;
 use num_complex::ComplexFloat;
 use static_assertions as sa;
@@ -8,6 +6,24 @@ pub const NFFT: usize = 4096;
 pub const NSEG: usize = 4096;
 pub const NOVERLAP: usize = NSEG / 2;
 sa::const_assert!(NOVERLAP < NSEG);
+
+pub mod hanning {
+    use core::f32::consts::PI;
+    use static_assertions as sa;
+
+    include!("hanning_win_4096.coeff");
+    sa::const_assert_eq!(super::NSEG, NSEG);
+
+    /// Hanning-window.
+    pub fn hanning(i: usize, N: usize) -> f32 {
+        assert!(i < N);
+        0.5 - 0.5 * f32::cos((2.0 * PI * i as f32) / (N - 1) as f32)
+    }
+
+    pub const HANNING_ENERGY_CORRECTION: f32 = 1.63319253834869915209537793998606503009796142578125; // for large N: NSEG/sum(window)
+    pub const HANNING_AMPLITUDE_CORRECTION: f32 = 2.00048840048840048666534130461513996124267578125;
+    // for large N: NSEG/sum(window*window)
+}
 
 // Cut-off frequencies for spectrum.
 pub const f0: f32 = 0.01; // Hz
@@ -102,9 +118,7 @@ impl Welch {
 
         // Window & detrend: Hanning window
         for (i, vv) in v.iter_mut().enumerate() {
-            *vv = HANNING_AMPLITUDE_CORRECTION
-                * hanning(i, NSEG)
-                * (*vv - super::buf::SENSORS_GRAVITY_STANDARD as f32);
+            *vv = hanning::COEFFS[i] * (*vv - super::buf::SENSORS_GRAVITY_STANDARD as f32);
         }
 
         // FFT
@@ -113,19 +127,19 @@ impl Welch {
         debug_assert_eq!(f.len(), NFFT / 2);
 
         // Add energy to spectrum
-        let fsr = self.frequency_resolution();
+        let scaling = 1.0 / self.fs / hanning::ECORR;
 
         for (v, s) in f.iter().zip(self.spec.iter_mut()) {
-            let e = (v * v.conj()).re(); // energy
-            *s += e / (NFFT * NFFT) as f32 / fsr;
+            let e = (v * v.conj()).re(); // energy: v * ~v = r^2 = |v|^2
+            *s += e * scaling;
         }
 
         self.nseg += 1;
     }
 
     /// Compute Welch-spectrum (WARNING: does not reset).
-    pub fn compute_spectrum(&mut self) -> Vec<f32, { NFFT / 2 }> {
-        let mut spec = self.spec.clone();
+    pub fn compute_spectrum(&mut self) -> [f32; NFFT / 2] {
+        let mut spec = self.spec.clone().into_array::<{ NFFT / 2 }>().unwrap();
 
         if self.nseg == 0 {
             return spec;
@@ -139,22 +153,13 @@ impl Welch {
     }
 
     /// Compute Welch-spectrum and reset spectrum.
-    pub fn take_spectrum(&mut self) -> Vec<f32, { NFFT / 2 }> {
+    pub fn take_spectrum(&mut self) -> [f32; NFFT / 2] {
         let spec = self.compute_spectrum();
         self.reset();
 
         spec
     }
 }
-
-/// Hanning-window.
-pub fn hanning(i: usize, N: usize) -> f32 {
-    assert!(i < N);
-    0.5 - 0.5 * f32::cos((2.0 * PI * i as f32) / (N - 1) as f32)
-}
-
-pub const HANNING_ENERGY_CORRECTION: f32 = 1.63; // for large N
-pub const HANNING_AMPLITUDE_CORRECTION: f32 = 2.0; // for large N
 
 #[cfg(test)]
 mod tests {
@@ -222,5 +227,32 @@ mod tests {
 
         let t = 20.0 * 60.0 - (w.buf.len() - NOVERLAP) as f32 / 26.;
         assert_abs_diff_eq!(w.length(), t);
+    }
+
+    #[test]
+    fn test_hanning_window() {
+        for i in 0..NSEG {
+            let w = hanning::hanning(i, NSEG);
+
+            // pre-computed using np.hanning
+            assert_abs_diff_eq!(w, hanning::COEFFS[i], epsilon = 0.000001);
+        }
+
+        // scaling
+        let acorr: f32 = 4096.0 / hanning::COEFFS.iter().sum::<f32>();
+        assert_abs_diff_eq!(acorr, hanning::ACORR, epsilon = 0.000001);
+        assert_abs_diff_eq!(
+            acorr,
+            hanning::HANNING_AMPLITUDE_CORRECTION,
+            epsilon = 0.000001
+        );
+
+        let ecorr: f32 = f32::sqrt(4096.0 / hanning::COEFFS.iter().map(|v| v * v).sum::<f32>());
+        assert_abs_diff_eq!(ecorr, hanning::ECORR, epsilon = 0.000001);
+        assert_abs_diff_eq!(
+            ecorr,
+            hanning::HANNING_ENERGY_CORRECTION,
+            epsilon = 0.000001
+        );
     }
 }
