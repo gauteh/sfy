@@ -44,7 +44,6 @@ pub mod waves;
 #[cfg(feature = "ext-gps")]
 pub mod gps;
 
-
 use axl::AxlPacket;
 #[cfg(feature = "storage")]
 use storage::Storage;
@@ -78,6 +77,9 @@ pub const NOTEQ_SZ: usize = 6;
 #[cfg(feature = "ext-gps")]
 pub const EPGS_SZ: usize = 6;
 
+#[cfg(feature = "spectrum")]
+pub const SPECQ_SZ: usize = 4;
+
 #[cfg(all(
     not(feature = "raw"),
     not(feature = "storage"),
@@ -98,6 +100,10 @@ pub static mut STORAGEQ: heapless::spsc::Queue<AxlPacketT, STORAGEQ_SZ> =
 
 /// Queue from Storage to Notecard
 pub static mut NOTEQ: heapless::spsc::Queue<AxlPacket, NOTEQ_SZ> = heapless::spsc::Queue::new();
+
+/// Spectrums ready to be sent
+#[cfg(feature = "spectrum")]
+pub static mut SPECQ: heapless::spsc::Queue<waves::welch::WelchPacket, SPECQ_SZ> = heapless::spsc::Queue::new();
 
 pub const FUTURE: NaiveDateTime = DateTime::from_timestamp(2550564072, 0).unwrap().naive_utc();
 
@@ -326,6 +332,10 @@ impl Location {
 pub struct Imu<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> {
     pub queue: heapless::spsc::Producer<'static, ImuAxlPacketT, IMUQ_SZ>,
     waves: waves::Waves<I>,
+
+    #[cfg(feature = "spectrum")]
+    spec_queue: heapless::spsc::Producer<'static, waves::welch::WelchPacket, SPECQ_SZ>,
+
     last_read: i64,
 }
 
@@ -333,9 +343,13 @@ impl<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> Imu<E
     pub fn new(
         waves: waves::Waves<I>,
         queue: heapless::spsc::Producer<'static, ImuAxlPacketT, IMUQ_SZ>,
+        #[cfg(feature = "spectrum")]
+        spec_queue: heapless::spsc::Producer<'static, waves::welch::WelchPacket, SPECQ_SZ>,
     ) -> Imu<E, I> {
         Imu {
             queue,
+            #[cfg(feature = "spectrum")]
+            spec_queue,
             waves,
             last_read: 0,
         }
@@ -375,7 +389,20 @@ impl<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> Imu<E
 
         #[cfg(feature = "spectrum")]
         if self.waves.is_spec_full() {
+            debug!("spectrum is full, pushing to queue");
+            let pck = self.waves.take_spectrum(now)?;
 
+            trace!("collect remaining samples, to avoid overrun.");
+            samples += self.waves.read_and_filter()?;
+
+            self.spec_queue
+                .enqueue(pck)
+                .inspect_err(|_| {
+                    error!("spectrum queue is full, discarding data.");
+
+                    log::log("Spectrum queue is full: discarding package.");
+                })
+                .ok();
         }
 
         if samples == 0 {
