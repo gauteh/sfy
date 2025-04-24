@@ -35,7 +35,7 @@ pub const fi1: usize = 146;
 pub const WELCH_PACKET_SZ: usize = fi1 - fi0;
 
 /// Maximum length of base64 string
-pub const WELCH_OUTN: usize = { 6 * WELCH_PACKET_SZ * 2 } * 4 / 3 + 4;
+pub const WELCH_OUTN: usize = { WELCH_PACKET_SZ * 2 } * 4 / 3 + 4;
 
 /// Rolling Welch spectrum computation (PSD, density mode). Based on scipy.welch implementation.
 pub struct Welch {
