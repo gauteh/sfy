@@ -28,11 +28,11 @@ pub mod hanning {
 
 // Cut-off frequencies for spectrum.
 pub const f0: f32 = 0.04; // Hz
-pub const f1: f32 = 1.9; // Hz
+pub const f1: f32 = 1.85; // Hz
 pub const fi0: usize = 4;
-pub const fi1: usize = 150;
+pub const fi1: usize = 146;
 
-pub const WELCH_PACKET_SZ: usize = 146;
+pub const WELCH_PACKET_SZ: usize = fi1 - fi0;
 
 /// Maximum length of base64 string
 pub const WELCH_OUTN: usize = { 6 * WELCH_PACKET_SZ * 2 } * 4 / 3 + 4;
@@ -380,7 +380,7 @@ mod tests {
         let spec = w.take_spectrum();
 
         let encoded = u16_encode(&spec);
-        println!("encoded: {}", encoded.len());
+        println!("encoded: {}", encoded.len()*2);
 
         let b64 = base64(&spec);
         println!("written: {}", b64.len());
