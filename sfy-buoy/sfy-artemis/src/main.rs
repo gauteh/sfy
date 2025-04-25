@@ -53,6 +53,9 @@ use sfy::{Imu, Location, SharedState, State, NOTEQ};
 #[cfg(feature = "defmt-serial")]
 use static_cell::StaticCell;
 
+#[cfg(feature = "spectrum")]
+use sfy::SPECQ;
+
 mod log;
 
 /// This static is used to transfer ownership of the IMU subsystem to the interrupt handler.
@@ -209,6 +212,9 @@ fn main() -> ! {
     #[cfg(not(feature = "storage"))]
     let (imu_p, mut imu_queue) = unsafe { NOTEQ.split() };
 
+    #[cfg(feature = "spectrum")]
+    let (spec_p, mut spec_queue) = unsafe { SPECQ.split() };
+
     info!("Setting up Notecarrier..");
     let mut note = Notecarrier::new(i2c4, &mut delay).unwrap();
 
@@ -278,7 +284,11 @@ fn main() -> ! {
     info!("Enable IMU.");
     waves.enable_fifo(&mut delay).unwrap();
 
+    #[cfg(not(feature = "spectrum"))]
     let imu = sfy::Imu::new(waves, imu_p);
+
+    #[cfg(feature = "spectrum")]
+    let imu = sfy::Imu::new(waves, imu_p, spec_p);
 
     // Move IMU into temporary variable for moving it into the `RTC` interrupt
     // routine, _before_ we enable interrupts.
@@ -339,8 +349,15 @@ fn main() -> ! {
         const LOOP_DELAY: u32 = 1_000;
 
         // Process data and communication for the Notecard.
+        #[cfg(not(feature = "spectrum"))]
+        let capacity_low = (imu_queue.capacity() - imu_queue.len()) < 3;
+
+        #[cfg(feature = "spectrum")]
+        let capacity_low = (imu_queue.capacity() - imu_queue.len()) < 3
+            || (spec_queue.capacity() - spec_queue.len()) < 2;
+
         if ((now.unwrap_or(sfy::FUTURE.and_utc().timestamp_millis()) - last) > LOOP_DELAY as i64)
-            || ((imu_queue.capacity() - imu_queue.len()) < 3
+            || (capacity_low
                 && (now.unwrap_or(sfy::FUTURE.and_utc().timestamp_millis()) - last)
                     > SHORT_LOOP_DELAY as i64)
         {
@@ -380,6 +397,13 @@ fn main() -> ! {
                 .ok();
 
             let nd = note.drain_queue(&mut imu_queue, &mut delay);
+
+            // TODO: drain spectrum queue
+            #[cfg(feature = "spectrum")]
+            {
+                let nspec = note.drain_spec_queue(&mut spec_queue, &mut delay);
+            }
+
             let ns = note.check_and_sync(&mut delay);
 
             match (l, nd, ns) {

@@ -1,10 +1,13 @@
-use crate::axl::{AxlPacket, AXL_OUTN};
 use blues_notecard::{self as notecard, card::Transport, NoteError, Notecard, NotecardConfig};
 use core::ops::{Deref, DerefMut};
 use embedded_hal::blocking::delay::DelayMs;
 use embedded_hal::blocking::i2c::{Read, Write};
 
+use crate::axl::{AxlPacket, AXL_OUTN};
 use crate::NOTEQ_SZ;
+
+#[cfg(feature = "spectrum")]
+use crate::{waves::welch::WelchPacket, SPECQ_SZ};
 
 pub const BUOYSN: Option<&str> = option_env!("BUOYSN");
 pub const BUOYPR: Option<&str> = option_env!("BUOYPR");
@@ -18,8 +21,24 @@ pub const EXT_APN: Option<&str> = option_env!("SFY_EXT_SIM_APN");
 include!(concat!(env!("OUT_DIR"), "/config.rs"));
 
 /// Initialize sync when storage use is above this percentage.
+#[cfg(not(feature = "spectrum"))]
+pub const NOTECARD_STORAGE_INIT_SYNC: u32 = 65;
+#[cfg(not(feature = "spectrum"))]
+pub const NOTECARD_STORAGE_CAPACITY_PACKAGES: usize = 75;
+
+#[cfg(feature = "spectrum")]
 pub const NOTECARD_STORAGE_INIT_SYNC: u32 = 65;
 
+#[cfg(feature = "spectrum")]
+pub const NOTECARD_STORAGE_INIT_SYNC_NTN: u32 = 75;
+
+#[cfg(feature = "spectrum")]
+pub const NOTECARD_STORAGE_CAPACITY_PACKAGES: usize = 70;
+
+#[cfg(feature = "spectrum")]
+pub const NOTECARD_STORAGE_CAPACITY_NTN_PACKAGES: usize = 80;
+
+#[cfg(feature = "spectrum")]
 const STARNOTE_PORT_SPEC: u16 = 10;
 
 pub struct Notecarrier<I2C: Read + Write> {
@@ -28,6 +47,10 @@ pub struct Notecarrier<I2C: Read + Write> {
     device: Option<heapless::String<40>>,
     #[allow(unused)]
     sn: Option<heapless::String<120>>,
+
+    #[cfg(feature = "spectrum")]
+    /// Last time a sync had to use NTN mode (seconds since epoch, as returned from notecard)
+    last_sync_ntn: Option<u32>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default, defmt::Format, PartialEq)]
@@ -575,7 +598,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             // TODO: if status was over 75 last time, don't spam notecard with status requests.
             let status = self.note.card().status(delay)?.wait(delay)?;
 
-            if status.storage > 75 {
+            if status.storage > NOTECARD_STORAGE_CAPACITY_PACKAGES {
                 // wait until notecard has synced.
                 defmt::warn!("notecard is more than 75% full, not adding more notes until sync is done: queue sz: {}", queue.len());
                 return Ok(0);
@@ -611,6 +634,53 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         Ok(tsz)
     }
 
+    #[cfg(feature = "spectrum")]
+    pub fn drain_spec_queue(
+        &mut self,
+        queue: &mut heapless::spsc::Consumer<'static, WelchPacket, SPECQ_SZ>,
+        delay: &mut impl DelayMs<u16>,
+    ) -> Result<usize, NoteError> {
+        let mut tsz = 0;
+
+        while let Some(pck) = queue.dequeue() {
+            let status = self.note.card().status(delay)?.wait(delay)?;
+
+            if status.storage > 80 {
+                // wait until notecard has synced.
+                defmt::warn!("notecard is more than 80% full, not adding more notes until sync is done: queue sz: {}", queue.len());
+                return Ok(0);
+            }
+
+            defmt::info!(
+                "sending package: note queue sz (after dequeue): {}",
+                queue.len()
+            );
+            match self.send_spec(&pck, delay) {
+                Ok(sz) => {
+                    tsz += sz;
+                }
+                Err(e) => {
+                    defmt::error!(
+                        "Error while sending spectrum to notecard: {:?}, retrying..",
+                        e
+                    );
+                    match self.send_spec(&pck, delay) {
+                        Ok(sz) => {
+                            tsz += sz;
+                        }
+                        Err(e) => {
+                            defmt::error!("Error while sending spectrum to notecard: {:?}, discarding package.", e);
+                            return Err(e);
+                        }
+                    }
+                }
+            }
+        }
+
+        // defmt::debug!("done draining imu queue: {}", queue.len());
+        Ok(tsz)
+    }
+
     /// Send queued ext-gps packages to the notecard.
     #[cfg(feature = "ext-gps")]
     pub fn drain_egps_queue(
@@ -625,7 +695,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             // TODO: if status was over 75 last time, don't spam notecard with status requests.
             let status = self.note.card().status(delay)?.wait(delay)?;
 
-            if status.storage > 75 {
+            if status.storage > NOTECARD_STORAGE_CAPACITY_PACKAGES {
                 // wait until notecard has synced.
                 defmt::warn!("notecard is more than 75% full, not adding more notes until sync is done: queue sz: {}", queue.len());
                 return Ok(0);
@@ -679,6 +749,29 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             defmt::trace!("card.wireless: {}", wireless);
         }
 
+        // TODO: When on NTN.. or if last connection was NTN, don't try to sync axl notes, only
+        // spectrum notes.
+        #[cfg(feature = "spectrum")]
+        {
+            let wireless = self
+                .note
+                .card()
+                .wireless(delay, None, None, None, None)?
+                .wait(delay)?;
+            defmt::trace!("card.wireless: {}", wireless);
+            if wireless.mode.map(|o| o == "ntn").unwrap_or(false) {
+                let time = self.note.card().time(delay)?.wait(delay)?;
+                if let Some(time) = time.time {
+                    defmt::trace!("spectrum: setting last sync ntn: {}", time);
+                    self.last_sync_ntn = Some(time);
+                }
+            } else {
+                defmt::trace!("spectrum: reseting last sync ntn");
+                self.last_sync_ntn = None;
+            }
+        }
+
+        #[cfg(not(feature = "spectrum"))]
         if status.storage > NOTECARD_STORAGE_INIT_SYNC as usize {
             if sync_status.requested.is_none() {
                 defmt::warn!(
