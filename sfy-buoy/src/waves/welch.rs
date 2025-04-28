@@ -134,6 +134,7 @@ impl Welch {
     /// average).
     pub fn compute_seg(&mut self) {
         // Compute FFT from buf
+        defmt::info!("welch: computing segment and adding to spectrum..");
         use microfft::real::rfft_2048;
         let mut v = self.buf.clone().into_array().unwrap();
 
@@ -164,10 +165,12 @@ impl Welch {
         }
 
         self.nseg += 1;
+        defmt::info!("welch: done (nseg: {}, length: {} seconds).", self.nseg, self.length());
     }
 
     /// Compute Welch-spectrum (WARNING: does not reset).
     pub fn compute_spectrum(&mut self) -> [f32; NFFT / 2] {
+        defmt::info!("welch: computing spectrum..");
         let mut spec = self.spec.clone().into_array::<{ NFFT / 2 }>().unwrap();
 
         if self.nseg == 0 {
@@ -183,6 +186,7 @@ impl Welch {
 
     /// Compute Welch-spectrum and reset spectrum.
     pub fn take_spectrum(&mut self) -> [f32; NFFT / 2] {
+        defmt::info!("welch: taking spectrum..");
         let spec = self.compute_spectrum();
         self.reset();
 

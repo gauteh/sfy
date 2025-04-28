@@ -78,12 +78,16 @@ pub const NOTEQ_SZ: usize = 6;
 pub const EPGS_SZ: usize = 6;
 
 #[cfg(feature = "spectrum")]
+pub const NOTEQ_SZ: usize = 12;
+
+#[cfg(feature = "spectrum")]
 pub const SPECQ_SZ: usize = 4;
 
 #[cfg(all(
     not(feature = "raw"),
     not(feature = "storage"),
-    not(feature = "ext-gps")
+    not(feature = "ext-gps"),
+    not(feature = "spectrum")
 ))]
 pub const NOTEQ_SZ: usize = 24;
 
