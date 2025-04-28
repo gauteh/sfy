@@ -36,7 +36,7 @@ pub const NOTECARD_STORAGE_INIT_SYNC_NTN: u32 = 75;
 pub const NOTECARD_STORAGE_CAPACITY_PACKAGES: usize = 70;
 
 #[cfg(feature = "spectrum")]
-pub const NOTECARD_STORAGE_CAPACITY_NTN_PACKAGES: usize = 80;
+pub const NOTECARD_STORAGE_CAPACITY_NTN_PACKAGES: usize = 85;
 
 #[cfg(feature = "spectrum")]
 const STARNOTE_PORT_SPEC: u16 = 10;
@@ -114,6 +114,8 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                 None,
                 if cfg!(feature = "continuous") {
                     Some(notecard::hub::req::HubMode::Continuous)
+                } else if cfg!(feature = "spectrum") {
+                    Some(notecard::hub::req::HubMode::Minimum)
                 } else {
                     Some(notecard::hub::req::HubMode::Periodic)
                 },
@@ -166,7 +168,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         n.setup_templates(delay)?;
 
         defmt::info!("initializing initial sync ..");
-        n.note.hub().sync(delay, false)?.wait(delay)?;
+        n.note.hub().sync(delay, false, None, None)?.wait(delay)?;
 
         Ok(n)
     }
@@ -178,7 +180,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         timeout_ms: u16,
     ) -> Result<bool, NoteError> {
         defmt::info!("sync..");
-        self.note.hub().sync(delay, true)?.wait(delay)?;
+        self.note.hub().sync(delay, true, None, None)?.wait(delay)?;
 
         for _ in 0..(timeout_ms / 1000) {
             delay.delay_ms(1000u16);
@@ -349,8 +351,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                 length: 14,
             };
 
-            defmt::debug!("setting up template for spectrum");
-            self.note()
+            let t = self.note()
                 .template(
                     delay,
                     Some("spec.qo"),
@@ -361,6 +362,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                     None,
                 )?
                 .wait(delay)?;
+            defmt::debug!("set up template for spectrum, bytes: {}", t.bytes);
         }
 
         Ok(())
@@ -702,7 +704,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         while let Some(pck) = queue.dequeue() {
             let status = self.note.card().status(delay)?.wait(delay)?;
 
-            if status.storage > 80 {
+            if status.storage > NOTECARD_STORAGE_CAPACITY_NTN_PACKAGES {
                 // wait until notecard has synced.
                 defmt::warn!("notecard is more than 80% full, not adding more notes until sync is done: queue sz: {}", queue.len());
                 return Ok(0);
@@ -815,7 +817,9 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                 .card()
                 .wireless(delay, None, None, None, None)?
                 .wait(delay)?;
+
             defmt::trace!("card.wireless: {}", wireless);
+
             if wireless.mode.map(|o| o == "ntn").unwrap_or(false) {
                 let time = self.note.card().time(delay)?.wait(delay)?;
                 if let Some(time) = time.time {
@@ -826,6 +830,35 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                 defmt::trace!("spectrum: reseting last sync ntn");
                 self.last_sync_ntn = None;
             }
+
+            if self.last_sync_ntn.is_some() {
+                // Last sync was on NTN: use higher storage limit.
+                if status.storage > NOTECARD_STORAGE_INIT_SYNC_NTN as usize {
+                    if sync_status.requested.is_none() {
+                        defmt::warn!(
+                            "notecard is {}% full (spectrum limit, ntn sync), initiating sync.",
+                            status.storage
+                        );
+                        self.note.hub().sync(delay, false, Some(true), None)?.wait(delay)?;
+                    }
+                }
+            } else {
+                // We probably have cell-coverage, use regular sync setup.
+                if status.storage > NOTECARD_STORAGE_INIT_SYNC as usize {
+                    if sync_status.requested.is_none() {
+                        defmt::warn!(
+                            "notecard is more than {}% full, initiating sync.",
+                            NOTECARD_STORAGE_INIT_SYNC
+                        );
+                        self.note.hub().sync(delay, false, None, None)?.wait(delay)?;
+                    }
+                    defmt::info!(
+                        "notecard is filling up ({}%): sync status: {:?}",
+                        status.storage,
+                        sync_status
+                    );
+                }
+            }
         }
 
         #[cfg(not(feature = "spectrum"))]
@@ -835,7 +868,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                     "notecard is more than {}% full, initiating sync.",
                     NOTECARD_STORAGE_INIT_SYNC
                 );
-                self.note.hub().sync(delay, false)?.wait(delay)?;
+                self.note.hub().sync(delay, false, None, None)?.wait(delay)?;
             }
             defmt::info!(
                 "notecard is filling up ({}%): sync status: {:?}",
