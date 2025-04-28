@@ -71,7 +71,7 @@ pub const NOTEQ_SZ: usize = 12;
 #[cfg(feature = "storage")]
 pub const IMUQ_SZ: usize = STORAGEQ_SZ;
 
-#[cfg(feature = "ext-gps")]
+#[cfg(all(feature = "ext-gps", not(feature = "spectrum")))]
 pub const NOTEQ_SZ: usize = 6;
 
 #[cfg(feature = "ext-gps")]

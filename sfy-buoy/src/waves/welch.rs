@@ -29,11 +29,13 @@ pub mod hanning {
 
 // Cut-off frequencies for spectrum.
 pub const f0: f32 = 0.04; // Hz
-pub const f1: f32 = 1.85; // Hz
+pub const f1: f32 = 1.7; // Hz
 pub const fi0: usize = 4;
-pub const fi1: usize = 146;
+pub const fi1: usize = 134;
 
 pub const WELCH_PACKET_SZ: usize = fi1 - fi0;
+
+// XXX: The maximum amount of bytes for each package is 256 bytes.
 
 /// Maximum length of base64 string
 pub const WELCH_OUTN: usize = { WELCH_PACKET_SZ * 2 } * 4 / 3 + 4;
@@ -472,5 +474,13 @@ mod tests {
             let b64 = base64(&spec);
             b64
         });
+    }
+
+    #[test]
+    fn package_size() {
+        let template_size = 13; // from trying to set up template on notecard
+        let total_size = template_size + WELCH_OUTN;
+        assert!(total_size >= 50, "{total_size} must be more than 50 bytes");
+        assert!(total_size <= 256, "{total_size} must be be less than 256 bytes");
     }
 }

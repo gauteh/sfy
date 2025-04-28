@@ -351,6 +351,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                 length: 14,
             };
 
+            // XXX: The maximum amount of bytes for each package is 256 bytes.
             let t = self.note()
                 .template(
                     delay,
