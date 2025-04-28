@@ -159,6 +159,9 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             note,
             device: dev.device,
             sn: dev.sn,
+
+            #[cfg(feature = "spectrum")]
+            last_sync_ntn: None,
         };
         n.setup_templates(delay)?;
 
@@ -433,6 +436,60 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         };
 
         Ok(len)
+    }
+
+    #[cfg(feature = "spectrum")]
+    pub fn send_spec(
+        &mut self,
+        pck: &WelchPacket,
+        delay: &mut impl DelayMs<u16>,
+    ) -> Result<usize, NoteError> {
+        let (meta, b64) = pck.split();
+
+        #[cfg(feature = "continuous-post")]
+        let r = self
+            .note
+            .web()
+            .post(
+                delay,
+                "sfypost",
+                None,
+                Some(meta),
+                Some(core::str::from_utf8(&b64).unwrap()),
+                None,
+                None,
+                None,
+                None,
+                Some(false), // async
+            )?
+            .wait(delay)?;
+
+        #[cfg(not(feature = "continuous-post"))]
+        let r = self
+            .note
+            .note()
+            .add(
+                delay,
+                Some("spec.qo"),
+                None,
+                Some(meta),
+                Some(core::str::from_utf8(&b64).unwrap()),
+                if cfg!(feature = "continuous") {
+                    true
+                } else {
+                    false
+                },
+            )?
+            .wait(delay)?;
+
+        defmt::info!(
+            "Sent spec package: {}, bytes: {} (note: {:?})",
+            pck.timestamp,
+            b64.len(),
+            r
+        );
+
+        Ok(b64.len())
     }
 
     #[cfg(feature = "ext-gps")]

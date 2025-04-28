@@ -55,11 +55,6 @@ pub struct Welch {
     nseg: u16,
 }
 
-pub struct WelchPacket {
-    pub timestamp: i64, // [ms] start of samples
-    pub spec: [f32; NFFT / 2],
-}
-
 impl Welch {
     pub fn new(fs: f32) -> Welch {
         let scaling = 1.0 / (fs * hanning::CSQRSUM);
@@ -223,6 +218,35 @@ pub fn base64(spec: &[f32; NFFT / 2]) -> Vec<u8, WELCH_OUTN> {
     b64.truncate(written);
 
     b64
+}
+
+pub struct WelchPacket {
+    pub timestamp: i64, // [ms] start of samples
+    pub spec: [f32; NFFT / 2],
+}
+
+// XXX: Match with template in note
+#[derive(serde::Serialize, Default)]
+pub struct WelchPacketMeta {
+    pub timestamp: i64, // [ms] start of samples
+    pub length: u16,
+}
+
+impl WelchPacket {
+    pub fn base64(&self) -> Vec<u8, WELCH_OUTN> {
+        base64(&self.spec)
+    }
+
+    pub fn split(&self) -> (WelchPacketMeta, Vec<u8, WELCH_OUTN>) {
+        let b64 = self.base64();
+
+        let meta = WelchPacketMeta {
+            timestamp: self.timestamp,
+            length: b64.len() as u16,
+        };
+
+        (meta, b64)
+    }
 }
 
 #[cfg(test)]
