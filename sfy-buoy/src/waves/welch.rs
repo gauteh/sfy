@@ -112,6 +112,12 @@ impl Welch {
         }
     }
 
+    /// Spectrum is complete when having captured more than 20 minutes. It is still possible
+    /// to add more samples, but it would be an error.
+    pub fn is_full(&self) -> bool {
+        self.length() > (20. * 60.)
+    }
+
     /// Δf between frequency bins.
     pub fn frequency_resolution(&self) -> f32 {
         self.fs / NFFT as f32
@@ -192,7 +198,7 @@ impl Welch {
         }
 
         self.nseg += 1;
-        defmt::info!("welch: done (nseg: {}, length: {} seconds).", self.nseg, self.length());
+        defmt::info!("welch: done (nseg: {}, length: {} seconds, {} minutes).", self.nseg, self.length(), self.length() / 60.);
     }
 
     /// Compute Welch-spectrum (WARNING: does not reset).

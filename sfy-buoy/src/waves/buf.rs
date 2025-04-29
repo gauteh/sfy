@@ -137,7 +137,7 @@ impl ImuBuf {
 
     #[cfg(feature = "spectrum")]
     pub fn is_spec_full(&self) -> bool {
-        self.welch.length() > (20. * 60.)
+        self.welch.is_full()
     }
 
     pub fn len(&self) -> usize {
