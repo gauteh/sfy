@@ -34,10 +34,28 @@ pub mod hz20 {
     // pub const TRUE_CUTOFF: f32 = 8.0;
 }
 
+pub mod hz10 {
+    /// Filter order, length or number of taps.
+    pub const NTAP: usize = 129;
+
+    /// Filter coefficients. Generated with Pythons `scipy.signal.firwin(...)`.
+    pub const COEFFS: [f32; NTAP] = include!("firwin.6.5_coeff");
+
+    /// Cut-off frequency of filter.
+    pub const CUTOFF: f32 = 6.5;
+
+    // True cut-off frequency as generated with `firwin`. Must have some margin to sufficiently
+    // attenuate frequencies close to Nyquist.
+    // pub const TRUE_CUTOFF: f32 = 8.0;
+}
+
+#[cfg(feature = "10Hz")]
+pub use hz10::*;
+
 #[cfg(feature = "20Hz")]
 pub use hz20::*;
 
-#[cfg(not(feature = "20Hz"))]
+#[cfg(not(any(feature = "20Hz", feature = "10Hz")))]
 pub use hz50::*;
 
 /// Maximum decimation given `CUTOFF` and sample rate (`FREQ`).
