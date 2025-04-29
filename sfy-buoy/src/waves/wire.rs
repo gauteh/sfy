@@ -105,6 +105,23 @@ pub fn scale_f32_to_u16(max: f32, v: f32) -> u16 {
     return libm::round(u) as u16; // will maybe panic if u is out-of-bounds?
 }
 
+/// Move an f32 on the range 0 to max to 0 to u16::MAX
+pub fn scale_f32_to_u16_positive(max: f32, v: f32) -> u16 {
+    debug_assert!(max > 0.);
+    debug_assert!(v >= 0.);
+    let max = max as f64;
+    let v = v as f64;
+
+    // clip to bounds.
+    let v = v.min(max);
+    let v = v.max(0.0);
+
+    // v should be in the range from [0 to max]
+    let v = v; // v -> [0, max]
+    let u = v * u16::MAX as f64 / max; // v -> [0, u16::MAX]
+    return libm::round(u) as u16; // will maybe panic if u is out-of-bounds?
+}
+
 /// Move an u16 on given -max to max range to its real value in f32.
 #[allow(unused)]
 pub fn scale_u16_to_f32(max: f32, u: u16) -> f32 {

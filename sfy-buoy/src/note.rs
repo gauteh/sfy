@@ -338,6 +338,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                 _lat: f32,
 
                 length: u32,
+                max: f32,
             }
 
             let meta_template = SpectrumMetaTemplate {
@@ -349,10 +350,12 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                 _lat: 14.1,
 
                 length: 14,
+                max: 12.1,
             };
 
             // XXX: The maximum amount of bytes for each package is 256 bytes.
-            let t = self.note()
+            let t = self
+                .note()
                 .template(
                     delay,
                     Some("spec.qo"),
@@ -840,7 +843,10 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                             "notecard is {}% full (spectrum limit, ntn sync), initiating sync.",
                             status.storage
                         );
-                        self.note.hub().sync(delay, false, Some(true), None)?.wait(delay)?;
+                        self.note
+                            .hub()
+                            .sync(delay, false, Some(true), None)?
+                            .wait(delay)?;
                     }
                 }
             } else {
@@ -851,7 +857,10 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                             "notecard is more than {}% full, initiating sync.",
                             NOTECARD_STORAGE_INIT_SYNC
                         );
-                        self.note.hub().sync(delay, false, None, None)?.wait(delay)?;
+                        self.note
+                            .hub()
+                            .sync(delay, false, None, None)?
+                            .wait(delay)?;
                     }
                     defmt::info!(
                         "notecard is filling up ({}%): sync status: {:?}",
@@ -869,7 +878,10 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                     "notecard is more than {}% full, initiating sync.",
                     NOTECARD_STORAGE_INIT_SYNC
                 );
-                self.note.hub().sync(delay, false, None, None)?.wait(delay)?;
+                self.note
+                    .hub()
+                    .sync(delay, false, None, None)?
+                    .wait(delay)?;
             }
             defmt::info!(
                 "notecard is filling up ({}%): sync status: {:?}",

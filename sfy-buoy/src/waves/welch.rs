@@ -221,7 +221,7 @@ impl Welch {
     }
 }
 
-pub fn u16_encode(spec: &[f32; NFFT / 2]) -> [u16; WELCH_PACKET_SZ] {
+pub fn u16_encode(spec: &[f32; NFFT / 2]) -> (f32, [u16; WELCH_PACKET_SZ]) {
     use super::wire;
 
     let spec = &spec[fi0..fi1];
@@ -231,14 +231,14 @@ pub fn u16_encode(spec: &[f32; NFFT / 2]) -> [u16; WELCH_PACKET_SZ] {
     let max = spec.iter().max_by(|a, b| a.total_cmp(b)).unwrap();
 
     for (e, s) in encode.iter_mut().zip(spec) {
-        *e = wire::scale_f32_to_u16(*max, *s);
+        *e = wire::scale_f32_to_u16_positive(*max, *s);
     }
 
-    encode
+    (*max, encode)
 }
 
-pub fn base64(spec: &[f32; NFFT / 2]) -> Vec<u8, WELCH_OUTN> {
-    let espec = u16_encode(spec);
+pub fn base64(spec: &[f32; NFFT / 2]) -> (f32, Vec<u8, WELCH_OUTN>) {
+    let (max, espec) = u16_encode(spec);
 
     let mut b64: Vec<u8, WELCH_OUTN> = Vec::new();
     b64.resize_default(WELCH_OUTN).unwrap();
@@ -248,7 +248,7 @@ pub fn base64(spec: &[f32; NFFT / 2]) -> Vec<u8, WELCH_OUTN> {
     let written = base64::encode_config_slice(data, base64::STANDARD, &mut b64);
     b64.truncate(written);
 
-    b64
+    (max, b64)
 }
 
 pub struct WelchPacket {
@@ -261,19 +261,21 @@ pub struct WelchPacket {
 pub struct WelchPacketMeta {
     pub timestamp: i64, // [ms] start of samples
     pub length: u16,
+    pub max: f32, // max spectrum component
 }
 
 impl WelchPacket {
-    pub fn base64(&self) -> Vec<u8, WELCH_OUTN> {
+    pub fn base64(&self) -> (f32, Vec<u8, WELCH_OUTN>) {
         base64(&self.spec)
     }
 
     pub fn split(&self) -> (WelchPacketMeta, Vec<u8, WELCH_OUTN>) {
-        let b64 = self.base64();
+        let (max, b64) = self.base64();
 
         let meta = WelchPacketMeta {
             timestamp: self.timestamp,
             length: b64.len() as u16,
+            max,
         };
 
         (meta, b64)
@@ -447,10 +449,10 @@ mod tests {
 
         let spec = w.take_spectrum();
 
-        let encoded = u16_encode(&spec);
+        let (max, encoded) = u16_encode(&spec);
         println!("encoded: {}", encoded.len() * 2);
 
-        let b64 = base64(&spec);
+        let (max, b64) = base64(&spec);
         println!("written: {}", b64.len());
 
         assert!(N <= WELCH_PACKET_SZ, "{} <= {}", N, WELCH_PACKET_SZ);
