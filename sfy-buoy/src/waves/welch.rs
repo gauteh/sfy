@@ -47,7 +47,7 @@ pub mod hanning {
 // pub const f0: f32 = 0.04; // Hz
 // pub const f1: f32 = 2.0; // Hz
 pub const fi0: usize = 2;
-pub const fi1: usize = 91;
+pub const fi1: usize = 85;
 
 pub const WELCH_PACKET_SZ: usize = fi1 - fi0;
 
@@ -55,6 +55,7 @@ pub const WELCH_PACKET_SZ: usize = fi1 - fi0;
 
 /// Maximum length of base64 string
 pub const WELCH_OUTN: usize = { WELCH_PACKET_SZ * 2 } * 4 / 3 + 4;
+pub const SPEC_TEMPLATE: usize = 29;
 
 /// Rolling Welch spectrum computation (PSD, density mode). Based on scipy.welch implementation.
 pub struct Welch {
@@ -466,7 +467,7 @@ mod tests {
 
         assert!(N <= WELCH_PACKET_SZ, "{} <= {}", N, WELCH_PACKET_SZ);
 
-        let template_size = 13; // from trying to set up template on notecard
+        let template_size = SPEC_TEMPLATE; // from trying to set up template on notecard
         let total_size = template_size + WELCH_OUTN;
         println!("total size: {}", total_size);
         assert!(total_size >= 50, "{total_size} must be more than 50 bytes");
