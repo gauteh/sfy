@@ -565,10 +565,17 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
     ) -> Result<(), NoteError> {
         while let Some(msg) = queue.dequeue() {
             defmt::info!("logging message: {}", msg);
-            self.note
+            match self.note
                 .hub()
                 .log(delay, msg.as_str(), false, false)?
-                .wait(delay)?;
+                .wait(delay) {
+                    Ok(o) => Ok(o),
+                    Err(NoteError::NonPortNoteInPackageMode) => {
+                        defmt::warn!("notecard is in NtN mode, discarding package.");
+                        return Ok(());
+                    },
+                    Err(e) => Err(e),
+            }?;
         }
 
         Ok(())
@@ -680,6 +687,10 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                 Ok(sz) => {
                     tsz += sz;
                 }
+                Err(NoteError::NonPortNoteInPackageMode) => {
+                    defmt::warn!("notecard is in NtN mode, discarding package.");
+                    return Ok(0);
+                },
                 Err(e) => {
                     defmt::error!(
                         "Error while sending package to notecard: {:?}, retrying..",

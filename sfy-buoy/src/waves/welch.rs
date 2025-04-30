@@ -116,7 +116,9 @@ impl Welch {
     /// Spectrum is complete when having captured more than 20 minutes. It is still possible
     /// to add more samples, but it would be an error.
     pub fn is_full(&self) -> bool {
-        self.length() > (20. * 60.)
+        // self.length() > (20. * 60.)
+
+        self.length() > (5. * 60.)
     }
 
     /// Δf between frequency bins.
