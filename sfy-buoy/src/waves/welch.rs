@@ -38,9 +38,11 @@ pub mod hanning {
         0.5 - 0.5 * f32::cos((2.0 * PI * i as f32) / (N - 1) as f32)
     }
 
-    pub const HANNING_ENERGY_CORRECTION: f32 = 1.63319253834869915209537793998606503009796142578125; // for large N: NSEG/sum(window)
+    // for large N: NSEG/sum(window):
+    pub const HANNING_ENERGY_CORRECTION: f32 = 1.63319253834869915209537793998606503009796142578125;
+
+    // for large N: NSEG/sum(window*window):
     pub const HANNING_AMPLITUDE_CORRECTION: f32 = 2.00048840048840048666534130461513996124267578125;
-    // for large N: NSEG/sum(window*window)
 }
 
 // Cut-off frequencies for spectrum.
@@ -51,9 +53,10 @@ pub const fi1: usize = 85;
 
 pub const WELCH_PACKET_SZ: usize = fi1 - fi0;
 
-// XXX: The maximum amount of bytes for each package is 256 bytes.
 
 /// Maximum length of base64 string
+///
+/// XXX: The maximum amount of bytes for each package is 256 bytes.
 pub const WELCH_OUTN: usize = { WELCH_PACKET_SZ * 2 } * 4 / 3 + 4;
 pub const SPEC_TEMPLATE: usize = 29;
 
@@ -201,7 +204,12 @@ impl Welch {
         }
 
         self.nseg += 1;
-        defmt::info!("welch: done (nseg: {}, length: {} seconds, {} minutes).", self.nseg, self.length(), self.length() / 60.);
+        defmt::info!(
+            "welch: done (nseg: {}, length: {} seconds, {} minutes).",
+            self.nseg,
+            self.length(),
+            self.length() / 60.
+        );
     }
 
     /// Compute Welch-spectrum (WARNING: does not reset).
@@ -375,11 +383,7 @@ mod tests {
         // scaling
         let acorr: f32 = NSEG as f32 / hanning::COEFFS.iter().sum::<f32>();
         assert_abs_diff_eq!(acorr, hanning::ACORR, epsilon = 0.00001);
-        assert_abs_diff_eq!(
-            acorr,
-            hanning::HANNING_AMPLITUDE_CORRECTION,
-            epsilon = 0.01
-        );
+        assert_abs_diff_eq!(acorr, hanning::HANNING_AMPLITUDE_CORRECTION, epsilon = 0.01);
 
         let ecorr: f32 =
             f32::sqrt(NSEG as f32 / hanning::COEFFS.iter().map(|v| v * v).sum::<f32>());
@@ -442,7 +446,6 @@ mod tests {
         let i0 = fi0;
         let i1 = fi1;
 
-
         // let i0 = rf.iter().copied().position(|f| f > f0).unwrap();
         // let i1 = rf.iter().copied().position(|f| f > f1).unwrap();
 
@@ -473,7 +476,10 @@ mod tests {
         let total_size = template_size + WELCH_OUTN;
         println!("total size: {}", total_size);
         assert!(total_size >= 50, "{total_size} must be more than 50 bytes");
-        assert!(total_size <= 256, "{total_size} must be be less than 256 bytes");
+        assert!(
+            total_size <= 256,
+            "{total_size} must be be less than 256 bytes"
+        );
     }
 
     #[bench]
