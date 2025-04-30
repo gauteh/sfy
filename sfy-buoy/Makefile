@@ -41,6 +41,9 @@ deploy: bin
 com:
 	picocom -e c -b 115200 $(USB)
 
+notecard-com:
+	picocom -b 9600 /dev/ttyACM0
+
 defmt-serial-mac:
 	(stty speed 115200 >/dev/null && cat) </dev/cu.usbserial-10 | defmt-print -e $(ELF)
 

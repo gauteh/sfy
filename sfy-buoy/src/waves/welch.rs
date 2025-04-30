@@ -266,7 +266,10 @@ pub struct WelchPacket {
 #[derive(serde::Serialize, Default)]
 pub struct WelchPacketMeta {
     pub timestamp: i64, // [ms] start of samples
-    pub length: u16,
+
+    #[serde(skip_serializing)]
+    pub length: u16, // don't need this: will be constant.
+
     pub max: f32, // max spectrum component
 }
 

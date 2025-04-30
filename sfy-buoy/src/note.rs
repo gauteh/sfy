@@ -81,9 +81,13 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         note.initialize(delay)?;
 
         defmt::warn!("Testing! Configure for NTN only!");
-        note.card()
-            .transport(delay, Transport::Reset, None, None)?
+        let t = note
+            .card()
+            .transport(delay, Transport::CellNTN, None, None)?
             .wait(delay)?;
+        defmt::info!("transport: {:?}", t);
+        let ntn = note.ntn().status(delay)?.wait(delay);
+        defmt::info!("ntn status: {:?}", ntn);
 
         // Use extrnal SIM first
         if let Some(apn) = EXT_APN {
@@ -115,7 +119,8 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                 if cfg!(feature = "continuous") {
                     Some(notecard::hub::req::HubMode::Continuous)
                 } else if cfg!(feature = "spectrum") {
-                    Some(notecard::hub::req::HubMode::Minimum)
+                    // Some(notecard::hub::req::HubMode::Minimum)
+                    Some(notecard::hub::req::HubMode::Periodic)
                 } else {
                     Some(notecard::hub::req::HubMode::Periodic)
                 },
@@ -337,7 +342,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                 _lon: f32,
                 _lat: f32,
 
-                length: u32,
+                // length: u32,
                 max: f32,
             }
 
@@ -349,7 +354,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                 _lon: 14.1,
                 _lat: 14.1,
 
-                length: 14,
+                // length: 14,
                 max: 12.1,
             };
 
@@ -823,6 +828,9 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                 .wait(delay)?;
 
             defmt::trace!("card.wireless: {}", wireless);
+
+            let ntn = self.note.ntn().status(delay)?.wait(delay);
+            defmt::info!("ntn status: {:?}", ntn);
 
             if wireless.mode.map(|o| o == "ntn").unwrap_or(false) {
                 let time = self.note.card().time(delay)?.wait(delay)?;
