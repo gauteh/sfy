@@ -386,7 +386,7 @@ impl<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> Imu<E
                 .inspect_err(|_| {
                     error!("queue is full, discarding data.");
 
-                    log::log("Queue is full: discarding package.");
+                    // log::log("Queue is full: discarding package.");
                 })
                 .ok();
         }
@@ -404,7 +404,7 @@ impl<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> Imu<E
                 .inspect_err(|_| {
                     error!("spectrum queue is full, discarding data.");
 
-                    log::log("Spectrum queue is full: discarding package.");
+                    // log::log("Spectrum queue is full: discarding package.");
                 })
                 .ok();
         }

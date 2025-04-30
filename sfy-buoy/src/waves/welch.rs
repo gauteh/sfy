@@ -474,6 +474,7 @@ mod tests {
 
         let template_size = SPEC_TEMPLATE; // from trying to set up template on notecard
         let total_size = template_size + WELCH_OUTN;
+        println!("welch_outn: {}", WELCH_OUTN);
         println!("total size: {}", total_size);
         assert!(total_size >= 50, "{total_size} must be more than 50 bytes");
         assert!(

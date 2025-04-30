@@ -80,14 +80,23 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         );
         note.initialize(delay)?;
 
-        defmt::warn!("Testing! Configure for NTN only!");
-        let t = note
-            .card()
-            .transport(delay, Transport::CellNTN, None, None)?
-            .wait(delay)?;
-        defmt::info!("transport: {:?}", t);
-        let ntn = note.ntn().status(delay)?.wait(delay);
-        defmt::info!("ntn status: {:?}", ntn);
+
+        #[cfg(feature = "spectrum")]
+        {
+            defmt::warn!("Testing! Configure for NTN only!");
+            let t = note
+                .card()
+                .transport(delay, Transport::NTN, None, None)?
+                .wait(delay)?;
+
+            // let t = note
+            //     .card()
+            //     .transport(delay, Transport::CellNTN, None, None)?
+            //     .wait(delay)?;
+            defmt::info!("transport: {:?}", t);
+            let ntn = note.ntn().status(delay)?.wait(delay);
+            defmt::info!("ntn status: {:?}", ntn);
+        }
 
         // Use extrnal SIM first
         if let Some(apn) = EXT_APN {
