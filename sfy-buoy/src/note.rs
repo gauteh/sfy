@@ -83,16 +83,17 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
 
         #[cfg(feature = "spectrum")]
         {
-            defmt::warn!("Testing! Configure for NTN only!");
-            let t = note
-                .card()
-                .transport(delay, Transport::NTN, None, None)?
-                .wait(delay)?;
-
+            // defmt::warn!("Testing! Configure for NTN only!");
             // let t = note
             //     .card()
-            //     .transport(delay, Transport::CellNTN, None, None)?
+            //     .transport(delay, Transport::NTN, None, None)?
             //     .wait(delay)?;
+
+            defmt::warn!("Configuring for CellNTN! This requires a Starnote present.");
+            let t = note
+                .card()
+                .transport(delay, Transport::CellNTN, None, None)?
+                .wait(delay)?;
             defmt::info!("transport: {:?}", t);
             let ntn = note.ntn().status(delay)?.wait(delay);
             defmt::info!("ntn status: {:?}", ntn);
