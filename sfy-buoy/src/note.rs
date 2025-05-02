@@ -346,24 +346,12 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             #[derive(serde::Serialize, Default)]
             struct SpectrumMetaTemplate {
                 timestamp: u32,
-
-                _ltime: u32,
-                _time: u32,
-                _lon: f32,
-                _lat: f32,
-
                 // length: u32,
                 max: f32,
             }
 
             let meta_template = SpectrumMetaTemplate {
                 timestamp: 18,
-
-                _ltime: 14,
-                _time: 14,
-                _lon: 14.1,
-                _lat: 14.1,
-
                 // length: 14,
                 max: 12.1,
             };
