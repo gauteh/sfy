@@ -2,6 +2,7 @@ import numpy as np
 import xarray as xr
 from pathlib import Path
 import logging
+import pandas as pd
 
 from . import signal
 from . import xr as sxr
@@ -325,85 +326,24 @@ class SpecTimeseries:
         logger.debug(f'Making xarray Dataset from {self.samples()} samples..')
 
         ds = xr.Dataset(data_vars={
-            'z':
+            'A':
             xr.Variable(
-                ('time'),
-                self.z.astype(np.float32),
+                ('time', 'frequency'),
+                self.A.astype(np.float32),
                 attrs={
-                    'unit': 'm',
-                    'standard_name': 'sea_water_wave_z_elevation',
+                    'unit': 'A^2/Hz',
+                    'standard_name': 'acceleration',
                     'direction': 'up',
                 }),
-            'lat':
-            xr.Variable(('time'),
-                        self.n.astype(np.float32),
-                        attrs={
-                            'unit': 'degrees_north',
-                            'long_name': 'latitude',
-                        }),
-            'lon':
-            xr.Variable(('time'),
-                        self.e.astype(np.float32),
-                        attrs={
-                            'unit': 'degrees_east',
-                            'standard_name': 'longitude',
-                        }),
-            'vz':
+            'E':
             xr.Variable(
-                ('time'),
-                self.vz.astype(np.float32),
+                ('time', 'frequency'),
+                self.A.astype(np.float32),
                 attrs={
-                    'unit': 'mm/s',
-                    'standard_name': 'sea_water_wave_z_velocity',
+                    'unit': 'E^2/Hz',
+                    'standard_name': 'elevation',
                     'direction': 'up',
                 }),
-            'vn':
-            xr.Variable(('time'),
-                        self.vn.astype(np.float32),
-                        attrs={
-                            'unit': 'mm/s',
-                            'standard_name': 'sea_water_wave_north_velocity',
-                        }),
-            've':
-            xr.Variable(('time'),
-                        self.ve.astype(np.float32),
-                        attrs={
-                            'unit': 'mm/s',
-                            'standard_name': 'sea_water_wave_east_velocity',
-                        }),
-            'pck_lon':
-            xr.Variable(
-                ('package'),
-                np.array(self.lons, dtype=np.float64),
-                attrs={
-                    'units': "degrees_east",
-                    'standard_name': "longitude",
-                    'long_name': "longitude"
-                }),
-            'pck_lat':
-            xr.Variable(
-                ('package'),
-                np.array(self.lats, dtype=np.float64),
-                attrs={
-                    'units': "degrees_north",
-                    'standard_name': "latitude",
-                    'long_name': "latitude"
-                }),
-            'package_start':
-            xr.Variable(
-                ('package'), [
-                    np.datetime64(int(s.timestamp() * 1000.),
-                                  'ms').astype('datetime64[ns]') if s else None
-                    for s in self.start_times
-                ],
-                attrs={
-                    'description':
-                    'Timestamp at `offset` sample from the start of each batch (package) of samples.'
-                }),
-            'package_length':
-            xr.Variable(('package'),
-                        self.package_length,
-                        attrs={'description': 'Length of package'}),
             'added':
             xr.Variable(
                 ('package'), [
@@ -421,39 +361,28 @@ class SpecTimeseries:
                 ],
                 attrs={'description':
                        'Time package was received by data-hub'}),
-            'position_time':
-            xr.Variable(
-                ('package'), [
-                    np.datetime64(int(s), 's').astype('datetime64[ns]')
-                    if s else np.nan for s in self.position_times
-                ],
-                attrs={'description':
-                       'Time of position fix for each package'}),
         },
                         coords={
                             'time':
-                            xr.Variable(
-                                ('time'),
-                                self.mseconds.astype('datetime64[ms]').astype(
+                            xr.Variable(('time'), pd.to_datetime(self.time).tz_localize(None).astype(
                                     'datetime64[ns]')),
+                            'frequency':
+                            xr.Variable(('frequency'),
+                                        self.frequency.astype(np.float32)),
                             'package':
                             xr.Variable(
                                 ('package'),
-                                np.arange(0, len(self.position_times)),
+                                np.arange(0, len(self)),
                                 attrs={'description': 'Package number'}),
                         },
                         attrs={
-                            'frequency': self.frequency,
-                            'frequency:unit': 'Hz',
-                            'dt': self.dt,
-                            'dt:unit': 's',
-                            'package_length': self.package_length,
                             'homepage': 'https://github.com/gauteh/sfy',
                             'buoy_type': 'sfy',
                             'buoy_device': self.device,
                             'buoy_name': self.sn,
                             **self.extra_attrs()
                         })
+        print(self.time[0])
         return ds
 
     def to_netcdf(self, filename: Path):
@@ -472,6 +401,7 @@ class SpecTimeseries:
 
 
 class EgpsTimeseries:
+
     @property
     def dt(self):
         return 1. / self.frequency

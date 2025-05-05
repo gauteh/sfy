@@ -1,12 +1,14 @@
 from dataclasses import dataclass
 import json
 import numpy as np
+import pandas as pd
 import base64
 import sys
 import logging
 import pytz
 from datetime import datetime, timedelta
 
+from .signal import welchint
 from .timeseries import SpecTimeseries
 from .event import Event
 from .axl import scale_u16_to_f32
@@ -82,6 +84,22 @@ class SpecCollection(SpecTimeseries):
         """
         return len(self.pcks)
 
+    @property
+    def frequency(self):
+        return self.pcks[0].frequency
+
+    @property
+    def E(self):
+        E = [p.E for p in self.pcks]
+        E = np.asarray(E)
+        return E
+
+    @property
+    def A(self):
+        A = [p.A for p in self.pcks]
+        A = np.asarray(A)
+        return A
+
     def max_gap(self):
         if len(self.pcks) == 1:
             return timedelta(seconds=0)
@@ -115,7 +133,7 @@ class SpecCollection(SpecTimeseries):
 
     @property
     def time(self):
-        return np.concatenate([pck.start for pck in self.pcks])
+        return [pck.start for pck in self.pcks]
 
     @property
     def device(self):
@@ -138,21 +156,10 @@ class SpecCollection(SpecTimeseries):
             'collection': 'yes',
             'max_gap': self.max_gap().total_seconds(),
             'max_gap:unit': 's',
-            'number_of_packages': len(self.pcks)
+            'number_of_packages': len(self.pcks),
+            'df': self.pcks[0].df,
+            'df:unit': 'Hz',
         }
-
-        lonlat_range = [pck.lonlat_range for pck in self.pcks]
-        msl_range = [pck.msl_range for pck in self.pcks]
-        vel_range = [pck.vel_range for pck in self.pcks]
-
-        attrs['lonlat_range'] = lonlat_range[0]
-        attrs['lonlat_range:unit'] = 'deg * 1e7'
-
-        attrs['msl_range'] = msl_range[0]
-        attrs['msl_range:unit'] = 'mm'
-
-        attrs['vel_range'] = vel_range[0]
-        attrs['vel_range:unit'] = 'mm/s'
 
         return attrs
 
@@ -168,18 +175,17 @@ class Spec(Event):
     ltime: int = None
 
     # Position [m]
-    E: np.ndarray = None
+    A: np.ndarray = None
 
     # For testing purpuses
     __keep_payload__ = False
-    SPEC_LENGTH = 5. * 60. # seconds
+    SPEC_LENGTH = 5. * 60.  # seconds
 
     def __eq__(self, o: 'Spec'):
         return self.duplicate(o)
 
     def __hash__(self):
-        return hash(
-            (self.timestamp, self.lon, self.lat, self.max))
+        return hash((self.timestamp, self.lon, self.lat, self.max))
 
     def duplicate(self, o):
         if self.timestamp == o.timestamp and self.lon == o.lon and self.lat == o.lat and self.max == o.max:
@@ -195,11 +201,27 @@ class Spec(Event):
             return False
 
     @property
+    def df(self):
+        df = 52. / 4096
+        return df
+
+    @property
+    def frequency(self):
+        df = self.df
+        fi0 = 2
+        fi1 = 85
+        assert (fi1 - fi0) == len(self.A)
+
+        f = np.arange(0, 4096 // 2) * df
+        return f[fi0:fi1]
+
+    @property
     def start(self):
         """
         UTC Datetime of start of samples.
         """
-        return datetime.fromtimestamp(self.timestamp / 1000., tz=pytz.utc)
+        return pd.to_datetime(self.timestamp, unit='ms', utc=True)
+        # return datetime.fromtimestamp(self.timestamp / 1000., tz=pytz.utc)
 
     @property
     def duration(self):
@@ -207,7 +229,7 @@ class Spec(Event):
 
     @property
     def end(self):
-        return self.start + timedelta(seconds = self.SPEC_LENGTH)
+        return self.start + timedelta(seconds=self.SPEC_LENGTH)
 
     @property
     def package_length(self):
@@ -269,9 +291,14 @@ class Spec(Event):
             v = v
             return np.float32(v)
 
-        E = scale_u16_to_f32_positive(data['max'], payload)
+        A = scale_u16_to_f32_positive(data['max'], payload)
 
-        return Spec(**data, E=E)
+        return Spec(**data, A=A)
+
+    @property
+    def E(self):
+        E = welchint(self.A, self.frequency, 2)
+        return E
 
     def samples(self):
         """
@@ -283,4 +310,3 @@ class Spec(Event):
     def from_file(path) -> 'Spec':
         with open(path, 'r') as fd:
             return Spec.parse(fd.read())
-

@@ -134,8 +134,6 @@ def ts(dev, tx_start, tx_end, start, end, file, gap):
         logger.info(f"Saving to {file}..")
 
         if len(pcks) > 0:
-            pcks.to_netcdf(file,
-                           displacement=displacement,
-                           retime=(not no_retime))
+            pcks.to_netcdf(file)
         else:
             logger.error("No data to save.")
