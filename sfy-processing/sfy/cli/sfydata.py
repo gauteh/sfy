@@ -19,6 +19,7 @@ from sfy.cli.store import store
 from sfy.cli.collection import collection
 from sfy.cli.plot import plot
 from sfy.cli.omb import omb
+from sfy.cli.spec import spec
 
 
 @click.group()
@@ -36,6 +37,7 @@ sfy.add_command(store)
 sfy.add_command(collection)
 sfy.add_command(plot)
 sfy.add_command(omb)
+sfy.add_command(spec)
 
 
 @sfy.command(help='List available buoys')

@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class SpecCollection(SpecTimeseries):
-    GAP_LIMIT = 10.  # limit in seconds before data is not considered continuous
+    GAP_LIMIT = 10. * 60.  # limit in seconds before data is not considered continuous
     pcks: ['Spec']
 
     def __init__(self, pcks: ['Spec'], sorted_and_duplicates_removed=False):
@@ -80,7 +80,7 @@ class SpecCollection(SpecTimeseries):
         """
         Number of samples.
         """
-        return sum(p.samples() for p in self.pcks)
+        return len(self.pcks)
 
     def max_gap(self):
         if len(self.pcks) == 1:
@@ -106,10 +106,6 @@ class SpecCollection(SpecTimeseries):
         return [pck.package_length for pck in self.pcks]
 
     @property
-    def offsets(self):
-        return np.concatenate([pck.offsets for pck in self.pcks])
-
-    @property
     def start(self):
         return self.pcks[0].start
 
@@ -118,56 +114,8 @@ class SpecCollection(SpecTimeseries):
         return self.pcks[-1].end
 
     @property
-    def frequency(self):
-        return self.pcks[0].frequency
-
-    @property
-    def dt(self):
-        return self.pcks[0].dt
-
-    @property
     def time(self):
-        return np.concatenate([pck.time for pck in self.pcks])
-
-    @property
-    def mseconds(self):
-        return np.concatenate([pck.mseconds for pck in self.pcks])
-
-    @property
-    def n(self):
-        return np.concatenate([pck.n for pck in self.pcks])
-
-    @property
-    def e(self):
-        return np.concatenate([pck.e for pck in self.pcks])
-
-    @property
-    def z(self):
-        return np.concatenate([pck.z for pck in self.pcks])
-
-    @property
-    def vn(self):
-        return np.concatenate([pck.vn for pck in self.pcks])
-
-    @property
-    def ve(self):
-        return np.concatenate([pck.ve for pck in self.pcks])
-
-    @property
-    def vz(self):
-        return np.concatenate([pck.vz for pck in self.pcks])
-
-    @property
-    def position_times(self):
-        return np.concatenate([pck.position_times for pck in self.pcks])
-
-    @property
-    def lons(self):
-        return [pck.longitude for pck in self.pcks]
-
-    @property
-    def lats(self):
-        return [pck.latitude for pck in self.pcks]
+        return np.concatenate([pck.start for pck in self.pcks])
 
     @property
     def device(self):
@@ -184,10 +132,6 @@ class SpecCollection(SpecTimeseries):
     @property
     def added_times(self):
         return np.concatenate([pck.added_times for pck in self.pcks])
-
-    @property
-    def start_times(self):
-        return np.concatenate([pck.start_times for pck in self.pcks])
 
     def extra_attrs(self):
         attrs = {
@@ -228,6 +172,7 @@ class Spec(Event):
 
     # For testing purpuses
     __keep_payload__ = False
+    SPEC_LENGTH = 5. * 60. # seconds
 
     def __eq__(self, o: 'Spec'):
         return self.duplicate(o)
@@ -249,29 +194,6 @@ class Spec(Event):
         else:
             return False
 
-
-    @property
-    def best_position_time(self):
-        """
-        Gets the time of the position acquired at the start of the acceleration data.
-        """
-        if self.timestamp:
-            return datetime.fromtimestamp(self.timestamp / 1000., pytz.utc)
-        else:
-            return self.start
-
-    @property
-    def longitude(self):
-        return self.lon / 1.e7
-
-    @property
-    def latitude(self):
-        return self.lat / 1.e7
-
-    @property
-    def position_type(self):
-        return 'gps'
-
     @property
     def start(self):
         """
@@ -280,12 +202,16 @@ class Spec(Event):
         return datetime.fromtimestamp(self.timestamp / 1000., tz=pytz.utc)
 
     @property
-    def package_length(self):
-        return len(self.E)
+    def duration(self):
+        return self.SPEC_LENGTH
 
     @property
-    def position_times(self):
-        return np.array([self.timestamp / 1000.])
+    def end(self):
+        return self.start + timedelta(seconds = self.SPEC_LENGTH)
+
+    @property
+    def package_length(self):
+        return len(self.E)
 
     @property
     def received_times(self):
@@ -298,14 +224,6 @@ class Spec(Event):
     @property
     def start_times(self):
         return np.array([self.start])
-
-    @property
-    def lons(self):
-        return [self.lon]
-
-    @property
-    def lats(self):
-        return [self.lat]
 
     def __repr__(self):
         return f"[Spec received={self.received} t={self.start} -> {'%.2f' % self.duration}s sz={len(self.E)}, lon={self.longitude}E lat={self.latitude}N]"
@@ -322,9 +240,7 @@ class Spec(Event):
         if not Spec.__keep_payload__:
             del data['payload']
 
-        data['length'] = data['body']['length']
         data['timestamp'] = data['body']['timestamp']
-        data['version'] = data['body']['version']
         data['max'] = data['body']['max']
         del data['body']
 
