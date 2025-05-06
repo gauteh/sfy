@@ -80,21 +80,28 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         );
         note.initialize(delay)?;
 
-
         #[cfg(feature = "spectrum")]
         {
-            // defmt::warn!("Testing! Configure for NTN only!");
-            // let t = note
-            //     .card()
-            //     .transport(delay, Transport::NTN, None, None)?
-            //     .wait(delay)?;
+            #[cfg(feature = "ntn-test")]
+            {
+                defmt::warn!("Testing! Configure for NTN only!");
+                let t = note
+                    .card()
+                    .transport(delay, Transport::NTN, None, None, None)?
+                    .wait(delay)?;
+                defmt::info!("transport: {:?}", t);
+            }
 
-            defmt::warn!("Configuring for CellNTN! This requires a Starnote present.");
-            let t = note
-                .card()
-                .transport(delay, Transport::CellNTN, None, None)?
-                .wait(delay)?;
-            defmt::info!("transport: {:?}", t);
+            #[cfg(not(feature = "ntn-test"))]
+            {
+                defmt::warn!("Configuring for CellNTN! This requires a Starnote present.");
+                let t = note
+                    .card()
+                    .transport(delay, Transport::CellNTN, None, None, Some(4 * 3600))?
+                    .wait(delay)?;
+                defmt::info!("transport: {:?}", t);
+            }
+
             let ntn = note.ntn().status(delay)?.wait(delay);
             defmt::info!("ntn status: {:?}", ntn);
         }
@@ -563,16 +570,18 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
     ) -> Result<(), NoteError> {
         while let Some(msg) = queue.dequeue() {
             defmt::info!("logging message: {}", msg);
-            match self.note
+            match self
+                .note
                 .hub()
                 .log(delay, msg.as_str(), false, false)?
-                .wait(delay) {
-                    Ok(o) => Ok(o),
-                    Err(NoteError::NonPortNoteInPackageMode) => {
-                        defmt::warn!("notecard is in NtN mode, discarding package.");
-                        return Ok(());
-                    },
-                    Err(e) => Err(e),
+                .wait(delay)
+            {
+                Ok(o) => Ok(o),
+                Err(NoteError::NonPortNoteInPackageMode) => {
+                    defmt::warn!("notecard is in NtN mode, discarding package.");
+                    return Ok(());
+                }
+                Err(e) => Err(e),
             }?;
         }
 
@@ -688,7 +697,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                 Err(NoteError::NonPortNoteInPackageMode) => {
                     defmt::warn!("notecard is in NtN mode, discarding package.");
                     return Ok(0);
-                },
+                }
                 Err(e) => {
                     defmt::error!(
                         "Error while sending package to notecard: {:?}, retrying..",

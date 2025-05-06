@@ -266,8 +266,8 @@ dependencies = [
 
 [[package]]
 name = "blues-notecard"
-version = "0.4.0"
-source = "git+https://github.com/gauteh/notecard-rs#d9bc7ab9264ecf888eb180657fa80e069663d112"
+version = "0.5.0"
+source = "git+https://github.com/gauteh/notecard-rs#ac00f77c71df66d8a9232c29e87c6d084cc0109f"
 dependencies = [
  "defmt",
  "embedded-hal",
