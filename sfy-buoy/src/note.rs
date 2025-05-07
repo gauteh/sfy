@@ -360,7 +360,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             let meta_template = SpectrumMetaTemplate {
                 timestamp: 18,
                 // length: 14,
-                max: 12.1,
+                max: 18.1,
             };
 
             // XXX: The maximum amount of bytes for each package is 256 bytes.
