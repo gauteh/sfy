@@ -488,17 +488,15 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
     pub fn take_spectrum(&mut self, now: i64) -> Result<welch::WelchPacket, E> {
         defmt::debug!("axl: taking spectrum..");
 
-        let time = self.spectrum_timestamp
+        let timestamp = self.spectrum_timestamp
             - (self.spectrum_fifo_offset as i64 * 1000 / self.freq.value() as i64) as i64;
-
         let spec = self.buf.welch.take_spectrum();
+
+        let pck = welch::WelchPacket { timestamp, spec };
+
+        // Time of next spectrum.
         self.spectrum_timestamp = now;
         self.spectrum_fifo_offset = self.imu.fifostatus.diff_fifo(&mut self.i2c)? / 2;
-
-        let pck = welch::WelchPacket {
-            timestamp: time,
-            spec,
-        };
 
         defmt::debug!(
             "axl: spectrum ready, timestamp: {}, new timestamp: {}, new offset: {}",
