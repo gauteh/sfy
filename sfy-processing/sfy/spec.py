@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 class SpecCollection(SpecTimeseries):
-    GAP_LIMIT = 10. * 60.  # limit in seconds before data is not considered continuous
+    GAP_LIMIT = 15. * 60.  # limit in seconds before data is not considered continuous
     pcks: ['Spec']
 
     def __init__(self, pcks: ['Spec'], sorted_and_duplicates_removed=False):
@@ -179,7 +179,8 @@ class Spec(Event):
 
     # For testing purpuses
     __keep_payload__ = False
-    SPEC_LENGTH = 5. * 60.  # seconds
+    # SPEC_LENGTH = 20. * 60.  # seconds
+    SPEC_LENGTH = 1220.92307
 
     def __eq__(self, o: 'Spec'):
         return self.duplicate(o)
@@ -283,7 +284,8 @@ class Spec(Event):
             payload.byteswap(inplace=True)
 
         def scale_u16_to_f32_positive(mx, u):
-            assert mx > 0.
+            if mx <= 0.:
+                raise ValueError(f"{mx} must be greater than 0.")
             u16_max = np.iinfo(np.dtype(np.uint16)).max
             mx = np.float64(mx)
             v = np.float64(u)
