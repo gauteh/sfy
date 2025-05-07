@@ -60,7 +60,7 @@ fn f32_not_normal(f: &f32) -> bool {
 
 #[derive(serde::Serialize, Default)]
 pub struct AxlPacketMeta {
-    pub timestamp: i64,
+    pub timestamp: i64, // [ms]
     pub offset: u32,
 
     #[serde(skip_serializing_if = "Option::is_none")]

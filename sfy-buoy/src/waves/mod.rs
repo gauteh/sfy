@@ -152,7 +152,7 @@ pub struct Waves<I2C: WriteRead + Write> {
     buf: ImuBuf,
 
     /// Timestamp at `fifo_offset` sample in buffer.
-    pub timestamp: i64,
+    pub timestamp: i64, // [ms]
     pub position_time: u32,
     pub lon: f64,
     pub lat: f64,
@@ -163,7 +163,7 @@ pub struct Waves<I2C: WriteRead + Write> {
     pub fifo_offset: u16,
 
     #[cfg(feature = "spectrum")]
-    pub spectrum_timestamp: i64,
+    pub spectrum_timestamp: i64, // [ms]
     #[cfg(feature = "spectrum")]
     pub spectrum_fifo_offset: u16,
 }
@@ -489,7 +489,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
         defmt::debug!("axl: taking spectrum..");
 
         let time = self.spectrum_timestamp
-            - (self.spectrum_fifo_offset as i64 * self.freq.value() as i64) as i64;
+            - (self.spectrum_fifo_offset as i64 * 1000 / self.freq.value() as i64) as i64;
 
         let spec = self.buf.welch.take_spectrum();
         self.spectrum_timestamp = now;
