@@ -500,7 +500,7 @@ impl<E: Debug, I2C: WriteRead<Error = E> + Write<Error = E>> Waves<I2C> {
 
         defmt::debug!(
             "axl: spectrum ready, timestamp: {}, new timestamp: {}, new offset: {}",
-            time,
+            timestamp,
             self.spectrum_timestamp,
             self.spectrum_fifo_offset
         );
