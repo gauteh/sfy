@@ -1,3 +1,4 @@
+use blues_notecard::ntn::NtnSetGps;
 use blues_notecard::{self as notecard, card::Transport, NoteError, Notecard, NotecardConfig};
 use core::ops::{Deref, DerefMut};
 use embedded_hal::blocking::delay::DelayMs;
@@ -101,6 +102,11 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                     .wait(delay)?;
                 defmt::info!("transport: {:?}", t);
             }
+
+            defmt::info!("ntn gps: using notecard gps.");
+            note.ntn()
+                .gps(delay, Some(NtnSetGps::Notecard))?
+                .wait(delay)?;
 
             let ntn = note.ntn().status(delay)?.wait(delay);
             defmt::info!("ntn status: {:?}", ntn);
