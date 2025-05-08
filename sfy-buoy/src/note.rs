@@ -682,7 +682,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
 
         let mut tsz = 0;
 
-        while let Some(pck) = queue.dequeue() {
+        while let Some(pck) = queue.peek() {
             // TODO: if status was over 75 last time, don't spam notecard with status requests.
             let status = self.note.card().status(delay)?.wait(delay)?;
 
@@ -693,11 +693,12 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             }
 
             defmt::info!(
-                "sending package: note queue sz (after dequeue): {}",
+                "sending package: note queue sz (before dequeue): {}",
                 queue.len()
             );
             match self.send(&pck, delay) {
                 Ok(sz) => {
+                    queue.dequeue();
                     tsz += sz;
                 }
                 Err(NoteError::NonPortNoteInPackageMode) => {
@@ -711,6 +712,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                     );
                     match self.send(&pck, delay) {
                         Ok(sz) => {
+                            queue.dequeue();
                             tsz += sz;
                         }
                         Err(e) => {
@@ -734,7 +736,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
     ) -> Result<usize, NoteError> {
         let mut tsz = 0;
 
-        while let Some(pck) = queue.dequeue() {
+        while let Some(pck) = queue.peek() {
             let status = self.note.card().status(delay)?.wait(delay)?;
 
             if status.storage > NOTECARD_STORAGE_CAPACITY_NTN_PACKAGES {
@@ -744,11 +746,12 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             }
 
             defmt::info!(
-                "sending package: note queue sz (after dequeue): {}",
+                "sending package: note queue sz (before dequeue): {}",
                 queue.len()
             );
             match self.send_spec(&pck, delay) {
                 Ok(sz) => {
+                    queue.dequeue();
                     tsz += sz;
                 }
                 Err(e) => {
@@ -758,10 +761,11 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                     );
                     match self.send_spec(&pck, delay) {
                         Ok(sz) => {
+                            queue.dequeue();
                             tsz += sz;
                         }
                         Err(e) => {
-                            defmt::error!("Error while sending spectrum to notecard: {:?}, discarding package.", e);
+                            defmt::error!("Error while sending spectrum to notecard: {:?}.", e);
                             return Err(e);
                         }
                     }
@@ -783,6 +787,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         let mut tsz = 0;
         // defmt::info!("draining egps queue: {}", queue.len());
 
+        // TODO: maybe change to `peek+dequeue`.
         while let Some(pck) = queue.dequeue() {
             // TODO: if status was over 75 last time, don't spam notecard with status requests.
             let status = self.note.card().status(delay)?.wait(delay)?;

@@ -78,10 +78,10 @@ pub const NOTEQ_SZ: usize = 6;
 pub const EPGS_SZ: usize = 6;
 
 #[cfg(feature = "spectrum")]
-pub const NOTEQ_SZ: usize = 12;
+pub const NOTEQ_SZ: usize = 11;
 
 #[cfg(feature = "spectrum")]
-pub const SPECQ_SZ: usize = 4;
+pub const SPECQ_SZ: usize = 8;
 
 #[cfg(all(
     not(feature = "raw"),
