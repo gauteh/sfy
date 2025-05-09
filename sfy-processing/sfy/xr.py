@@ -34,7 +34,6 @@ def hm0(ds: xr.Dataset, raw=False, window=(20 * 60)) -> xr.DataArray:
 
     return spec_stats(ds, raw, window)['hm0']
 
-
 def spec_stats(ds: xr.Dataset,
                raw=False,
                window=(20 * 60),

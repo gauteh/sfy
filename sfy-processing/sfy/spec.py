@@ -290,7 +290,6 @@ class Spec(Event):
             mx = np.float64(mx)
             v = np.float64(u)
             v = v * mx / np.float64(u16_max)
-            v = v
             return np.float32(v)
 
         A = scale_u16_to_f32_positive(data['max'], payload)

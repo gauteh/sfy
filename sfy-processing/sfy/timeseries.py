@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 import numpy as np
 import xarray as xr
 from pathlib import Path
@@ -319,11 +320,31 @@ class AxlTimeseries:
 
 
 class SpecTimeseries:
+
     def extra_attrs(self):
         return {}
 
     def to_dataset(self):
         logger.debug(f'Making xarray Dataset from {self.samples()} samples..')
+
+        raw = False
+        f0 = 0.05
+
+        freq = self.frequency
+        E = self.E
+
+        def stat(E):
+            fc = 0.0
+            i0, fc, pE = signal.imu_cutoff_rabault2022(freq, E, f0)
+            return *signal.spec_stats(freq, pE), fc, pE
+
+        with ThreadPoolExecutor() as ex:
+            m_1, m0, m1, m2, m4, hm0, Tm01, Tm02, Tm_10, Tp, fc, pE = zip(
+                *ex.map(stat, E))
+
+        pE = np.vstack(pE)
+        # spec = np.vectorize(signal.spec_stats, excluded={0, 'f'})
+        # m_1, m0, m1, m2, m4, hm0, Tm01, Tm02, Tm_10, Tp = spec(self.f, E)
 
         ds = xr.Dataset(data_vars={
             'A':
@@ -331,19 +352,117 @@ class SpecTimeseries:
                 ('time', 'frequency'),
                 self.A.astype(np.float32),
                 attrs={
-                    'unit': 'A^2/Hz',
-                    'standard_name': 'acceleration',
-                    'direction': 'up',
+                    'unit':
+                    'm^2/s^4/Hz',
+                    'description':
+                    'Sea surface acceleration spectrum calculated using Welch method.',
                 }),
             'E':
             xr.Variable(
                 ('time', 'frequency'),
-                self.A.astype(np.float32),
+                E.astype(np.float32),
                 attrs={
-                    'unit': 'E^2/Hz',
-                    'standard_name': 'elevation',
-                    'direction': 'up',
+                    'unit':
+                    'm^2/Hz',
+                    'standard_name':
+                    'sea_surface_wave_variance_spectral_density',
+                    'description':
+                    'Sea surface elevation spectrum (variance density spectrum) calculated using Welch method.',
                 }),
+
+            'hm0':
+            xr.DataArray(
+                np.array(hm0),
+                dims=[
+                    'time',
+                ],
+                attrs={
+                    'unit':
+                    'm',
+                    'standard_name':
+                    'sea_surface_wave_significant_height',
+                    'description':
+                    'Significant wave height calculated in the frequency domain from the zeroth moment (4 * sqrt(m0)).'
+                }),
+            'fc':
+            xr.DataArray(
+                np.array(fc),
+                dims=[
+                    'time',
+                ],
+                attrs={
+                    'unit':
+                    'Hz',
+                    'description':
+                    'High-pass cut-off frequency used in spectral statistics.'
+                }),
+            'Tm01':
+            xr.DataArray(
+                np.array(Tm01),
+                dims=['time'],
+                attrs={
+                    'unit': 's',
+                    'standard_name':
+                    'sea_surface_wave_mean_period_from_variance_spectral_density_first_frequency_moment',
+                    'description': 'First wave period (m0/m1)'
+                }),
+            'Tm02':
+            xr.DataArray(
+                np.array(Tm02),
+                dims=['time'],
+                attrs={
+                    'unit': 's',
+                    'standard_name':
+                    'sea_surface_wave_mean_period_from_variance_spectral_density_second_frequency_moment',
+                    'description': 'Second wave period (sqrt(m0/m2))'
+                }),
+            'Tm_10':
+            xr.DataArray(
+                np.array(Tm_10),
+                dims=['time'],
+                attrs={
+                    'unit': 's',
+                    'standard_name':
+                    'sea_surface_wave_mean_period_from_variance_spectral_density_inverse_frequency_moment',
+                    'description': 'Inverse wave period ((m-1/m0))'
+                }),
+            'Tp':
+            xr.DataArray(
+                np.array(Tp),
+                dims=['time'],
+                attrs={
+                    'unit':
+                    's',
+                    'standard_name':
+                    'sea_surface_wave_period_at_variance_spectral_density_maximum',
+                    'description':
+                    'Peak period (period with maximum elevation energy)'
+                }),
+            'm_1':
+            xr.DataArray(
+                np.array(m_1),
+                dims=['time'],
+                attrs={'description': 'Inverse order moment from spectrum'}),
+            'm0':
+            xr.DataArray(
+                np.array(m0),
+                dims=['time'],
+                attrs={'description': 'Zeroth order moment from spectrum'}),
+            'm1':
+            xr.DataArray(
+                np.array(m1),
+                dims=['time'],
+                attrs={'description': 'First order moment from spectrum'}),
+            'm2':
+            xr.DataArray(
+                np.array(m2),
+                dims=['time'],
+                attrs={'description': 'Second order moment from spectrum'}),
+            'm4':
+            xr.DataArray(
+                np.array(m4),
+                dims=['time'],
+                attrs={'description': 'Forth order moment from spectrum'}),
             'added':
             xr.Variable(
                 ('package'), [
@@ -364,8 +483,9 @@ class SpecTimeseries:
         },
                         coords={
                             'time':
-                            xr.Variable(('time'), pd.to_datetime(self.time).tz_localize(None).astype(
-                                    'datetime64[ns]')),
+                            xr.Variable(('time'),
+                                        pd.to_datetime(self.time).tz_localize(
+                                            None).astype('datetime64[ns]')),
                             'frequency':
                             xr.Variable(('frequency'),
                                         self.frequency.astype(np.float32)),
