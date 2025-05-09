@@ -298,7 +298,7 @@ class Spec(Event):
 
     @property
     def E(self):
-        E = welchint(self.A, self.frequency, 2)
+        E = welchint(self.frequency, self.A, 2)
         return E
 
     def samples(self):
