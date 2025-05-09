@@ -53,7 +53,6 @@ pub const fi1: usize = 85;
 
 pub const WELCH_PACKET_SZ: usize = fi1 - fi0;
 
-
 /// Maximum length of base64 string
 ///
 /// XXX: The maximum amount of bytes for each package is 256 bytes.
@@ -243,13 +242,31 @@ pub fn u16_encode(spec: &[f32; NFFT / 2]) -> (f32, [u16; WELCH_PACKET_SZ]) {
     debug_assert_eq!(spec.len(), WELCH_PACKET_SZ);
 
     let mut encode = [0u16; WELCH_PACKET_SZ];
-    let max = spec.iter().max_by(|a, b| a.total_cmp(b)).unwrap();
+
+    // Encode to u16 within max value.
+    let max = *spec.iter().max_by(|a, b| a.total_cmp(b)).unwrap();
+    // let max = max.max(1.0); // use at least 1.0 m^2/Hz.
 
     for (e, s) in encode.iter_mut().zip(spec) {
-        *e = wire::scale_f32_to_u16_positive(*max, *s);
+        *e = wire::scale_f32_to_u16_positive(max, *s);
     }
 
-    (*max, encode)
+    (max, encode)
+}
+
+#[allow(unused)]
+pub fn u16_decode(max: f32, encoded: [u16; WELCH_PACKET_SZ]) -> [f32; NFFT / 2] {
+    use super::wire;
+
+    let mut spec = [0.0_f32; NFFT / 2];
+    let specs = &mut spec[fi0..fi1];
+    debug_assert_eq!(specs.len(), WELCH_PACKET_SZ);
+
+    for (s, e) in specs.iter_mut().zip(encoded) {
+        *s = wire::scale_u16_to_f32_positive(max, e);
+    }
+
+    spec
 }
 
 pub fn base64(spec: &[f32; NFFT / 2]) -> (f32, Vec<u8, WELCH_OUTN>) {
@@ -532,5 +549,56 @@ mod tests {
             let b64 = base64(&spec);
             b64
         });
+    }
+
+    #[test]
+    fn welch_synth1_20min_encode_decode() {
+        let mut data = npyz::npz::NpzArchive::open("tests/data/welch/welch_test_1.npz").unwrap();
+        let s = data.by_name("s").unwrap().unwrap();
+        let s2 = s.into_vec::<f64>().unwrap();
+
+        let mut w = Welch::new(26.);
+        for v in &s2 {
+            w.sample(*v as f32);
+        }
+
+        let spec = w.take_spectrum();
+
+        let (max, encoded) = u16_encode(&spec);
+        println!("max = {max}");
+        let spec_d = u16_decode(max, encoded);
+
+        assert_eq!(spec.len(), spec_d.len());
+        assert_abs_diff_eq!(&spec[fi0..fi1], &spec_d[fi0..fi1]);
+
+        // increase amplitude
+        let mut w = Welch::new(26.);
+        for v in &s2 {
+            w.sample(*v as f32 * 4.6);
+        }
+
+        let spec = w.take_spectrum();
+
+        let (max, encoded) = u16_encode(&spec);
+        println!("max = {max}");
+        let spec_d = u16_decode(max, encoded);
+
+        assert_eq!(spec.len(), spec_d.len());
+        assert_abs_diff_eq!(&spec[fi0..fi1], &spec_d[fi0..fi1]);
+
+        // decrease amplitude
+        let mut w = Welch::new(26.);
+        for v in &s2 {
+            w.sample(*v as f32 * 0.01);
+        }
+
+        let spec = w.take_spectrum();
+
+        let (max, encoded) = u16_encode(&spec);
+        println!("max = {max}");
+        let spec_d = u16_decode(max, encoded);
+
+        assert_eq!(spec.len(), spec_d.len());
+        assert_abs_diff_eq!(&spec[fi0..fi1], &spec_d[fi0..fi1]);
     }
 }

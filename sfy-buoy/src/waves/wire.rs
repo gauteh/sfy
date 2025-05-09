@@ -133,6 +133,16 @@ pub fn scale_u16_to_f32(max: f32, u: u16) -> f32 {
     return v as f32;
 }
 
+/// Move an u16 on given 0 to max range to its real value in f32.
+#[allow(unused)]
+pub fn scale_u16_to_f32_positive(max: f32, u: u16) -> f32 {
+    debug_assert!(max > 0.);
+    let max = max as f64;
+    let v = u as f64;
+    let v = v * max / u16::MAX as f64;
+    return v as f32;
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
