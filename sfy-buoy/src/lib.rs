@@ -65,7 +65,7 @@ pub const NOTEQ_SZ: usize = 6;
 
 #[cfg(not(feature = "raw"))]
 pub const STORAGEQ_SZ: usize = 12;
-#[cfg(all(not(feature = "raw"), feature = "storage"))]
+#[cfg(all(not(feature = "raw"), not(feature = "spectrum"), feature = "storage"))]
 pub const NOTEQ_SZ: usize = 12;
 
 #[cfg(feature = "storage")]
@@ -77,8 +77,11 @@ pub const NOTEQ_SZ: usize = 6;
 #[cfg(feature = "ext-gps")]
 pub const EPGS_SZ: usize = 6;
 
-#[cfg(feature = "spectrum")]
+#[cfg(all(not(feature = "storage"), feature = "spectrum"))]
 pub const NOTEQ_SZ: usize = 11;
+
+#[cfg(all(feature = "storage", feature = "spectrum"))]
+pub const NOTEQ_SZ: usize = 6;
 
 #[cfg(feature = "spectrum")]
 pub const SPECQ_SZ: usize = 8;
