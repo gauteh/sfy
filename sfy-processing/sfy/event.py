@@ -63,6 +63,9 @@ class Event:
     payload: Any = None
     payload_length: Any = None
     transport: Any = None
+    batch_received: Any = None
+    batch_number: Any = None
+    batch_total: Any = None
 
     @property
     def longitude(self):
