@@ -25,7 +25,7 @@
 
 </table>
 
-The buoys deployed in the surf on the coast of Norway:
+The buoys deployed in the surf at Nazaré and on the coast of Norway:
 
 [![Wave buoys at Nazaré](http://img.youtube.com/vi/RUizael0OJ4/0.jpg)](https://www.youtube.com/watch?v=RUizael0OJ4 "Wave buoys at Nazaré")
 [![Wave buoys in the surf zone at Jæren](http://img.youtube.com/vi/qK1Di7pjYFI/0.jpg)](http://www.youtube.com/watch?v=qK1Di7pjYFI "Wave buoys in the surf zone at Jæren")
