@@ -332,7 +332,7 @@ where
             p.data.len()
         );
 
-        self.queue
+        let _ = self.queue
             .enqueue(p)
             .inspect_err(|_| defmt::error!("could not enque GpsPacket.."));
     }

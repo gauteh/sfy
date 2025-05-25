@@ -17,7 +17,6 @@ sa::const_assert!(NOVERLAP < NSEG);
 
 pub mod hanning {
     use core::f32::consts::PI;
-    use micromath::F32Ext;
     use static_assertions as sa;
 
     // TODO: May be too big to include.
@@ -49,7 +48,7 @@ pub mod hanning {
 // pub const f0: f32 = 0.04; // Hz
 // pub const f1: f32 = 2.0; // Hz
 pub const fi0: usize = 2;
-pub const fi1: usize = 85;
+pub const fi1: usize = 79;
 
 pub const WELCH_PACKET_SZ: usize = fi1 - fi0;
 
@@ -58,6 +57,7 @@ pub const WELCH_PACKET_SZ: usize = fi1 - fi0;
 /// XXX: The maximum amount of bytes for each package is 256 bytes.
 pub const WELCH_OUTN: usize = { WELCH_PACKET_SZ * 2 } * 4 / 3 + 4;
 pub const SPEC_TEMPLATE: usize = 29;
+sa::const_assert!((WELCH_OUTN + SPEC_TEMPLATE) < 256);
 
 /// Rolling Welch spectrum computation (PSD, density mode). Based on scipy.welch implementation.
 pub struct Welch {
