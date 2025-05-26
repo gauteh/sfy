@@ -18,6 +18,7 @@ sa::const_assert!(NOVERLAP < NSEG);
 pub mod hanning {
     use core::f32::consts::PI;
     use static_assertions as sa;
+    use micromath::F32Ext;
 
     // TODO: May be too big to include.
     #[cfg(feature = "10Hz")]
