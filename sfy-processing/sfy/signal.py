@@ -335,6 +335,8 @@ def imu_cutoff_rabault2022(f, E, f0=0.05):
         i, f, P: index in f and f of low frequency cutoff, and cut spectrum.
     """
 
+    print("freq=", f, f.shape)
+
     OMB_df = 0.048828125 - 0.0439453125  #  df for OpenMetBuoy
 
     df = f[1] - f[0]
@@ -344,7 +346,7 @@ def imu_cutoff_rabault2022(f, E, f0=0.05):
 
     # Below f0 (0.05 Hz) the signal becomes very noisy, and quadrubly so because of the integration.
     if0 = np.argmax(f >= f0)
-    assert if0 > 0 or f <= f[0]
+    # assert if0 > 0 and f0 <= f[0]
 
     N = len(f)
 

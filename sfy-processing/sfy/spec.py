@@ -203,17 +203,17 @@ class Spec(Event):
 
     @property
     def df(self):
-        df = 52. / 4096
+        df = 52. / 2048
         return df
 
     @property
     def frequency(self):
         df = self.df
         fi0 = 2
-        fi1 = 85
+        fi1 = 79
         assert (fi1 - fi0) == len(self.A)
 
-        f = np.arange(0, 4096 // 2) * df
+        f = np.arange(0, 2048 // 2) * df
         return f[fi0:fi1]
 
     @property
