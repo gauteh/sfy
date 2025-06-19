@@ -32,8 +32,8 @@ def test_nseg_20min():
 def test_collect(sfyhub):
     b = sfyhub.buoy("dev860264054655247")
     pcks = b.spec_packages_range(
-        datetime(2025, 5, 6, 15, 00, tzinfo=timezone.utc),
-        datetime(2025, 5, 7, 12, 00, tzinfo=timezone.utc))
+        datetime(2025, 6, 6, 15, 00, tzinfo=timezone.utc),
+        datetime(2025, 6, 7, 12, 00, tzinfo=timezone.utc))
     assert len(pcks) > 10
 
     c = SpecCollection(pcks)
@@ -42,4 +42,4 @@ def test_collect(sfyhub):
 
     assert c.start == c.time[0]
 
-    np.testing.assert_almost_equal(c.duration, len(pcks) * 1024 / 52.)
+    np.testing.assert_almost_equal(c.duration, len(pcks) * 1220.92307)
