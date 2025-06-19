@@ -68,7 +68,8 @@ rtt:
 	stdbuf -i0 -e0 -o0 nc localhost 19021
 
 host-test:
-	cargo test
-	cargo test --features raw
-	cargo test --features fir
-	cargo test --features fir,raw
+	cargo test --features testing
+	cargo test --features testing,raw
+	cargo test --features testing,fir
+	cargo test --features testing,fir,raw
+	cargo test --features testing,spectrum
