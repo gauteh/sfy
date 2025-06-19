@@ -12,14 +12,15 @@
         </td>
         <td>
 
-* [sfy-buoy](sfy-buoy/) - the firmware for the wave buoy.
-* [sfy-drifter](sfy-drifter/) - a minimal, modem & gps, only drifter buoy.
+* [sfy-buoy](sfy-buoy/) - the firmware for the wave buoy. pre-built binaries
+    available under [releases](https://github.com/gauteh/sfy/releases).
 * [hardware and build-tutorial](hardware/Hardware.md) - hardware and assembly instructions.
 * [sfy-data](sfy-data/) - the server scraping or receiving data from deployed
     buoys.
 * [sfy-processing](sfy-processing/) - python libraries and tools for reading and post-processing received data.
 * [sfy-dashboard](sfy-dashboard/) - web interface for displaying latest position
     and overview of buoys.
+* [Some notes on getting started](https://github.com/gauteh/sfy/issues/183).
         </td>
     </tr>
 
