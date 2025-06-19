@@ -115,3 +115,10 @@ jobs:
         with:
           name: firmware
           path: sfy-buoy/target/bins
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        if: github.ref_type == 'tag'
+        with:
+          files: |
+            sfy-buoy/target/bins/*.bin
