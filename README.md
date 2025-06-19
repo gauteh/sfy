@@ -12,7 +12,7 @@
         </td>
         <td>
 
-* [sfy-buoy](sfy-buoy/) - the firmware for the wave buoy. pre-built binaries
+* [sfy-buoy](sfy-buoy/) - the firmware for the wave buoy. **pre-built binaries**
     available under [releases](https://github.com/gauteh/sfy/releases).
 * [hardware and build-tutorial](hardware/Hardware.md) - hardware and assembly instructions.
 * [sfy-data](sfy-data/) - the server scraping or receiving data from deployed
