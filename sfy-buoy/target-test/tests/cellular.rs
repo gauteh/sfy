@@ -69,7 +69,7 @@ mod tests {
         defmt::debug!("initiate sync..");
         s.note
             .hub()
-            .sync(&mut s.delay, false)
+            .sync(&mut s.delay, false, None, None)
             .unwrap()
             .wait(&mut s.delay)
             .unwrap();
