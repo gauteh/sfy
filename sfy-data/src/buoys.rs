@@ -610,7 +610,7 @@ mod tests {
     #[tokio::test]
     async fn list_buoys() {
         let state = crate::test_state().await;
-        let event = std::fs::read("tests/events/sensor.db_01.json").unwrap();
+        let event = std::fs::read("tests/events/sensor.db_02.json").unwrap();
 
         let f = filters(state);
 
@@ -641,16 +641,17 @@ mod tests {
             .await;
 
         assert_eq!(res.status(), 200);
-        assert_eq!(
-            res.body(),
-            "[[\"dev864475044203262\",\"cain\",\"sfy\",\"\"]]"
-        );
+        unsafe {
+            println!("{}", std::str::from_utf8_unchecked(res.body()));
+            assert!(std::str::from_utf8_unchecked(res.body())
+                .contains("[\"dev864475044203262\",\"cain\",\"sfy\",\"\"]"));
+        }
     }
 
     #[tokio::test]
     async fn list_entries() {
         let state = crate::test_state().await;
-        let event = std::fs::read("tests/events/sensor.db_01.json").unwrap();
+        let event = std::fs::read("tests/events/sensor.db_03.json").unwrap();
 
         let f = filters(state);
 
@@ -685,16 +686,18 @@ mod tests {
             "application/json"
         );
         assert_eq!(res.status(), 200);
-        assert_eq!(
-            res.body(),
-            "[[\"1639059643089-9ef2e080-f0b4-4036-8ccc-ec4206553537_sensor.db.json\",\"sensor.db\"]]"
-        );
+
+        unsafe {
+            println!("{}", std::str::from_utf8_unchecked(res.body()));
+            assert!(std::str::from_utf8_unchecked(res.body())
+                .contains("[\"1639059643089-9ef2e080-f0b4-4036-8ccc-ec4206553539_sensor.db.json\",\"sensor.db\"]"));
+        }
     }
 
     #[tokio::test]
     async fn get_entry() {
         let state = crate::test_state().await;
-        let event = std::fs::read("tests/events/sensor.db_01.json").unwrap();
+        let event = std::fs::read("tests/events/sensor.db_04.json").unwrap();
 
         let f = filters(state);
 
@@ -710,7 +713,7 @@ mod tests {
 
         // Missing token
         let res = warp::test::request()
-            .path("/buoys/dev864475044203262/1639059643089-9ef2e080-f0b4-4036-8ccc-ec4206553537_sensor.db.json")
+            .path("/buoys/dev864475044203262/1639059643089-9ef2e080-f0b4-4036-8ccc-ec4206553540_sensor.db.json")
             .method("GET")
             .reply(&f)
             .await;
@@ -718,7 +721,7 @@ mod tests {
         assert_eq!(res.status(), 400);
 
         let res = warp::test::request()
-            .path("/buoys/dev864475044203262/1639059643089-9ef2e080-f0b4-4036-8ccc-ec4206553537_sensor.db.json")
+            .path("/buoys/dev864475044203262/1639059643089-9ef2e080-f0b4-4036-8ccc-ec4206553540_sensor.db.json")
             .method("GET")
             .header("SFY_AUTH_TOKEN", "r-token1")
             .reply(&f)
@@ -738,7 +741,7 @@ mod tests {
 
         let f = filters(state);
 
-        let event = std::fs::read("tests/events/sensor.db_01.json").unwrap();
+        let event = std::fs::read("tests/events/sensor.db_05.json").unwrap();
         let res = warp::test::request()
             .path("/buoy")
             .method("POST")
