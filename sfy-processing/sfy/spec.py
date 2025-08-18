@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 
 from .signal import welchint
 from .timeseries import SpecTimeseries
+from .timeutil import utcify
 from .event import Event
 from .axl import scale_u16_to_f32
 
@@ -221,7 +222,7 @@ class Spec(Event):
         """
         UTC Datetime of start of samples.
         """
-        return pd.to_datetime(self.timestamp, unit='ms', utc=True)
+        return utcify(pd.to_datetime(self.timestamp, unit='ms', utc=True))
         # return datetime.fromtimestamp(self.timestamp / 1000., tz=pytz.utc)
 
     @property
@@ -230,7 +231,7 @@ class Spec(Event):
 
     @property
     def end(self):
-        return self.start + timedelta(seconds=self.SPEC_LENGTH)
+        return utcify(self.start + timedelta(seconds=self.SPEC_LENGTH))
 
     @property
     def package_length(self):
