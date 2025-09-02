@@ -502,7 +502,6 @@ class SpecTimeseries:
                             'buoy_name': self.sn,
                             **self.extra_attrs()
                         })
-        print(self.time[0])
         return ds
 
     def to_netcdf(self, filename: Path):

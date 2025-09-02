@@ -335,8 +335,6 @@ def imu_cutoff_rabault2022(f, E, f0=0.05):
         i, f, P: index in f and f of low frequency cutoff, and cut spectrum.
     """
 
-    print("freq=", f, f.shape)
-
     OMB_df = 0.048828125 - 0.0439453125  #  df for OpenMetBuoy
 
     df = f[1] - f[0]
