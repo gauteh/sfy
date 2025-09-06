@@ -35,9 +35,6 @@ flash: bin
 jlink-flash: bin bump-jlink
 	sh jlink-flash.sh target/$(VARIANT).bin
 
-deploy: bin
-	python3 ../tools/svl/svl.py -f target/$(VARIANT).bin $(USB) -v
-
 com:
 	picocom -e c -b 115200 $(USB)
 

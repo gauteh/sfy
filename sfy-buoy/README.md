@@ -7,19 +7,15 @@ Folders:
 * sfy-artemis - main function targeted for the Artemis.
 * target-test - unit tests for Artemis.
 
-usually flashing of the device etc. will be run from this directory.
-
 ## Building for deployment
 ```sh
-$ cd sfy-artemis
-$ BUOYPR=xxxx:your-notehub-account BUOYSN=WAVEBUGXX DEFMT_LOG=debug cargo build --release --features deploy
+$ BUOYPR=xxxx:your-notehub-account BUOYSN=WAVEBUGXX DEFMT_LOG=debug make T=r
 ```
 
-the `deploy` feature sets the panic-handler to reset the device. You can deploy
-using the USB bootloader:
+You can flash the firmware using the USB bootloader:
 
 ```sh
-$ make deploy
+$ make T=r flash
 ```
 
 ## Dependencies when building and flashing using the sparkfun bootloader
@@ -67,7 +63,7 @@ AUXRX/AUXTX and pull AUXEN up](https://dev.blues.io/guides-and-tutorials/notecar
 * ice: increase sensitivity (opposite of surf), expect low movement and low
     forces. typically used for ice deployments.
 
-* lowaccel: increase accel and gyro range to expect greater forces impacted by
+* surf: increase accel and gyro range to expect greater forces impacted by
     breaking waves.
 
 * raw: store raw data on SD-card (experimental)
