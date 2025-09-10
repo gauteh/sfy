@@ -1,5 +1,9 @@
 use blues_notecard::ntn::NtnSetGps;
-use blues_notecard::{self as notecard, card::Transport, NoteError, Notecard, NotecardConfig};
+use blues_notecard::{
+    self as notecard,
+    card::{GpioMode, Transport},
+    NoteError, Notecard, NotecardConfig,
+};
 use core::ops::{Deref, DerefMut};
 use embedded_hal::blocking::delay::DelayMs;
 use embedded_hal::blocking::i2c::{Read, Write};
@@ -132,6 +136,17 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         #[cfg(feature = "continuous")]
         note.card()
             .location_mode(delay, Some("off"), None, None, None, None, None, None, None)?
+            .wait(delay)?;
+
+        defmt::info!("Configuring AUX'es as GPIO, with AUX2 as output pin.");
+        note.card()
+            .aux_gpio(
+                delay,
+                GpioMode::Off,
+                GpioMode::Low,
+                GpioMode::Off,
+                GpioMode::Off,
+            )?
             .wait(delay)?;
 
         note.hub()
