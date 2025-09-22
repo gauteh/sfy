@@ -20,7 +20,9 @@ $ make T=r flash
 
 ## Dependencies when building and flashing using the sparkfun bootloader
 
-* apt install gcc-arm-none-eabi binutils-arm-none-eabi clang libclang-dev
+Tested on Ubuntu 20 and 22:
+
+* apt install gcc-arm-none-eabi binutils-arm-none-eabi clang-14 libclang-14-dev
 * cargo install cargo-binutils
 * rustup target add thumbv7em-none-eabihf
 * rustup component add llvm-tools-preview

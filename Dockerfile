@@ -1,4 +1,4 @@
-FROM ubuntu:latest
+FROM ubuntu:22
 
 RUN apt-get update -y
 RUN apt-get install -y git build-essential cmake libssl-dev curl gcc-arm-none-eabi binutils-arm-none-eabi libclang-dev clang pkg-config
