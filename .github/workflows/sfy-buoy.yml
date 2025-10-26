@@ -23,7 +23,7 @@ jobs:
       - name: Install deps
         run: |
           apt-get -y update
-          apt-get -y install build-essential libssl-dev gcc-9-arm-none-eabi binutils-9-arm-none-eabi libclang-dev clang curl git
+          apt-get -y install build-essential libssl-dev gcc-11-arm-none-eabi binutils-arm-none-eabi libclang-dev clang curl git
 
       - name: Work around git permission issue
         run: git config --global --add safe.directory /__w/sfy/sfy
