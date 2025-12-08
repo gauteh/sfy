@@ -33,6 +33,8 @@ The buoys deployed in the surf at Nazaré and on the coast of Norway:
 
 For more information and attribution, please refer to:
 * [Hope, Gaute, et al., 2025, SFY—A Lightweight, High-Frequency, and Phase-Resolving Wave Buoy for Coastal Waters,  J. Atmos. Oceanic Technol., 42, 133–154](https://journals.ametsoc.org/view/journals/atot/42/2/JTECH-D-23-0170.1.xml)
+
+* [Cavaleri, Luigi, et al. 2025. More Room at the Top: How Small Buoys Help Reveal the Detailed Dynamics of the Air-Sea Interface. Bulletin of the American Meteorological Society. March 28.](https://doi.org/10.1175/BAMS-D-24-0120.1.)
 * [Seldal, Torunn Irene, M. Sc. thesis, 2023, _SFY: A free-drifting wave buoy for measuring surf waves_](https://bora.uib.no/bora-xmlui/handle/11250/3072146)
 
 # Press
