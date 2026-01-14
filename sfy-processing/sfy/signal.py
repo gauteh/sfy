@@ -196,7 +196,7 @@ def spectral_moment(f, H, order=0):
     assert len(f) > 10
 
     M = np.power(f, order) * H
-    return np.trapz(M, f)
+    return np.trapezoid(M, f)
 
 
 def welch(freq, e, nperseg=4096, order=2):
