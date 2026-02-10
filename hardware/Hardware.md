@@ -1,8 +1,15 @@
 # Hardware
 
-### sfy-v3.0
+### sfy-v3.1.4
 
-Not ready yet, all components on PCB.
+All components except modem assembled by factory. Has onboard antennas, but
+support external antennas as well.
+
+* Make sure modem is fastened with screw so that it is horizontal, over or
+    undertightening will cause trouble.
+* It is recommended to start with a small number the first time to check that
+    everything works.
+
 
 ### sfy-v2.0
 
