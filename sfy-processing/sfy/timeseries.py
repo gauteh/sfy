@@ -285,7 +285,7 @@ class AxlTimeseries:
 
         # Adjust for on-board FIR filter
         logger.debug('Adjusting for FIR filter delay')
-        ds = signal.adjust_fir_filter(ds)
+        ds = signal.adjust_fir_filter(ds, inplace=False)
 
         # ds = sxr.unique_positions(ds)
         if retime:
