@@ -26,24 +26,24 @@ pub const EXT_APN: Option<&str> = option_env!("SFY_EXT_SIM_APN");
 include!(concat!(env!("OUT_DIR"), "/config.rs"));
 
 /// Initialize sync when storage use is above this percentage.
-#[cfg(not(feature = "spectrum"))]
+#[cfg(not(feature = "ntn"))]
 pub const NOTECARD_STORAGE_INIT_SYNC: u32 = 65;
-#[cfg(not(feature = "spectrum"))]
+#[cfg(not(feature = "ntn"))]
 pub const NOTECARD_STORAGE_CAPACITY_PACKAGES: usize = 75;
 
-#[cfg(feature = "spectrum")]
+#[cfg(feature = "ntn")]
 pub const NOTECARD_STORAGE_INIT_SYNC: u32 = 65;
 
-#[cfg(feature = "spectrum")]
+#[cfg(feature = "ntn")]
 pub const NOTECARD_STORAGE_INIT_SYNC_NTN: u32 = 75;
 
-#[cfg(feature = "spectrum")]
+#[cfg(feature = "ntn")]
 pub const NOTECARD_STORAGE_CAPACITY_PACKAGES: usize = 70;
 
-#[cfg(feature = "spectrum")]
+#[cfg(feature = "ntn")]
 pub const NOTECARD_STORAGE_CAPACITY_NTN_PACKAGES: usize = 85;
 
-#[cfg(feature = "spectrum")]
+#[cfg(feature = "ntn")]
 const STARNOTE_PORT_SPEC: u16 = 10;
 
 pub struct Notecarrier<I2C: Read + Write> {
@@ -53,7 +53,7 @@ pub struct Notecarrier<I2C: Read + Write> {
     #[allow(unused)]
     sn: Option<heapless::String<120>>,
 
-    #[cfg(feature = "spectrum")]
+    #[cfg(feature = "ntn")]
     /// Last time a sync had to use NTN mode (seconds since epoch, as returned from notecard)
     last_sync_ntn: Option<u32>,
 }
@@ -85,7 +85,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         );
         note.initialize(delay)?;
 
-        #[cfg(feature = "spectrum")]
+        #[cfg(feature = "ntn")]
         {
             #[cfg(feature = "ntn-test")]
             {
@@ -156,7 +156,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                 None,
                 if cfg!(feature = "continuous") {
                     Some(notecard::hub::req::HubMode::Continuous)
-                } else if cfg!(feature = "spectrum") {
+                } else if cfg!(feature = "ntn") {
                     // Some(notecard::hub::req::HubMode::Minimum)
                     Some(notecard::hub::req::HubMode::Periodic)
                 } else {
@@ -205,7 +205,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             device: dev.device,
             sn: dev.sn,
 
-            #[cfg(feature = "spectrum")]
+            #[cfg(feature = "ntn")]
             last_sync_ntn: None,
         };
         n.setup_templates(delay)?;
@@ -393,7 +393,11 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                     Some(meta_template),
                     Some(crate::waves::welch::WELCH_OUTN as u32),
                     notecard::note::TemplateFormat::Compact, // sync over starnote/lora as well
-                    Some(STARNOTE_PORT_SPEC.into()),         // starnote/lora port
+                    if cfg!(feature = "ntn") {
+                        Some(STARNOTE_PORT_SPEC.into()) // starnote/lora port
+                    } else {
+                        None
+                    },
                     None,
                 )?
                 .wait(delay)?;
@@ -863,7 +867,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
 
         // TODO: When on NTN.. or if last connection was NTN, don't try to sync axl notes, only
         // spectrum notes.
-        #[cfg(feature = "spectrum")]
+        #[cfg(feature = "ntn")]
         {
             let wireless = self
                 .note
@@ -879,11 +883,11 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             if wireless.mode.map(|o| o == "ntn").unwrap_or(false) {
                 let time = self.note.card().time(delay)?.wait(delay)?;
                 if let Some(time) = time.time {
-                    defmt::trace!("spectrum: setting last sync ntn: {}", time);
+                    defmt::trace!("ntn: setting last sync ntn: {}", time);
                     self.last_sync_ntn = Some(time);
                 }
             } else {
-                defmt::trace!("spectrum: reseting last sync ntn");
+                defmt::trace!("ntn: reseting last sync ntn");
                 self.last_sync_ntn = None;
             }
 
@@ -892,7 +896,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                 if status.storage > NOTECARD_STORAGE_INIT_SYNC_NTN as usize {
                     if sync_status.requested.is_none() {
                         defmt::warn!(
-                            "notecard is {}% full (spectrum limit, ntn sync), initiating sync.",
+                            "notecard is {}% full (ntn limit, ntn sync), initiating sync.",
                             status.storage
                         );
                         self.note
@@ -923,7 +927,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             }
         }
 
-        #[cfg(not(feature = "spectrum"))]
+        #[cfg(not(feature = "ntn"))]
         if status.storage > NOTECARD_STORAGE_INIT_SYNC as usize {
             if sync_status.requested.is_none() {
                 defmt::warn!(

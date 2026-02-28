@@ -10,7 +10,7 @@ path = "src/bin/sfypack.rs"
 required-features = [ "build-bin", "raw" ]
 
 [workspace]
-members = [ "target-test", "sfy-artemis", "sfy-ext-gps" ]
+members = [ "target-test", "sfy-artemis", "sfy-ext-gps", "sombie" ]
 
 [dependencies]
 base64 = { version = "0.13.0", default-features = false }
@@ -59,7 +59,8 @@ fir = []
 storage = []
 ext-gps = [ "dep:serde-json-core"]
 spectrum = [ "dep:microfft", "dep:num-complex" ]
-ntn-test = [ "spectrum" ]
+ntn = []
+ntn-test = [ "ntn" ]
 surf = []
 ice = []
 testing = [ "defmt/unstable-test" ]
