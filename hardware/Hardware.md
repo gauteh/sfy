@@ -1,8 +1,6 @@
 # Hardware
 
-### sfy-v3.1.4
-
-> Need to swap rx/tx before any new prints.
+### sfy-v3.1.5
 
 All components except modem assembled by factory. Has onboard antennas, but
 support external antennas as well.
