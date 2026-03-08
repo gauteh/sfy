@@ -352,9 +352,39 @@ fn main() -> ! {
             }
         }
     }
-    gnss.set_output_rate(&mut i2c_gps, 1).unwrap();
-    gnss.set_pps_rate(&mut i2c_gps, 1_000_000, 100_000).unwrap();
-    gnss.enable_pvt(&mut i2c_gps).unwrap();
+    // Small delay after init before further configuration, to let the GPS settle.
+    delay.delay_ms(100u32);
+    loop {
+        match gnss.set_output_rate(&mut i2c_gps, 1) {
+            Ok(()) => break,
+            Err(e) => {
+                warn!("GPS set_output_rate failed: {:?} — retrying", defmt::Debug2Format(&e));
+                delay.delay_ms(500u32);
+            }
+        }
+    }
+    delay.delay_ms(100u32);
+    loop {
+        match gnss.set_pps_rate(&mut i2c_gps, 1_000_000, 100_000) {
+            Ok(()) => break,
+            Err(e) => {
+                warn!("GPS set_pps_rate failed: {:?} — retrying", defmt::Debug2Format(&e));
+                delay.delay_ms(500u32);
+            }
+        }
+    }
+    // Delay after PPS config: the GPS reconfigures the timepulse output (active=true)
+    // which can briefly affect the I2C DDC interface.
+    delay.delay_ms(200u32);
+    loop {
+        match gnss.enable_pvt(&mut i2c_gps) {
+            Ok(()) => break,
+            Err(e) => {
+                warn!("GPS enable_pvt failed: {:?} — retrying", defmt::Debug2Format(&e));
+                delay.delay_ms(500u32);
+            }
+        }
+    }
     info!("GPS initialised.");
 
     // Set up GPS packet collector.
