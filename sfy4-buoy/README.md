@@ -4,7 +4,7 @@ Folders:
 
 * sfy - library of firmware, portable to different platforms + tool for
     unpacking SD-card files.
-* sfy-artemis - main function targeted for the Artemis.
+* sfy4-main - main function targeted for the Artemis.
 * target-test - unit tests for Artemis.
 
 ## Building for deployment
@@ -22,7 +22,7 @@ $ make T=r flash
 
 Tested on Ubuntu 20 and 22:
 
-* apt install gcc-arm-none-eabi binutils-arm-none-eabi clang-14 libclang-14-dev
+* apt install gcc-arm-none-eabi binutils-arm-none-eabi clang-14 libclang-14-dev libnewlib-arm-none-eabi
 * cargo install cargo-binutils
 * rustup target add thumbv7em-none-eabihf
 * rustup component add llvm-tools-preview

@@ -49,7 +49,7 @@ approx = { version = "0.5" }
 npyz = { version = "0.8", features = [ "npz" ] }
 
 [features]
-default = [ "build-bin", "ext-gps", "spectrum" ]
+default = [ "build-bin", "spectrum" ]
 continuous = []
 continuous-post = [ "continuous", "dep:ufmt" ]
 20Hz = ["fir"]
@@ -57,7 +57,6 @@ continuous-post = [ "continuous", "dep:ufmt" ]
 raw = [ "storage" ]
 fir = []
 storage = []
-ext-gps = [ "dep:serde-json-core"]
 spectrum = [ "dep:microfft", "dep:num-complex" ]
 ntn-test = [ "spectrum" ]
 surf = []
