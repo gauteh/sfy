@@ -114,19 +114,6 @@ fn main() -> ! {
         halc::am_hal_cachectrl_config(&halc::am_hal_cachectrl_defaults);
         halc::am_hal_cachectrl_enable();
         halc::am_bsp_low_power_init();
-
-        let mut avail: halc::am_hal_burst_avail_e = halc::am_hal_burst_avail_e::default();
-        let bi = halc::am_hal_burst_mode_initialize(&mut avail);
-        let mut bmode: halc::am_hal_burst_mode_e = halc::am_hal_burst_mode_e::default();
-        let be = halc::am_hal_burst_mode_enable(&mut bmode);
-
-        defmt::info!(
-            "burst: avail: {}, init: {}, mode: {}, enable: {}",
-            avail,
-            bi,
-            bmode,
-            be
-        );
     }
 
     let mut dp = hal::pac::Peripherals::take().unwrap();
