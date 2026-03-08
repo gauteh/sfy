@@ -1,0 +1,123 @@
+[package]
+name = "sfy"
+edition = "2021"
+version = "0.1.0"
+authors = [ "Gaute Hope <gauteh@met.no>" ]
+
+[[bin]]
+name = "sfypack"
+path = "src/bin/sfypack.rs"
+required-features = [ "build-bin", "raw" ]
+
+[workspace]
+members = [ "target-test", "sfy4-main" ]
+
+[dependencies]
+base64 = { version = "0.13.0", default-features = false }
+defmt = "0.3"
+bytemuck = "1.7.2"
+heapless = { version = "0.7", features = [ "serde", "ufmt-impl", "defmt-impl" ] }
+embedded-sdmmc = { version = "0.6.0", default-features = false, features = ["defmt-log"] }
+postcard = { version = "1.0.1", features = [ "experimental-derive" ]}
+serde = { version = "1", features = ["derive"], default-features = false }
+max-m10s = { path = "../../max-m10s-rs", features = ["defmt"] }
+serde-json-core = { version = "0.5.1", optional = true }
+serde_json = { version = "1", optional = true }
+embedded-hal = "0.2.6"
+cortex-m = "*"
+ism330dhcx = "0.5.1"
+static_assertions = "1"
+chrono = { version = "0.4.19", default-features = false }
+micromath = { version = "2", features = [ "quaternion", "vector" ] }
+libm = { version = "0.2", features = [ "unstable" ] }
+rtcc = "0.3.0"
+anyhow = { version = "1", optional = true }
+argh = { version = "*", optional = true }
+nb = "1.1.0"
+ufmt = { version = "0.2", optional = true }
+microfft = { version = "0.6.0", optional = true }
+num-complex = { version = "0.4.6", optional = true, default-features = false, features = [ "libm" ]}
+
+[dependencies.ahrs-fusion]
+git = "https://github.com/gauteh/ahrs-fusion"
+
+[dependencies.blues-notecard]
+git = "https://github.com/gauteh/notecard-rs"
+
+[dev-dependencies]
+half = { version = "2.4", features = [ "use-intrinsics", "bytemuck", "serde" ] }
+approx = { version = "0.5" }
+npyz = { version = "0.8", features = [ "npz" ] }
+
+[features]
+default = [ "build-bin", "spectrum" ]
+continuous = []
+continuous-post = [ "continuous", "dep:ufmt" ]
+20Hz = ["fir"]
+10Hz = ["fir"]
+raw = [ "storage" ]
+fir = []
+storage = []
+spectrum = [ "dep:microfft", "dep:num-complex" ]
+ntn-test = [ "spectrum" ]
+surf = []
+ice = []
+testing = [ "defmt/unstable-test" ]
+target-test = [ "storage" ]
+build-bin = [ "fir", "storage", "raw", "anyhow", "argh", "serde-json-core/std", "serde_json", "chrono/std" ]
+
+
+[patch.crates-io]
+ism330dhcx = { git = "https://github.com/gauteh/ism330dhcx", branch = "gyro-accel-parse-range" }
+# ism330dhcx = { path = "../../../../dev/embedded/ism330dhcx" }
+cmsis_dsp = { git = "https://github.com/samcrow/cmsis_dsp.rs" }
+embedded-sdmmc = { git = "https://github.com/rust-embedded-community/embedded-sdmmc-rs", rev="3b5c026d" }
+# embedded-sdmmc = { git = "https://github.com/gauteh/embedded-sdmmc-rs", branch = "sdmmc-spi-borrow" }
+# embedded-sdmmc = { path = "../../../../dev/embedded/embedded-sdmmc-rs" }
+
+# [patch.'https://github.com/gauteh/ahrs-fusion']
+# ahrs-fusion = { path = "../../../../dev/embedded/imu/ahrs-fusion" }
+
+# [patch.'https://github.com/gauteh/notecard-rs']
+# blues-notecard = { path = "../../../../dev/embedded/notecard-rs" }
+
+# [patch.'https://github.com/gauteh/ambiq-rs']
+# ambiq-hal = { path = "../../../../dev/embedded/ambiq-rs/ambiq-hal" }
+
+# cargo build/run
+[profile.dev]
+# codegen-units = 1
+debug = 2
+debug-assertions = true # <-
+incremental = true
+opt-level = 3 # <-
+overflow-checks = true # <-
+
+# cargo test
+[profile.test]
+# codegen-units = 1
+debug = 2
+debug-assertions = true # <-
+# incremental = false
+opt-level = 3 # <-
+overflow-checks = true # <-
+
+# cargo build/run --release
+[profile.release]
+codegen-units = 1
+debug = 2
+debug-assertions = false # <-
+incremental = false
+lto = 'fat'
+opt-level = 3 # <-
+overflow-checks = false # <-
+
+# cargo test --release
+[profile.bench]
+codegen-units = 1
+debug = 2
+debug-assertions = false # <-
+incremental = false
+lto = 'fat'
+opt-level = 3 # <-
+overflow-checks = false # <-
