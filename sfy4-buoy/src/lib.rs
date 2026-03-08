@@ -35,14 +35,12 @@ use rtcc::DateTimeAccess;
 pub mod axl;
 #[cfg(feature = "fir")]
 pub mod fir;
+pub mod gps;
 pub mod log;
 pub mod note;
 #[cfg(feature = "storage")]
 pub mod storage;
 pub mod waves;
-
-#[cfg(feature = "ext-gps")]
-pub mod gps;
 
 use axl::AxlPacket;
 #[cfg(feature = "storage")]
@@ -60,8 +58,6 @@ pub type ImuAxlPacketT = axl::AxlPacket;
 // need to be queued.
 #[cfg(feature = "raw")]
 pub const STORAGEQ_SZ: usize = 3;
-#[cfg(all(feature = "raw", not(feature = "ext-gps")))]
-pub const NOTEQ_SZ: usize = 6;
 
 #[cfg(not(feature = "raw"))]
 pub const STORAGEQ_SZ: usize = 12;
@@ -71,11 +67,15 @@ pub const NOTEQ_SZ: usize = 12;
 #[cfg(feature = "storage")]
 pub const IMUQ_SZ: usize = STORAGEQ_SZ;
 
-#[cfg(all(feature = "ext-gps", not(feature = "spectrum")))]
+// GPS is always present on sfy4 hardware.
+pub const EPGS_SZ: usize = 6;
+
+// GPS queue reduces the note queue capacity.
+#[cfg(feature = "raw")]
 pub const NOTEQ_SZ: usize = 6;
 
-#[cfg(feature = "ext-gps")]
-pub const EPGS_SZ: usize = 6;
+#[cfg(all(not(feature = "raw"), not(feature = "spectrum"), not(feature = "storage")))]
+pub const NOTEQ_SZ: usize = 6;
 
 #[cfg(all(not(feature = "storage"), feature = "spectrum"))]
 pub const NOTEQ_SZ: usize = 11;
@@ -85,14 +85,6 @@ pub const NOTEQ_SZ: usize = 6;
 
 #[cfg(feature = "spectrum")]
 pub const SPECQ_SZ: usize = 8;
-
-#[cfg(all(
-    not(feature = "raw"),
-    not(feature = "storage"),
-    not(feature = "ext-gps"),
-    not(feature = "spectrum")
-))]
-pub const NOTEQ_SZ: usize = 24;
 
 #[cfg(not(feature = "storage"))]
 pub const IMUQ_SZ: usize = NOTEQ_SZ;
@@ -188,7 +180,6 @@ impl Location {
         }
     }
 
-    #[cfg(feature = "ext-gps")]
     pub fn set_from_egps<D: DateTimeAccess>(
         &mut self,
         state: &Mutex<RefCell<Option<SharedState<D>>>>,

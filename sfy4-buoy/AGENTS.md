@@ -11,6 +11,9 @@ Resources:
 
 # Details
 
+* The old version is located in sfy3-buoy, the new version you should create
+    goes in sfy4-buoy. It is currently almost empty. The old version may be used
+    as a template.
 * The library in sfy4-buoy may be simplified to no longer match legacy code.
 * the ext-gps feature can be removed (essentially always enabled), as the max-m10s is always mounted.
 * Remove the JSON interface to the existing gps, and use the read_pvt directly.
@@ -18,4 +21,13 @@ Resources:
 
 * Use the local copy of the driver in ../../max-m10s-rs for development.
 * If features are missing in the max-m10s-rs driver they can be requested from
-    agent in session 'max-m10s-rs'.
+    agent in session 'max-m10s'.
+
+## Future work (not for now)
+
+* Store gps to SD card as well.
+* Make duty-cycle of gps configurable:
+    - Turn with a certain delay.
+    - Collect data for 20 minutes.
+* Use GPS velocity to calculate a separate spectrum, like it is currently done
+    for the IMU in spec. Create a separate package type.

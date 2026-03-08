@@ -297,7 +297,6 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             )?
             .wait(delay)?;
 
-        #[cfg(feature = "ext-gps")]
         {
             defmt::debug!("setting up egps templates..");
 
@@ -529,7 +528,6 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         Ok(b64.len())
     }
 
-    #[cfg(feature = "ext-gps")]
     pub fn send_egps(
         &mut self,
         pck: &crate::gps::GpsPacket,
@@ -793,7 +791,6 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
     }
 
     /// Send queued ext-gps packages to the notecard.
-    #[cfg(feature = "ext-gps")]
     pub fn drain_egps_queue(
         &mut self,
         queue: &mut heapless::spsc::Consumer<'static, crate::gps::GpsPacket, { crate::EPGS_SZ }>,

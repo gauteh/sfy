@@ -1083,6 +1083,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "13dc2df351e3202783a1fe0d44375f7295ffb4049267b0f3018346dc122a1d94"
 
 [[package]]
+name = "max-m10s"
+version = "0.1.0"
+dependencies = [
+ "defmt",
+ "embedded-hal",
+]
+
+[[package]]
 name = "memchr"
 version = "2.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1703,6 +1711,7 @@ dependencies = [
  "heapless",
  "ism330dhcx",
  "libm",
+ "max-m10s",
  "microfft",
  "micromath",
  "nb 1.1.0",
@@ -1718,7 +1727,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "sfy-artemis"
+name = "sfy4-main"
 version = "0.1.0"
 dependencies = [
  "ambiq-hal",
@@ -1732,30 +1741,11 @@ dependencies = [
  "embedded-hal",
  "git-version",
  "heapless",
- "panic-probe",
- "sfy",
- "static_cell",
- "ufmt 0.1.2",
-]
-
-[[package]]
-name = "sfy-ext-gps"
-version = "0.1.0"
-dependencies = [
- "ambiq-hal",
- "chrono",
- "cmsis_dsp",
- "cortex-m",
- "cortex-m-rt",
- "defmt",
- "defmt-rtt",
- "embedded-hal",
- "git-version",
- "heapless",
- "nb 1.1.0",
+ "max-m10s",
  "panic-probe",
  "rtcc",
  "sfy",
+ "static_cell",
  "ufmt 0.1.2",
 ]
 
