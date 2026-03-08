@@ -333,6 +333,8 @@ fn main() -> ! {
     info!("Setting up MAX-M10S GPS over I2C..");
     // IOM2: initialized here, right before first use, to ensure the peripheral
     // is in a fresh idle state (IOM can be non-idle if initialized long before use).
+    // Note: GPS was powered on early in startup; by this point several seconds have
+    // elapsed (well above the ≥200 ms boot requirement).
     let mut i2c_gps = i2c::Iom2::new(dp.IOM2, pins.d17, pins.d18, i2c::Freq::F100kHz);
     let mut gnss = loop {
         match MaxM10S::new(&mut i2c_gps) {
@@ -352,30 +354,16 @@ fn main() -> ! {
             }
         }
     }
-    // Small delay after init before further configuration, to let the GPS settle.
-    delay.delay_ms(100u32);
-    loop {
-        match gnss.set_output_rate(&mut i2c_gps, 1) {
-            Ok(()) => break,
-            Err(e) => {
-                warn!("GPS set_output_rate failed: {:?} — retrying", defmt::Debug2Format(&e));
-                delay.delay_ms(500u32);
-            }
-        }
+    gnss.set_output_rate(&mut i2c_gps, 1)
+        .inspect_err(|e| warn!("GPS set_output_rate failed: {:?}", defmt::Debug2Format(e)))
+        .ok();
+    // set_pps_rate uses CFG-VALSET split into three ≤32-byte frames to stay within
+    // the Apollo3 IOM FIFO limit. Failure is non-fatal: the buoy continues collecting
+    // IMU data but won't receive timepulse interrupts for GPS timestamping.
+    match gnss.set_pps_rate(&mut i2c_gps, 1_000_000, 100_000) {
+        Ok(()) => info!("GPS PPS configured: 1 Hz, 100 ms pulse"),
+        Err(e) => warn!("GPS set_pps_rate failed (continuing without PPS): {:?}", defmt::Debug2Format(&e)),
     }
-    delay.delay_ms(100u32);
-    loop {
-        match gnss.set_pps_rate(&mut i2c_gps, 1_000_000, 100_000) {
-            Ok(()) => break,
-            Err(e) => {
-                warn!("GPS set_pps_rate failed: {:?} — retrying", defmt::Debug2Format(&e));
-                delay.delay_ms(500u32);
-            }
-        }
-    }
-    // Delay after PPS config: the GPS reconfigures the timepulse output (active=true)
-    // which can briefly affect the I2C DDC interface.
-    delay.delay_ms(200u32);
     loop {
         match gnss.enable_pvt(&mut i2c_gps) {
             Ok(()) => break,
