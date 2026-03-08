@@ -174,6 +174,14 @@ fn main() -> ! {
     info!("Setting up IOM and RTC.");
     delay.delay_ms(1_000u32);
 
+    // Power on the GPS module: d8 (pad 38), LOW = on.
+    // NOTE: Must be configured BEFORE IOM4 init. Pads 38 and 39 share the same
+    // Apollo3 config registers (PADREGJ, CFGE). Configuring pad 38 after IOM4
+    // init would clobber pad 39's IOM4_SCL function selector.
+    info!("Powering on GPS module..");
+    let mut gps_pwr = pins.d8.into_push_pull_output();
+    gps_pwr.set_low().unwrap();
+
     // IOM4: Notecarrier (100 kHz)
     let i2c4 = i2c::Iom4::new(dp.IOM4, pins.d10, pins.d9, i2c::Freq::F100kHz);
     // IOM3: IMU (400 kHz)
@@ -181,10 +189,6 @@ fn main() -> ! {
     // IOM2: MAX-M10S GPS (100 kHz per hardware spec)
     let mut i2c_gps = i2c::Iom2::new(dp.IOM2, pins.d17, pins.d18, i2c::Freq::F100kHz);
 
-    // Power on the GPS module: d8 (pad 38), LOW = on.
-    info!("Powering on GPS module..");
-    let mut gps_pwr = pins.d8.into_push_pull_output();
-    gps_pwr.set_low().unwrap();
     delay.delay_ms(200u32);
 
     // Set up RTC
