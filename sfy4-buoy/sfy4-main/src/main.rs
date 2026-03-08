@@ -173,8 +173,7 @@ fn main() -> ! {
     let i2c4 = i2c::Iom4::new(dp.IOM4, pins.d10, pins.d9, i2c::Freq::F100kHz);
     // IOM3: IMU (400 kHz)
     let i2c3 = i2c::Iom3::new(dp.IOM3, pins.d6, pins.d7, i2c::Freq::F400kHz);
-    // IOM2: MAX-M10S GPS (100 kHz per hardware spec)
-    let mut i2c_gps = i2c::Iom2::new(dp.IOM2, pins.d17, pins.d18, i2c::Freq::F100kHz);
+    // IOM2: MAX-M10S GPS — initialized later, right before first use.
 
     delay.delay_ms(200u32);
 
@@ -332,6 +331,9 @@ fn main() -> ! {
     );
 
     info!("Setting up MAX-M10S GPS over I2C..");
+    // IOM2: initialized here, right before first use, to ensure the peripheral
+    // is in a fresh idle state (IOM can be non-idle if initialized long before use).
+    let mut i2c_gps = i2c::Iom2::new(dp.IOM2, pins.d17, pins.d18, i2c::Freq::F100kHz);
     let mut gnss = loop {
         match MaxM10S::new(&mut i2c_gps) {
             Ok(dev) => break dev,
