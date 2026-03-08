@@ -354,7 +354,7 @@ fn main() -> ! {
             }
         }
     }
-    gnss.set_output_rate(&mut i2c_gps, 1)
+    gnss.set_output_rate(&mut i2c_gps, 25)
         .inspect_err(|e| warn!("GPS set_output_rate failed: {:?}", defmt::Debug2Format(e)))
         .ok();
     // set_pps_rate uses CFG-VALSET split into three ≤32-byte frames to stay within
