@@ -25,7 +25,7 @@ def adjust_fir_filter(x: xr.Dataset, inplace=True):
     Fs = 208.
     delay = ((NTAP / 2) / Fs) * 1000
     delay = np.timedelta64(int(delay), 'ms')
-    x['time'].values[:] = x['time'].values[:] + delay
+    x = x.assign_coords(time=x['time'].values + delay)
 
     x.attrs['fir_adjusted'] = delay.item().total_seconds() * 1000
     x.attrs['fir_adjusted:unit'] = 'ms'
