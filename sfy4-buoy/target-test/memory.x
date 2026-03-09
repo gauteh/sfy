@@ -1,1 +1,1 @@
-../sfy-artemis/memory.x
+../sfy4-main/memory.x
