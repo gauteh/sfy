@@ -19,7 +19,7 @@ defmt-rtt = "0.4"
 panic-probe = { version = "0.3.0", features = ["print-defmt"] }
 cmsis_dsp = { version = "0.1.0", features = [ "micromath" ] }
 sfy = { path = "../", default-features = false }
-max-m10s = { path = "../../../max-m10s-rs", features = ["defmt"] }
+max-m10s = { git = "https://github.com/gauteh/max-m10s-rs", features = ["defmt"] }
 git-version = "0.3.5"
 chrono = { version = "0.4.19", default-features = false }
 rtcc = "0.3.0"
