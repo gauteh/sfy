@@ -23,6 +23,8 @@ Resources:
 * If features are missing in the max-m10s-rs driver they can be requested from
     agent in session 'max-m10s'.
 
+* use `make host-tests` to run tests.
+
 ## Future work (not for now)
 
 * Store gps to SD card as well.
