@@ -25,11 +25,19 @@ Resources:
 
 * use `make host-tests` to run tests.
 
-## Future work (not for now)
+## Next tasks
 
-* Store gps to SD card as well.
+* Disable GPS on notecard.
+* Collect PVT in GPIO interrupt (set TS to 25 Hz as well). Store pps_time, and
+    add tiny delay to make sure PVT is ready after TS. Or maybe re-configure TS
+    to fire when PVT is ready (keeping everything at 25 Hz).
+
+
+## Future work (not for now)
 * Make duty-cycle of gps configurable:
     - Turn with a certain delay.
     - Collect data for 20 minutes.
 * Use GPS velocity to calculate a separate spectrum, like it is currently done
     for the IMU in spec. Create a separate package type.
+
+* Store gps to SD card as well.
