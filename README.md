@@ -1,5 +1,6 @@
 [![sfy-data](https://github.com/gauteh/sfy/actions/workflows/sfy-data.yml/badge.svg)](https://github.com/gauteh/sfy/actions/workflows/sfy-data.yml)
-[![sfy-buoy](https://github.com/gauteh/sfy/actions/workflows/sfy-buoy.yml/badge.svg)](https://github.com/gauteh/sfy/actions/workflows/sfy-buoy.yml)
+[![sfy3-buoy](https://github.com/gauteh/sfy/actions/workflows/sfy3-buoy.yml/badge.svg)](https://github.com/gauteh/sfy/actions/workflows/sfy3-buoy.yml)
+[![sfy4-buoy](https://github.com/gauteh/sfy/actions/workflows/sfy4-buoy.yml/badge.svg)](https://github.com/gauteh/sfy/actions/workflows/sfy4-buoy.yml)
 [![sfy-processing](https://github.com/gauteh/sfy/actions/workflows/sfy-processing.yml/badge.svg)](https://github.com/gauteh/sfy/actions/workflows/sfy-processing.yml)
 
 <img src="doc/logo/logo1.png" width="100px" />
@@ -12,7 +13,7 @@
         </td>
         <td>
 
-* [sfy-buoy](sfy-buoy/) - the firmware for the wave buoy. **pre-built binaries**
+* [sfy-buoy](sfy4-buoy/) ([v3](sfy3-buoy/)) - the firmware for the wave buoy. **pre-built binaries**
     available under [releases](https://github.com/gauteh/sfy/releases).
 * [hardware and build-tutorial](hardware/Hardware.md) - hardware and assembly instructions.
 * [sfy-data](sfy-data/) - the server scraping or receiving data from deployed
