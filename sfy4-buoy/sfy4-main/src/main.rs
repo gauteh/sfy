@@ -21,7 +21,7 @@ use chrono::NaiveDate;
 use core::cell::RefCell;
 use core::fmt::Write as _;
 use core::panic::PanicInfo;
-use core::sync::atomic::{AtomicBool, AtomicI32, Ordering};
+use core::sync::atomic::{AtomicI32, Ordering};
 #[allow(unused_imports)]
 use cortex_m::{
     asm,
@@ -53,13 +53,15 @@ use sfy::log::log;
 use sfy::note::Notecarrier;
 use sfy::waves::Waves;
 use sfy::{Imu, Location, SharedState, State, NOTEQ};
+
+type GpsI2C = i2c::Iom2;
+#[cfg(feature = "spectrum")]
+use sfy::SPECQ;
 #[cfg(feature = "storage")]
 use sfy::{
     storage::{SdSpiSpeed, Storage},
     STORAGEQ,
 };
-#[cfg(feature = "spectrum")]
-use sfy::SPECQ;
 
 mod log;
 
@@ -77,12 +79,6 @@ type E = <I as embedded_hal::blocking::i2c::Write>::Error;
 pub static COUNT: AtomicI32 = AtomicI32::new(0);
 defmt::timestamp!("{=i32}", COUNT.load(Ordering::Relaxed));
 
-/// Set to `true` by the GPIO ISR each time the GPS timepulse fires.
-static PVT_READY: AtomicBool = AtomicBool::new(false);
-
-/// RTC time (ms) captured at the moment of the GPS timepulse interrupt.
-static PPS_TIME: Mutex<RefCell<i64>> = Mutex::new(RefCell::new(0));
-
 /// The STATE contains the Real-Time-Clock which needs to be shared, as well as
 /// up-to-date longitude and latitude.
 pub static STATE: Mutex<RefCell<Option<SharedState<hal::rtc::Rtc>>>> =
@@ -97,6 +93,9 @@ static TS_PIN: Mutex<RefCell<Option<hal::gpio::pin::Pin<11, { Mode::Input }>>>> 
 
 /// IMU, moved into the RTC interrupt after setup.
 static mut IMU: Option<Imu<E, I>> = None;
+
+/// GPS driver + I2C bus + collector, moved into the GPIO interrupt after setup.
+static mut GPS: Option<(MaxM10S, GpsI2C, GpsCollector)> = None;
 
 // ---------------------------------------------------------------------------
 // Entry point
@@ -233,10 +232,7 @@ fn main() -> ! {
                 let mut msg = heapless::String::<256>::new();
                 write!(&mut msg, "storage setup err: {:?}", e)
                     .inspect_err(|e| {
-                        defmt::error!(
-                            "failed to format storage-err: {:?}",
-                            defmt::Debug2Format(e)
-                        )
+                        defmt::error!("failed to format storage-err: {:?}", defmt::Debug2Format(e))
                     })
                     .ok();
                 log(&msg);
@@ -357,18 +353,29 @@ fn main() -> ! {
     gnss.set_output_rate(&mut i2c_gps, 25)
         .inspect_err(|e| warn!("GPS set_output_rate failed: {:?}", defmt::Debug2Format(e)))
         .ok();
-    // set_pps_rate uses CFG-VALSET split into three ≤32-byte frames to stay within
-    // the Apollo3 IOM FIFO limit. Failure is non-fatal: the buoy continues collecting
-    // IMU data but won't receive timepulse interrupts for GPS timestamping.
-    match gnss.set_pps_rate(&mut i2c_gps, 1_000_000, 100_000) {
-        Ok(()) => info!("GPS PPS configured: 1 Hz, 100 ms pulse"),
-        Err(e) => warn!("GPS set_pps_rate failed (continuing without PPS): {:?}", defmt::Debug2Format(&e)),
+    loop {
+        match gnss.set_pps_rate(&mut i2c_gps, 1_000_000, 100_000) {
+            Ok(()) => {
+                info!("GPS PPS configured: 1 Hz, 100 ms pulse");
+                break;
+            }
+            Err(e) => {
+                warn!(
+                    "GPS set_pps_rate failed: {:?} — retrying",
+                    defmt::Debug2Format(&e)
+                );
+                delay.delay_ms(500u32);
+            }
+        }
     }
     loop {
         match gnss.enable_pvt(&mut i2c_gps) {
             Ok(()) => break,
             Err(e) => {
-                warn!("GPS enable_pvt failed: {:?} — retrying", defmt::Debug2Format(&e));
+                warn!(
+                    "GPS enable_pvt failed: {:?} — retrying",
+                    defmt::Debug2Format(&e)
+                );
                 delay.delay_ms(500u32);
             }
         }
@@ -379,9 +386,12 @@ fn main() -> ! {
     let (gps_p, mut gps_queue) = unsafe { sfy::gps::EGPSQ.split() };
     let mut gps_collector = GpsCollector::new(gps_p);
 
-    // Move IMU into interrupt-accessible storage, arm timepulse interrupt.
+    // Move IMU and GPS into interrupt-accessible storage, arm timepulse interrupt.
     free(|cs| {
-        unsafe { IMU = Some(imu) };
+        unsafe {
+            IMU = Some(imu);
+            GPS = Some((gnss, i2c_gps, gps_collector));
+        }
         if let Some(pin) = TS_PIN.borrow(cs).borrow_mut().as_mut() {
             pin.enable_interrupt();
         }
@@ -402,28 +412,6 @@ fn main() -> ! {
     let mut sd_good: bool = true;
 
     loop {
-        // --- Process GPS timepulse -------------------------------------------
-        if PVT_READY.swap(false, Ordering::Acquire) {
-            let pps_time = free(|cs| *PPS_TIME.borrow(cs).borrow());
-
-            match gnss.read_pvt(&mut i2c_gps) {
-                Ok(Some(pvt)) => {
-                    if let Some(egps) = EgpsTime::from_pvt(&pvt, pps_time) {
-                        free(|cs| {
-                            EGPS_TIME.borrow(cs).replace(Some(egps));
-                        });
-                    }
-                    gps_collector.add_sample(pvt);
-                }
-                Ok(None) => {
-                    debug!("GPS timepulse fired but no NAV-PVT in FIFO yet");
-                }
-                Err(e) => {
-                    error!("GPS read_pvt error: {:?}", defmt::Debug2Format(&e));
-                }
-            }
-        }
-
         let now = STATE.now().map(|t| t.timestamp_millis());
 
         // --- Drain storage queue to Notecard ----------------------------------
@@ -454,8 +442,7 @@ fn main() -> ! {
 
         if ((now.unwrap_or(sfy::FUTURE.timestamp_millis()) - last) > LOOP_DELAY as i64)
             || ((imu_queue.capacity() - imu_queue.len()) < 3
-                && (now.unwrap_or(sfy::FUTURE.timestamp_millis()) - last)
-                    > SHORT_LOOP_DELAY as i64)
+                && (now.unwrap_or(sfy::FUTURE.timestamp_millis()) - last) > SHORT_LOOP_DELAY as i64)
         {
             let queue_time: f64 = f64::from(sfy::axl::SAMPLE_NO as u32)
                 * f64::from(sfy::NOTEQ_SZ as u32)
@@ -576,8 +563,15 @@ fn reset<I: Read + Write>(note: &mut Notecarrier<I>, delay: &mut impl DelayMs<u1
 #[allow(non_snake_case)]
 #[interrupt]
 fn GPIO() {
-    free(|cs| {
-        // Capture the RTC time at the moment of the timepulse.
+    static mut gps: Option<(MaxM10S, GpsI2C, GpsCollector)> = None;
+
+    // On first call: move GPS out of static storage into ISR-local storage.
+    if gps.is_none() {
+        *gps = unsafe { GPS.take() };
+    }
+
+    // Capture the RTC time at the moment of the timepulse and clear the pin interrupt.
+    let pps_time = free(|cs| {
         let pps_time = {
             let mut state = STATE.borrow(cs).borrow_mut();
             if let Some(state) = state.as_mut() {
@@ -591,16 +585,43 @@ fn GPIO() {
                 0
             }
         };
-        *PPS_TIME.borrow(cs).borrow_mut() = pps_time;
         defmt::info!("GPS timepulse: pps_time = {}", pps_time);
-
-        PVT_READY.store(true, Ordering::Release);
 
         if let Some(pin) = TS_PIN.borrow(cs).borrow_mut().as_mut() {
             pin.clear_interrupt();
             pin.enable_interrupt();
         }
+
+        pps_time
     });
+
+    // Read the PVT sample and push it into the collector.
+    //
+    // The timepulse fires at the GPS epoch boundary; the navigation engine
+    // outputs NAV-PVT asynchronously after the solution is computed (~100–500 ms
+    // later at 1 Hz).  A short busy-wait here ensures the message has arrived in
+    // the DDC FIFO before we poll it.  pps_time was already captured above so
+    // this delay does not affect RTC timing accuracy.
+    hal::delay::FlashDelay::delay_us(100_000); // 100 ms
+
+    if let Some((gnss, i2c_gps, collector)) = gps {
+        match gnss.read_pvt(i2c_gps) {
+            Ok(Some(pvt)) => {
+                if let Some(egps) = EgpsTime::from_pvt(&pvt, pps_time) {
+                    free(|cs| {
+                        EGPS_TIME.borrow(cs).replace(Some(egps));
+                    });
+                }
+                collector.add_sample(pvt);
+            }
+            Ok(None) => {
+                defmt::debug!("GPS timepulse fired but no NAV-PVT in FIFO yet");
+            }
+            Err(e) => {
+                defmt::error!("GPS read_pvt error: {:?}", defmt::Debug2Format(&e));
+            }
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
