@@ -290,13 +290,13 @@ fn main() -> ! {
 
     let (now, position_time, lat, lon) = STATE.get();
     COUNT.store(
-        now.map(|t| (t.timestamp_millis() / 1000) as i32)
+        now.map(|t| (t.and_utc().timestamp_millis() / 1000) as i32)
             .unwrap_or(0),
         Ordering::Relaxed,
     );
     info!(
         "Now: {:?} ms, position_time: {}, lat: {}, lon: {}",
-        now.map(|t| t.timestamp_millis()),
+        now.map(|t| t.and_utc().timestamp_millis()),
         position_time,
         lat,
         lon
@@ -306,7 +306,7 @@ fn main() -> ! {
     let mut waves = Waves::new(i2c3).unwrap();
     waves
         .take_buf(
-            now.map(|t| t.timestamp_millis()).unwrap_or(0),
+            now.map(|t| t.and_utc().timestamp_millis()).unwrap_or(0),
             position_time,
             lon,
             lat,
@@ -412,7 +412,8 @@ fn main() -> ! {
     let mut sd_good: bool = true;
 
     loop {
-        let now = STATE.now().map(|t| t.timestamp_millis());
+        let now = STATE.now().map(|t| t.and_utc().timestamp_millis());
+        defmt::debug!("main loop: now={}, last={}", now, last);
 
         // --- Drain storage queue to Notecard ----------------------------------
         #[cfg(feature = "storage")]
@@ -437,12 +438,12 @@ fn main() -> ! {
             _ => {}
         };
 
-        const LOOP_DELAY: u32 = 3_000;
-        const SHORT_LOOP_DELAY: u32 = 3_000;
+        const LOOP_DELAY: u32 = 1_000;
+        const SHORT_LOOP_DELAY: u32 = 1_000;
 
-        if ((now.unwrap_or(sfy::FUTURE.timestamp_millis()) - last) > LOOP_DELAY as i64)
+        if ((now.unwrap_or(sfy::FUTURE.and_utc().timestamp_millis()) - last) > LOOP_DELAY as i64)
             || ((imu_queue.capacity() - imu_queue.len()) < 3
-                && (now.unwrap_or(sfy::FUTURE.timestamp_millis()) - last) > SHORT_LOOP_DELAY as i64)
+                && (now.unwrap_or(sfy::FUTURE.and_utc().timestamp_millis()) - last) > SHORT_LOOP_DELAY as i64)
         {
             let queue_time: f64 = f64::from(sfy::axl::SAMPLE_NO as u32)
                 * f64::from(sfy::NOTEQ_SZ as u32)
