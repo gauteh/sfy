@@ -354,7 +354,7 @@ fn main() -> ! {
         .inspect_err(|e| warn!("GPS set_output_rate failed: {:?}", defmt::Debug2Format(e)))
         .ok();
     loop {
-        match gnss.set_pps_rate(&mut i2c_gps, 1_000_000, 100_000) {
+        match gnss.set_pps_rate(&mut i2c_gps, 1_000_000 / 25, 100_000) {
             Ok(()) => {
                 info!("GPS PPS configured: 1 Hz, 100 ms pulse");
                 break;

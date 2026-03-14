@@ -68,10 +68,10 @@ pub const NOTEQ_SZ: usize = 12;
 pub const IMUQ_SZ: usize = STORAGEQ_SZ;
 
 // GPS is always present on sfy4 hardware.
-pub const EPGS_SZ: usize = 6;
+pub const EPGS_SZ: usize = 12;
 
 #[cfg(all(not(feature = "raw"), not(feature = "spectrum"), not(feature = "storage")))]
-pub const NOTEQ_SZ: usize = 6;
+pub const NOTEQ_SZ: usize = 12;
 
 #[cfg(all(not(feature = "storage"), feature = "spectrum"))]
 pub const NOTEQ_SZ: usize = 11;
