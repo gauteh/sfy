@@ -610,6 +610,8 @@ fn GPIO() {
         match gnss.read_pvt(i2c_gps) {
             Ok(Some(pvt)) => {
                 defmt::info!("GPS timepulse: pps_time = {}, pvt.time = {}:{}:{}.{}", pps_time, pvt.hour, pvt.min, pvt.sec, pvt.nano);
+
+                // TODO: only if time and position is valid.
                 if let Some(egps) = EgpsTime::from_pvt(&pvt, pps_time) {
                     free(|cs| {
                         EGPS_TIME.borrow(cs).replace(Some(egps));

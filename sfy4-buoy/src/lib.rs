@@ -70,7 +70,11 @@ pub const IMUQ_SZ: usize = STORAGEQ_SZ;
 // GPS is always present on sfy4 hardware.
 pub const EPGS_SZ: usize = 12;
 
-#[cfg(all(not(feature = "raw"), not(feature = "spectrum"), not(feature = "storage")))]
+#[cfg(all(
+    not(feature = "raw"),
+    not(feature = "spectrum"),
+    not(feature = "storage")
+))]
 pub const NOTEQ_SZ: usize = 12;
 
 #[cfg(all(not(feature = "storage"), feature = "spectrum"))]
@@ -98,7 +102,8 @@ pub static mut NOTEQ: heapless::spsc::Queue<AxlPacket, NOTEQ_SZ> = heapless::sps
 
 /// Spectrums ready to be sent
 #[cfg(feature = "spectrum")]
-pub static mut SPECQ: heapless::spsc::Queue<waves::welch::WelchPacket, SPECQ_SZ> = heapless::spsc::Queue::new();
+pub static mut SPECQ: heapless::spsc::Queue<waves::welch::WelchPacket, SPECQ_SZ> =
+    heapless::spsc::Queue::new();
 
 pub const FUTURE: NaiveDateTime = DateTime::from_timestamp(2550564072, 0).unwrap().naive_utc();
 
@@ -236,10 +241,11 @@ impl Location {
         });
     }
 
-    /// Get latest time and position.
+    /// Get latest time and position from notecard. Now useful as a backup if the external
+    /// gps doesn't work, or before the gps is initialized.
     ///
-    /// > NOTE: This function is called very frequently and should not communicate with the
-    /// Notecard in a non-debounced way.
+    /// > NOTE: This function is called very frequently and should not communicate with the Notecard in a non-debounced way.
+    /// > Double-NOTE: That's not really true anymore.
     pub fn check_retrieve<T: Read + Write, D: DateTimeAccess>(
         &mut self,
         state: &Mutex<RefCell<Option<SharedState<D>>>>,
@@ -337,8 +343,11 @@ impl<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> Imu<E
     pub fn new(
         waves: waves::Waves<I>,
         queue: heapless::spsc::Producer<'static, ImuAxlPacketT, IMUQ_SZ>,
-        #[cfg(feature = "spectrum")]
-        spec_queue: heapless::spsc::Producer<'static, waves::welch::WelchPacket, SPECQ_SZ>,
+        #[cfg(feature = "spectrum")] spec_queue: heapless::spsc::Producer<
+            'static,
+            waves::welch::WelchPacket,
+            SPECQ_SZ,
+        >,
     ) -> Imu<E, I> {
         Imu {
             queue,
@@ -393,8 +402,6 @@ impl<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> Imu<E
                 .enqueue(pck)
                 .inspect_err(|_| {
                     error!("spectrum queue is full, discarding data.");
-
-                    // log::log("Spectrum queue is full: discarding package.");
                 })
                 .ok();
         }
