@@ -611,6 +611,10 @@ fn GPIO() {
             Ok(Some(pvt)) => {
                 defmt::info!("GPS timepulse: pps_time = {}, pvt.time = {}:{}:{}.{}", pps_time, pvt.hour, pvt.min, pvt.sec, pvt.nano);
 
+                // TODO: use the current RTC time, or trust the delay, when setting the RTC later.
+                // The diff between the current RTC and the interrupt time should be added to the
+                // GPS time.
+
                 // TODO: only if time and position is valid.
                 if let Some(egps) = EgpsTime::from_pvt(&pvt, pps_time) {
                     free(|cs| {
