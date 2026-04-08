@@ -341,6 +341,7 @@ fn main() -> ! {
             }
         }
     };
+
     loop {
         match gnss.init(&mut i2c_gps) {
             Ok(()) => break,
@@ -443,7 +444,8 @@ fn main() -> ! {
 
         if ((now.unwrap_or(sfy::FUTURE.and_utc().timestamp_millis()) - last) > LOOP_DELAY as i64)
             || ((imu_queue.capacity() - imu_queue.len()) < 3
-                && (now.unwrap_or(sfy::FUTURE.and_utc().timestamp_millis()) - last) > SHORT_LOOP_DELAY as i64)
+                && (now.unwrap_or(sfy::FUTURE.and_utc().timestamp_millis()) - last)
+                    > SHORT_LOOP_DELAY as i64)
         {
             let queue_time: f64 = f64::from(sfy::axl::SAMPLE_NO as u32)
                 * f64::from(sfy::NOTEQ_SZ as u32)
@@ -586,7 +588,6 @@ fn GPIO() {
                 0
             }
         };
-        defmt::info!("GPS timepulse: pps_time = {}", pps_time);
 
         if let Some(pin) = TS_PIN.borrow(cs).borrow_mut().as_mut() {
             pin.clear_interrupt();
@@ -608,6 +609,7 @@ fn GPIO() {
     if let Some((gnss, i2c_gps, collector)) = gps {
         match gnss.read_pvt(i2c_gps) {
             Ok(Some(pvt)) => {
+                defmt::info!("GPS timepulse: pps_time = {}, pvt.time = {}:{}:{}.{}", pps_time, pvt.hour, pvt.min, pvt.sec, pvt.nano);
                 if let Some(egps) = EgpsTime::from_pvt(&pvt, pps_time) {
                     free(|cs| {
                         EGPS_TIME.borrow(cs).replace(Some(egps));
