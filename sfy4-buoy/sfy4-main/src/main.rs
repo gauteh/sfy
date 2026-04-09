@@ -439,8 +439,8 @@ fn main() -> ! {
             _ => {}
         };
 
-        const LOOP_DELAY: u32 = 1_000;
-        const SHORT_LOOP_DELAY: u32 = 1_000;
+        const LOOP_DELAY: u32 = 5_000;
+        const SHORT_LOOP_DELAY: u32 = 100;
 
         if ((now.unwrap_or(sfy::FUTURE.and_utc().timestamp_millis()) - last) > LOOP_DELAY as i64)
             || ((imu_queue.capacity() - imu_queue.len()) < 3
@@ -541,7 +541,7 @@ fn main() -> ! {
         }
 
         #[cfg(not(feature = "deploy"))]
-        delay.delay_ms(1000u16);
+        delay.delay_ms(100u16);
 
         #[cfg(feature = "deploy")]
         asm::wfi();

@@ -18,14 +18,33 @@ You can flash the firmware using the USB bootloader:
 $ make T=r flash
 ```
 
-## Dependencies when building and flashing using the sparkfun bootloader
+## Dependencies
 
 Tested on Ubuntu 20 and 22:
 
-* apt install gcc-arm-none-eabi binutils-arm-none-eabi clang-14 libclang-14-dev libnewlib-arm-none-eabi
-* cargo install cargo-binutils
-* rustup target add thumbv7em-none-eabihf
-* rustup component add llvm-tools-preview
+```sh
+# ARM cross-compiler + binutils
+sudo apt install gcc-arm-none-eabi binutils-arm-none-eabi
+
+# C standard library headers and runtime for bare-metal ARM
+sudo apt install libnewlib-arm-none-eabi
+
+# clang / libclang (needed by bindgen in ahrs-fusion and similar crates)
+sudo apt install clang libclang-dev
+
+# Rust toolchain
+rustup target add thumbv7em-none-eabihf
+rustup component add rust-src llvm-tools-preview rustc-dev
+cargo install cargo-binutils
+```
+
+### Running host tests
+
+Host tests run on the development machine (no hardware required):
+
+```sh
+make host-test
+```
 
 ## Hardware debugger
 

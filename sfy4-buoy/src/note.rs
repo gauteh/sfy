@@ -681,21 +681,17 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         Ok(())
     }
 
-    /// Send queued packages to the notecard.
+    /// Send one queued IMU package to the notecard and return.
+    ///
+    /// Sending a package takes a long time (several seconds). Only 1 package is sent per call so
+    /// the main loop can service other tasks between sends. The main loop re-triggers this
+    /// immediately when more data are in the queue.
     pub fn drain_queue(
         &mut self,
         queue: &mut heapless::spsc::Consumer<'static, AxlPacket, NOTEQ_SZ>,
         delay: &mut impl DelayMs<u16>,
     ) -> Result<usize, NoteError> {
-        // Sending packages takes a long time (16-17 seconds). Only 1 package is sent at a time
-        // before running main-loop again and letting other tasks run. The main-loop will keep
-        // going immediately again if there are more data in the queue.
-
-        // defmt::debug!("draining imu queue: {}", queue.len());
-
-        let mut tsz = 0;
-
-        while let Some(pck) = queue.peek() {
+        if let Some(pck) = queue.peek() {
             // TODO: if status was over 75 last time, don't spam notecard with status requests.
             let status = self.note.card().status(delay)?.wait(delay)?;
 
@@ -712,7 +708,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             match self.send(&pck, delay) {
                 Ok(sz) => {
                     queue.dequeue();
-                    tsz += sz;
+                    return Ok(sz);
                 }
                 Err(NoteError::NonPortNoteInPackageMode) => {
                     defmt::warn!("notecard is in NtN mode, discarding package.");
@@ -726,7 +722,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                     match self.send(&pck, delay) {
                         Ok(sz) => {
                             queue.dequeue();
-                            tsz += sz;
+                            return Ok(sz);
                         }
                         Err(e) => {
                             defmt::error!("Error while sending package to notecard: {:?}, discarding package.", e);
@@ -737,8 +733,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             }
         }
 
-        // defmt::debug!("done draining imu queue: {}", queue.len());
-        Ok(tsz)
+        Ok(0)
     }
 
     #[cfg(feature = "spectrum")]
