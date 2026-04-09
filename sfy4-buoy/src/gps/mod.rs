@@ -106,8 +106,8 @@ pub struct GpsPacket {
     pub va_max: f32,
     pub va_mean: f32,
 
-    pub fix: [u8; 8],
-    pub soln: [u8; 8],
+    pub fix: [u16; 8],
+    pub soln: [u16; 8],
 }
 
 // XXX: Match with template in note
@@ -138,8 +138,8 @@ pub struct GpsPacketMeta {
     pub va_max: f32,
     pub va_mean: f32,
 
-    pub fix: [u8; 8],
-    pub soln: [u8; 8],
+    pub fix: [u16; 8],
+    pub soln: [u16; 8],
 }
 
 impl GpsPacket {
@@ -283,8 +283,8 @@ impl GpsCollector {
         let mut va_min = f32::MAX;
         let mut va_max = 0.0f32;
         let mut va_mean = 0.0f32;
-        let mut fix = [0u8; 8];
-        let mut soln = [0u8; 8];
+        let mut fix = [0u16; 8];
+        let mut soln = [0u16; 8];
 
         for s in self.buf.iter() {
             let ha = s.h_acc_mm as f32;
