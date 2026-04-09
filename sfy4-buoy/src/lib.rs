@@ -192,7 +192,7 @@ impl Location {
         let now = state.now().unwrap_or(FUTURE).and_utc().timestamp_millis();
 
         free(|cs| {
-            info!("Setting location from RTC (from EGPS).");
+            // info!("Setting location from RTC (from EGPS).");
             let mut state = state.borrow(cs).borrow_mut();
             let state: &mut _ = state.deref_mut().as_mut().unwrap();
 
@@ -200,7 +200,7 @@ impl Location {
             let egps = egps.as_ref();
 
             if let Some(egps) = egps {
-                info!("Updating postion from ext-gps: {:?}", egps);
+                // info!("Updating postion from ext-gps: {:?}", egps);
                 // Update internal state from EGPS
                 self.position_time = (egps.time / 1000) as u32;
                 self.lat = egps.lat;

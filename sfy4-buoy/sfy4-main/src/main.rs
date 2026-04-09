@@ -435,16 +435,16 @@ fn main() -> ! {
         loop {
             match gnss.read_pvt(&mut i2c_gps) {
                 Ok(Some(pvt)) => {
-                    defmt::info!(
-                        "GPS pvt: pps_time = {}, pvt.time = {}:{}:{}.{}, valid: {}",
-                        latest_pps,
-                        pvt.hour,
-                        pvt.min,
-                        pvt.sec,
-                        pvt.nano,
-                        pvt.valid
-                    );
-                    defmt::info!("GPS pos: {}, {}, fix: {}", pvt.lon, pvt.lat, pvt.fix_type);
+                    // defmt::info!(
+                    //     "GPS pvt: pps_time = {}, pvt.time = {}:{}:{}.{}, valid: {}",
+                    //     latest_pps,
+                    //     pvt.hour,
+                    //     pvt.min,
+                    //     pvt.sec,
+                    //     pvt.nano,
+                    //     pvt.valid
+                    // );
+                    // defmt::info!("GPS pos: {}, {}, fix: {}", pvt.lon, pvt.lat, pvt.fix_type);
                     // Update EgpsTime; last PVT in this batch wins (associated with latest pps_time).
                     if let Some(egps) = EgpsTime::from_pvt(&pvt, latest_pps) {
                         free(|cs| {
@@ -625,7 +625,7 @@ fn GPIO() {
         };
 
         *PPS_TIME.borrow(cs).borrow_mut() = pps_time;
-        defmt::debug!("GPS timepulse: pps_time = {}", pps_time);
+        // defmt::debug!("GPS timepulse: pps_time = {}", pps_time);
 
         if let Some(pin) = TS_PIN.borrow(cs).borrow_mut().as_mut() {
             pin.clear_interrupt();
