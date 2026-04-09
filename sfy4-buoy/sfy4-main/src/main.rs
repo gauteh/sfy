@@ -407,14 +407,27 @@ fn main() -> ! {
     info!("Entering main loop");
     const GOOD_TRIES: u32 = 15;
 
-    let mut last: i64 = 0;
+    // check_and_sync hits the notecard even when idle (card.status + hub.sync_status).
+    // Rate-limit it to once per minute so it doesn't dominate when queues are empty.
+    const SYNC_CHECK_INTERVAL_MS: i64 = 60_000;
+    let mut last_sync_check: i64 = 0;
+
     let mut good_tries: u32 = GOOD_TRIES;
     #[cfg(feature = "storage")]
     let mut sd_good: bool = true;
 
     loop {
+        // Sleep until the next RTC (100 ms) or GPS timepulse interrupt wakes us.
+        // In non-deploy builds use a short busy-wait so a debugger can break in.
+        #[cfg(feature = "deploy")]
+        asm::wfi();
+        #[cfg(not(feature = "deploy"))]
+        delay.delay_ms(10u16);
+
         let now = STATE.now().map(|t| t.and_utc().timestamp_millis());
-        defmt::debug!("main loop: now={}, last={}", now, last);
+
+        // Always apply the latest GPS snapshot to the RTC and location — cheap critical section.
+        location.set_from_egps(&STATE, &EGPS_TIME);
 
         // --- Drain storage queue to Notecard ----------------------------------
         #[cfg(feature = "storage")]
@@ -439,112 +452,102 @@ fn main() -> ! {
             _ => {}
         };
 
-        const LOOP_DELAY: u32 = 5_000;
-        const SHORT_LOOP_DELAY: u32 = 100;
-
-        if ((now.unwrap_or(sfy::FUTURE.and_utc().timestamp_millis()) - last) > LOOP_DELAY as i64)
-            || ((imu_queue.capacity() - imu_queue.len()) < 3
-                && (now.unwrap_or(sfy::FUTURE.and_utc().timestamp_millis()) - last)
-                    > SHORT_LOOP_DELAY as i64)
-        {
-            let queue_time: f64 = f64::from(sfy::axl::SAMPLE_NO as u32)
-                * f64::from(sfy::NOTEQ_SZ as u32)
-                / f64::from(sfy::waves::OUTPUT_FREQ);
-            debug_assert!(
-                (f64::from(LOOP_DELAY) / 1000.) < queue_time,
-                "loop is too slow, NOTEQ will overflow: loop: {} ms vs queue: {} ms",
-                LOOP_DELAY,
-                queue_time * 1000.
-            );
-
-            // Apply GPS time/position to RTC and location state.
-            location.set_from_egps(&STATE, &EGPS_TIME);
-
-            #[cfg(feature = "storage")]
-            defmt::warn!(
-                "notecard iteration, now: {}, note queue: {}, storage queue: {}",
-                now,
-                imu_queue.len(),
-                storage_manager.storage_queue.len()
-            );
-
-            #[cfg(not(feature = "storage"))]
-            defmt::warn!(
-                "notecard iteration, now: {}, note queue: {}, gps queue: {}",
-                now,
-                imu_queue.len(),
-                gps_queue.len(),
-            );
-
-            #[cfg(not(feature = "deploy"))]
-            led.toggle().unwrap();
-
-            sfy::log::drain_log(&mut note, &mut delay)
-                .inspect_err(|e| defmt::error!("drain log: {:?}", e))
-                .ok();
-
-            let nd = note.drain_queue(&mut imu_queue, &mut delay);
-            let ng = note.drain_egps_queue(&mut gps_queue, &mut delay);
-
-            #[cfg(feature = "spectrum")]
-            note.drain_spec_queue(&mut spec_queue, &mut delay)
-                .inspect_err(|e| defmt::error!("drain spec queue: {:?}", e))
-                .ok();
-
-            let ns = note.check_and_sync(&mut delay);
-
-            match (nd, ng, ns) {
-                (Ok(_), Ok(_), Ok(_)) => good_tries = GOOD_TRIES,
-                (dq, dg, cs) => {
-                    error!(
-                        "Fatal error in main loop: drain_queue: {:?}, drain_egps_queue: {:?}, check_and_sync: {:?}. Tries left: {}",
-                        dq,
-                        dg,
-                        cs,
-                        good_tries
-                    );
-
-                    delay.delay_ms(100u16);
-                    note.reset(&mut delay).ok();
-                    delay.delay_ms(100u16);
-
-                    let mut msg = heapless::String::<512>::new();
-                    write!(
-                        &mut msg,
-                        "Fatal error in main loop: drain_queue: {:?}, check_and_sync: {:?}. Tries left: {}",
-                        dq, cs, good_tries
-                    )
-                    .inspect_err(|e| {
-                        defmt::error!(
-                            "failed to format error: {:?}",
-                            defmt::Debug2Format(e)
-                        )
-                    })
-                    .ok();
-
-                    warn!("Trying to send log message..");
-                    note.hub()
-                        .log(&mut delay, &msg, false, false)
-                        .and_then(|f| f.wait(&mut delay))
-                        .ok();
-
-                    if good_tries == 0 {
-                        error!("No more tries left, resetting.");
-                        reset(&mut note, &mut delay);
-                    } else {
-                        good_tries -= 1;
-                    }
-                }
+        // Only talk to the notecard when there is work to do.  The natural
+        // rate-limiting is the send duration (~16-17 s per packet) and the data
+        // production rate (IMU ~20 s/packet, GPS ~5 s/packet at 24 Hz).
+        let has_work = imu_queue.len() > 0
+            || gps_queue.len() > 0
+            || {
+                let elapsed = now.unwrap_or(0) - last_sync_check;
+                elapsed >= SYNC_CHECK_INTERVAL_MS
             };
 
-            last = now.unwrap_or(0);
+        if !has_work {
+            continue;
         }
 
-        #[cfg(not(feature = "deploy"))]
-        delay.delay_ms(100u16);
+        #[cfg(feature = "storage")]
+        defmt::warn!(
+            "notecard iteration, now: {}, note queue: {}, storage queue: {}",
+            now,
+            imu_queue.len(),
+            storage_manager.storage_queue.len()
+        );
+        #[cfg(not(feature = "storage"))]
+        defmt::warn!(
+            "notecard iteration, now: {}, note queue: {}, gps queue: {}",
+            now,
+            imu_queue.len(),
+            gps_queue.len(),
+        );
 
-        #[cfg(feature = "deploy")]
-        asm::wfi();
+        #[cfg(not(feature = "deploy"))]
+        led.toggle().unwrap();
+
+        sfy::log::drain_log(&mut note, &mut delay)
+            .inspect_err(|e| defmt::error!("drain log: {:?}", e))
+            .ok();
+
+        let nd = note.drain_queue(&mut imu_queue, &mut delay);
+        let ng = note.drain_egps_queue(&mut gps_queue, &mut delay);
+
+        #[cfg(feature = "spectrum")]
+        note.drain_spec_queue(&mut spec_queue, &mut delay)
+            .inspect_err(|e| defmt::error!("drain spec queue: {:?}", e))
+            .ok();
+
+        // Run the sync check only on its own rate-limited cadence.
+        let sync_elapsed = now.unwrap_or(0) - last_sync_check;
+        let ns = if sync_elapsed >= SYNC_CHECK_INTERVAL_MS {
+            last_sync_check = now.unwrap_or(0);
+            note.check_and_sync(&mut delay)
+        } else {
+            Ok(())
+        };
+
+        match (nd, ng, ns) {
+            (Ok(_), Ok(_), Ok(_)) => good_tries = GOOD_TRIES,
+            (dq, dg, cs) => {
+                error!(
+                    "Fatal error in main loop: drain_queue: {:?}, drain_egps_queue: {:?}, check_and_sync: {:?}. Tries left: {}",
+                    dq,
+                    dg,
+                    cs,
+                    good_tries
+                );
+
+                delay.delay_ms(100u16);
+                note.reset(&mut delay).ok();
+                delay.delay_ms(100u16);
+
+                let mut msg = heapless::String::<512>::new();
+                write!(
+                    &mut msg,
+                    "Fatal error in main loop: drain_queue: {:?}, check_and_sync: {:?}. Tries left: {}",
+                    dq, cs, good_tries
+                )
+                .inspect_err(|e| {
+                    defmt::error!(
+                        "failed to format error: {:?}",
+                        defmt::Debug2Format(e)
+                    )
+                })
+                .ok();
+
+                warn!("Trying to send log message..");
+                note.hub()
+                    .log(&mut delay, &msg, false, false)
+                    .and_then(|f| f.wait(&mut delay))
+                    .ok();
+
+                if good_tries == 0 {
+                    error!("No more tries left, resetting.");
+                    reset(&mut note, &mut delay);
+                } else {
+                    good_tries -= 1;
+                }
+            }
+        };
     }
 }
 
