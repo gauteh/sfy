@@ -506,14 +506,14 @@ fn main() -> ! {
 
         #[cfg(feature = "storage")]
         defmt::warn!(
-            "notecard iteration, now: {}, note queue: {}, storage queue: {}",
+            "notecard iteration, now: {}, imu queue: {}, storage queue: {}",
             now_ms,
             imu_queue.len(),
             storage_manager.storage_queue.len()
         );
         #[cfg(not(feature = "storage"))]
         defmt::warn!(
-            "notecard iteration, now: {}, note queue: {}, gps queue: {}",
+            "notecard iteration, now: {}, imu queue: {}, gps queue: {}",
             now_ms,
             imu_queue.len(),
             gps_queue.len(),

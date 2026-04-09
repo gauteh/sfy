@@ -68,7 +68,9 @@ pub const NOTEQ_SZ: usize = 24;
 pub const IMUQ_SZ: usize = STORAGEQ_SZ;
 
 // GPS is always present on sfy4 hardware.
-pub const EPGS_SZ: usize = 24;
+// 512 samples × 12 bytes each = 6 KB raw per packet; keep queue at 6 so total
+// GPS queue memory (~37 KB) stays similar to the previous 24 × 124-sample packets.
+pub const EPGS_SZ: usize = 6;
 
 #[cfg(all(
     not(feature = "raw"),

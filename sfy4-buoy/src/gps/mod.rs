@@ -14,7 +14,7 @@ use heapless::{
 pub use max_m10s::ubx::NavPvt;
 
 pub const GPS_PACKET_V: u8 = 3;
-pub const GPS_PACKET_SZ: usize = 124;
+pub const GPS_PACKET_SZ: usize = 512;
 /// Maximum length of base64 string produced from one GpsPacket.
 pub const GPS_OUTN: usize = { 6 * GPS_PACKET_SZ * 2 } * 4 / 3 + 4;
 
