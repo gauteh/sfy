@@ -609,7 +609,8 @@ fn GPIO() {
     if let Some((gnss, i2c_gps, collector)) = gps {
         match gnss.read_pvt(i2c_gps) {
             Ok(Some(pvt)) => {
-                defmt::info!("GPS timepulse: pps_time = {}, pvt.time = {}:{}:{}.{}", pps_time, pvt.hour, pvt.min, pvt.sec, pvt.nano);
+                defmt::info!("GPS timepulse: pps_time = {}, pvt.time = {}:{}:{}.{}, valid: {}", pps_time, pvt.hour, pvt.min, pvt.sec, pvt.nano, pvt.valid);
+                defmt::info!("GPS pos: {}, {}, fix: {}", pvt.lon, pvt.lat, pvt.fix_type);
 
                 // TODO: use the current RTC time, or trust the delay, when setting the RTC later.
                 // The diff between the current RTC and the interrupt time should be added to the
