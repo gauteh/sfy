@@ -625,9 +625,9 @@ fn GPIO() {
 
         if let Some(pps_time) = pps_time {
             *PPS_TIME.borrow(cs).borrow_mut() = pps_time;
-            defmt::debug!("GPS timepulse: pps_time = {}", pps_time);
+            // defmt::debug!("GPS timepulse: pps_time = {}", pps_time);
         } else {
-            defmt::warn!("GPS timepulse: RTC unavailable, keeping last pps_time");
+            // defmt::warn!("GPS timepulse: RTC unavailable, keeping last pps_time");
         }
 
         if let Some(pin) = TS_PIN.borrow(cs).borrow_mut().as_mut() {
