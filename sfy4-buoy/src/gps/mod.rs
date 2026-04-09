@@ -360,8 +360,8 @@ mod tests {
             va_mean: 10.0,
             va_min: 10.0,
             va_max: 10.0,
-            fix: [0u8; 8],
-            soln: [0u8; 8],
+            fix: [0u16; 8],
+            soln: [0u16; 8],
         };
 
         let b64 = p.base64();

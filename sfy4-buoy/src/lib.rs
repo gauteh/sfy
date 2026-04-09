@@ -183,18 +183,24 @@ impl Location {
         }
     }
 
+    /// Apply the latest GPS fix to the RTC and location state.
+    ///
+    /// Returns the new RTC time (ms since epoch) if the clock was actually set, so the
+    /// caller can keep `PPS_TIME` in the same time domain as the newly-set RTC.
     pub fn set_from_egps<D: DateTimeAccess>(
         &mut self,
         state: &Mutex<RefCell<Option<SharedState<D>>>>,
         egps: &Mutex<RefCell<Option<gps::EgpsTime>>>,
-    ) {
+    ) -> Option<i64> {
         use LocationState::*;
 
         const LOCATION_DIFF: i64 = 10_000; // [ms]
         let now = state.now().unwrap_or(FUTURE).and_utc().timestamp_millis();
+        let future_ms = FUTURE.and_utc().timestamp_millis();
+
+        let mut new_rtc_time: Option<i64> = None;
 
         free(|cs| {
-            // info!("Setting location from RTC (from EGPS).");
             let mut state = state.borrow(cs).borrow_mut();
             let state: &mut _ = state.deref_mut().as_mut().unwrap();
 
@@ -202,13 +208,11 @@ impl Location {
             let egps = egps.as_ref();
 
             if let Some(egps) = egps {
-                // info!("Updating postion from ext-gps: {:?}", egps);
-                // Update internal state from EGPS
+                // Update position/location unconditionally.
                 self.position_time = (egps.time / 1000) as u32;
                 self.lat = egps.lat;
                 self.lon = egps.lon;
 
-                // Update global STATE from egps
                 state.position_time = self.position_time;
                 state.lon = self.lon;
                 state.lat = self.lat;
@@ -219,28 +223,40 @@ impl Location {
                             "More than {} passed since last clock set, setting..",
                             LOCATION_DIFF
                         );
+
+                        // Compute the elapsed time from the GPS PPS pulse to now (both in the
+                        // current RTC domain).  Three cases where we cannot trust `diff`:
+                        //
+                        //  1. RTC is unavailable (now == FUTURE) — set directly to GPS time.
+                        //  2. pps_time was never captured (== 0) — set directly to GPS time.
+                        //  3. diff is negative or > 5 s — pps_time is from a stale/different
+                        //     RTC domain (e.g. just after a clock jump).  Skip and retry next
+                        //     iteration when the GPIO ISR has updated PPS_TIME under the new RTC.
                         let diff = now - egps.pps_time;
-
-                        if diff > 5_000 {
-                            debug!("egps time is old, not using.");
+                        let set_time = if now == future_ms || egps.pps_time == 0 {
+                            // No reliable RTC or PPS capture yet; seed from GPS time directly.
+                            egps.time
+                        } else if diff >= 0 && diff <= 5_000 {
+                            egps.time + diff
                         } else {
-                            if let Some(dt) = NaiveDateTime::from_timestamp_millis(egps.time + diff)
-                            {
-                                state.rtc.set_datetime(&dt).ok();
-                            } else {
-                                error!(
-                                    "Could not construct datetime from: {}, diff: {}",
-                                    egps.time, diff
-                                );
-                            }
+                            debug!("egps time is old (diff = {}), not using.", diff);
+                            return; // return from closure; new_rtc_time stays None
+                        };
 
+                        if let Some(dt) = NaiveDateTime::from_timestamp_millis(set_time) {
+                            state.rtc.set_datetime(&dt).ok();
                             self.state = LocationState::Retrieved(egps.time);
+                            new_rtc_time = Some(set_time);
+                        } else {
+                            error!("Could not construct datetime from: {}", set_time);
                         }
                     }
                     _ => (),
                 }
             }
         });
+
+        new_rtc_time
     }
 
     /// Get latest time and position from notecard. Now useful as a backup if the external

@@ -425,7 +425,11 @@ fn main() -> ! {
         let now_ms = now.unwrap_or(sfy::FUTURE.and_utc().timestamp_millis());
 
         // Always apply the latest GPS snapshot to the RTC and location — cheap critical section.
-        location.set_from_egps(&STATE, &EGPS_TIME);
+        // If the RTC was actually set, update PPS_TIME to the new domain so the staleness
+        // check in set_from_egps doesn't see a stale pre-jump pps_time on the next call.
+        if let Some(new_rtc_ms) = location.set_from_egps(&STATE, &EGPS_TIME) {
+            free(|cs| *PPS_TIME.borrow(cs).borrow_mut() = new_rtc_ms);
+        }
 
         // Drain all pending NAV-PVT messages from the GPS module (IOM2, no notecard).
         // The GPIO ISR only captures the timepulse RTC timestamp; we do the actual
@@ -647,6 +651,9 @@ fn GPIO() {
 fn RTC() {
     static mut imu: Option<Imu<E, I>> = None;
     static mut GOOD_TRIES: u16 = 5;
+    // Best estimate of the last successful RTC read (ms).  Used as a fallback
+    // during the Apollo3 register-sync delay that follows set_datetime().
+    static mut LAST_GOOD_NOW_MS: i64 = 0;
 
     // Clear RTC interrupt
     unsafe {
@@ -672,11 +679,22 @@ fn RTC() {
         };
 
         // Guard against a transient RTC read failure (e.g. Apollo3 register
-        // sync after set_datetime).  A timestamp of 0 would corrupt IMU packets.
-        if now == 0 {
-            defmt::warn!("RTC: read returned 0, skipping sample");
-            return;
-        }
+        // sync after set_datetime).  Rather than dropping the sample (which
+        // could corrupt the buffer's notion of elapsed time), advance the last
+        // known-good timestamp by one DeciSecond alarm period (100 ms).
+        let now = if now == 0 {
+            if *LAST_GOOD_NOW_MS > 0 {
+                let est = *LAST_GOOD_NOW_MS + 100;
+                defmt::warn!("RTC: sync delay, using estimate: {}", est);
+                est
+            } else {
+                defmt::warn!("RTC: read returned 0, no prior timestamp — skipping sample");
+                return;
+            }
+        } else {
+            *LAST_GOOD_NOW_MS = now;
+            now
+        };
 
         COUNT.store((now / 1000) as i32, Ordering::Relaxed);
 
