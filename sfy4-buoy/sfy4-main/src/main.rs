@@ -425,6 +425,9 @@ fn main() -> ! {
         delay.delay_ms(10u16);
 
         let now = STATE.now().map(|t| t.and_utc().timestamp_millis());
+        // When the RTC can't be read, fall back to FUTURE so that all time-gated
+        // conditions fire rather than silently stall.
+        let now_ms = now.unwrap_or(sfy::FUTURE.and_utc().timestamp_millis());
 
         // Always apply the latest GPS snapshot to the RTC and location — cheap critical section.
         location.set_from_egps(&STATE, &EGPS_TIME);
@@ -455,12 +458,10 @@ fn main() -> ! {
         // Only talk to the notecard when there is work to do.  The natural
         // rate-limiting is the send duration (~16-17 s per packet) and the data
         // production rate (IMU ~20 s/packet, GPS ~5 s/packet at 24 Hz).
-        let has_work = imu_queue.len() > 0
-            || gps_queue.len() > 0
-            || {
-                let elapsed = now.unwrap_or(0) - last_sync_check;
-                elapsed >= SYNC_CHECK_INTERVAL_MS
-            };
+        let sync_elapsed = now_ms - last_sync_check;
+        let need_sync_check = sync_elapsed >= SYNC_CHECK_INTERVAL_MS;
+
+        let has_work = imu_queue.len() > 0 || gps_queue.len() > 0 || need_sync_check;
 
         if !has_work {
             continue;
@@ -469,14 +470,14 @@ fn main() -> ! {
         #[cfg(feature = "storage")]
         defmt::warn!(
             "notecard iteration, now: {}, note queue: {}, storage queue: {}",
-            now,
+            now_ms,
             imu_queue.len(),
             storage_manager.storage_queue.len()
         );
         #[cfg(not(feature = "storage"))]
         defmt::warn!(
             "notecard iteration, now: {}, note queue: {}, gps queue: {}",
-            now,
+            now_ms,
             imu_queue.len(),
             gps_queue.len(),
         );
@@ -497,9 +498,8 @@ fn main() -> ! {
             .ok();
 
         // Run the sync check only on its own rate-limited cadence.
-        let sync_elapsed = now.unwrap_or(0) - last_sync_check;
-        let ns = if sync_elapsed >= SYNC_CHECK_INTERVAL_MS {
-            last_sync_check = now.unwrap_or(0);
+        let ns = if need_sync_check {
+            last_sync_check = now_ms;
             note.check_and_sync(&mut delay)
         } else {
             Ok(())
