@@ -606,9 +606,9 @@ fn reset<I: Read + Write>(note: &mut Notecarrier<I>, delay: &mut impl DelayMs<u1
 #[allow(non_snake_case)]
 #[interrupt]
 fn GPIO() {
-    // Capture the RTC time at the moment of the timepulse, store it for the main
-    // loop, and re-enable the interrupt.  All GPS I2C work (read_pvt) happens in
-    // the main loop so we never block interrupts with a busy-wait or I2C transfer.
+    // Only update PPS_TIME when the RTC read succeeds.  If the RTC is
+    // briefly unavailable (Apollo3 sync delay after set_datetime), keep the
+    // last valid timestamp rather than overwriting with 0.
     free(|cs| {
         let pps_time = {
             let mut state = STATE.borrow(cs).borrow_mut();
@@ -618,14 +618,17 @@ fn GPIO() {
                     .datetime()
                     .ok()
                     .map(|t| t.and_utc().timestamp_millis())
-                    .unwrap_or(0)
             } else {
-                0
+                None
             }
         };
 
-        *PPS_TIME.borrow(cs).borrow_mut() = pps_time;
-        // defmt::debug!("GPS timepulse: pps_time = {}", pps_time);
+        if let Some(pps_time) = pps_time {
+            *PPS_TIME.borrow(cs).borrow_mut() = pps_time;
+            defmt::debug!("GPS timepulse: pps_time = {}", pps_time);
+        } else {
+            defmt::warn!("GPS timepulse: RTC unavailable, keeping last pps_time");
+        }
 
         if let Some(pin) = TS_PIN.borrow(cs).borrow_mut().as_mut() {
             pin.clear_interrupt();
@@ -667,6 +670,13 @@ fn RTC() {
             error!("RTC: failed, skipping RTC interrupt.");
             return;
         };
+
+        // Guard against a transient RTC read failure (e.g. Apollo3 register
+        // sync after set_datetime).  A timestamp of 0 would corrupt IMU packets.
+        if now == 0 {
+            defmt::warn!("RTC: read returned 0, skipping sample");
+            return;
+        }
 
         COUNT.store((now / 1000) as i32, Ordering::Relaxed);
 
