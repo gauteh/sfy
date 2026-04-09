@@ -417,13 +417,6 @@ fn main() -> ! {
     let mut sd_good: bool = true;
 
     loop {
-        // Sleep until the next RTC (100 ms) or GPS timepulse interrupt wakes us.
-        // In non-deploy builds use a short busy-wait so a debugger can break in.
-        #[cfg(feature = "deploy")]
-        asm::wfi();
-        #[cfg(not(feature = "deploy"))]
-        delay.delay_ms(10u16);
-
         let now = STATE.now().map(|t| t.and_utc().timestamp_millis());
         // When the RTC can't be read, fall back to FUTURE so that all time-gated
         // conditions fire rather than silently stall.
@@ -464,6 +457,14 @@ fn main() -> ! {
         let has_work = imu_queue.len() > 0 || gps_queue.len() > 0 || need_sync_check;
 
         if !has_work {
+            // Sleep until the next RTC (100 ms) or GPS timepulse interrupt wakes us.
+            // Only sleep when idle so that a non-empty queue is serviced on the
+            // very next iteration without an unnecessary interrupt-period gap.
+            // In non-deploy builds use a short busy-wait so a debugger can break in.
+            #[cfg(feature = "deploy")]
+            asm::wfi();
+            #[cfg(not(feature = "deploy"))]
+            delay.delay_ms(10u16);
             continue;
         }
 
