@@ -94,8 +94,9 @@ static TS_PIN: Mutex<RefCell<Option<hal::gpio::pin::Pin<11, { Mode::Input }>>>> 
 /// IMU, moved into the RTC interrupt after setup.
 static mut IMU: Option<Imu<E, I>> = None;
 
-/// GPS driver + I2C bus + collector, moved into the GPIO interrupt after setup.
-static mut GPS: Option<(MaxM10S, GpsI2C, GpsCollector)> = None;
+/// Latest RTC timestamp (ms) captured at the GPS timepulse rising edge.
+/// Written by the GPIO ISR, read by the main loop to associate PVT with the pulse.
+static PPS_TIME: Mutex<RefCell<i64>> = Mutex::new(RefCell::new(0));
 
 // ---------------------------------------------------------------------------
 // Entry point
@@ -387,11 +388,12 @@ fn main() -> ! {
     let (gps_p, mut gps_queue) = unsafe { sfy::gps::EGPSQ.split() };
     let mut gps_collector = GpsCollector::new(gps_p);
 
-    // Move IMU and GPS into interrupt-accessible storage, arm timepulse interrupt.
+    // Move IMU into interrupt-accessible storage, arm timepulse interrupt.
+    // GPS (gnss, i2c_gps, gps_collector) stays in the main loop — the GPIO ISR
+    // only captures the timepulse timestamp; read_pvt is called from main.
     free(|cs| {
         unsafe {
             IMU = Some(imu);
-            GPS = Some((gnss, i2c_gps, gps_collector));
         }
         if let Some(pin) = TS_PIN.borrow(cs).borrow_mut().as_mut() {
             pin.enable_interrupt();
@@ -424,6 +426,40 @@ fn main() -> ! {
 
         // Always apply the latest GPS snapshot to the RTC and location — cheap critical section.
         location.set_from_egps(&STATE, &EGPS_TIME);
+
+        // Drain all pending NAV-PVT messages from the GPS module (IOM2, no notecard).
+        // The GPIO ISR only captures the timepulse RTC timestamp; we do the actual
+        // I2C read here to avoid blocking interrupts with the busy-wait and I2C time.
+        // All PVTs are logged and added to the collector; the last one wins for EgpsTime.
+        let latest_pps = free(|cs| *PPS_TIME.borrow(cs).borrow());
+        loop {
+            match gnss.read_pvt(&mut i2c_gps) {
+                Ok(Some(pvt)) => {
+                    defmt::info!(
+                        "GPS pvt: pps_time = {}, pvt.time = {}:{}:{}.{}, valid: {}",
+                        latest_pps,
+                        pvt.hour,
+                        pvt.min,
+                        pvt.sec,
+                        pvt.nano,
+                        pvt.valid
+                    );
+                    defmt::info!("GPS pos: {}, {}, fix: {}", pvt.lon, pvt.lat, pvt.fix_type);
+                    // Update EgpsTime; last PVT in this batch wins (associated with latest pps_time).
+                    if let Some(egps) = EgpsTime::from_pvt(&pvt, latest_pps) {
+                        free(|cs| {
+                            EGPS_TIME.borrow(cs).replace(Some(egps));
+                        });
+                    }
+                    gps_collector.add_sample(pvt);
+                }
+                Ok(None) => break,
+                Err(e) => {
+                    defmt::error!("GPS read_pvt error: {:?}", defmt::Debug2Format(&e));
+                    break;
+                }
+            }
+        }
 
         // --- Drain storage queue to Notecard ----------------------------------
         #[cfg(feature = "storage")]
@@ -570,15 +606,10 @@ fn reset<I: Read + Write>(note: &mut Notecarrier<I>, delay: &mut impl DelayMs<u1
 #[allow(non_snake_case)]
 #[interrupt]
 fn GPIO() {
-    static mut gps: Option<(MaxM10S, GpsI2C, GpsCollector)> = None;
-
-    // On first call: move GPS out of static storage into ISR-local storage.
-    if gps.is_none() {
-        *gps = unsafe { GPS.take() };
-    }
-
-    // Capture the RTC time at the moment of the timepulse and clear the pin interrupt.
-    let pps_time = free(|cs| {
+    // Capture the RTC time at the moment of the timepulse, store it for the main
+    // loop, and re-enable the interrupt.  All GPS I2C work (read_pvt) happens in
+    // the main loop so we never block interrupts with a busy-wait or I2C transfer.
+    free(|cs| {
         let pps_time = {
             let mut state = STATE.borrow(cs).borrow_mut();
             if let Some(state) = state.as_mut() {
@@ -593,49 +624,14 @@ fn GPIO() {
             }
         };
 
+        *PPS_TIME.borrow(cs).borrow_mut() = pps_time;
+        defmt::debug!("GPS timepulse: pps_time = {}", pps_time);
+
         if let Some(pin) = TS_PIN.borrow(cs).borrow_mut().as_mut() {
             pin.clear_interrupt();
             pin.enable_interrupt();
         }
-
-        pps_time
     });
-
-    // Read the PVT sample and push it into the collector.
-    //
-    // The timepulse fires at the GPS epoch boundary; the navigation engine
-    // outputs NAV-PVT asynchronously after the solution is computed (~100–500 ms
-    // later at 1 Hz).  A short busy-wait here ensures the message has arrived in
-    // the DDC FIFO before we poll it.  pps_time was already captured above so
-    // this delay does not affect RTC timing accuracy.
-    hal::delay::FlashDelay::delay_us(100_000); // 100 ms
-
-    if let Some((gnss, i2c_gps, collector)) = gps {
-        match gnss.read_pvt(i2c_gps) {
-            Ok(Some(pvt)) => {
-                defmt::info!("GPS timepulse: pps_time = {}, pvt.time = {}:{}:{}.{}, valid: {}", pps_time, pvt.hour, pvt.min, pvt.sec, pvt.nano, pvt.valid);
-                defmt::info!("GPS pos: {}, {}, fix: {}", pvt.lon, pvt.lat, pvt.fix_type);
-
-                // TODO: use the current RTC time, or trust the delay, when setting the RTC later.
-                // The diff between the current RTC and the interrupt time should be added to the
-                // GPS time.
-
-                // TODO: only if time and position is valid.
-                if let Some(egps) = EgpsTime::from_pvt(&pvt, pps_time) {
-                    free(|cs| {
-                        EGPS_TIME.borrow(cs).replace(Some(egps));
-                    });
-                }
-                collector.add_sample(pvt);
-            }
-            Ok(None) => {
-                defmt::debug!("GPS timepulse fired but no NAV-PVT in FIFO yet");
-            }
-            Err(e) => {
-                defmt::error!("GPS read_pvt error: {:?}", defmt::Debug2Format(&e));
-            }
-        }
-    }
 }
 
 // ---------------------------------------------------------------------------
