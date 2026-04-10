@@ -367,6 +367,23 @@ fn main() -> ! {
     gnss.set_output_rate(&mut i2c_gps, 25)
         .inspect_err(|e| warn!("GPS set_output_rate failed: {:?}", defmt::Debug2Format(e)))
         .ok();
+    // GPS-only mode is required for reliable 25 Hz: with multiple constellations
+    // the MAX-M10S can only sustain ~10 Hz nav solutions.
+    loop {
+        match gnss.set_single_gnss_gps(&mut i2c_gps) {
+            Ok(()) => {
+                info!("GPS: GPS-only mode configured");
+                break;
+            }
+            Err(e) => {
+                warn!(
+                    "GPS set_single_gnss_gps failed: {:?} — retrying",
+                    defmt::Debug2Format(&e)
+                );
+                delay.delay_ms(500u32);
+            }
+        }
+    }
     loop {
         match gnss.set_pps_rate(&mut i2c_gps, 1_000_000 / 25, 10_000) {
             Ok(()) => {
