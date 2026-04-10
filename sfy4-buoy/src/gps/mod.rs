@@ -204,13 +204,11 @@ impl GpsCollector {
         }
     }
 
-    /// Add a `NavPvt` sample.  Samples without valid UTC date+time are
-    /// silently dropped.  Fix type is not filtered so all 25 Hz epochs are
-    /// captured regardless of fix quality.  Triggers `collect` when full.
+    /// Add a `NavPvt` sample.  Samples where `pvt_timestamp` cannot build a
+    /// valid UTC datetime are dropped (and flush the buffer).  Fix type and
+    /// the `valid` flag bits are not pre-filtered — `pvt_timestamp` already
+    /// validates the individual date/time fields and rejects truly bogus values.
     pub fn add_sample(&mut self, pvt: NavPvt) {
-        if (pvt.valid & 0x03) != 0x03 {
-            return;
-        }
         if pvt_timestamp(&pvt).is_none() {
             warn!("GPS: cannot build timestamp from PVT, flushing buffer");
             self.collect();
