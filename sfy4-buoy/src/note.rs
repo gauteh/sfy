@@ -777,18 +777,18 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         delay: &mut impl DelayMs<u16>,
     ) -> Result<usize, NoteError> {
         let mut tsz = 0;
-        // defmt::info!("draining egps queue: {}", queue.len());
 
-        // TODO: maybe change to `peek+dequeue`.
-        while let Some(pck) = queue.dequeue() {
-            // TODO: if status was over 75 last time, don't spam notecard with status requests.
+        while let Some(pck) = queue.peek() {
             let status = self.note.card().status(delay)?.wait(delay)?;
 
             if status.storage > NOTECARD_STORAGE_CAPACITY_PACKAGES {
-                // wait until notecard has synced.
+                // Notecard is full — leave packet in queue and wait for sync.
                 defmt::warn!("notecard is more than 75% full, not adding more notes until sync is done: queue sz: {}", queue.len());
-                return Ok(0);
+                return Ok(tsz);
             }
+
+            // Dequeue only after confirming there is space.
+            let pck = queue.dequeue().unwrap();
 
             defmt::info!(
                 "sending egps package: note queue sz (after dequeue): {}",
