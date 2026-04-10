@@ -268,39 +268,52 @@ impl GpsCollector {
             .and_utc()
             .timestamp_millis();
 
-        // Build all consecutive diffs (ms), including the gap from the previous
-        // collect's last sample so we can spot dropped samples across packets.
         let last_ts = pvt_timestamp(self.buf.last().unwrap())
             .unwrap()
             .and_utc()
             .timestamp_millis();
 
-        let mut diffs: Vec<i64, { GPS_PACKET_SZ }> = Vec::new();
-
-        // Cross-collect gap first (if we have a previous packet's last timestamp).
-        if let Some(prev_ts) = self.last_collect_ts {
-            diffs.push(timestamp - prev_ts).ok();
-        }
-        // Within-buffer diffs.
+        // Collect within-buffer diffs (ms) between consecutive samples.
+        let mut within_diffs: Vec<i64, { GPS_PACKET_SZ }> = Vec::new();
         for w in self.buf.windows(2) {
             let d = pvt_timestamp(&w[1]).unwrap().and_utc().timestamp_millis()
                 - pvt_timestamp(&w[0]).unwrap().and_utc().timestamp_millis();
-            diffs.push(d).ok();
+            within_diffs.push(d).ok();
         }
 
-        self.last_collect_ts = Some(last_ts);
-
-        let (diff_min, diff_max, diff_median, freq) = if !diffs.is_empty() {
-            let mut sorted: Vec<i64, { GPS_PACKET_SZ }> = diffs.clone();
+        // Use within-buffer median as the nominal epoch interval so we don't
+        // hard-code 40 ms (works even if GPS is configured at a different rate).
+        let nominal_ms = if !within_diffs.is_empty() {
+            let mut sorted: Vec<i64, { GPS_PACKET_SZ }> = within_diffs.clone();
             sorted.sort_unstable();
-            let min = *sorted.first().unwrap();
-            let max = *sorted.last().unwrap();
-            let median = sorted[sorted.len() / 2];
-            let mean = diffs.iter().sum::<i64>() as f32 / diffs.len() as f32;
-            (min, max, median, 1000.0 / mean)
+            sorted[sorted.len() / 2].max(1)
         } else {
-            (0, 0, 0, 0.0)
+            40
         };
+
+        // Count missed epochs: each gap of N×nominal_ms means N-1 missed epochs.
+        let missed_within: i64 = within_diffs
+            .iter()
+            .map(|&d| (d + nominal_ms / 2) / nominal_ms - 1)
+            .filter(|&m| m > 0)
+            .sum();
+
+        // Cross-collect gap: epochs dropped between the last packet and this one.
+        let missed_at_boundary: i64 = if let Some(prev_ts) = self.last_collect_ts {
+            let gap = timestamp - prev_ts;
+            ((gap + nominal_ms / 2) / nominal_ms - 1).max(0)
+        } else {
+            -1 // first packet — no reference
+        };
+
+        let freq = if !within_diffs.is_empty() {
+            let mean = within_diffs.iter().sum::<i64>() as f32 / within_diffs.len() as f32;
+            1000.0 / mean
+        } else {
+            0.0
+        };
+
+        self.last_collect_ts = Some(last_ts);
 
         let n = self.buf.len() as f32;
         let mut ha_min = f32::MAX;
@@ -352,14 +365,13 @@ impl GpsCollector {
         };
 
         debug!(
-            "GPS: collected packet, freq: {}, timestamp: {}, samples: {}, total_pvts: {}, diff ms (min/median/max): {}/{}/{}",
+            "GPS: collected packet, freq: {}, samples: {}, total_pvts: {}, nominal_ms: {}, missed_within: {}, missed_at_boundary: {}",
             freq,
-            p.timestamp,
             nsamples,
             self.total_pvts,
-            diff_min,
-            diff_median,
-            diff_max,
+            nominal_ms,
+            missed_within,
+            missed_at_boundary,
         );
         self.total_pvts = 0;
 
