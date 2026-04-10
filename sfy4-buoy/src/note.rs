@@ -56,6 +56,10 @@ pub struct Notecarrier<I2C: Read + Write> {
     #[cfg(feature = "spectrum")]
     /// Last time a sync had to use NTN mode (seconds since epoch, as returned from notecard)
     last_sync_ntn: Option<u32>,
+
+    /// Last time a `_track.qo` note was sent (ms since epoch). Initialized to i64::MIN so the
+    /// first eligible iteration always sends.
+    last_track_ms: i64,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default, defmt::Format, PartialEq)]
@@ -132,10 +136,14 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             defmt::info!("Wireless status: {:#?}", w);
         }
 
-        // Location mode is not supported when in continuous mode.
-        #[cfg(feature = "continuous")]
+        // External GPS (MAX-M10S) is used for tracking; disable the Notecard's built-in GPS
+        // to save power. Track notes (_track.qo) are sent manually from the main loop.
         note.card()
             .location_mode(delay, Some("off"), None, None, None, None, None, None, None)?
+            .wait(delay)?;
+
+        note.card()
+            .location_track(delay, false, false, false, None, None)?
             .wait(delay)?;
 
         defmt::info!("Configuring AUX'es as GPIO, with AUX2 as output pin.");
@@ -173,27 +181,6 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             )?
             .wait(delay)?;
 
-        #[cfg(not(feature = "continuous"))]
-        note.card()
-            .location_mode(
-                delay,
-                Some("periodic"),
-                Some(GPS_PERIOD), // seconds between each GPS fix. the position is only logged if
-                // the accelerometer detects movement. otherwise the heartbeat
-                // configured to the most frequent (1 hour) is set below.
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-            )?
-            .wait(delay)?;
-
-        note.card()
-            .location_track(delay, true, true, false, Some(GPS_HEARTBEAT), None)?
-            .wait(delay)?;
-
         let version = note.card().version(delay)?.wait(delay)?;
         defmt::info!("Notecard version: {:?}", version);
 
@@ -207,6 +194,8 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
 
             #[cfg(feature = "spectrum")]
             last_sync_ntn: None,
+
+            last_track_ms: i64::MIN,
         };
         n.setup_templates(delay)?;
 
@@ -936,6 +925,47 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             );
         }
 
+        Ok(())
+    }
+
+    /// Add a `_track.qo` note from the external GPS at most once per GPS_PERIOD seconds.
+    ///
+    /// `now_ms`  – current wall-clock in milliseconds (from RTC)
+    /// `lat`/`lon` – position in degrees (f64 from NavPvt × 1e-7)
+    /// `time_s`  – GPS UTC time as Unix seconds
+    pub fn send_track_note_if_due(
+        &mut self,
+        delay: &mut impl DelayMs<u16>,
+        now_ms: i64,
+        lat: f64,
+        lon: f64,
+        time_s: u32,
+    ) -> Result<(), NoteError> {
+        if now_ms.saturating_sub(self.last_track_ms) < GPS_PERIOD as i64 * 1_000 {
+            return Ok(());
+        }
+
+        #[derive(serde::Serialize, Default)]
+        struct TrackBody {
+            lat: f64,
+            lon: f64,
+            time: u32,
+        }
+
+        defmt::info!("Sending _track.qo: lat={}, lon={}, time={}", lat, lon, time_s);
+        self.note
+            .note()
+            .add(
+                delay,
+                Some("_track.qo"),
+                None,
+                Some(TrackBody { lat, lon, time: time_s }),
+                None,
+                false,
+            )?
+            .wait(delay)?;
+
+        self.last_track_ms = now_ms;
         Ok(())
     }
 }

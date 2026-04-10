@@ -517,6 +517,18 @@ fn main() -> ! {
         let nd = note.drain_queue(&mut imu_queue, &mut delay);
         let ng = note.drain_egps_queue(&mut gps_queue, &mut delay);
 
+        // Send _track.qo from external GPS, rate-limited to GPS_PERIOD.
+        free(|cs| {
+            if let Some(egps) = EGPS_TIME.borrow(cs).borrow().as_ref() {
+                let lat = egps.lat;
+                let lon = egps.lon;
+                let time_s = (egps.time / 1_000) as u32;
+                note.send_track_note_if_due(&mut delay, now_ms, lat, lon, time_s)
+                    .inspect_err(|e| defmt::error!("send_track_note failed: {:?}", e))
+                    .ok();
+            }
+        });
+
         #[cfg(feature = "spectrum")]
         note.drain_spec_queue(&mut spec_queue, &mut delay)
             .inspect_err(|e| defmt::error!("drain spec queue: {:?}", e))
