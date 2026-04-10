@@ -344,7 +344,7 @@ fn main() -> ! {
     // is in a fresh idle state (IOM can be non-idle if initialized long before use).
     // Note: GPS was powered on early in startup; by this point several seconds have
     // elapsed (well above the ≥200 ms boot requirement).
-    let mut i2c_gps = i2c::Iom2::new(dp.IOM2, pins.d17, pins.d18, i2c::Freq::F400kHz);
+    let mut i2c_gps = i2c::Iom2::new(dp.IOM2, pins.d17, pins.d18, i2c::Freq::F100kHz);
     let mut gnss = loop {
         match MaxM10S::new(&mut i2c_gps) {
             Ok(dev) => break dev,
