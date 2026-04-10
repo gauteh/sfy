@@ -194,6 +194,8 @@ impl GpsPacket {
 pub struct GpsCollector {
     queue: Producer<'static, GpsPacket, EPGS_SZ>,
     buf: Vec<NavPvt, { GPS_PACKET_SZ }>,
+    /// Total PVT messages received since last collect (including filtered-out ones).
+    total_pvts: u32,
 }
 
 impl GpsCollector {
@@ -201,6 +203,7 @@ impl GpsCollector {
         GpsCollector {
             queue,
             buf: Vec::new(),
+            total_pvts: 0,
         }
     }
 
@@ -209,6 +212,7 @@ impl GpsCollector {
     /// the `valid` flag bits are not pre-filtered — `pvt_timestamp` already
     /// validates the individual date/time fields and rejects truly bogus values.
     pub fn add_sample(&mut self, pvt: NavPvt) {
+        self.total_pvts += 1;
         if pvt_timestamp(&pvt).is_none() {
             warn!("GPS: cannot build timestamp from PVT, flushing buffer");
             self.collect();
@@ -323,11 +327,13 @@ impl GpsCollector {
         };
 
         debug!(
-            "GPS: collected packet, freq: {}, timestamp: {}, samples: {}",
+            "GPS: collected packet, freq: {}, timestamp: {}, samples: {}, total_pvts: {}",
             p.freq,
             p.timestamp,
-            p.len()
+            p.len(),
+            self.total_pvts,
         );
+        self.total_pvts = 0;
 
         let _ = self
             .queue
