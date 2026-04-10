@@ -16,7 +16,7 @@ pub use max_m10s::ubx::NavPvt;
 pub const GPS_PACKET_V: u8 = 3;
 pub const GPS_PACKET_SZ: usize = 256;
 /// Nominal inter-sample interval in milliseconds (25 Hz).
-pub const GPS_NOMINAL_MS: i64 = 40;
+pub const GPS_NOMINAL_MS: i64 = 63; // 1000 / 16 Hz = 62.5 ms, rounded
 /// Maximum length of base64 string produced from one GpsPacket.
 pub const GPS_OUTN: usize = { 6 * GPS_PACKET_SZ * 2 } * 4 / 3 + 4;
 
