@@ -700,28 +700,26 @@ fn RTC() {
         *imu = unsafe { IMU.take() };
     }
 
-    // Drain GPS FIFO (IOM2) every 100 ms tick, independent of Notecard (IOM4).
-    // This prevents overflow of the chip's ~40-sample FIFO during long Notecard sends.
-    // GNSS and I2C_GPS are only accessed here (after being moved from main at startup).
+    // Drain one 512-byte chunk from the GPS FIFO (IOM2) per 100 ms RTC tick.
+    // A single call keeps the ISR short: GPS produces ~250 bytes/100ms (25 Hz × 100 B)
+    // and we drain up to 512 bytes, so we always keep up without looping.
+    // Looping until empty was causing ~500 ms ISR stalls on startup (4 KB GPS backlog)
+    // which filled the 512-sample IMU FIFO (208 Hz → full in 2.46 s) and caused resets.
     if let (Some(gnss), Some(i2c_gps), Some(gps_collector)) = unsafe {
         (GNSS.as_mut(), I2C_GPS.as_mut(), GPS_COLLECTOR.as_mut())
     } {
         let latest_pps = free(|cs| *PPS_TIME.borrow(cs).borrow());
-        loop {
-            match gnss.read_all_pvts(i2c_gps, &mut |pvt| {
-                if let Some(egps) = EgpsTime::from_pvt(&pvt, latest_pps) {
-                    free(|cs| {
-                        EGPS_TIME.borrow(cs).replace(Some(egps));
-                    });
-                }
-                gps_collector.add_sample(pvt);
-            }) {
-                Ok(true) => {} // more chunks may remain — loop
-                Ok(false) => break,
-                Err(e) => {
-                    defmt::error!("RTC ISR: GPS read_all_pvts error: {:?}", defmt::Debug2Format(&e));
-                    break;
-                }
+        match gnss.read_all_pvts(i2c_gps, &mut |pvt| {
+            if let Some(egps) = EgpsTime::from_pvt(&pvt, latest_pps) {
+                free(|cs| {
+                    EGPS_TIME.borrow(cs).replace(Some(egps));
+                });
+            }
+            gps_collector.add_sample(pvt);
+        }) {
+            Ok(_) => {}
+            Err(e) => {
+                defmt::error!("RTC ISR: GPS read_all_pvts error: {:?}", defmt::Debug2Format(&e));
             }
         }
     }
