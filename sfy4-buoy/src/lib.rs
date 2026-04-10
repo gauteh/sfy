@@ -70,7 +70,7 @@ pub const IMUQ_SZ: usize = STORAGEQ_SZ;
 // GPS is always present on sfy4 hardware.
 // GPS and IMU packets both accumulate at ~1 packet per 18 s. Match the IMU queue
 // depth so both can buffer the same duration during a Notecard sync (~7 minutes).
-// Cost: 24 × ~3 KB ≈ 72 KB of static RAM, acceptable on the 2 MB Apollo4.
+// Cost: 24 × ~3 KB ≈ 72 KB of static RAM, acceptable on the 384 KB Apollo3.
 pub const EPGS_SZ: usize = 24;
 
 #[cfg(all(
