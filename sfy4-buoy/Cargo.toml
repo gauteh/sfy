@@ -122,5 +122,5 @@ lto = 'fat'
 opt-level = 3 # <-
 overflow-checks = false # <-
 
-[patch."https://github.com/gauteh/max-m10s-rs"]
-max-m10s = { path = "/home/gauteh/dev/max-m10s-rs" }
+# [patch."https://github.com/gauteh/max-m10s-rs"]
+# max-m10s = { path = "/home/gauteh/dev/max-m10s-rs" }

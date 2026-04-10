@@ -1085,6 +1085,7 @@ checksum = "13dc2df351e3202783a1fe0d44375f7295ffb4049267b0f3018346dc122a1d94"
 [[package]]
 name = "max-m10s"
 version = "0.1.0"
+source = "git+https://github.com/gauteh/max-m10s-rs#be47370217ce68da8ab09025bebf9c1a2178f6a5"
 dependencies = [
  "defmt",
  "embedded-hal",
