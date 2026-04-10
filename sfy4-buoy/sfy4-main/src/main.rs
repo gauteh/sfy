@@ -94,6 +94,11 @@ static TS_PIN: Mutex<RefCell<Option<hal::gpio::pin::Pin<11, { Mode::Input }>>>> 
 /// IMU, moved into the RTC interrupt after setup.
 static mut IMU: Option<Imu<E, I>> = None;
 
+/// GPS packet collector — kept as a static so that the large `Vec<NavPvt, 512>`
+/// (≈28 KB) lives in .bss rather than on the main-loop stack, preventing stack
+/// overflow when the RTC ISR fires while the main loop is inside `send_egps`.
+static mut GPS_COLLECTOR: Option<GpsCollector> = None;
+
 /// Latest RTC timestamp (ms) captured at the GPS timepulse rising edge.
 /// Written by the GPIO ISR, read by the main loop to associate PVT with the pulse.
 static PPS_TIME: Mutex<RefCell<i64>> = Mutex::new(RefCell::new(0));
@@ -384,9 +389,11 @@ fn main() -> ! {
     }
     info!("GPS initialised.");
 
-    // Set up GPS packet collector.
+    // Set up GPS packet collector — stored as a static to keep the large buf (28 KB)
+    // in .bss instead of on the stack (prevents stack overflow when ISR fires during send).
     let (gps_p, mut gps_queue) = unsafe { sfy::gps::EGPSQ.split() };
-    let mut gps_collector = GpsCollector::new(gps_p);
+    unsafe { GPS_COLLECTOR = Some(GpsCollector::new(gps_p)) };
+    let gps_collector = unsafe { GPS_COLLECTOR.as_mut().unwrap_unchecked() };
 
     // Move IMU into interrupt-accessible storage, arm timepulse interrupt.
     // GPS (gnss, i2c_gps, gps_collector) stays in the main loop — the GPIO ISR
