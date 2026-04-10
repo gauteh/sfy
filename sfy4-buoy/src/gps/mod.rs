@@ -195,18 +195,59 @@ impl GpsPacket {
     }
 }
 
+/// Minimal subset of NavPvt fields needed for encoding and gap-fill copies.
+/// Avoids storing the full NavPvt struct (~56 bytes) when only a fraction is used.
+#[derive(Clone, Copy)]
+struct PvtSample {
+    lon: i32,
+    lat: i32,
+    height_msl_mm: i32,
+    vel_n_mm_s: i32,
+    vel_e_mm_s: i32,
+    vel_d_mm_s: i32,
+    h_acc_mm: u32,
+    v_acc_mm: u32,
+    fix_type: u8,
+    flags: u8,
+}
+
+impl From<&NavPvt> for PvtSample {
+    fn from(p: &NavPvt) -> Self {
+        PvtSample {
+            lon: p.lon,
+            lat: p.lat,
+            height_msl_mm: p.height_msl_mm,
+            vel_n_mm_s: p.vel_n_mm_s,
+            vel_e_mm_s: p.vel_e_mm_s,
+            vel_d_mm_s: p.vel_d_mm_s,
+            h_acc_mm: p.h_acc_mm,
+            v_acc_mm: p.v_acc_mm,
+            fix_type: p.fix_type,
+            flags: p.flags,
+        }
+    }
+}
+
 /// Accumulates `NavPvt` samples and flushes them as `GpsPacket` bundles.
+///
+/// Samples are encoded incrementally into a `GpsPacket` as they arrive,
+/// eliminating the need for a separate `Vec<NavPvt, GPS_PACKET_SZ>` buffer
+/// (~14 KB on Apollo3).
 pub struct GpsCollector {
     queue: Producer<'static, GpsPacket, EPGS_SZ>,
-    buf: Vec<NavPvt, { GPS_PACKET_SZ }>,
-    /// Total real PVT messages received since last collect.
+    /// In-progress packet.  `None` until the first sample of a new packet arrives.
+    pending: Option<GpsPacket>,
+    /// Running sums for computing ha_mean / va_mean at flush time.
+    ha_sum: f32,
+    va_sum: f32,
+    /// Total real PVT messages received since last flush.
     total_pvts: u32,
-    /// Fill samples inserted since last collect (epochs the GPS chip skipped).
+    /// Fill samples inserted since last flush (epochs the GPS chip skipped).
     fill_count: u32,
-    /// Last NavPvt added (real only); used as the source for gap-fill copies.
-    last_pvt: Option<NavPvt>,
-    /// Millisecond timestamp of the last slot pushed to buf (real or fill).
-    /// Persists across collects so cross-packet gaps are filled too.
+    /// Last real PVT (minimal fields); used as the source for gap-fill copies.
+    last_pvt: Option<PvtSample>,
+    /// Millisecond timestamp of the last slot encoded (real or fill).
+    /// Persists across flushes so cross-packet gaps are filled too.
     last_sample_ts: Option<i64>,
 }
 
@@ -214,7 +255,9 @@ impl GpsCollector {
     pub fn new(queue: Producer<'static, GpsPacket, EPGS_SZ>) -> Self {
         GpsCollector {
             queue,
-            buf: Vec::new(),
+            pending: None,
+            ha_sum: 0.0,
+            va_sum: 0.0,
             total_pvts: 0,
             fill_count: 0,
             last_pvt: None,
@@ -222,27 +265,118 @@ impl GpsCollector {
         }
     }
 
+    /// Encode one sample into `pending`, initialising the packet if needed.
+    /// Flushes the completed packet to the queue first if it is full.
+    fn encode_one(&mut self, s: &PvtSample, ts: i64) {
+        // Flush a completed packet before writing the new sample.
+        if self
+            .pending
+            .as_ref()
+            .map_or(false, |p| p.data.len() == 6 * GPS_PACKET_SZ)
+        {
+            self.flush();
+        }
+
+        let pending = self.pending.get_or_insert_with(|| GpsPacket {
+            timestamp: ts,
+            freq: 1000.0 / GPS_NOMINAL_MS as f32,
+            version: GPS_PACKET_V,
+            lon: s.lon,
+            lat: s.lat,
+            msl: s.height_msl_mm,
+            data: Vec::new(),
+            ha_min: f32::MAX,
+            ha_max: 0.0_f32,
+            ha_mean: 0.0_f32,
+            va_min: f32::MAX,
+            va_max: 0.0_f32,
+            va_mean: 0.0_f32,
+            fix: [0u16; 8],
+            soln: [0u16; 8],
+            filled: 0,
+        });
+
+        let (ref_lon, ref_lat, ref_msl) = (pending.lon, pending.lat, pending.msl);
+
+        // 6 channels: lon-delta, lat-delta, msl-delta, vel_n, vel_e, vel_d
+        for v in [
+            Lon16::from_i32(s.lon - ref_lon).to_u16(),
+            Lat16::from_i32(s.lat - ref_lat).to_u16(),
+            Msl16::from_i32(s.height_msl_mm - ref_msl).to_u16(),
+            Vel16::from_i32(s.vel_n_mm_s).to_u16(),
+            Vel16::from_i32(s.vel_e_mm_s).to_u16(),
+            Vel16::from_i32(s.vel_d_mm_s).to_u16(),
+        ] {
+            pending.data.push(v).ok();
+        }
+
+        let ha = s.h_acc_mm as f32;
+        pending.ha_min = pending.ha_min.min(ha);
+        pending.ha_max = pending.ha_max.max(ha);
+        self.ha_sum += ha;
+
+        let va = s.v_acc_mm as f32;
+        pending.va_min = pending.va_min.min(va);
+        pending.va_max = pending.va_max.max(va);
+        self.va_sum += va;
+
+        let fix_idx = (s.fix_type as usize).min(pending.fix.len() - 1);
+        pending.fix[fix_idx] += 1;
+        let soln_idx = ((s.flags as usize >> 5) & 0x3).min(pending.soln.len() - 1);
+        pending.soln[soln_idx] += 1;
+    }
+
+    /// Finalise the in-progress packet and push it to the queue.
+    fn flush(&mut self) {
+        if let Some(mut pkt) = self.pending.take() {
+            if pkt.data.is_empty() {
+                return;
+            }
+            let n = (pkt.data.len() / 6) as f32;
+            pkt.ha_mean = self.ha_sum / n;
+            pkt.va_mean = self.va_sum / n;
+            pkt.filled = self.fill_count as u16;
+
+            debug!(
+                "GPS: collected packet, samples: {}, real: {}, filled: {}",
+                n as u32,
+                self.total_pvts,
+                self.fill_count,
+            );
+
+            self.ha_sum = 0.0;
+            self.va_sum = 0.0;
+            self.total_pvts = 0;
+            self.fill_count = 0;
+
+            let _ = self
+                .queue
+                .enqueue(pkt)
+                .inspect_err(|_| error!("GPS: could not enqueue GpsPacket"));
+        }
+    }
+
     /// Add a `NavPvt` sample.  Samples where `pvt_timestamp` cannot build a
-    /// valid UTC datetime are dropped (and flush the buffer).  Fix type and
-    /// the `valid` flag bits are not pre-filtered — `pvt_timestamp` already
+    /// valid UTC datetime are dropped (and flush the pending packet).  Fix type
+    /// and the `valid` flag bits are not pre-filtered — `pvt_timestamp` already
     /// validates the individual date/time fields and rejects truly bogus values.
     ///
-    /// Gaps wider than 1.5× the nominal interval (40 ms at 25 Hz) are filled
-    /// with copies of the last known sample so that the packed buffer stays
-    /// equidistant at 25 Hz even when the GPS chip skips epochs.
+    /// Gaps wider than 1.5× the nominal interval are filled with copies of the
+    /// last known sample so the encoded buffer stays equidistant at the nominal
+    /// frequency even when the GPS chip skips epochs.
     pub fn add_sample(&mut self, pvt: NavPvt) {
         self.total_pvts += 1;
         let ts = match pvt_timestamp(&pvt) {
             Some(t) => t.and_utc().timestamp_millis(),
             None => {
-                warn!("GPS: cannot build timestamp from PVT, flushing buffer");
-                self.collect();
+                warn!("GPS: cannot build timestamp from PVT, flushing pending packet");
+                self.flush();
                 return;
             }
         };
 
         // Fill missed epochs with copies of the last known sample.
-        if let (Some(prev_ts), Some(last_pvt)) = (self.last_sample_ts, self.last_pvt) {
+        if let (Some(prev_ts), Some(last)) = (self.last_sample_ts, self.last_pvt) {
             let gap = ts - prev_ts;
             let missed =
                 ((gap + GPS_NOMINAL_MS / 2) / GPS_NOMINAL_MS).saturating_sub(1) as u32;
@@ -250,133 +384,31 @@ impl GpsCollector {
                 debug!("GPS: filling {} missed epoch(s) (gap: {} ms)", missed, gap);
             }
             for i in 1..=missed {
-                if self.buf.is_full() {
-                    self.collect();
-                }
-                self.buf.push(last_pvt).ok();
+                self.encode_one(&last, prev_ts + i as i64 * GPS_NOMINAL_MS);
                 self.fill_count += 1;
                 self.last_sample_ts = Some(prev_ts + i as i64 * GPS_NOMINAL_MS);
             }
         }
 
-        if self.buf.is_full() {
-            self.collect();
-        }
-        self.buf
-            .push(pvt)
-            .inspect_err(|_| error!("GPS: sample buf full, discarding sample"))
-            .ok();
+        let sample = PvtSample::from(&pvt);
+        self.encode_one(&sample, ts);
         self.last_sample_ts = Some(ts);
-        self.last_pvt = Some(pvt);
+        self.last_pvt = Some(sample);
         self.check_collect();
     }
 
     pub fn check_collect(&mut self) {
-        if self.buf.is_full() {
+        if self
+            .pending
+            .as_ref()
+            .map_or(false, |p| p.data.len() == 6 * GPS_PACKET_SZ)
+        {
             info!(
                 "GPS buf full, collecting into GpsPacket (queue len: {})",
                 self.queue.len()
             );
-            self.collect();
+            self.flush();
         }
-    }
-
-    pub fn collect(&mut self) {
-        if self.buf.is_empty() {
-            return;
-        }
-
-        let s = &self.buf[0];
-        let (lon, lat, msl) = (s.lon, s.lat, s.height_msl_mm);
-
-        let data: Vec<u16, { 6 * GPS_PACKET_SZ }> = self
-            .buf
-            .iter()
-            .flat_map(|s| {
-                [
-                    Lon16::from_i32(s.lon - lon).to_u16(),
-                    Lat16::from_i32(s.lat - lat).to_u16(),
-                    Msl16::from_i32(s.height_msl_mm - msl).to_u16(),
-                    Vel16::from_i32(s.vel_n_mm_s).to_u16(),
-                    Vel16::from_i32(s.vel_e_mm_s).to_u16(),
-                    Vel16::from_i32(s.vel_d_mm_s).to_u16(),
-                ]
-            })
-            .collect();
-
-        // unwrap: timestamp validity checked in add_sample
-        let timestamp = pvt_timestamp(&self.buf[0])
-            .unwrap()
-            .and_utc()
-            .timestamp_millis();
-
-        // Buffer is filled to equidistant 25 Hz; report the nominal frequency.
-        let freq = 1000.0 / GPS_NOMINAL_MS as f32;
-
-        let n = self.buf.len() as f32;
-        let mut ha_min = f32::MAX;
-        let mut ha_max = 0.0f32;
-        let mut ha_mean = 0.0f32;
-        let mut va_min = f32::MAX;
-        let mut va_max = 0.0f32;
-        let mut va_mean = 0.0f32;
-        let mut fix = [0u16; 8];
-        let mut soln = [0u16; 8];
-
-        for s in self.buf.iter() {
-            let ha = s.h_acc_mm as f32;
-            ha_min = ha_min.min(ha);
-            ha_max = ha_max.max(ha);
-            ha_mean += ha / n;
-
-            let va = s.v_acc_mm as f32;
-            va_min = va_min.min(va);
-            va_max = va_max.max(va);
-            va_mean += va / n;
-
-            let fix_idx = (s.fix_type as usize).min(fix.len() - 1);
-            fix[fix_idx] += 1;
-
-            let soln_idx = ((s.flags >> 5) & 0x3) as usize;
-            soln[soln_idx] += 1;
-        }
-
-        self.buf.clear();
-
-        let nsamples = data.len() / 6;
-        let filled = self.fill_count as u16;
-        let p = GpsPacket {
-            timestamp,
-            freq,
-            version: GPS_PACKET_V,
-            lon,
-            lat,
-            msl,
-            data,
-            ha_min,
-            ha_max,
-            ha_mean,
-            va_min,
-            va_max,
-            va_mean,
-            fix,
-            soln,
-            filled,
-        };
-
-        debug!(
-            "GPS: collected packet, samples: {}, real: {}, filled: {}",
-            nsamples,
-            self.total_pvts,
-            filled,
-        );
-        self.total_pvts = 0;
-        self.fill_count = 0;
-
-        let _ = self
-            .queue
-            .enqueue(p)
-            .inspect_err(|_| error!("GPS: could not enqueue GpsPacket"));
     }
 }
 
