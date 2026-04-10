@@ -434,32 +434,37 @@ fn main() -> ! {
         // Drain all pending NAV-PVT messages from the GPS module (IOM2, no notecard).
         // The GPIO ISR only captures the timepulse RTC timestamp; we do the actual
         // I2C read here to avoid blocking interrupts with the busy-wait and I2C time.
-        // All PVTs are logged and added to the collector; the last one wins for EgpsTime.
+        //
+        // read_all_pvts drains one 512-byte chunk and calls the closure for EVERY
+        // NAV-PVT packet found in it (previously read_pvt only returned the first,
+        // silently discarding the rest — causing ~80% sample loss when the FIFO
+        // accumulated multiple packets during Notecard transmissions).
         let latest_pps = free(|cs| *PPS_TIME.borrow(cs).borrow());
         loop {
-            match gnss.read_pvt(&mut i2c_gps) {
-                Ok(Some(pvt)) => {
-                    // defmt::info!(
-                    //     "GPS pvt: pps_time = {}, pvt.time = {}:{}:{}.{}, valid: {}",
-                    //     latest_pps,
-                    //     pvt.hour,
-                    //     pvt.min,
-                    //     pvt.sec,
-                    //     pvt.nano,
-                    //     pvt.valid
-                    // );
-                    // defmt::info!("GPS pos: {}, {}, fix: {}", pvt.lon, pvt.lat, pvt.fix_type);
-                    // Update EgpsTime; last PVT in this batch wins (associated with latest pps_time).
-                    if let Some(egps) = EgpsTime::from_pvt(&pvt, latest_pps) {
-                        free(|cs| {
-                            EGPS_TIME.borrow(cs).replace(Some(egps));
-                        });
-                    }
-                    gps_collector.add_sample(pvt);
+            let result = gnss.read_all_pvts(&mut i2c_gps, &mut |pvt| {
+                // defmt::info!(
+                //     "GPS pvt: pps_time = {}, pvt.time = {}:{}:{}.{}, valid: {}",
+                //     latest_pps,
+                //     pvt.hour,
+                //     pvt.min,
+                //     pvt.sec,
+                //     pvt.nano,
+                //     pvt.valid
+                // );
+                // defmt::info!("GPS pos: {}, {}, fix: {}", pvt.lon, pvt.lat, pvt.fix_type);
+                // Update EgpsTime; last PVT in this batch wins (associated with latest pps_time).
+                if let Some(egps) = EgpsTime::from_pvt(&pvt, latest_pps) {
+                    free(|cs| {
+                        EGPS_TIME.borrow(cs).replace(Some(egps));
+                    });
                 }
-                Ok(None) => break,
+                gps_collector.add_sample(pvt);
+            });
+            match result {
+                Ok(true) => {}  // more data may remain — loop again
+                Ok(false) => break,
                 Err(e) => {
-                    defmt::error!("GPS read_pvt error: {:?}", defmt::Debug2Format(&e));
+                    defmt::error!("GPS read_all_pvts error: {:?}", defmt::Debug2Format(&e));
                     break;
                 }
             }
