@@ -196,6 +196,9 @@ pub struct GpsCollector {
     buf: Vec<NavPvt, { GPS_PACKET_SZ }>,
     /// Total PVT messages received since last collect (including filtered-out ones).
     total_pvts: u32,
+    /// Timestamp (ms) of the last sample from the previous collect call.
+    /// Used to detect gaps between consecutive packets.
+    last_collect_ts: Option<i64>,
 }
 
 impl GpsCollector {
@@ -204,6 +207,7 @@ impl GpsCollector {
             queue,
             buf: Vec::new(),
             total_pvts: 0,
+            last_collect_ts: None,
         }
     }
 
@@ -264,19 +268,39 @@ impl GpsCollector {
             .and_utc()
             .timestamp_millis();
 
-        let freq: f32 = if self.buf.len() > 1 {
-            self.buf
-                .windows(2)
-                .map(|w| {
-                    pvt_timestamp(&w[1]).unwrap().and_utc().timestamp_millis()
-                        - pvt_timestamp(&w[0]).unwrap().and_utc().timestamp_millis()
-                })
-                .sum::<i64>() as f32
-                / (self.buf.len() - 1) as f32
+        // Build all consecutive diffs (ms), including the gap from the previous
+        // collect's last sample so we can spot dropped samples across packets.
+        let last_ts = pvt_timestamp(self.buf.last().unwrap())
+            .unwrap()
+            .and_utc()
+            .timestamp_millis();
+
+        let mut diffs: Vec<i64, { GPS_PACKET_SZ }> = Vec::new();
+
+        // Cross-collect gap first (if we have a previous packet's last timestamp).
+        if let Some(prev_ts) = self.last_collect_ts {
+            diffs.push(timestamp - prev_ts).ok();
+        }
+        // Within-buffer diffs.
+        for w in self.buf.windows(2) {
+            let d = pvt_timestamp(&w[1]).unwrap().and_utc().timestamp_millis()
+                - pvt_timestamp(&w[0]).unwrap().and_utc().timestamp_millis();
+            diffs.push(d).ok();
+        }
+
+        self.last_collect_ts = Some(last_ts);
+
+        let (diff_min, diff_max, diff_median, freq) = if !diffs.is_empty() {
+            let mut sorted: Vec<i64, { GPS_PACKET_SZ }> = diffs.clone();
+            sorted.sort_unstable();
+            let min = *sorted.first().unwrap();
+            let max = *sorted.last().unwrap();
+            let median = sorted[sorted.len() / 2];
+            let mean = diffs.iter().sum::<i64>() as f32 / diffs.len() as f32;
+            (min, max, median, 1000.0 / mean)
         } else {
-            1000.0 // assume 1 Hz when only one sample
+            (0, 0, 0, 0.0)
         };
-        let freq = 1000.0 / freq;
 
         let n = self.buf.len() as f32;
         let mut ha_min = f32::MAX;
@@ -308,6 +332,7 @@ impl GpsCollector {
 
         self.buf.clear();
 
+        let nsamples = data.len() / 6;
         let p = GpsPacket {
             timestamp,
             freq,
@@ -327,11 +352,14 @@ impl GpsCollector {
         };
 
         debug!(
-            "GPS: collected packet, freq: {}, timestamp: {}, samples: {}, total_pvts: {}",
-            p.freq,
+            "GPS: collected packet, freq: {}, timestamp: {}, samples: {}, total_pvts: {}, diff ms (min/median/max): {}/{}/{}",
+            freq,
             p.timestamp,
-            p.len(),
+            nsamples,
             self.total_pvts,
+            diff_min,
+            diff_median,
+            diff_max,
         );
         self.total_pvts = 0;
 
