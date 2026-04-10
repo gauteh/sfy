@@ -99,6 +99,13 @@ static mut IMU: Option<Imu<E, I>> = None;
 /// overflow when the RTC ISR fires while the main loop is inside `send_egps`.
 static mut GPS_COLLECTOR: Option<GpsCollector> = None;
 
+/// GPS driver and its I2C bus — moved into statics after init so the RTC ISR
+/// can drain the GPS FIFO every 100 ms, keeping up with the 25 Hz PVT rate
+/// even while the main loop is blocked inside a Notecard send (IOM4 is separate
+/// from GPS IOM2 and IMU IOM3, so the buses do not conflict).
+static mut GNSS: Option<MaxM10S> = None;
+static mut I2C_GPS: Option<GpsI2C> = None;
+
 /// Latest RTC timestamp (ms) captured at the GPS timepulse rising edge.
 /// Written by the GPIO ISR, read by the main loop to associate PVT with the pulse.
 static PPS_TIME: Mutex<RefCell<i64>> = Mutex::new(RefCell::new(0));
@@ -389,18 +396,19 @@ fn main() -> ! {
     }
     info!("GPS initialised.");
 
-    // Set up GPS packet collector — stored as a static to keep the large buf (28 KB)
+    // Set up GPS packet collector — stored as a static to keep the large buf
     // in .bss instead of on the stack (prevents stack overflow when ISR fires during send).
     let (gps_p, mut gps_queue) = unsafe { sfy::gps::EGPSQ.split() };
     unsafe { GPS_COLLECTOR = Some(GpsCollector::new(gps_p)) };
-    let gps_collector = unsafe { GPS_COLLECTOR.as_mut().unwrap_unchecked() };
 
-    // Move IMU into interrupt-accessible storage, arm timepulse interrupt.
-    // GPS (gnss, i2c_gps, gps_collector) stays in the main loop — the GPIO ISR
-    // only captures the timepulse timestamp; read_pvt is called from main.
+    // Move IMU, GNSS driver, and GPS I2C bus into interrupt-accessible statics.
+    // The RTC ISR drains the GPS FIFO every 100 ms (IOM2) alongside IMU sampling
+    // (IOM3) — both buses are independent of Notecard IOM4 used in the main loop.
     free(|cs| {
         unsafe {
             IMU = Some(imu);
+            GNSS = Some(gnss);
+            I2C_GPS = Some(i2c_gps);
         }
         if let Some(pin) = TS_PIN.borrow(cs).borrow_mut().as_mut() {
             pin.enable_interrupt();
@@ -438,44 +446,8 @@ fn main() -> ! {
             free(|cs| *PPS_TIME.borrow(cs).borrow_mut() = new_rtc_ms);
         }
 
-        // Drain all pending NAV-PVT messages from the GPS module (IOM2, no notecard).
-        // The GPIO ISR only captures the timepulse RTC timestamp; we do the actual
-        // I2C read here to avoid blocking interrupts with the busy-wait and I2C time.
-        //
-        // read_all_pvts drains one 512-byte chunk and calls the closure for EVERY
-        // NAV-PVT packet found in it (previously read_pvt only returned the first,
-        // silently discarding the rest — causing ~80% sample loss when the FIFO
-        // accumulated multiple packets during Notecard transmissions).
-        let latest_pps = free(|cs| *PPS_TIME.borrow(cs).borrow());
-        loop {
-            let result = gnss.read_all_pvts(&mut i2c_gps, &mut |pvt| {
-                // defmt::info!(
-                //     "GPS pvt: pps_time = {}, pvt.time = {}:{}:{}.{}, valid: {}",
-                //     latest_pps,
-                //     pvt.hour,
-                //     pvt.min,
-                //     pvt.sec,
-                //     pvt.nano,
-                //     pvt.valid
-                // );
-                // defmt::info!("GPS pos: {}, {}, fix: {}", pvt.lon, pvt.lat, pvt.fix_type);
-                // Update EgpsTime; last PVT in this batch wins (associated with latest pps_time).
-                if let Some(egps) = EgpsTime::from_pvt(&pvt, latest_pps) {
-                    free(|cs| {
-                        EGPS_TIME.borrow(cs).replace(Some(egps));
-                    });
-                }
-                gps_collector.add_sample(pvt);
-            });
-            match result {
-                Ok(true) => {}  // more data may remain — loop again
-                Ok(false) => break,
-                Err(e) => {
-                    defmt::error!("GPS read_all_pvts error: {:?}", defmt::Debug2Format(&e));
-                    break;
-                }
-            }
-        }
+        // GPS FIFO is drained in the RTC ISR (every 100 ms) so that samples are
+        // not lost while the main loop is blocked inside a Notecard send.
 
         // --- Drain storage queue to Notecard ----------------------------------
         #[cfg(feature = "storage")]
@@ -726,6 +698,32 @@ fn RTC() {
     } else {
         // First call: move IMU out of the static storage.
         *imu = unsafe { IMU.take() };
+    }
+
+    // Drain GPS FIFO (IOM2) every 100 ms tick, independent of Notecard (IOM4).
+    // This prevents overflow of the chip's ~40-sample FIFO during long Notecard sends.
+    // GNSS and I2C_GPS are only accessed here (after being moved from main at startup).
+    if let (Some(gnss), Some(i2c_gps), Some(gps_collector)) = unsafe {
+        (GNSS.as_mut(), I2C_GPS.as_mut(), GPS_COLLECTOR.as_mut())
+    } {
+        let latest_pps = free(|cs| *PPS_TIME.borrow(cs).borrow());
+        loop {
+            match gnss.read_all_pvts(i2c_gps, &mut |pvt| {
+                if let Some(egps) = EgpsTime::from_pvt(&pvt, latest_pps) {
+                    free(|cs| {
+                        EGPS_TIME.borrow(cs).replace(Some(egps));
+                    });
+                }
+                gps_collector.add_sample(pvt);
+            }) {
+                Ok(true) => {} // more chunks may remain — loop
+                Ok(false) => break,
+                Err(e) => {
+                    defmt::error!("RTC ISR: GPS read_all_pvts error: {:?}", defmt::Debug2Format(&e));
+                    break;
+                }
+            }
+        }
     }
 }
 
