@@ -15,6 +15,8 @@ pub use max_m10s::ubx::NavPvt;
 
 pub const GPS_PACKET_V: u8 = 3;
 pub const GPS_PACKET_SZ: usize = 256;
+/// Nominal inter-sample interval in milliseconds (25 Hz).
+pub const GPS_NOMINAL_MS: i64 = 40;
 /// Maximum length of base64 string produced from one GpsPacket.
 pub const GPS_OUTN: usize = { 6 * GPS_PACKET_SZ * 2 } * 4 / 3 + 4;
 
@@ -194,11 +196,15 @@ impl GpsPacket {
 pub struct GpsCollector {
     queue: Producer<'static, GpsPacket, EPGS_SZ>,
     buf: Vec<NavPvt, { GPS_PACKET_SZ }>,
-    /// Total PVT messages received since last collect (including filtered-out ones).
+    /// Total real PVT messages received since last collect.
     total_pvts: u32,
-    /// Timestamp (ms) of the last sample from the previous collect call.
-    /// Used to detect gaps between consecutive packets.
-    last_collect_ts: Option<i64>,
+    /// Fill samples inserted since last collect (epochs the GPS chip skipped).
+    fill_count: u32,
+    /// Last NavPvt added (real only); used as the source for gap-fill copies.
+    last_pvt: Option<NavPvt>,
+    /// Millisecond timestamp of the last slot pushed to buf (real or fill).
+    /// Persists across collects so cross-packet gaps are filled too.
+    last_sample_ts: Option<i64>,
 }
 
 impl GpsCollector {
@@ -207,7 +213,9 @@ impl GpsCollector {
             queue,
             buf: Vec::new(),
             total_pvts: 0,
-            last_collect_ts: None,
+            fill_count: 0,
+            last_pvt: None,
+            last_sample_ts: None,
         }
     }
 
@@ -215,17 +223,48 @@ impl GpsCollector {
     /// valid UTC datetime are dropped (and flush the buffer).  Fix type and
     /// the `valid` flag bits are not pre-filtered — `pvt_timestamp` already
     /// validates the individual date/time fields and rejects truly bogus values.
+    ///
+    /// Gaps wider than 1.5× the nominal interval (40 ms at 25 Hz) are filled
+    /// with copies of the last known sample so that the packed buffer stays
+    /// equidistant at 25 Hz even when the GPS chip skips epochs.
     pub fn add_sample(&mut self, pvt: NavPvt) {
         self.total_pvts += 1;
-        if pvt_timestamp(&pvt).is_none() {
-            warn!("GPS: cannot build timestamp from PVT, flushing buffer");
+        let ts = match pvt_timestamp(&pvt) {
+            Some(t) => t.and_utc().timestamp_millis(),
+            None => {
+                warn!("GPS: cannot build timestamp from PVT, flushing buffer");
+                self.collect();
+                return;
+            }
+        };
+
+        // Fill missed epochs with copies of the last known sample.
+        if let (Some(prev_ts), Some(last_pvt)) = (self.last_sample_ts, self.last_pvt) {
+            let gap = ts - prev_ts;
+            let missed =
+                ((gap + GPS_NOMINAL_MS / 2) / GPS_NOMINAL_MS).saturating_sub(1) as u32;
+            if missed > 0 {
+                debug!("GPS: filling {} missed epoch(s) (gap: {} ms)", missed, gap);
+            }
+            for i in 1..=missed {
+                if self.buf.is_full() {
+                    self.collect();
+                }
+                self.buf.push(last_pvt).ok();
+                self.fill_count += 1;
+                self.last_sample_ts = Some(prev_ts + i as i64 * GPS_NOMINAL_MS);
+            }
+        }
+
+        if self.buf.is_full() {
             self.collect();
-            return;
         }
         self.buf
             .push(pvt)
             .inspect_err(|_| error!("GPS: sample buf full, discarding sample"))
             .ok();
+        self.last_sample_ts = Some(ts);
+        self.last_pvt = Some(pvt);
         self.check_collect();
     }
 
@@ -268,52 +307,8 @@ impl GpsCollector {
             .and_utc()
             .timestamp_millis();
 
-        let last_ts = pvt_timestamp(self.buf.last().unwrap())
-            .unwrap()
-            .and_utc()
-            .timestamp_millis();
-
-        // Collect within-buffer diffs (ms) between consecutive samples.
-        let mut within_diffs: Vec<i64, { GPS_PACKET_SZ }> = Vec::new();
-        for w in self.buf.windows(2) {
-            let d = pvt_timestamp(&w[1]).unwrap().and_utc().timestamp_millis()
-                - pvt_timestamp(&w[0]).unwrap().and_utc().timestamp_millis();
-            within_diffs.push(d).ok();
-        }
-
-        // Use within-buffer median as the nominal epoch interval so we don't
-        // hard-code 40 ms (works even if GPS is configured at a different rate).
-        let nominal_ms = if !within_diffs.is_empty() {
-            let mut sorted: Vec<i64, { GPS_PACKET_SZ }> = within_diffs.clone();
-            sorted.sort_unstable();
-            sorted[sorted.len() / 2].max(1)
-        } else {
-            40
-        };
-
-        // Count missed epochs: each gap of N×nominal_ms means N-1 missed epochs.
-        let missed_within: i64 = within_diffs
-            .iter()
-            .map(|&d| (d + nominal_ms / 2) / nominal_ms - 1)
-            .filter(|&m| m > 0)
-            .sum();
-
-        // Cross-collect gap: epochs dropped between the last packet and this one.
-        let missed_at_boundary: i64 = if let Some(prev_ts) = self.last_collect_ts {
-            let gap = timestamp - prev_ts;
-            ((gap + nominal_ms / 2) / nominal_ms - 1).max(0)
-        } else {
-            -1 // first packet — no reference
-        };
-
-        let freq = if !within_diffs.is_empty() {
-            let mean = within_diffs.iter().sum::<i64>() as f32 / within_diffs.len() as f32;
-            1000.0 / mean
-        } else {
-            0.0
-        };
-
-        self.last_collect_ts = Some(last_ts);
+        // Buffer is filled to equidistant 25 Hz; report the nominal frequency.
+        let freq = 1000.0 / GPS_NOMINAL_MS as f32;
 
         let n = self.buf.len() as f32;
         let mut ha_min = f32::MAX;
@@ -365,15 +360,13 @@ impl GpsCollector {
         };
 
         debug!(
-            "GPS: collected packet, freq: {}, samples: {}, total_pvts: {}, nominal_ms: {}, missed_within: {}, missed_at_boundary: {}",
-            freq,
+            "GPS: collected packet, samples: {}, real: {}, filled: {}",
             nsamples,
             self.total_pvts,
-            nominal_ms,
-            missed_within,
-            missed_at_boundary,
+            self.fill_count,
         );
         self.total_pvts = 0;
+        self.fill_count = 0;
 
         let _ = self
             .queue
