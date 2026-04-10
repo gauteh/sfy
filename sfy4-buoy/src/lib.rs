@@ -240,7 +240,10 @@ impl Location {
                             egps.time + diff
                         } else {
                             debug!("egps time is old (diff = {}), not using.", diff);
-                            return; // return from closure; new_rtc_time stays None
+                            // Rate-limit retries: update state so we don't spin until
+                            // the next LOCATION_DIFF interval.
+                            self.state = LocationState::Trying(now);
+                            return;
                         };
 
                         if let Some(dt) = NaiveDateTime::from_timestamp_millis(set_time) {
