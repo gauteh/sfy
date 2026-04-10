@@ -204,11 +204,11 @@ impl GpsCollector {
         }
     }
 
-    /// Add a `NavPvt` sample.  Samples without a 3D fix or valid UTC
-    /// date+time are silently dropped.  Triggers `collect` when the buffer
-    /// is full.
+    /// Add a `NavPvt` sample.  Samples without valid UTC date+time are
+    /// silently dropped.  Fix type is not filtered so all 25 Hz epochs are
+    /// captured regardless of fix quality.  Triggers `collect` when full.
     pub fn add_sample(&mut self, pvt: NavPvt) {
-        if pvt.fix_type < 2 || (pvt.valid & 0x03) != 0x03 {
+        if (pvt.valid & 0x03) != 0x03 {
             return;
         }
         if pvt_timestamp(&pvt).is_none() {
