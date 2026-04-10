@@ -226,7 +226,6 @@ class Egps(Event):
     lon: float = None
     lat: float = None
     msl: float = None
-    freq: float = None
     lonlat_range: float = None  # in [deg * 1e7]
     msl_range: float = None  # in [mm]
     vel_range: float = None  # in [mm/s]
@@ -240,6 +239,10 @@ class Egps(Event):
     vn: np.ndarray = None
     ve: np.ndarray = None
     vz: np.ndarray = None
+
+    # Number of fill samples in this packet (copies of last real PVT, not real measurements).
+    # Added in GPS_PACKET_V=4. Zero means all samples are real.
+    filled: int = 0
 
     # For testing purpuses
     __keep_payload__ = False
@@ -394,6 +397,7 @@ class Egps(Event):
         data['msl_range'] = data['body']['msl_range']
         data['vel_range'] = data['body'].get('vel_range',
                                              200.0 * 1.0e6 / 60. / 60)
+        data['filled'] = data['body'].get('filled', 0)
         del data['body']
 
         # decode x, y, z
