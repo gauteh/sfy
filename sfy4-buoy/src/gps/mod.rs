@@ -13,7 +13,7 @@ use heapless::{
 
 pub use max_m10s::ubx::NavPvt;
 
-pub const GPS_PACKET_V: u8 = 3;
+pub const GPS_PACKET_V: u8 = 4;
 pub const GPS_PACKET_SZ: usize = 256;
 /// Nominal inter-sample interval in milliseconds (25 Hz).
 pub const GPS_NOMINAL_MS: i64 = 71; // 1000 / 14 Hz ≈ 71.4 ms, rounded
@@ -110,6 +110,7 @@ pub struct GpsPacket {
 
     pub fix: [u16; 8],
     pub soln: [u16; 8],
+    pub filled: u16,
 }
 
 // XXX: Match with template in note
@@ -142,6 +143,7 @@ pub struct GpsPacketMeta {
 
     pub fix: [u16; 8],
     pub soln: [u16; 8],
+    pub filled: u16,
 }
 
 impl GpsPacket {
@@ -186,6 +188,7 @@ impl GpsPacket {
             va_mean: self.va_mean,
             fix: self.fix,
             soln: self.soln,
+            filled: self.filled,
         };
 
         (meta, b64)
@@ -341,6 +344,7 @@ impl GpsCollector {
         self.buf.clear();
 
         let nsamples = data.len() / 6;
+        let filled = self.fill_count as u16;
         let p = GpsPacket {
             timestamp,
             freq,
@@ -357,13 +361,14 @@ impl GpsCollector {
             va_mean,
             fix,
             soln,
+            filled,
         };
 
         debug!(
             "GPS: collected packet, samples: {}, real: {}, filled: {}",
             nsamples,
             self.total_pvts,
-            self.fill_count,
+            filled,
         );
         self.total_pvts = 0;
         self.fill_count = 0;
@@ -399,6 +404,7 @@ mod tests {
             va_max: 10.0,
             fix: [0u16; 8],
             soln: [0u16; 8],
+            filled: 0,
         };
 
         let b64 = p.base64();

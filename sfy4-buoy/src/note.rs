@@ -325,6 +325,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
 
                 fix: [u32; 8],
                 soln: [u32; 8],
+                filled: u32,
             }
 
             let meta_template = GpsPacketMetaTemplate {
@@ -350,6 +351,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
 
                 fix: [14u32; 8],
                 soln: [14u32; 8],
+                filled: 14,
             };
 
             defmt::debug!("setting up template for GpsPacketMeta");
