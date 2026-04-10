@@ -248,10 +248,15 @@ impl Location {
 
                         if let Some(dt) = NaiveDateTime::from_timestamp_millis(set_time) {
                             state.rtc.set_datetime(&dt).ok();
-                            self.state = LocationState::Retrieved(egps.time);
+                            // Store `now` (current wall-clock), not `egps.time` (GPS PVT time).
+                            // If egps.time is stale (>10s old), storing it here would cause
+                            // (now - egps.time) > LOCATION_DIFF to fire on the very next call.
+                            self.state = LocationState::Retrieved(now);
                             new_rtc_time = Some(set_time);
                         } else {
                             error!("Could not construct datetime from: {}", set_time);
+                            // Rate-limit: prevent spin if set_time is invalid.
+                            self.state = LocationState::Trying(now);
                         }
                     }
                     _ => (),
