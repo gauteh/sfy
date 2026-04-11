@@ -696,6 +696,10 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             if status.storage > limit {
                 let sync_status = self.note.hub().sync_status(delay)?.wait(delay)?;
                 defmt::warn!("notecard is more than {}% full, not adding more notes until sync is done: queue sz: {}, sync: {:?}", limit, queue.len(), sync_status);
+                if sync_status.requested.is_none() {
+                    defmt::warn!("no sync pending, triggering sync now.");
+                    self.note.hub().sync(delay, false, None, None)?.wait(delay)?;
+                }
                 return Ok(0);
             }
 
@@ -805,6 +809,10 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                 // Notecard is full — leave packet in queue and wait for sync.
                 let sync_status = self.note.hub().sync_status(delay)?.wait(delay)?;
                 defmt::warn!("notecard is more than {}% full, not adding more notes until sync is done: queue sz: {}, sync: {:?}", limit, queue.len(), sync_status);
+                if sync_status.requested.is_none() {
+                    defmt::warn!("no sync pending, triggering sync now.");
+                    self.note.hub().sync(delay, false, None, None)?.wait(delay)?;
+                }
                 return Ok(0);
             }
 
