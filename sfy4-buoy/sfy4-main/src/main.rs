@@ -424,11 +424,6 @@ fn main() -> ! {
     info!("Entering main loop");
     const GOOD_TRIES: u32 = 15;
 
-    // check_and_sync hits the notecard (card.status + hub.sync_status).
-    // Keep it low so a sync is triggered promptly when storage fills up.
-    const SYNC_CHECK_INTERVAL_MS: i64 = 1_000;
-    let mut last_sync_check: i64 = 0;
-
     let mut good_tries: u32 = GOOD_TRIES;
     #[cfg(feature = "storage")]
     let mut sd_good: bool = true;
@@ -475,10 +470,7 @@ fn main() -> ! {
         // Only talk to the notecard when there is work to do.  The natural
         // rate-limiting is the send duration (~16-17 s per packet) and the data
         // production rate (IMU ~20 s/packet, GPS ~5 s/packet at 24 Hz).
-        let sync_elapsed = now_ms - last_sync_check;
-        let need_sync_check = sync_elapsed >= SYNC_CHECK_INTERVAL_MS;
-
-        let has_work = imu_queue.len() > 0 || gps_queue.len() > 0 || need_sync_check;
+        let has_work = imu_queue.len() > 0 || gps_queue.len() > 0;
 
         if !has_work {
             // Sleep until the next RTC (100 ms) or GPS timepulse interrupt wakes us.
@@ -522,9 +514,11 @@ fn main() -> ! {
             .inspect_err(|e| defmt::error!("drain spec queue: {:?}", e))
             .ok();
 
-        // Run the sync check only on its own rate-limited cadence.
-        let ns = if need_sync_check {
-            last_sync_check = now_ms;
+        // Run check_and_sync after any successful send so we detect when
+        // storage has grown past the threshold and trigger a sync promptly.
+        let sent_any = nd.as_ref().map(|n| *n > 0).unwrap_or(false)
+            || ng.as_ref().map(|n| *n > 0).unwrap_or(false);
+        let ns = if sent_any {
             note.check_and_sync(&mut delay)
         } else {
             Ok(())
