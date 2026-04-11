@@ -470,9 +470,7 @@ fn main() -> ! {
         // Only talk to the notecard when there is work to do.  The natural
         // rate-limiting is the send duration (~16-17 s per packet) and the data
         // production rate (IMU ~20 s/packet, GPS ~5 s/packet at 24 Hz).
-        let has_work = imu_queue.len() > 0 || gps_queue.len() > 0;
-
-        if !has_work {
+        if imu_queue.len() == 0 && gps_queue.len() == 0 {
             // Sleep until the next RTC (100 ms) or GPS timepulse interrupt wakes us.
             // Only sleep when idle so that a non-empty queue is serviced on the
             // very next iteration without an unnecessary interrupt-period gap.
