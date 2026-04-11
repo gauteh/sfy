@@ -41,7 +41,7 @@ dependencies = [
 [[package]]
 name = "ambiq-apollo3-pac2"
 version = "0.2.0"
-source = "git+https://github.com/gauteh/ambiq-rs#62909753beb6e02e8a34c54203391afd753af4fe"
+source = "git+https://github.com/gauteh/ambiq-rs#f39e84fd21a7f8fa7df115e1f0f9d710d510d046"
 dependencies = [
  "bare-metal",
  "cortex-m",
@@ -52,7 +52,7 @@ dependencies = [
 [[package]]
 name = "ambiq-hal"
 version = "0.3.3"
-source = "git+https://github.com/gauteh/ambiq-rs#62909753beb6e02e8a34c54203391afd753af4fe"
+source = "git+https://github.com/gauteh/ambiq-rs#f39e84fd21a7f8fa7df115e1f0f9d710d510d046"
 dependencies = [
  "ambiq-apollo3-pac2",
  "ambiq-hal-sys",
@@ -71,7 +71,7 @@ dependencies = [
 [[package]]
 name = "ambiq-hal-sys"
 version = "0.1.0"
-source = "git+https://github.com/gauteh/ambiq-rs#62909753beb6e02e8a34c54203391afd753af4fe"
+source = "git+https://github.com/gauteh/ambiq-rs#f39e84fd21a7f8fa7df115e1f0f9d710d510d046"
 dependencies = [
  "bindgen 0.59.2",
  "cc",
@@ -692,7 +692,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "33d852cb9b869c2a9b3df2f71a3074817f01e1844f839a144f5fcef059a4eb5d"
 dependencies = [
  "libc",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -1590,7 +1590,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -2190,7 +2190,7 @@ version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf221c93e13a30d793f7645a0e7762c55d169dbb0a49671918a2319d289b10bb"
 dependencies = [
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
