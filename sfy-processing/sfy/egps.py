@@ -401,7 +401,9 @@ class Egps(Event):
         del data['body']
 
         # decode x, y, z
-        payload = payload[:data['length']]
+        # For non-binary (egps.qo): length = base64 string length, payload is exactly that long.
+        # For binary (egpsb.qo): length = raw byte count; payload is the full base64-encoded binary.
+        # In both cases the payload string contains no extraneous data, so no slicing needed.
         payload = base64.b64decode(payload)
 
         if (len(payload) % (2 * 3)) != 0:
