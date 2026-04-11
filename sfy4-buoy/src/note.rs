@@ -712,6 +712,10 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                     defmt::warn!("notecard is in NtN mode, discarding package.");
                     return Ok(0);
                 }
+                Err(NoteError::ErrorAddingNote(ref msg)) => {
+                    defmt::warn!("notecard busy (sync lock?), will retry next iteration: {:?}", msg.as_str());
+                    return Ok(0);
+                }
                 Err(e) => {
                     defmt::error!(
                         "Error while sending package to notecard: {:?}, retrying..",
@@ -816,6 +820,10 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                 Ok(sz) => {
                     queue.dequeue();
                     return Ok(sz);
+                }
+                Err(NoteError::ErrorAddingNote(ref msg)) => {
+                    defmt::warn!("notecard busy (sync lock?), will retry next iteration: {:?}", msg.as_str());
+                    return Ok(0);
                 }
                 Err(e) => {
                     defmt::error!(
