@@ -477,8 +477,13 @@ class Axl(Event, AxlTimeseries):
         del data['body']
 
         # decode x, y, z
-        payload = payload[:data['length']]
-        payload = base64.b64decode(payload)
+        # For binary (axlb.qo): length = raw byte count; decode the full payload.
+        # For non-binary (axl.qo): length = base64 string length; slice first since
+        # the payload may be padded beyond the actual data.
+        if data.get('file', '').endswith('b.qo'):
+            payload = base64.b64decode(payload)
+        else:
+            payload = base64.b64decode(payload[:data['length']])
 
         ACCEL_MAX = 2 * SENSORS_GRAVITY_STANDARD * data['accel_range'] # [m/s^2]
         GYRO_MAX = 2 * SENSORS_DPS_TO_RADS * data['gyro_range'] # [rad/s]

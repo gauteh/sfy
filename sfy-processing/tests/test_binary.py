@@ -57,6 +57,9 @@ def test_axlb_collection(sfyhub):
     assert c.frequency == 52
     assert c.duration > 800.0
     assert len(c) > 50
+    # each full axlb packet should have 1024 samples (not 768 as with the old slicing bug)
+    full_pcks = [p for p in pcks if p.samples() == 1024]
+    assert len(full_pcks) > 0
 
 
 @needs_hub
