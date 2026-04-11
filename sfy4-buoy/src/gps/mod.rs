@@ -378,15 +378,31 @@ impl GpsCollector {
         // Fill missed epochs with copies of the last known sample.
         if let (Some(prev_ts), Some(last)) = (self.last_sample_ts, self.last_pvt) {
             let gap = ts - prev_ts;
-            let missed =
-                ((gap + GPS_NOMINAL_MS / 2) / GPS_NOMINAL_MS).saturating_sub(1) as u32;
-            if missed > 0 {
-                debug!("GPS: filling {} missed epoch(s) (gap: {} ms)", missed, gap);
-            }
-            for i in 1..=missed {
-                self.encode_one(&last, prev_ts + i as i64 * GPS_NOMINAL_MS);
-                self.fill_count += 1;
-                self.last_sample_ts = Some(prev_ts + i as i64 * GPS_NOMINAL_MS);
+
+            // A gap larger than one full packet's worth of time means the clock
+            // jumped (e.g. GPS cold-start going from default epoch to real UTC).
+            // Flush the in-progress packet and start fresh rather than generating
+            // millions of fill samples.
+            const MAX_GAP_MS: i64 = GPS_NOMINAL_MS * GPS_PACKET_SZ as i64;
+            if gap < 0 || gap > MAX_GAP_MS {
+                warn!(
+                    "GPS: timestamp discontinuity (gap: {} ms), flushing and resetting",
+                    gap
+                );
+                self.flush();
+                self.last_pvt = None;
+                self.last_sample_ts = None;
+            } else {
+                let missed =
+                    ((gap + GPS_NOMINAL_MS / 2) / GPS_NOMINAL_MS).saturating_sub(1) as u32;
+                if missed > 0 {
+                    debug!("GPS: filling {} missed epoch(s) (gap: {} ms)", missed, gap);
+                }
+                for i in 1..=missed {
+                    self.encode_one(&last, prev_ts + i as i64 * GPS_NOMINAL_MS);
+                    self.fill_count += 1;
+                    self.last_sample_ts = Some(prev_ts + i as i64 * GPS_NOMINAL_MS);
+                }
             }
         }
 
