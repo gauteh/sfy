@@ -16,6 +16,11 @@ pub const VERSION: u32 = 6;
 /// Maximum length of base64 string from [f16; AXL_SZ]
 pub const AXL_OUTN: usize = { AXL_SZ * 2 } * 4 / 3 + 4;
 
+/// Raw byte length of the IMU payload (little-endian u16 cast to bytes).
+pub const AXL_RAW_LEN: usize = AXL_SZ * 2;
+/// Minimum COBS encoding buffer size for an AXL binary payload (including EOP byte).
+pub const AXL_COBS_BUF_LEN: usize = AXL_RAW_LEN + AXL_RAW_LEN / 254 + 2;
+
 /// Max size of `AxlPacket` serialized using postcard with COBS. Set with some margin since
 /// postcard messages are not fixed size.
 #[cfg(feature = "raw")]
@@ -153,6 +158,32 @@ impl AxlPacket {
         };
 
         (meta, b64)
+    }
+
+    /// Raw bytes of the IMU data for binary transmission (little-endian u16).
+    pub fn raw_bytes(&self) -> &[u8] {
+        bytemuck::cast_slice(&self.data)
+    }
+
+    /// Split package into metadata and raw binary payload for use with `note.add_binary`.
+    /// The `length` field in the metadata reflects the raw byte count.
+    pub fn split_binary(&self) -> (AxlPacketMeta, &[u8]) {
+        let raw = self.raw_bytes();
+        let meta = AxlPacketMeta {
+            timestamp: self.timestamp,
+            offset: self.offset as u32,
+            length: raw.len() as u32,
+            freq: self.freq,
+            accel_range: self.accel_range,
+            gyro_range: self.gyro_range,
+            storage_id: self.storage_id,
+            storage_version: self.storage_version,
+            position_time: self.position_time,
+            lon: self.lon,
+            lat: self.lat,
+            temperature: self.temperature,
+        };
+        (meta, raw)
     }
 
     #[cfg(feature = "continuous-post")]

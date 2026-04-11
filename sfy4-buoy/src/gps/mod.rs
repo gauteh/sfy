@@ -20,6 +20,11 @@ pub const GPS_NOMINAL_MS: i64 = 71; // 1000 / 14 Hz ≈ 71.4 ms, rounded
 /// Maximum length of base64 string produced from one GpsPacket.
 pub const GPS_OUTN: usize = { 6 * GPS_PACKET_SZ * 2 } * 4 / 3 + 4;
 
+/// Raw byte length of the GPS payload (little-endian u16 cast to bytes).
+pub const GPS_RAW_LEN: usize = 6 * GPS_PACKET_SZ * 2;
+/// Minimum COBS encoding buffer size for a GPS binary payload (including EOP byte).
+pub const GPS_COBS_BUF_LEN: usize = GPS_RAW_LEN + GPS_RAW_LEN / 254 + 2;
+
 mod wire;
 pub use wire::*;
 
@@ -192,6 +197,39 @@ impl GpsPacket {
         };
 
         (meta, b64)
+    }
+
+    /// Raw bytes of the GPS data for binary transmission (little-endian u16).
+    pub fn raw_bytes(&self) -> &[u8] {
+        bytemuck::cast_slice(&self.data)
+    }
+
+    /// Split package into metadata and raw binary payload for use with `note.add_binary`.
+    /// The `length` field in the metadata reflects the raw byte count.
+    pub fn split_binary(&self) -> (GpsPacketMeta, &[u8]) {
+        let raw = self.raw_bytes();
+        let meta = GpsPacketMeta {
+            timestamp: self.timestamp,
+            length: raw.len() as u32,
+            freq: self.freq,
+            lonlat_range: wire::LON_RANGE,
+            msl_range: wire::MSL_RANGE,
+            vel_range: wire::VEL_RANGE,
+            version: GPS_PACKET_V,
+            lon: self.lon,
+            lat: self.lat,
+            msl: self.msl,
+            ha_min: self.ha_min,
+            ha_max: self.ha_max,
+            ha_mean: self.ha_mean,
+            va_min: self.va_min,
+            va_max: self.va_max,
+            va_mean: self.va_mean,
+            fix: self.fix,
+            soln: self.soln,
+            filled: self.filled,
+        };
+        (meta, raw)
     }
 }
 

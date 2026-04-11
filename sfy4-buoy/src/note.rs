@@ -8,7 +8,7 @@ use core::ops::{Deref, DerefMut};
 use embedded_hal::blocking::delay::DelayMs;
 use embedded_hal::blocking::i2c::{Read, Write};
 
-use crate::axl::{AxlPacket, AXL_OUTN};
+use crate::axl::{AxlPacket, AXL_COBS_BUF_LEN, AXL_RAW_LEN};
 use crate::NOTEQ_SZ;
 
 #[cfg(feature = "spectrum")]
@@ -276,9 +276,9 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         self.note()
             .template(
                 delay,
-                Some("axl.qo"),
+                Some("axlb.qo"),
                 Some(meta_template),
-                Some(AXL_OUTN as u32),
+                Some(AXL_RAW_LEN as u32),
                 notecard::note::TemplateFormat::Default,
                 None,
                 None,
@@ -346,9 +346,9 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             self.note()
                 .template(
                     delay,
-                    Some("egps.qo"),
+                    Some("egpsb.qo"),
                     Some(meta_template),
-                    Some(crate::gps::GPS_OUTN as u32),
+                    Some(crate::gps::GPS_RAW_LEN as u32),
                     notecard::note::TemplateFormat::Default,
                     None,
                     None,
@@ -433,32 +433,30 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
 
         #[cfg(not(feature = "continuous-post"))]
         let len = {
-            let (meta, b64) = pck.split();
+            let (meta, raw) = pck.split_binary();
+            let mut enc_buf = [0u8; AXL_COBS_BUF_LEN];
             let r = self
                 .note
                 .note()
-                .add(
+                .add_binary(
                     delay,
-                    Some("axl.qo"),
+                    Some("axlb.qo"),
                     None,
                     Some(meta),
-                    Some(core::str::from_utf8(&b64).unwrap()),
-                    if cfg!(feature = "continuous") {
-                        true
-                    } else {
-                        false
-                    },
+                    raw,
+                    &mut enc_buf,
+                    cfg!(feature = "continuous"),
                 )?
                 .wait(delay)?;
 
             defmt::info!(
                 "Sent data package: {}, bytes: {} (note: {:?})",
                 pck.storage_id,
-                b64.len(),
+                raw.len(),
                 r
             );
 
-            b64.len()
+            raw.len()
         };
 
         Ok(len)
@@ -523,52 +521,57 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         pck: &crate::gps::GpsPacket,
         delay: &mut impl DelayMs<u16>,
     ) -> Result<usize, NoteError> {
-        let (meta, b64) = pck.split();
-
         #[cfg(feature = "continuous-post")]
-        let r = self
-            .note
-            .web()
-            .post(
-                delay,
-                "sfypost",
-                None,
-                Some(meta),
-                Some(core::str::from_utf8(&b64).unwrap()),
-                None,
-                None,
-                None,
-                None,
-                Some(false), // async
-            )?
-            .wait(delay)?;
+        let len = {
+            let (meta, b64) = pck.split();
+            let _r = self
+                .note
+                .web()
+                .post(
+                    delay,
+                    "sfypost",
+                    None,
+                    Some(meta),
+                    Some(core::str::from_utf8(&b64).unwrap()),
+                    None,
+                    None,
+                    None,
+                    None,
+                    Some(false), // async
+                )?
+                .wait(delay)?;
+            b64.len()
+        };
 
         #[cfg(not(feature = "continuous-post"))]
-        let r = self
-            .note
-            .note()
-            .add(
-                delay,
-                Some("egps.qo"),
-                None,
-                Some(meta),
-                Some(core::str::from_utf8(&b64).unwrap()),
-                if cfg!(feature = "continuous") {
-                    true
-                } else {
-                    false
-                },
-            )?
-            .wait(delay)?;
+        let len = {
+            let (meta, raw) = pck.split_binary();
+            let mut enc_buf = [0u8; crate::gps::GPS_COBS_BUF_LEN];
+            let r = self
+                .note
+                .note()
+                .add_binary(
+                    delay,
+                    Some("egpsb.qo"),
+                    None,
+                    Some(meta),
+                    raw,
+                    &mut enc_buf,
+                    cfg!(feature = "continuous"),
+                )?
+                .wait(delay)?;
 
-        defmt::info!(
-            "Sent egps package: {}, bytes: {} (note: {:?})",
-            pck.timestamp,
-            b64.len(),
-            r
-        );
+            defmt::info!(
+                "Sent egps package: {}, bytes: {} (note: {:?})",
+                pck.timestamp,
+                raw.len(),
+                r
+            );
 
-        Ok(b64.len())
+            raw.len()
+        };
+
+        Ok(len)
     }
 
     /// Send log messages
