@@ -716,6 +716,10 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                     defmt::warn!("notecard busy (sync lock?), will retry next iteration: {:?}", msg.as_str());
                     return Ok(0);
                 }
+                Err(NoteError::TimeOut) => {
+                    defmt::warn!("notecard timed out (busy syncing?), will retry next iteration.");
+                    return Ok(0);
+                }
                 Err(e) => {
                     defmt::error!(
                         "Error while sending package to notecard: {:?}, retrying..",
@@ -823,6 +827,10 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                 }
                 Err(NoteError::ErrorAddingNote(ref msg)) => {
                     defmt::warn!("notecard busy (sync lock?), will retry next iteration: {:?}", msg.as_str());
+                    return Ok(0);
+                }
+                Err(NoteError::TimeOut) => {
+                    defmt::warn!("notecard timed out (busy syncing?), will retry next iteration.");
                     return Ok(0);
                 }
                 Err(e) => {
