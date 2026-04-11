@@ -424,9 +424,9 @@ fn main() -> ! {
     info!("Entering main loop");
     const GOOD_TRIES: u32 = 15;
 
-    // check_and_sync hits the notecard even when idle (card.status + hub.sync_status).
-    // Rate-limit it to once per minute so it doesn't dominate when queues are empty.
-    const SYNC_CHECK_INTERVAL_MS: i64 = 60_000;
+    // check_and_sync hits the notecard (card.status + hub.sync_status).
+    // Keep it low so a sync is triggered promptly when storage fills up.
+    const SYNC_CHECK_INTERVAL_MS: i64 = 1_000;
     let mut last_sync_check: i64 = 0;
 
     let mut good_tries: u32 = GOOD_TRIES;
