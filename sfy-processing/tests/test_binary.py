@@ -126,3 +126,52 @@ def test_egpsb_location(sfyhub):
     lon_deg = pcks[0].lon / 1e7
     assert lat_deg == approx(60.33, abs=0.1)
     assert lon_deg == approx(5.37, abs=0.1)
+
+
+# ── Long-duration window ─────────────────────────────────────────────────────
+# ~1 hour of data received starting 2026-04-11 15:15 UTC
+
+TX_START_LONG = datetime(2026, 4, 11, 15, 15, tzinfo=timezone.utc)
+TX_END_LONG   = datetime(2026, 4, 11, 16, 15, tzinfo=timezone.utc)
+
+
+@needs_hub
+def test_axlb_long_duration(sfyhub):
+    """
+    Over ~1 hour: package count, sample count, and frequency all agree.
+    Every axlb packet must be full-size (1024 samples).
+    """
+    b = sfyhub.buoy(DEV)
+    pcks = b.axl_packages_range(TX_START_LONG, TX_END_LONG, binary=True)
+    assert len(pcks) > 100
+
+    c = AxlCollection(pcks)
+    assert c.frequency == 52
+
+    # all axlb packets are full 1024-sample packets
+    assert all(p.samples() == 1024 for p in pcks)
+
+    total_samples = sum(p.samples() for p in pcks)
+    assert total_samples == len(pcks) * 1024
+
+    # total samples must match duration × frequency to within 1 sample per packet
+    assert abs(total_samples - c.duration * c.frequency) < len(pcks)
+
+
+@needs_hub
+def test_egpsb_long_duration(sfyhub):
+    """
+    Over ~1 hour: package count, sample count, and frequency all agree.
+    """
+    b = sfyhub.buoy(DEV)
+    pcks = b.egps_packages_range(TX_START_LONG, TX_END_LONG, binary=True)
+    assert len(pcks) > 100
+
+    c = EgpsCollection(pcks)
+    assert c.frequency == approx(14.084507, abs=0.01)
+
+    total_samples = sum(len(p.z) for p in pcks)
+    assert total_samples > 10000
+
+    # total samples must match duration × frequency to within 1 sample per packet
+    assert abs(total_samples - c.duration * c.frequency) < len(pcks)
