@@ -43,6 +43,7 @@ git = "https://github.com/gauteh/ahrs-fusion"
 
 [dependencies.blues-notecard]
 git = "https://github.com/gauteh/notecard-rs"
+branch = "eh0"
 
 [dev-dependencies]
 half = { version = "2.4", features = [ "use-intrinsics", "bytemuck", "serde" ] }
