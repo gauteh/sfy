@@ -62,26 +62,26 @@ pub const STORAGEQ_SZ: usize = 3;
 #[cfg(not(feature = "raw"))]
 pub const STORAGEQ_SZ: usize = 12;
 #[cfg(all(not(feature = "raw"), not(feature = "spectrum"), feature = "storage"))]
-pub const NOTEQ_SZ: usize = 16;
+pub const NOTEQ_SZ: usize = 18;
 
 #[cfg(feature = "storage")]
 pub const IMUQ_SZ: usize = STORAGEQ_SZ;
 
 // GPS is always present on sfy4 hardware.
-// Both GPS and IMU packets accumulate at ~1 packet per 18 s; 16 slots gives
-// ~4.8 minutes of buffer during a Notecard sync, balanced with the IMU queue.
-// Cost: 16 × ~3 KB ≈ 48 KB of static RAM on the 384 KB Apollo3.
-pub const EPGS_SZ: usize = 16;
+// Both GPS and IMU packets accumulate at ~1 packet per 18 s; 18 slots gives
+// ~5.4 minutes of buffer during a Notecard sync, balanced with the IMU queue.
+// Cost: 18 × ~3 KB ≈ 54 KB of static RAM on the 384 KB Apollo3.
+pub const EPGS_SZ: usize = 18;
 
 #[cfg(all(
     not(feature = "raw"),
     not(feature = "spectrum"),
     not(feature = "storage")
 ))]
-pub const NOTEQ_SZ: usize = 16;
+pub const NOTEQ_SZ: usize = 18;
 
 #[cfg(all(not(feature = "storage"), feature = "spectrum"))]
-pub const NOTEQ_SZ: usize = 16;
+pub const NOTEQ_SZ: usize = 18;
 
 #[cfg(all(feature = "storage", feature = "spectrum"))]
 pub const NOTEQ_SZ: usize = 12;
