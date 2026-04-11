@@ -719,7 +719,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                             return Ok(sz);
                         }
                         Err(e) => {
-                            defmt::error!("Error while sending package to notecard: {:?}, discarding package.", e);
+                            defmt::error!("Error while sending package to notecard: {:?}, will retry.", e);
                             return Err(e);
                         }
                     }
@@ -803,24 +803,27 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                 return Ok(0);
             }
 
-            // Dequeue only after confirming there is space.
-            let pck = queue.dequeue().unwrap();
-
             defmt::info!(
-                "sending egps package: note queue sz (after dequeue): {}",
+                "sending egps package: note queue sz: {}",
                 queue.len()
             );
             match self.send_egps(&pck, delay) {
-                Ok(sz) => return Ok(sz),
+                Ok(sz) => {
+                    queue.dequeue();
+                    return Ok(sz);
+                }
                 Err(e) => {
                     defmt::error!(
                         "Error while sending egps package to notecard: {:?}, retrying..",
                         e
                     );
                     match self.send_egps(&pck, delay) {
-                        Ok(sz) => return Ok(sz),
+                        Ok(sz) => {
+                            queue.dequeue();
+                            return Ok(sz);
+                        }
                         Err(e) => {
-                            defmt::error!("Error while egps sending package to notecard: {:?}, discarding package.", e);
+                            defmt::error!("Error while sending egps package to notecard: {:?}, will retry.", e);
                             return Err(e);
                         }
                     }
