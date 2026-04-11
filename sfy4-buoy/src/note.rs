@@ -31,6 +31,11 @@ pub const NOTECARD_STORAGE_INIT_SYNC: u32 = 65;
 #[cfg(not(feature = "spectrum"))]
 pub const NOTECARD_STORAGE_CAPACITY_PACKAGES: usize = 75;
 
+/// When the local queue is nearly full (≤ this many free slots), allow sending
+/// up to NOTECARD_STORAGE_CAPACITY_QUEUE_PRESSURE % to avoid local drops.
+pub const QUEUE_PRESSURE_FREE_SLOTS: usize = 3;
+pub const NOTECARD_STORAGE_CAPACITY_QUEUE_PRESSURE: usize = 85;
+
 #[cfg(feature = "spectrum")]
 pub const NOTECARD_STORAGE_INIT_SYNC: u32 = 65;
 
@@ -677,12 +682,16 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         delay: &mut impl DelayMs<u16>,
     ) -> Result<usize, NoteError> {
         if let Some(pck) = queue.peek() {
-            // TODO: if status was over 75 last time, don't spam notecard with status requests.
             let status = self.note.card().status(delay)?.wait(delay)?;
 
-            if status.storage > NOTECARD_STORAGE_CAPACITY_PACKAGES {
-                // wait until notecard has synced.
-                defmt::warn!("notecard is more than 75% full, not adding more notes until sync is done: queue sz: {}", queue.len());
+            let limit = if queue.len() + QUEUE_PRESSURE_FREE_SLOTS >= NOTEQ_SZ {
+                NOTECARD_STORAGE_CAPACITY_QUEUE_PRESSURE
+            } else {
+                NOTECARD_STORAGE_CAPACITY_PACKAGES
+            };
+
+            if status.storage > limit {
+                defmt::warn!("notecard is more than {}% full, not adding more notes until sync is done: queue sz: {}", limit, queue.len());
                 return Ok(0);
             }
 
@@ -782,9 +791,15 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         if let Some(pck) = queue.peek() {
             let status = self.note.card().status(delay)?.wait(delay)?;
 
-            if status.storage > NOTECARD_STORAGE_CAPACITY_PACKAGES {
+            let limit = if queue.len() + QUEUE_PRESSURE_FREE_SLOTS >= crate::EPGS_SZ {
+                NOTECARD_STORAGE_CAPACITY_QUEUE_PRESSURE
+            } else {
+                NOTECARD_STORAGE_CAPACITY_PACKAGES
+            };
+
+            if status.storage > limit {
                 // Notecard is full — leave packet in queue and wait for sync.
-                defmt::warn!("notecard is more than 75% full, not adding more notes until sync is done: queue sz: {}", queue.len());
+                defmt::warn!("notecard is more than {}% full, not adding more notes until sync is done: queue sz: {}", limit, queue.len());
                 return Ok(0);
             }
 
