@@ -326,11 +326,12 @@ class SfyBuoy(Buoy):
         else:
             self.__last__ = None
 
-    def axl_packages_range(self, start=None, end=None):
-        logger.debug(f"fetching axl packages between {start} and {end}")
+    def axl_packages_range(self, start=None, end=None, binary=False):
+        note = 'axlb.qo.json' if binary else 'axl.qo.json'
+        logger.debug(f"fetching axl packages ({note}) between {start} and {end}")
 
         pcks = self.fetch_packages_range(start, end)
-        pcks = [pck for pck in pcks if 'axl.qo.json' in pck[1]]
+        pcks = [pck for pck in pcks if note in pck[1]]
         logger.debug(f"Found {len(pcks)} axl packages")
 
         pcks = [Axl.try_parse(pck[2]) for pck in tqdm(pcks)]
@@ -352,11 +353,12 @@ class SfyBuoy(Buoy):
 
         return pcks
 
-    def egps_packages_range(self, start=None, end=None):
-        logger.debug(f"fetching egps packages between {start} and {end}")
+    def egps_packages_range(self, start=None, end=None, binary=False):
+        note = 'egpsb.qo.json' if binary else 'egps.qo.json'
+        logger.debug(f"fetching egps packages ({note}) between {start} and {end}")
 
         pcks = self.fetch_packages_range(start, end)
-        pcks = [pck for pck in pcks if 'egps.qo.json' in pck[1]]
+        pcks = [pck for pck in pcks if note in pck[1]]
         logger.debug(f"Found {len(pcks)} egps packages")
 
         pcks = [Egps.try_parse(pck[2]) for pck in tqdm(pcks)]
