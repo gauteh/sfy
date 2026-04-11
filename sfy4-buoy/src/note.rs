@@ -776,15 +776,16 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         queue: &mut heapless::spsc::Consumer<'static, crate::gps::GpsPacket, { crate::EPGS_SZ }>,
         delay: &mut impl DelayMs<u16>,
     ) -> Result<usize, NoteError> {
-        let mut tsz = 0;
-
-        while let Some(pck) = queue.peek() {
+        // Send at most one packet per call so the main loop interleaves GPS and
+        // IMU drains fairly.  The main loop re-calls immediately while either
+        // queue is non-empty.
+        if let Some(pck) = queue.peek() {
             let status = self.note.card().status(delay)?.wait(delay)?;
 
             if status.storage > NOTECARD_STORAGE_CAPACITY_PACKAGES {
                 // Notecard is full — leave packet in queue and wait for sync.
                 defmt::warn!("notecard is more than 75% full, not adding more notes until sync is done: queue sz: {}", queue.len());
-                return Ok(tsz);
+                return Ok(0);
             }
 
             // Dequeue only after confirming there is space.
@@ -795,18 +796,14 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                 queue.len()
             );
             match self.send_egps(&pck, delay) {
-                Ok(sz) => {
-                    tsz += sz;
-                }
+                Ok(sz) => return Ok(sz),
                 Err(e) => {
                     defmt::error!(
                         "Error while sending egps package to notecard: {:?}, retrying..",
                         e
                     );
                     match self.send_egps(&pck, delay) {
-                        Ok(sz) => {
-                            tsz += sz;
-                        }
+                        Ok(sz) => return Ok(sz),
                         Err(e) => {
                             defmt::error!("Error while egps sending package to notecard: {:?}, discarding package.", e);
                             return Err(e);
@@ -816,8 +813,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             }
         }
 
-        // defmt::info!("done draining egps queue: {}", queue.len());
-        Ok(tsz)
+        Ok(0)
     }
 
     /// Check if notecard is filling up, and initiate sync in that case.
