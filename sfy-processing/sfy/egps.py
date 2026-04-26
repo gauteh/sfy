@@ -389,8 +389,8 @@ class Egps(Event):
         data['length'] = data['body']['length']
         data['timestamp'] = data['body']['timestamp']
         data['version'] = data['body']['version']
-        data['lon'] = data['body']['lon']
-        data['lat'] = data['body']['lat']
+        data['lon'] = data['body'].get('lon', 0.0)
+        data['lat'] = data['body'].get('lat', 0.0)
         data['msl'] = data['body']['msl']
         data['freq'] = data['body']['freq']
         data['lonlat_range'] = data['body']['lonlat_range']
