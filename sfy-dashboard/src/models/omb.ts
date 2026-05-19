@@ -50,9 +50,13 @@ export class OmbBuoy {
     this.iridium_lon = p.body.iridium_pos.lon;
 
     if (p.type === "gps" && p.body.messages.length > 0) {
-      let pos = p.body.messages[p.body.messages.length - 1];
-      this.latitude = pos.latitude;
-      this.longitude = pos.longitude;
+      // Pick the fix with the latest datetime_fix (messages may not be chronologically ordered).
+      const valid = p.body.messages.filter((m: any) => m.is_valid);
+      if (valid.length > 0) {
+        const pos = valid.reduce((best: any, m: any) => m.datetime_fix > best.datetime_fix ? m : best);
+        this.latitude = pos.latitude;
+        this.longitude = pos.longitude;
+      }
     }
   }
 
