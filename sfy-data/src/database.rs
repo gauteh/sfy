@@ -353,12 +353,12 @@ impl Buoy {
         Ok(events)
     }
 
-    /// Get the last received axl.qo entry for the buoy.
+    /// Get the last received location-bearing entry for the buoy.
     pub async fn last(&self) -> Result<Vec<u8>> {
         ensure!(self.known, "No such buoy");
 
         let data = match self.buoy_type {
-            BuoyType::SFY => sqlx::query!("SELECT data FROM events WHERE dev = $1 AND (message_type = 'axl.qo' or message_type = '_track.qo') ORDER BY received DESC LIMIT 1", self.dev)
+            BuoyType::SFY => sqlx::query!("SELECT data FROM events WHERE dev = $1 AND (message_type = 'axl.qo' or message_type = '_track.qo' or message_type = 'axlb.qo' or message_type = 'egpsb.qo') ORDER BY received DESC LIMIT 1", self.dev)
                 .fetch_one(&self.db)
                 .await?.data,
 
@@ -634,6 +634,34 @@ mod tests {
             .unwrap();
 
         assert_eq!(b.last().await.unwrap(), b"data-0");
+    }
+
+    #[tokio::test]
+    async fn append_last_axlb() {
+        let db = Database::temporary().await;
+        let mut b = db.buoy("buoy-sfy4").await.unwrap();
+        b.append(None, "entry-0-axlb.qo", 0, Some("axlb.qo".into()), "data-axlb")
+            .await
+            .unwrap();
+        b.append(None, "entry-1-sessi.qo", 0, None, "data-sessi")
+            .await
+            .unwrap();
+
+        assert_eq!(b.last().await.unwrap(), b"data-axlb");
+    }
+
+    #[tokio::test]
+    async fn append_last_egpsb() {
+        let db = Database::temporary().await;
+        let mut b = db.buoy("buoy-sfy4b").await.unwrap();
+        b.append(None, "entry-0-axlb.qo", 0, Some("axlb.qo".into()), "data-axlb")
+            .await
+            .unwrap();
+        b.append(None, "entry-1-egpsb.qo", 1, Some("egpsb.qo".into()), "data-egpsb")
+            .await
+            .unwrap();
+
+        assert_eq!(b.last().await.unwrap(), b"data-egpsb");
     }
 
     #[tokio::test]
