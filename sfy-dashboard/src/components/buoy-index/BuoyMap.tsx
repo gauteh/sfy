@@ -30,6 +30,7 @@ const MAPBOX_TOKEN: string = 'pk.eyJ1IjoiZ2F1dGVoIiwiYSI6ImNreWZ2MWd4NjBxNnoyb3M
 
 interface Props {
   buoys: Array<Buoy | OmbBuoy>;
+  onBuoyClick?: (buoy: Buoy | OmbBuoy) => void;
 }
 
 interface State {
@@ -84,8 +85,10 @@ export class BuoyMap
   }
 
   public BuoyMarker = (buoy: any) => {
+    const onClick = this.props.onBuoyClick ? () => this.props.onBuoyClick!(buoy) : undefined;
     return (
-      <Marker key={buoy.dev} position={[buoy.any_lat() as number, buoy.any_lon() as number]}>
+      <Marker key={buoy.dev} position={[buoy.any_lat() as number, buoy.any_lon() as number]}
+        eventHandlers={onClick ? { click: onClick } : {}}>
         <Tooltip>
           {buoy.sn} ({buoy.dev})
         </Tooltip>

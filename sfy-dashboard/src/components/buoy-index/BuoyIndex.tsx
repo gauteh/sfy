@@ -121,7 +121,7 @@ export class BuoyIndex
   public render() {
     return (
       <div>
-        <BuoyMap buoys={this.state.buoys} ref={this.bmap} />
+        <BuoyMap buoys={this.state.buoys} ref={this.bmap} onBuoyClick={this.showTrack} />
 
         <div className="container-fluid no-margin">
           <div className="d-flex align-items-center gap-2 py-1">
