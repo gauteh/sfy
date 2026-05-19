@@ -18,7 +18,9 @@ export class Buoy {
     this.sn = sn;
 
     try {
-      this.setPackage(JSON.parse(atob(last)));
+      if (last && last.length > 0) {
+        this.setPackage(JSON.parse(atob(last)));
+      }
     } catch(err) {
       console.log("failed to load buoy: " + dev + ":" + err);
     }
@@ -26,6 +28,13 @@ export class Buoy {
 
   public hasGps(): boolean {
     if (this.package != null) {
+      // SFY4 GPS files: GPS is in body, not the notecard location system
+      if (this.package.file === 'egpsb.qo') {
+        return this.package.body?.lat != null;
+      }
+      if (this.package.file === 'axlb.qo') {
+        return this.package.body?.position_time != null;
+      }
       return this.package.best_location_type === 'gps';
     } else {
       return false;
@@ -48,8 +57,15 @@ export class Buoy {
   public setPackage(p: any) {
     this.package = p;
 
-    this.latitude = p.body.lat;
-    this.longitude = p.body.lon;
+    if (p.file === 'egpsb.qo') {
+      // lat/lon are integers scaled by 1e7
+      this.latitude = p.body?.lat != null ? p.body.lat / 1e7 : undefined;
+      this.longitude = p.body?.lon != null ? p.body.lon / 1e7 : undefined;
+    } else {
+      // axlb.qo, axl.qo, _track.qo: lat/lon already in degrees
+      this.latitude = p.body?.lat;
+      this.longitude = p.body?.lon;
+    }
 
     this.tower_lat = p.tower_lat;
     this.tower_lon = p.tower_lon;
@@ -57,6 +73,16 @@ export class Buoy {
 
   public position_time(): Date | undefined {
     if (this.package != null) {
+      if (this.package.file === 'egpsb.qo') {
+        return this.package.body?.timestamp != null
+          ? new Date(this.package.body.timestamp)
+          : undefined;
+      }
+      if (this.package.file === 'axlb.qo') {
+        return this.package.body?.position_time != null
+          ? new Date(this.package.body.position_time * 1000)
+          : undefined;
+      }
       return new Date(this.package.best_location_when * 1000.);
     } else {
       return undefined;
@@ -65,6 +91,10 @@ export class Buoy {
 
   public any_lat(): number | undefined {
     if (this.package != null) {
+      // For SFY4 files, prefer GPS-derived body position over tower estimate
+      if (this.package.file === 'egpsb.qo' || this.package.file === 'axlb.qo') {
+        return this.latitude ?? this.package.best_lat;
+      }
       return this.package.best_lat;
     } else {
       return undefined;
@@ -73,6 +103,10 @@ export class Buoy {
 
   public any_lon(): number | undefined {
     if (this.package != null) {
+      // For SFY4 files, prefer GPS-derived body position over tower estimate
+      if (this.package.file === 'egpsb.qo' || this.package.file === 'axlb.qo') {
+        return this.longitude ?? this.package.best_lon;
+      }
       return this.package.best_lon;
     } else {
       return undefined;
