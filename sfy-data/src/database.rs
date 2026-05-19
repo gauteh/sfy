@@ -491,7 +491,7 @@ impl Buoy {
         Ok(points)
     }
 
-
+    pub async fn get(&self, file: impl AsRef<Path>) -> Result<Vec<u8>> {
         ensure!(self.known, "No such buoy");
 
         let file = file.as_ref().to_string_lossy().into_owned();
