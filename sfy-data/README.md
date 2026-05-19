@@ -14,3 +14,11 @@ $ docker run --name sfy-data --publish 3000:3000 --rm -it sfy-data
 ```
 $ docker run --name my-postgres --env POSTGRES_PASSWORD=sfytest --publish 5432:5432 --rm -it postgres
 ```
+
+## Updating the sqlx file:
+
+1) Start postgres server as above
+2) sqlx database create
+3) sqlx migrate run
+3) cargo sqlx prepare
+
