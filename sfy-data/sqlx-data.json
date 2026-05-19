@@ -20,6 +20,34 @@
     },
     "query": "SELECT data FROM events WHERE dev = $1 AND (message_type = 'axl.qo' or message_type = '_track.qo' or message_type = 'axlb.qo' or message_type = 'egpsb.qo') ORDER BY received DESC LIMIT 1"
   },
+  "24d935f5a8a86deebb1c32b31bd036bfb4f4c18c48e2c09b16523a92081ef7b8": {
+    "describe": {
+      "columns": [
+        {
+          "name": "data",
+          "ordinal": 0,
+          "type_info": "Bytea"
+        },
+        {
+          "name": "message_type",
+          "ordinal": 1,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        true,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Int8",
+          "Int8"
+        ]
+      }
+    },
+    "query": "SELECT data, message_type FROM events WHERE dev = $1 AND received >= $2 AND received <= $3 AND (message_type = 'axl.qo' OR message_type = '_track.qo' OR message_type = 'axlb.qo' OR message_type = 'egpsb.qo') ORDER BY received"
+  },
   "359882be70941a50bd0d5a8261e29e19240f7fddc01a175ad686935064670c72": {
     "describe": {
       "columns": [],
@@ -67,6 +95,28 @@
       }
     },
     "query": "SELECT received, event, message_type FROM omb_events where dev = $1 ORDER BY received"
+  },
+  "460c425fc79afcfb445dd732c92f99d9376844c87fd9d293c4e1e1eebf509b49": {
+    "describe": {
+      "columns": [
+        {
+          "name": "data",
+          "ordinal": 0,
+          "type_info": "Bytea"
+        }
+      ],
+      "nullable": [
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Int8",
+          "Int8"
+        ]
+      }
+    },
+    "query": "SELECT data FROM omb_events WHERE dev = $1 AND received >= $2 AND received <= $3 AND message_type = 'gps' ORDER BY received"
   },
   "56a02a9531fb72e86792cd1f9619eab1350a56ae999fc13b773e40c6e7100353": {
     "describe": {

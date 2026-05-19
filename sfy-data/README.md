@@ -19,6 +19,6 @@ $ docker run --name my-postgres --env POSTGRES_PASSWORD=sfytest --publish 5432:5
 
 1) Start postgres server as above
 2) sqlx database create
-3) sqlx migrate run
+3) sqlx migrate run --source migrations/postgres
 3) cargo sqlx prepare
 
