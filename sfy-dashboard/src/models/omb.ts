@@ -18,7 +18,9 @@ export class OmbBuoy {
     this.sn = dev;
 
     try {
-      this.setPackage(JSON.parse(atob(last)));
+      if (last && last.length > 0) {
+        this.setPackage(JSON.parse(atob(last)));
+      }
     } catch(err) {
       console.log("failed to load buoy: " + dev + ":" + err);
     }

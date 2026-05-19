@@ -1,5 +1,6 @@
 use eyre::Result;
 use serde::{Deserialize, Serialize};
+use serde_json as json;
 use std::path::Path;
 
 #[cfg(feature = "sqlite")]
@@ -211,6 +212,72 @@ pub struct Event {
     pub data: Option<Vec<u8>>,
 }
 
+/// A single position fix for the track endpoint.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TrackPoint {
+    /// Unix timestamp in seconds.
+    pub t: f64,
+    pub lat: f64,
+    pub lon: f64,
+}
+
+fn extract_sfy_point(data: &json::Value, message_type: &str) -> Option<TrackPoint> {
+    let body = data.get("body")?;
+    match message_type {
+        "axl.qo" => {
+            let lat = body.get("lat")?.as_f64()?;
+            let lon = body.get("lon")?.as_f64()?;
+            let t = body.get("timestamp")?.as_f64()? / 1000.0;
+            Some(TrackPoint { t, lat, lon })
+        }
+        "_track.qo" => {
+            let lat = data.get("best_lat")?.as_f64()?;
+            let lon = data.get("best_lon")?.as_f64()?;
+            let t = data.get("best_location_when")?.as_f64()?;
+            Some(TrackPoint { t, lat, lon })
+        }
+        "axlb.qo" => {
+            let lat = body.get("lat")?.as_f64()?;
+            let lon = body.get("lon")?.as_f64()?;
+            let t = body.get("position_time")?.as_f64()?;
+            Some(TrackPoint { t, lat, lon })
+        }
+        "egpsb.qo" => {
+            let lat = body.get("lat")?.as_f64()? / 1e7;
+            let lon = body.get("lon")?.as_f64()? / 1e7;
+            let t = body.get("timestamp")?.as_f64()? / 1000.0;
+            Some(TrackPoint { t, lat, lon })
+        }
+        _ => None,
+    }
+}
+
+fn extract_omb_points(data: &json::Value) -> Vec<TrackPoint> {
+    let mut points = Vec::new();
+    let messages = data
+        .get("body")
+        .and_then(|b| b.get("messages"))
+        .and_then(|m| m.as_array());
+    if let Some(messages) = messages {
+        for msg in messages {
+            let valid = msg
+                .get("is_valid")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+            if !valid {
+                continue;
+            }
+            let lat = msg.get("latitude").and_then(|v| v.as_f64());
+            let lon = msg.get("longitude").and_then(|v| v.as_f64());
+            let t = msg.get("datetime_fix").and_then(|v| v.as_f64());
+            if let (Some(lat), Some(lon), Some(t)) = (lat, lon, t) {
+                points.push(TrackPoint { t, lat, lon });
+            }
+        }
+    }
+    points
+}
+
 impl Buoy {
     /// Append new event to SFY buoy, `name` is parsed serial number of buoy.
     pub async fn append(
@@ -375,7 +442,56 @@ impl Buoy {
         }
     }
 
-    pub async fn get(&self, file: impl AsRef<Path>) -> Result<Vec<u8>> {
+    /// Return position fixes in the given received-time range (milliseconds since epoch).
+    pub async fn track(&self, start: i64, end: i64) -> Result<Vec<TrackPoint>> {
+        ensure!(self.known, "No such buoy");
+
+        let mut points = Vec::new();
+
+        match self.buoy_type {
+            BuoyType::SFY => {
+                let rows = sqlx::query!(
+                    "SELECT data, message_type FROM events WHERE dev = $1 AND received >= $2 AND received <= $3 AND (message_type = 'axl.qo' OR message_type = '_track.qo' OR message_type = 'axlb.qo' OR message_type = 'egpsb.qo') ORDER BY received",
+                    self.dev, start, end
+                )
+                .fetch_all(&self.db)
+                .await?;
+
+                for row in rows {
+                    if let Some(data) = row.data {
+                        if let Ok(j) = json::from_slice::<json::Value>(&data) {
+                            if let Some(pt) = extract_sfy_point(&j, &row.message_type) {
+                                points.push(pt);
+                            }
+                        }
+                    }
+                }
+            }
+            BuoyType::OMB => {
+                let rows = sqlx::query!(
+                    "SELECT data FROM omb_events WHERE dev = $1 AND received >= $2 AND received <= $3 AND message_type = 'gps' ORDER BY received",
+                    self.dev, start, end
+                )
+                .fetch_all(&self.db)
+                .await?;
+
+                for row in rows {
+                    if let Some(data) = row.data {
+                        if let Ok(j) = json::from_slice::<json::Value>(&data) {
+                            points.extend(extract_omb_points(&j));
+                        }
+                    }
+                }
+            }
+            BuoyType::Unknown => return Err(eyre!("Unknown buoy type")),
+        }
+
+        // Sort by fix time (messages within a packet may be out of order).
+        points.sort_by(|a, b| a.t.partial_cmp(&b.t).unwrap_or(std::cmp::Ordering::Equal));
+        Ok(points)
+    }
+
+
         ensure!(self.known, "No such buoy");
 
         let file = file.as_ref().to_string_lossy().into_owned();

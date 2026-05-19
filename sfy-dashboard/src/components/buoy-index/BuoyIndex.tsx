@@ -13,6 +13,8 @@ interface Props {
 
 interface State {
   buoys: Array<Buoy | OmbBuoy>;
+  trackDev?: string;
+  trackDays: number;
 }
 
 export class BuoyIndex
@@ -21,6 +23,8 @@ export class BuoyIndex
 
   public state: State = {
     buoys: [],
+    trackDev: undefined,
+    trackDays: 7,
   };
 
   public bmap: any;
@@ -56,12 +60,37 @@ export class BuoyIndex
     this.setState({ buoys: this.state.buoys });
   }
 
+  public showTrack = (buoy: any) => {
+    this.setState({ trackDev: buoy.dev });
+    this.bmap.current.showTrack(buoy, this.state.trackDays);
+    this.focus(buoy);
+  }
+
+  public clearTrack = () => {
+    this.setState({ trackDev: undefined });
+    this.bmap.current.clearTrack();
+  }
+
+  public onDaysChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const days = parseInt(e.target.value, 10);
+    this.setState({ trackDays: days });
+    // Reload track if one is currently shown.
+    if (this.state.trackDev) {
+      const buoy = this.state.buoys.find(b => b.dev === this.state.trackDev);
+      if (buoy) {
+        this.bmap.current.showTrack(buoy, days);
+      }
+    }
+  }
+
   public Row = (buoy: any) => {
+    const isTracked = buoy.dev === this.state.trackDev;
     return (
       <tr id={"t" + buoy.dev}
-        key={buoy.dev}>
+        key={buoy.dev}
+        style={isTracked ? { fontWeight: 'bold' } : {}}>
         <td>
-          <a href="#" title={buoy.dev} onClick={() => this.focus(buoy)}>{buoy.sn}</a>
+          <a href="#" title={buoy.dev} onClick={() => this.showTrack(buoy)}>{buoy.sn}</a>
         </td>
         <td>
           <a href="#" title="Copy to clipboard" onClick={() => this.copyPosition(buoy)}>
@@ -95,6 +124,21 @@ export class BuoyIndex
         <BuoyMap buoys={this.state.buoys} ref={this.bmap} />
 
         <div className="container-fluid no-margin">
+          <div className="d-flex align-items-center gap-2 py-1">
+            <span className="text-muted small">Track:</span>
+            <select className="form-select form-select-sm w-auto" value={this.state.trackDays} onChange={this.onDaysChange}>
+              <option value={1}>1 day</option>
+              <option value={7}>7 days</option>
+              <option value={30}>30 days</option>
+              <option value={90}>90 days</option>
+            </select>
+            {this.state.trackDev &&
+              <button className="btn btn-sm btn-outline-secondary" onClick={this.clearTrack}>✕ Clear track</button>
+            }
+            {this.state.trackDev &&
+              <span className="text-muted small">{this.state.trackDev}</span>
+            }
+          </div>
           <table className="ti table table-striped">
             <thead>
               <tr>

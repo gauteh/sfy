@@ -19,6 +19,7 @@ pub fn filters(
         .or(last(state.clone()))
         .or(range(state.clone()))
         .or(list_range(state.clone()))
+        .or(track(state.clone()))
         .or(entry(state.clone()))
 }
 
@@ -120,6 +121,18 @@ pub fn list_range(
         .and(check_read_token(state.clone()))
         .and(with_state(state.clone()))
         .and_then(handlers::list_range)
+}
+
+pub fn track(
+    state: State,
+) -> impl warp::Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    let state = state.clone();
+
+    warp::path!("buoys" / String / "track" / "from" / i64 / "to" / i64)
+        .and(warp::get())
+        .and(check_read_token(state.clone()))
+        .and(with_state(state.clone()))
+        .and_then(handlers::track)
 }
 
 fn with_state(state: State) -> impl Filter<Extract = (State,), Error = Infallible> + Clone {
@@ -389,6 +402,26 @@ pub mod handlers {
             .collect();
 
         Ok(warp::reply::json(&entries))
+    }
+
+    pub async fn track(
+        buoy: String,
+        from: i64,
+        to: i64,
+        state: State,
+    ) -> Result<impl warp::Reply, warp::Rejection> {
+        let buoy = sanitize(buoy);
+
+        let points = state
+            .db
+            .buoy(&buoy)
+            .await
+            .map_err(|_| reject::custom(AppendErrors::Internal))?
+            .track(from, to)
+            .await
+            .map_err(|_| reject::custom(AppendErrors::Internal))?;
+
+        Ok(warp::reply::json(&points))
     }
 
     pub async fn append(

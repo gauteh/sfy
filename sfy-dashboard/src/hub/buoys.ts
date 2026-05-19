@@ -24,6 +24,21 @@ export async function last_file(api: ApiConf, dev: string): Promise<any> {
   }
 }
 
+export interface TrackPoint {
+  t: number;
+  lat: number;
+  lon: number;
+}
+
+export async function buoy_track(api: ApiConf, dev: string, from: number, to: number): Promise<TrackPoint[]> {
+  const response = await fetch(`${api.host}/buoys/${dev}/track/from/${from}/to/${to}`, api.headers());
+  if (response.ok) {
+    return response.json() as Promise<TrackPoint[]>;
+  } else {
+    throw new Error("not ok");
+  }
+}
+
 export function get_file(api: ApiConf, dev: string, file: string): Observable<any> {
   return from(fetch(api.host + '/buoys/' + dev + '/' + file, api.headers())
     .then((response) => {
