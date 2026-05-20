@@ -3,12 +3,53 @@ import { MapContainer, TileLayer, Marker, Tooltip, Polyline, useMap } from 'reac
 import L from 'leaflet';
 import { Buoy, OmbBuoy } from 'models';
 import * as hub from 'hub';
+import { TrackPoint } from 'hub';
 
 import './BuoyIndex.scss';
 import 'leaflet/dist/leaflet.css';
 import icon_me from './marker-me.png';
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+
+const ONE_DAY_MS = 86_400 * 1000;
+const SEVEN_DAYS_MS = 7 * 86_400 * 1000;
+
+interface TrackSegment {
+  points: Array<[number, number]>;
+  color: string;
+}
+
+function trackColor(ageMs: number): string {
+  if (ageMs > SEVEN_DAYS_MS) return '#888';
+  if (ageMs > ONE_DAY_MS) return '#622';
+  return '#e05';
+}
+
+/** Split track points into contiguous same-colour segments.
+ *  Adjacent segments share their boundary point so the line is continuous. */
+function segmentTrack(points: TrackPoint[]): TrackSegment[] {
+  if (points.length === 0) return [];
+
+  const latestT = Math.max(...points.map(p => p.t));
+  const segments: TrackSegment[] = [];
+  let currentColor = trackColor(latestT - points[0].t);
+  let currentPoints: Array<[number, number]> = [[points[0].lat, points[0].lon]];
+
+  for (let i = 1; i < points.length; i++) {
+    const color = trackColor(latestT - points[i].t);
+    const pt: [number, number] = [points[i].lat, points[i].lon];
+    if (color !== currentColor) {
+      currentPoints.push(pt); // include boundary point for continuity
+      segments.push({ points: currentPoints, color: currentColor });
+      currentColor = color;
+      currentPoints = [pt];
+    } else {
+      currentPoints.push(pt);
+    }
+  }
+  segments.push({ points: currentPoints, color: currentColor });
+  return segments;
+}
 
 const DefaultIcon = L.icon({
   iconUrl: icon,
@@ -35,7 +76,7 @@ interface Props {
 
 interface State {
   myself?: Array<number>;
-  track?: Array<[number, number]>;
+  track?: TrackPoint[];
   trackDev?: string;
 }
 
@@ -73,8 +114,7 @@ export class BuoyMap
 
     try {
       const points = await hub.buoy_track(hub.API_CONF, buoy.dev, from, to);
-      const latlngs: Array<[number, number]> = points.map(p => [p.lat, p.lon]);
-      this.setState({ track: latlngs, trackDev: buoy.dev });
+      this.setState({ track: points, trackDev: buoy.dev });
     } catch (err) {
       console.error("Failed to load track for " + buoy.dev + ": " + err);
     }
@@ -116,7 +156,9 @@ export class BuoyMap
         {this.props.buoys.filter((buoy) => buoy.any_lat() != undefined).map(this.BuoyMarker)}
 
         {this.state.track && this.state.track.length > 0 &&
-          <Polyline positions={this.state.track} pathOptions={{ color: '#e05', weight: 2, opacity: 0.8 }} />
+          segmentTrack(this.state.track).map((seg, i) => (
+            <Polyline key={i} positions={seg.points} pathOptions={{ color: seg.color, weight: 2, opacity: 0.8 }} />
+          ))
         }
 
         {this.state.myself != undefined &&
