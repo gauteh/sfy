@@ -2,6 +2,7 @@ import pytest
 import numpy as np
 from datetime import datetime, timezone
 from sfy.egps import Egps, EgpsCollection
+from sfy import signal as sfysignal
 import matplotlib.pyplot as plt
 from . import *
 
@@ -133,6 +134,70 @@ def test_sfy4_01_egpsb_position(sfyhub, plot):
         axes[1].set_title('SFY4-01 speed (egpsb)')
         axes[1].legend()
         axes[1].grid(True)
+
+        plt.tight_layout()
+        plt.show()
+
+
+@needs_hub
+def test_sfy4_01_egpsb_spectrum(sfyhub, plot):
+    """
+    Compute elevation spectra from SFY4-01 egpsb velocities (2026-05-19 17:00-18:00 UTC).
+    Velocities (mm/s) are integrated once via Welch to yield elevation spectra (m^2/Hz).
+    Horizontal (vn, ve) and vertical (vz) components are plotted separately.
+    """
+    b = sfyhub.buoy('SFY4-01')
+    start = datetime(2026, 5, 19, 17, 0, tzinfo=timezone.utc)
+    end   = datetime(2026, 5, 19, 18, 0, tzinfo=timezone.utc)
+
+    pcks = b.egps_packages_range(start, end, binary=True)
+    assert len(pcks) > 0
+
+    c = EgpsCollection(pcks)
+    ds = c.to_dataset()
+    freq = c.frequency  # ~14 Hz
+
+    # Convert mm/s -> m/s
+    vn = ds.vn.values / 1000.0
+    ve = ds.ve.values / 1000.0
+    vz = ds.vz.values / 1000.0
+
+    # Welch with order=1: integrate velocity spectrum once to elevation spectrum
+    nperseg = min(4096, len(vn) // 4)
+    f, Pn = sfysignal.welch(freq, vn, nperseg=nperseg, order=1)
+    f, Pe = sfysignal.welch(freq, ve, nperseg=nperseg, order=1)
+    f, Pz = sfysignal.welch(freq, vz, nperseg=nperseg, order=1)
+
+    # Spectra are real and non-negative (below Nyquist, skip DC bin)
+    assert np.all(Pn[1:] >= 0)
+    assert np.all(Pe[1:] >= 0)
+    assert np.all(Pz[1:] >= 0)
+
+    # Hm0 from vertical elevation spectrum should be in a plausible range for coastal Norway
+    hm0_z = sfysignal.hm0(f, Pz)
+    print(f'Hm0 (vertical): {hm0_z:.2f} m')
+    assert 0.0 < hm0_z < 10.0, f'Hm0_z={hm0_z:.2f} m out of plausible range'
+
+    if plot:
+        fig, axes = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
+
+        # Horizontal spectra
+        axes[0].semilogy(f[1:], Pn[1:], label='North (vn)')
+        axes[0].semilogy(f[1:], Pe[1:], label='East (ve)')
+        axes[0].set_ylabel('Elevation PSD [m²/Hz]')
+        axes[0].set_title('SFY4-01 horizontal elevation spectra (egpsb, velocity-integrated)')
+        axes[0].legend()
+        axes[0].grid(True, which='both')
+        axes[0].set_xlim(0.01, freq / 2)
+
+        # Vertical spectrum
+        axes[1].semilogy(f[1:], Pz[1:], label=f'Vertical (vz)  Hm0={hm0_z:.2f} m', color='C2')
+        axes[1].set_xlabel('Frequency [Hz]')
+        axes[1].set_ylabel('Elevation PSD [m²/Hz]')
+        axes[1].set_title('SFY4-01 vertical elevation spectrum (egpsb, velocity-integrated)')
+        axes[1].legend()
+        axes[1].grid(True, which='both')
+        axes[1].set_xlim(0.01, freq / 2)
 
         plt.tight_layout()
         plt.show()
