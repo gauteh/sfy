@@ -3,6 +3,7 @@ import numpy as np
 from datetime import datetime, timezone
 from sfy.egps import Egps, EgpsCollection
 from sfy import signal as sfysignal
+from sfy import xr as sfyxr
 import matplotlib.pyplot as plt
 from . import *
 
@@ -198,6 +199,66 @@ def test_sfy4_01_egpsb_spectrum(sfyhub, plot):
         axes[1].legend()
         axes[1].grid(True, which='both')
         axes[1].set_xlim(0.01, freq / 2)
+
+        plt.tight_layout()
+        plt.show()
+
+
+@needs_hub
+def test_sfy4_01_egpsb_stationary_spectrum(sfyhub, plot):
+    """
+    Compute 20-minute elevation spectra from SFY4-01 egpsb while the buoy is
+    stationary (2026-05-20 01:00-04:00 local / 2026-05-19 23:00 - 2026-05-20
+    02:00 UTC). Uses egps_spec_stats (velocity integrated once, order=1).
+    """
+    b = sfyhub.buoy('SFY4-01')
+    # 01:00-04:00 local (GMT+2) = 23:00-02:00 UTC
+    start = datetime(2026, 5, 19, 23, 0, tzinfo=timezone.utc)
+    end   = datetime(2026, 5, 20,  2, 0, tzinfo=timezone.utc)
+
+    pcks = b.egps_packages_range(start, end, binary=True)
+    assert len(pcks) > 0
+
+    c = EgpsCollection(pcks)
+    ds = c.to_dataset()
+
+    # Buoy should be stationary – max speed < 1 kt
+    speed_kt = np.sqrt(ds.vn**2 + ds.ve**2) / 1000.0 / (1852 / 3600)
+    assert float(speed_kt.max()) < 1.0, \
+        f"Buoy not stationary: max speed {float(speed_kt.max()):.2f} kt"
+
+    ss = sfyxr.egps_spec_stats(ds, window=20 * 60)
+    print(ss)
+    print(f"Hm0 (vertical): {ss.hm0.values}")
+
+    assert len(ss.time) >= 3, "Expected at least 3 × 20-min windows in 3-hour window"
+    assert np.all(np.isfinite(ss.hm0)), "NaN Hm0 values"
+    assert np.all(ss.hm0 >= 0)
+
+    if plot:
+        f = ss.frequency.values
+        fig, axes = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
+
+        for t in ss.time:
+            label = str(t.values)[:16]
+            axes[0].semilogy(f[1:], ss.En.sel(time=t).values[1:], alpha=0.7, label=label)
+            axes[0].semilogy(f[1:], ss.Ee.sel(time=t).values[1:], alpha=0.7, linestyle='--')
+        axes[0].set_ylabel('Elevation PSD [m²/Hz]')
+        axes[0].set_title('SFY4-01 horizontal spectra – stationary (egpsb, 20-min windows)')
+        axes[0].legend(fontsize=7)
+        axes[0].grid(True, which='both')
+        axes[0].set_xlim(0.01, c.frequency / 2)
+
+        for t in ss.time:
+            hm0_val = float(ss.hm0.sel(time=t).values)
+            label = f"{str(t.values)[:16]}  Hm0={hm0_val:.2f}m"
+            axes[1].semilogy(f[1:], ss.E.sel(time=t).values[1:], alpha=0.7, label=label)
+        axes[1].set_xlabel('Frequency [Hz]')
+        axes[1].set_ylabel('Elevation PSD [m²/Hz]')
+        axes[1].set_title('SFY4-01 vertical spectrum – stationary (egpsb, 20-min windows)')
+        axes[1].legend(fontsize=7)
+        axes[1].grid(True, which='both')
+        axes[1].set_xlim(0.01, c.frequency / 2)
 
         plt.tight_layout()
         plt.show()

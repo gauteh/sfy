@@ -270,7 +270,132 @@ def spec_stats(ds: xr.Dataset,
         })
 
 
-def displacement(ds: xr.Dataset, filter_freqs=None):
+def egps_spec_stats(ds: xr.Dataset,
+                    window=(20 * 60),
+                    nperseg=4096,
+                    f0=0.05) -> xr.Dataset:
+    """
+    Compute elevation spectra and spectral statistics from egps velocity fields.
+
+    Velocities (vn, ve, vz in mm/s) are converted to m/s and integrated once
+    via Welch to yield elevation spectra (m²/Hz), mirroring :func:`spec_stats`
+    which integrates acceleration twice.
+
+    Args:
+        ds:      xarray Dataset produced by :meth:`EgpsTimeseries.to_dataset`.
+        window:  Window length in seconds (default 20 min), or ``'full'`` to
+                 use the entire signal in one window.
+        nperseg: Welch segment length in samples (default 4096).
+        f0:      Low-frequency cutoff for the Rabault 2022 IMU noise floor
+                 filter applied to the vertical spectrum (default 0.05 Hz).
+
+    Returns:
+        xr.Dataset with coordinates ``time`` (end of each window) and
+        ``frequency``, and data variables ``hm0``, ``Tm01``, ``Tm02``,
+        ``Tm_10``, ``Tp``, ``m_1``, ``m0``, ``m1``, ``m2``, ``m4``, ``fc``,
+        ``E`` (vertical), ``En`` (north), ``Ee`` (east).
+    """
+    freq = ds.attrs['frequency']
+
+    # mm/s -> m/s
+    vn = ds.vn.values / 1000.0
+    ve = ds.ve.values / 1000.0
+    vz = ds.vz.values / 1000.0
+
+    if window == 'full':
+        N = len(vz)
+    else:
+        N = int(window * freq)
+
+    if len(vz) < N:
+        raise ValueError(
+            f'Dataset is shorter ({len(vz)/freq:.0f}s) than requested window ({window}s)'
+        )
+
+    N = min(N, len(vz))
+
+    i = np.arange(N, len(vz), N).astype(np.int32)
+    logger.debug(f'egps_spec_stats: splitting into {len(i)+1} windows of {N} samples..')
+
+    zs = np.split(vz, i); zs[-1] = vz[-N:]
+    ns = np.split(vn, i); ns[-1] = vn[-N:]
+    es = np.split(ve, i); es[-1] = ve[-N:]
+
+    def stat(vz_w, vn_w, ve_w):
+        if np.any(np.isnan(vz_w)):
+            a = np.full((nperseg // 2 + 1,), np.nan)
+            return (np.nan,) * 10 + (a, np.nan, a, a)
+
+        f, Pz = signal.welch(freq, vz_w, nperseg=nperseg, order=1)
+        f, Pn = signal.welch(freq, vn_w, nperseg=nperseg, order=1)
+        f, Pe = signal.welch(freq, ve_w, nperseg=nperseg, order=1)
+
+        i0, fc, Pz = signal.imu_cutoff_rabault2022(f, Pz, f0)
+        Pn[:i0] = 0
+        Pe[:i0] = 0
+
+        return *signal.spec_stats(f, Pz), f, fc, Pz, Pn, Pe
+
+    with ThreadPoolExecutor() as ex:
+        m_1, m0, m1, m2, m4, hm0, Tm01, Tm02, Tm_10, Tp, f, fc, Pz, Pn, Pe = zip(
+            *ex.map(stat, zs, ns, es))
+
+    i = np.append(i, len(vz) - 1)
+    time = ds.time[i].values
+
+    return xr.Dataset(
+        {
+            'hm0':
+            xr.DataArray(np.array(hm0), dims=['time'],
+                         attrs={'unit': 'm',
+                                'standard_name': 'sea_surface_wave_significant_height',
+                                'description': 'Hm0 from vertical velocity-integrated elevation spectrum'}),
+            'fc':
+            xr.DataArray(np.array(fc), dims=['time'],
+                         attrs={'unit': 'Hz', 'description': 'High-pass cut-off frequency'}),
+            'Tm01':
+            xr.DataArray(np.array(Tm01), dims=['time'],
+                         attrs={'unit': 's',
+                                'standard_name': 'sea_surface_wave_mean_period_from_variance_spectral_density_first_frequency_moment',
+                                'description': 'First wave period (m0/m1)'}),
+            'Tm02':
+            xr.DataArray(np.array(Tm02), dims=['time'],
+                         attrs={'unit': 's',
+                                'standard_name': 'sea_surface_wave_mean_period_from_variance_spectral_density_second_frequency_moment',
+                                'description': 'Second wave period (sqrt(m0/m2))'}),
+            'Tm_10':
+            xr.DataArray(np.array(Tm_10), dims=['time'],
+                         attrs={'unit': 's',
+                                'standard_name': 'sea_surface_wave_mean_period_from_variance_spectral_density_inverse_frequency_moment',
+                                'description': 'Inverse wave period (m-1/m0)'}),
+            'Tp':
+            xr.DataArray(np.array(Tp), dims=['time'],
+                         attrs={'unit': 's',
+                                'standard_name': 'sea_surface_wave_period_at_variance_spectral_density_maximum',
+                                'description': 'Peak period'}),
+            'm_1': xr.DataArray(np.array(m_1), dims=['time'], attrs={'description': 'Inverse order moment'}),
+            'm0':  xr.DataArray(np.array(m0),  dims=['time'], attrs={'description': 'Zeroth order moment'}),
+            'm1':  xr.DataArray(np.array(m1),  dims=['time'], attrs={'description': 'First order moment'}),
+            'm2':  xr.DataArray(np.array(m2),  dims=['time'], attrs={'description': 'Second order moment'}),
+            'm4':  xr.DataArray(np.array(m4),  dims=['time'], attrs={'description': 'Fourth order moment'}),
+            'E':
+            xr.DataArray(np.vstack(Pz), dims=['time', 'frequency'],
+                         attrs={'unit': 'm^2/Hz',
+                                'standard_name': 'sea_surface_wave_variance_spectral_density',
+                                'description': 'Vertical elevation spectrum (from vz, integrated once)'}),
+            'En':
+            xr.DataArray(np.vstack(Pn), dims=['time', 'frequency'],
+                         attrs={'unit': 'm^2/Hz',
+                                'description': 'North elevation spectrum (from vn, integrated once)'}),
+            'Ee':
+            xr.DataArray(np.vstack(Pe), dims=['time', 'frequency'],
+                         attrs={'unit': 'm^2/Hz',
+                                'description': 'East elevation spectrum (from ve, integrated once)'}),
+        },
+        coords={
+            'time': time,
+            'frequency': np.array(f[0]),
+        })
     """
     Calculates displacement.
     """
