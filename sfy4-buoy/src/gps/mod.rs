@@ -337,10 +337,11 @@ impl GpsCollector {
         let (ref_lon, ref_lat, ref_msl) = (pending.lon, pending.lat, pending.msl);
 
         // 6 channels: lon-delta, lat-delta, msl-delta, vel_n, vel_e, vel_d
+        // Use saturating_sub to avoid overflow when moving fast (large deltas clamp to range bounds).
         for v in [
-            Lon16::from_i32(s.lon - ref_lon).to_u16(),
-            Lat16::from_i32(s.lat - ref_lat).to_u16(),
-            Msl16::from_i32(s.height_msl_mm - ref_msl).to_u16(),
+            Lon16::from_i32(s.lon.saturating_sub(ref_lon)).to_u16(),
+            Lat16::from_i32(s.lat.saturating_sub(ref_lat)).to_u16(),
+            Msl16::from_i32(s.height_msl_mm.saturating_sub(ref_msl)).to_u16(),
             Vel16::from_i32(s.vel_n_mm_s).to_u16(),
             Vel16::from_i32(s.vel_e_mm_s).to_u16(),
             Vel16::from_i32(s.vel_d_mm_s).to_u16(),
