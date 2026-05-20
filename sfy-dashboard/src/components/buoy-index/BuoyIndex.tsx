@@ -149,7 +149,8 @@ export class BuoyIndex
               <span className="text-muted small">{this.state.trackDev}</span>
             }
 
-            <div className="btn-group btn-group-sm ms-auto" role="group" aria-label="Map size">
+            <span className="text-muted small ms-auto" title="Map size">🗺</span>
+            <div className="btn-group btn-group-sm" role="group" aria-label="Map size">
               {([1, 2, 3] as const).map(s => (
                 <button
                   key={s}
