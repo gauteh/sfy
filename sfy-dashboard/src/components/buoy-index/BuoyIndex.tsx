@@ -15,6 +15,7 @@ interface State {
   buoys: Array<Buoy | OmbBuoy>;
   trackDev?: string;
   trackDays: number;
+  mapSize: 1 | 2 | 3;
 }
 
 export class BuoyIndex
@@ -25,6 +26,7 @@ export class BuoyIndex
     buoys: [],
     trackDev: undefined,
     trackDays: 7,
+    mapSize: 2,
   };
 
   public bmap: any;
@@ -69,6 +71,10 @@ export class BuoyIndex
   public clearTrack = () => {
     this.setState({ trackDev: undefined });
     this.bmap.current.clearTrack();
+  }
+
+  public setMapSize = (size: 1 | 2 | 3) => {
+    this.setState({ mapSize: size });
   }
 
   public onDaysChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -119,9 +125,12 @@ export class BuoyIndex
   }
 
   public render() {
+    const mapHeights: Record<1 | 2 | 3, string> = { 1: '33vh', 2: '67vh', 3: '100vh' };
+    const mapHeight = mapHeights[this.state.mapSize];
+
     return (
       <div>
-        <BuoyMap buoys={this.state.buoys} ref={this.bmap} onBuoyClick={this.showTrack} />
+        <BuoyMap buoys={this.state.buoys} ref={this.bmap} onBuoyClick={this.showTrack} mapHeight={mapHeight} />
 
         <div className="container-fluid no-margin">
           <div className="d-flex align-items-center gap-2 py-1">
@@ -138,6 +147,20 @@ export class BuoyIndex
             {this.state.trackDev &&
               <span className="text-muted small">{this.state.trackDev}</span>
             }
+
+            <div className="btn-group btn-group-sm ms-auto" role="group" aria-label="Map size">
+              {([1, 2, 3] as const).map(s => (
+                <button
+                  key={s}
+                  type="button"
+                  className={`btn ${this.state.mapSize === s ? 'btn-secondary' : 'btn-outline-secondary'}`}
+                  onClick={() => this.setMapSize(s)}
+                  title={`${s}/3 map`}
+                >
+                  {s}/3
+                </button>
+              ))}
+            </div>
           </div>
           <table className="ti table table-striped">
             <thead>

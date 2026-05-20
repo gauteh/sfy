@@ -13,7 +13,7 @@ html {
 }
 
 .leaflet-container {
-  min-height: 500px;
+  min-height: 0;
 }
 
 .no-margin {

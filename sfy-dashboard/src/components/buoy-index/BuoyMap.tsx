@@ -72,6 +72,7 @@ const MAPBOX_TOKEN: string = 'pk.eyJ1IjoiZ2F1dGVoIiwiYSI6ImNreWZ2MWd4NjBxNnoyb3M
 interface Props {
   buoys: Array<Buoy | OmbBuoy>;
   onBuoyClick?: (buoy: Buoy | OmbBuoy) => void;
+  mapHeight?: string;
 }
 
 interface State {
@@ -92,6 +93,13 @@ export class BuoyMap
 
     if (navigator.geolocation) {
       navigator.geolocation.watchPosition(this.updateMyPosition);
+    }
+  }
+
+  public componentDidUpdate(prevProps: Props) {
+    if (prevProps.mapHeight !== this.props.mapHeight) {
+      // Let Leaflet know the container was resized.
+      setTimeout(() => this.map?.invalidateSize(), 0);
     }
   }
 
@@ -145,7 +153,7 @@ export class BuoyMap
 
   public render() {
     return (
-      <MapContainer className="container-fluid" center={[60.11304848114283, 2.3882482939071434]} zoom={5}>
+      <MapContainer className="container-fluid" style={{ height: this.props.mapHeight ?? '50vh' }} center={[60.11304848114283, 2.3882482939071434]} zoom={5}>
         <TileLayer
           attribution='Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors Imagery © <a href="https://www.mapbox.com/">Mapbox</a>'
           url='https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}'
