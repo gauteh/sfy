@@ -126,7 +126,7 @@ export class BuoyIndex
   }
 
   public render() {
-    const mapHeights: Record<1 | 2 | 3, string> = { 1: '33vh', 2: '67vh', 3: '100vh' };
+    const mapHeights: Record<1 | 2 | 3, string> = { 1: '33vh', 2: '67vh', 3: 'calc(100vh - 44px)' };
     const mapHeight = mapHeights[this.state.mapSize];
 
     return (
@@ -163,7 +163,7 @@ export class BuoyIndex
               ))}
             </div>
           </div>
-          <table className="ti table table-striped">
+          {this.state.mapSize < 3 && <table className="ti table table-striped">
             <thead>
               <tr>
                 <th scope="col">Device</th>
@@ -175,7 +175,7 @@ export class BuoyIndex
             <tbody>
               {this.state.buoys.map(this.Row)}
             </tbody>
-          </table>
+          </table>}
         </div>
       </div>
     );
