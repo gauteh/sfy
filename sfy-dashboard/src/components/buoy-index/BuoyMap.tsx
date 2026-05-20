@@ -11,17 +11,17 @@ import icon_me from './marker-me.png';
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
 
-const ONE_DAY_MS = 86_400 * 1000;
-const SEVEN_DAYS_MS = 7 * 86_400 * 1000;
+const ONE_DAY_S = 86_400;
+const SEVEN_DAYS_S = 7 * 86_400;
 
 interface TrackSegment {
   points: Array<[number, number]>;
   color: string;
 }
 
-function trackColor(ageMs: number): string {
-  if (ageMs > SEVEN_DAYS_MS) return '#888';
-  if (ageMs > ONE_DAY_MS) return '#622';
+function trackColor(ageS: number): string {
+  if (ageS > SEVEN_DAYS_S) return '#888';
+  if (ageS > ONE_DAY_S) return '#622';
   return '#e05';
 }
 
@@ -30,7 +30,7 @@ function trackColor(ageMs: number): string {
 function segmentTrack(points: TrackPoint[]): TrackSegment[] {
   if (points.length === 0) return [];
 
-  const latestT = Math.max(...points.map(p => p.t));
+  const latestT = Math.max(...points.map(p => p.t)); // seconds
   const segments: TrackSegment[] = [];
   let currentColor = trackColor(latestT - points[0].t);
   let currentPoints: Array<[number, number]> = [[points[0].lat, points[0].lon]];
