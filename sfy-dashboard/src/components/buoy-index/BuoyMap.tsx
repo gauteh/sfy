@@ -72,7 +72,6 @@ const MAPBOX_TOKEN: string = 'pk.eyJ1IjoiZ2F1dGVoIiwiYSI6ImNreWZ2MWd4NjBxNnoyb3M
 interface Props {
   buoys: Array<Buoy | OmbBuoy>;
   onBuoyClick?: (buoy: Buoy | OmbBuoy) => void;
-  mapHeight?: string;
 }
 
 interface State {
@@ -97,11 +96,6 @@ export class BuoyMap
   }
 
   public componentDidUpdate(prevProps: Props) {
-    if (prevProps.mapHeight !== this.props.mapHeight) {
-      console.log('BuoyMap: mapHeight changed to', this.props.mapHeight);
-      // Let Leaflet know the container was resized.
-      setTimeout(() => this.map?.invalidateSize(), 50);
-    }
   }
 
   public updateMyPosition = (position: any) => {
@@ -113,6 +107,10 @@ export class BuoyMap
     console.log("Focusing: " + JSON.stringify(buoy));
 
     this.map.flyTo([buoy.any_lat(), buoy.any_lon()], 11);
+  }
+
+  public invalidateSize = () => {
+    setTimeout(() => this.map?.invalidateSize(), 50);
   }
 
   public showTrack = async (buoy: any, days: number) => {
@@ -154,7 +152,7 @@ export class BuoyMap
 
   public render() {
     return (
-      <div style={{ height: this.props.mapHeight ?? '67vh', transition: 'height 0.2s' }}>
+      <div style={{ height: '100%' }}>
       <MapContainer className="container-fluid" style={{ height: '100%' }} center={[60.11304848114283, 2.3882482939071434]} zoom={5}>
         <TileLayer
           attribution='Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors Imagery © <a href="https://www.mapbox.com/">Mapbox</a>'

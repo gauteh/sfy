@@ -76,6 +76,7 @@ export class BuoyIndex
   public setMapSize = (size: 1 | 2 | 3) => {
     console.log('setMapSize:', size);
     this.setState({ mapSize: size });
+    setTimeout(() => this.bmap.current?.invalidateSize(), 100);
   }
 
   public onDaysChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -126,15 +127,19 @@ export class BuoyIndex
   }
 
   public render() {
-    const mapHeights: Record<1 | 2 | 3, string> = { 1: '33vh', 2: '67vh', 3: 'calc(100vh - 44px)' };
-    const mapHeight = mapHeights[this.state.mapSize];
+    const mapHeights: Record<1 | 2 | 3, string> = { 1: '33vh', 2: '67vh', 3: '' };
+    const mapStyle: React.CSSProperties = this.state.mapSize === 3
+      ? { flex: '1 1 auto', minHeight: 0, transition: 'flex 0.2s' }
+      : { flex: `0 0 ${mapHeights[this.state.mapSize]}`, transition: 'flex 0.2s' };
 
     return (
-      <div>
-        <BuoyMap buoys={this.state.buoys} ref={this.bmap} onBuoyClick={this.showTrack} mapHeight={mapHeight} />
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+        <div style={mapStyle}>
+          <BuoyMap buoys={this.state.buoys} ref={this.bmap} onBuoyClick={this.showTrack} />
+        </div>
 
-        <div className="container-fluid no-margin">
-          <div className="d-flex align-items-center gap-2 py-1">
+        <div className="container-fluid no-margin flex-shrink-0">
+          <div className="d-flex align-items-center gap-2 py-1 flex-wrap">
             <span className="text-muted small">Track:</span>
             <select className="form-select form-select-sm w-auto" value={this.state.trackDays} onChange={this.onDaysChange}>
               <option value={1}>1 day</option>
