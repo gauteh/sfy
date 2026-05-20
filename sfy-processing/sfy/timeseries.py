@@ -543,14 +543,14 @@ class EgpsTimeseries:
                 }),
             'lat':
             xr.Variable(('time'),
-                        self.n.astype(np.float32),
+                        self.n.astype(np.float64),
                         attrs={
                             'unit': 'degrees_north',
                             'long_name': 'latitude',
                         }),
             'lon':
             xr.Variable(('time'),
-                        self.e.astype(np.float32),
+                        self.e.astype(np.float64),
                         attrs={
                             'unit': 'degrees_east',
                             'standard_name': 'longitude',

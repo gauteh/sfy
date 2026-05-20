@@ -421,9 +421,17 @@ class Egps(Event):
                 'host is big-endian, swapping bytes: this is not well-tested.')
             payload.byteswap(inplace=True)
 
-        n = scale_u16_to_f32(data['lonlat_range'], payload[0::6]) + data['lat']
-        e = scale_u16_to_f32(data['lonlat_range'], payload[1::6]) + data['lon']
-        z = scale_u16_to_f32(data['msl_range'], payload[2::6]) + data['msl']
+        # Cast reference values to float64 before adding the float32 offsets.
+        # Without this, float32 + int stays float32 and the ULP near 6e8 (deg*1e7)
+        # is ~64 units, which collapses nearby samples to the same grid point and
+        # creates apparent velocity noise of ~20 knots in position-derived speed.
+        #
+        # Firmware payload channel order (gps/mod.rs):
+        #   [0::6] lon-delta  [1::6] lat-delta  [2::6] msl-delta
+        #   [3::6] vel_n      [4::6] vel_e       [5::6] vel_d
+        e = scale_u16_to_f32(data['lonlat_range'], payload[0::6]) + np.float64(data['lon'])
+        n = scale_u16_to_f32(data['lonlat_range'], payload[1::6]) + np.float64(data['lat'])
+        z = scale_u16_to_f32(data['msl_range'], payload[2::6]) + np.float64(data['msl'])
         vn = scale_u16_to_f32(data['vel_range'], payload[3::6])
         ve = scale_u16_to_f32(data['vel_range'], payload[4::6])
         vz = scale_u16_to_f32(data['vel_range'], payload[5::6])
