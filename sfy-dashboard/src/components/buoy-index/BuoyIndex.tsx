@@ -74,6 +74,7 @@ export class BuoyIndex
   }
 
   public setMapSize = (size: 1 | 2 | 3) => {
+    console.log('setMapSize:', size);
     this.setState({ mapSize: size });
   }
 

@@ -98,8 +98,9 @@ export class BuoyMap
 
   public componentDidUpdate(prevProps: Props) {
     if (prevProps.mapHeight !== this.props.mapHeight) {
+      console.log('BuoyMap: mapHeight changed to', this.props.mapHeight);
       // Let Leaflet know the container was resized.
-      setTimeout(() => this.map?.invalidateSize(), 0);
+      setTimeout(() => this.map?.invalidateSize(), 50);
     }
   }
 
@@ -153,7 +154,8 @@ export class BuoyMap
 
   public render() {
     return (
-      <MapContainer className="container-fluid" style={{ height: this.props.mapHeight ?? '50vh' }} center={[60.11304848114283, 2.3882482939071434]} zoom={5}>
+      <div style={{ height: this.props.mapHeight ?? '67vh', transition: 'height 0.2s' }}>
+      <MapContainer className="container-fluid" style={{ height: '100%' }} center={[60.11304848114283, 2.3882482939071434]} zoom={5}>
         <TileLayer
           attribution='Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors Imagery © <a href="https://www.mapbox.com/">Mapbox</a>'
           url='https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}'
@@ -181,6 +183,7 @@ export class BuoyMap
         <this.MapController />
 
       </MapContainer>
+      </div>
     );
   }
 }
