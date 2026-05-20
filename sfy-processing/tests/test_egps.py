@@ -262,3 +262,71 @@ def test_sfy4_01_egpsb_stationary_spectrum(sfyhub, plot):
 
         plt.tight_layout()
         plt.show()
+
+
+@needs_hub
+def test_sfy4_01_egpsb_vs_axlb_spectrum(sfyhub, plot):
+    """
+    Compare the first 20-min egpsb elevation spectrum (velocity integrated once)
+    against the co-located axlb elevation spectrum (acceleration integrated twice)
+    for SFY4-01 while stationary (2026-05-19 23:00 - 2026-05-20 02:00 UTC).
+    Both spectra should agree in the wave band.
+    """
+    from sfy.axl import AxlCollection
+    from sfy import xr as sfyxr
+
+    b = sfyhub.buoy('SFY4-01')
+    start = datetime(2026, 5, 19, 23, 0, tzinfo=timezone.utc)
+    end   = datetime(2026, 5, 20,  2, 0, tzinfo=timezone.utc)
+
+    # --- egpsb: first 20-min window ---
+    epcks = b.egps_packages_range(start, end, binary=True)
+    assert len(epcks) > 0
+    ec = EgpsCollection(epcks)
+    eds = ec.to_dataset()
+    ess = sfyxr.egps_spec_stats(eds, window=20 * 60)
+
+    f_egps = ess.frequency.values
+    E_egps_z = ess.E.isel(time=0).values
+    E_egps_n = ess.En.isel(time=0).values
+    E_egps_e = ess.Ee.isel(time=0).values
+    hm0_egps = float(ess.hm0.isel(time=0).values)
+    print(f'egps Hm0: {hm0_egps:.3f} m')
+
+    # --- axlb: same 20-min window ---
+    apcks = b.axl_packages_range(start, end, binary=True)
+    assert len(apcks) > 0
+    ac = AxlCollection(apcks)
+    ads = ac.to_dataset()
+
+    # Clip axl dataset to the same first 20-min window as egps
+    t_egps_win_end = ess.time.isel(time=0).values
+    t_start_ns = np.datetime64(int(ec.start.timestamp() * 1e9), 'ns')
+    ads_win = ads.sel(time=slice(t_start_ns, t_egps_win_end))
+    ass_win = sfyxr.spec_stats(ads_win, window='full')
+
+    f_axl = ass_win.frequency.values
+    E_axl_z = ass_win.E.isel(time=0).values
+    hm0_axl = float(ass_win.hm0.isel(time=0).values)
+    print(f'axlb Hm0: {hm0_axl:.3f} m')
+
+    # Both Hm0 should be finite and agree within a factor of 2
+    assert np.isfinite(hm0_egps)
+    assert np.isfinite(hm0_axl)
+    assert abs(hm0_egps - hm0_axl) < max(hm0_egps, hm0_axl), \
+        f"Hm0 mismatch: egps={hm0_egps:.3f} m  axlb={hm0_axl:.3f} m"
+
+    if plot:
+        fig, ax = plt.subplots(figsize=(10, 5))
+        ax.semilogy(f_egps[1:], E_egps_z[1:], label=f'egpsb vertical  Hm0={hm0_egps:.3f} m', color='C2')
+        ax.semilogy(f_egps[1:], E_egps_n[1:], label='egpsb north', color='C0', linestyle='--', alpha=0.7)
+        ax.semilogy(f_egps[1:], E_egps_e[1:], label='egpsb east',  color='C1', linestyle='--', alpha=0.7)
+        ax.semilogy(f_axl[1:],  E_axl_z[1:],  label=f'axlb vertical  Hm0={hm0_axl:.3f} m',  color='C2', linestyle=':', linewidth=2)
+        ax.set_xlabel('Frequency [Hz]')
+        ax.set_ylabel('Elevation PSD [m²/Hz]')
+        ax.set_title('SFY4-01 egpsb vs axlb – first 20-min window (stationary)')
+        ax.set_xlim(0.01, min(ec.frequency, ac.frequency) / 2)
+        ax.legend()
+        ax.grid(True, which='both')
+        plt.tight_layout()
+        plt.show()
