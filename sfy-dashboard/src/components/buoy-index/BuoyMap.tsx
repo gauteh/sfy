@@ -107,7 +107,8 @@ export class BuoyMap
   }
 
   public showTrack = async (buoy: any, days: number) => {
-    const to = Date.now();
+    const lastContact: Date | null | undefined = buoy.lastContact?.();
+    const to = lastContact ? lastContact.getTime() : Date.now();
     const from = to - days * 86400 * 1000;
 
     this.setState({ track: undefined, trackDev: buoy.dev });
