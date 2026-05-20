@@ -82,9 +82,9 @@ def test_sfy4_01_egpsb_position(sfyhub, plot):
     c = EgpsCollection(pcks)
     ds = c.to_dataset()
 
-    # lat/lon in the dataset are in units of deg * 1e7
-    lat_deg = ds.lat / 1.0e7  # degrees north
-    lon_deg = ds.lon / 1.0e7  # degrees east
+    # lat/lon are in decimal degrees
+    lat_deg = ds.lat
+    lon_deg = ds.lon
 
     # Positions are finite
     assert np.all(np.isfinite(lat_deg)), "NaN/Inf in latitude"
@@ -100,6 +100,10 @@ def test_sfy4_01_egpsb_position(sfyhub, plot):
     assert float(lat_deg.max()) < 61.0, "Latitude too far north"
     assert float(lon_deg.min()) >  4.5, "Longitude too far west"
     assert float(lon_deg.max()) <  6.0, "Longitude too far east"
+
+    # Per-package reference positions (decimal degrees, package dim)
+    assert float(ds.pck_lat.min()) > 60.0
+    assert float(ds.pck_lon.min()) >  4.5
 
     # Speed from velocity fields (vn, ve in mm/s) – max is 16 knots
     speed_ms = np.sqrt(ds.vn**2 + ds.ve**2) / 1000.0   # m/s

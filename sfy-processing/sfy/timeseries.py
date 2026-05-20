@@ -543,17 +543,19 @@ class EgpsTimeseries:
                 }),
             'lat':
             xr.Variable(('time'),
-                        self.n.astype(np.float64),
+                        self.n.astype(np.float64) / 1.0e7,
                         attrs={
-                            'unit': 'degrees_north',
+                            'units': 'degrees_north',
+                            'standard_name': 'latitude',
                             'long_name': 'latitude',
                         }),
             'lon':
             xr.Variable(('time'),
-                        self.e.astype(np.float64),
+                        self.e.astype(np.float64) / 1.0e7,
                         attrs={
-                            'unit': 'degrees_east',
+                            'units': 'degrees_east',
                             'standard_name': 'longitude',
+                            'long_name': 'longitude',
                         }),
             'vz':
             xr.Variable(
