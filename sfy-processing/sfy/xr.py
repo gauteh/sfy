@@ -270,6 +270,82 @@ def spec_stats(ds: xr.Dataset,
         })
 
 
+def displacement(ds: xr.Dataset, filter_freqs=None):
+    """
+    Calculates displacement.
+    """
+    if filter_freqs is None:
+        if ds.attrs['frequency'] < 50:
+            filter_freqs = signal.DEFAULT_BANDPASS_FREQS_20Hz
+        else:
+            filter_freqs = signal.DEFAULT_BANDPASS_FREQS_52Hz
+
+    logger.info(
+        f'Integrating displacment, filter frequencies: {filter_freqs}.')
+
+    # sea-surface displacement should point upwards:
+    u_z = signal.integrate(
+        ds.w_z, ds.dt, order=2, freqs=filter_freqs, method='dft')
+
+    u_x = signal.integrate(ds.w_x,
+                           ds.dt,
+                           order=2,
+                           freqs=filter_freqs,
+                           method='dft')
+    u_y = signal.integrate(ds.w_y,
+                           ds.dt,
+                           order=2,
+                           freqs=filter_freqs,
+                           method='dft')
+
+    d = xr.Dataset()
+
+    d['u_z'] = xr.DataArray(
+        u_z.astype(np.float32),
+        coords=[('time', ds.time.data)],
+        attrs={
+            'unit': 'm',
+            'long_name': 'sea_water_wave_z_displacement',
+            'description':
+            'Vertical z-axis displacement (integrated) (direction: up)',
+            'direction': 'up',
+            'detrended': 'yes',
+            'filter': 'butterworth (10th order), two-ways',
+            'filter_freqs': filter_freqs,
+            'filter_freqs:unit': 'Hz',
+        })
+
+    d['u_x'] = xr.DataArray(u_x.astype(np.float32),
+                            coords=[('time', ds.time.data)],
+                            attrs={
+                                'unit': 'm',
+                                'long_name': 'sea_water_wave_x_displacement',
+                                'description':
+                                'Horizontal x-axis displacement (integrated)',
+                                'detrended': 'yes',
+                                'filter': 'butterworth (10th order), two-ways',
+                                'filter_freqs': filter_freqs,
+                                'filter_freqs:unit': 'Hz',
+                            })
+
+    d['u_y'] = xr.DataArray(u_y.astype(np.float32),
+                            coords=[('time', ds.time.data)],
+                            attrs={
+                                'unit': 'm',
+                                'long_name': 'sea_water_wave_y_displacement',
+                                'description':
+                                'Horizontal y-axis displacement (integrated)',
+                                'detrended': 'yes',
+                                'filter': 'butterworth (10th order), two-ways',
+                                'filter_freqs': filter_freqs,
+                                'filter_freqs:unit': 'Hz',
+                            })
+
+    d = d.assign_attrs(ds.attrs)
+
+    return d
+
+
 def egps_spec_stats(ds: xr.Dataset,
                     window=(20 * 60),
                     nperseg=4096,
