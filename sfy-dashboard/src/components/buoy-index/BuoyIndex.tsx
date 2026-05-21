@@ -9,6 +9,7 @@ import { BuoyMap } from './BuoyMap';
 import './BuoyIndex.scss';
 
 interface Props {
+  onLogout?: () => void;
 }
 
 interface State {
@@ -127,18 +128,37 @@ export class BuoyIndex
   }
 
   public render() {
-    const mapHeights: Record<1 | 2 | 3, string> = { 1: '33vh', 2: '67vh', 3: '' };
+    const mapHeights: Record<1 | 2 | 3, string> = { 1: '33dvh', 2: '67dvh', 3: '' };
     const mapStyle: React.CSSProperties = this.state.mapSize === 3
       ? { flex: '1 1 auto', minHeight: 0, transition: 'flex 0.2s' }
-      : { flex: `0 0 ${mapHeights[this.state.mapSize]}`, transition: 'flex 0.2s' };
+      : { flex: `0 0 ${mapHeights[this.state.mapSize]}`, minHeight: 0, transition: 'flex 0.2s' };
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden' }}>
+
         <div style={mapStyle}>
           <BuoyMap buoys={this.state.buoys} ref={this.bmap} onBuoyClick={this.showTrack} />
         </div>
 
-        <div className="container-fluid no-margin flex-shrink-0">
+        {this.state.mapSize < 3 &&
+          <div style={{ flex: '1 1 auto', overflowY: 'auto', minHeight: 0 }}>
+            <table className="ti table table-striped">
+              <thead>
+                <tr>
+                  <th scope="col">Device</th>
+                  <th scope="col">Latitude (°N), Longitude (°E)</th>
+                  <th scope="col">Source</th>
+                  <th scope="col">Last contact</th>
+                </tr>
+              </thead>
+              <tbody>
+                {this.state.buoys.map(this.Row)}
+              </tbody>
+            </table>
+          </div>
+        }
+
+        <div className="no-margin flex-shrink-0 border-top bg-light px-2">
           <div className="d-flex align-items-center gap-2 py-1 flex-wrap">
             <span className="text-muted small">Track:</span>
             <select className="form-select form-select-sm w-auto" value={this.state.trackDays} onChange={this.onDaysChange}>
@@ -168,21 +188,14 @@ export class BuoyIndex
                 </button>
               ))}
             </div>
+
+            {this.props.onLogout &&
+              <button type="button" className="btn btn-outline-dark btn-sm" onClick={this.props.onLogout}>✕ Log out</button>
+            }
+            <a href="https://github.com/gauteh/sfy" className="text-muted small">sfy</a>
           </div>
-          {this.state.mapSize < 3 && <table className="ti table table-striped">
-            <thead>
-              <tr>
-                <th scope="col">Device</th>
-                <th scope="col">Latitude (°N), Longitude (°E)</th>
-                <th scope="col">Source</th>
-                <th scope="col">Last contact</th>
-              </tr>
-            </thead>
-            <tbody>
-              {this.state.buoys.map(this.Row)}
-            </tbody>
-          </table>}
         </div>
+
       </div>
     );
   }

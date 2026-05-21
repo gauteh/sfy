@@ -1,6 +1,5 @@
 import { Component, } from 'react';
 import Cookies from 'js-cookie'
-import cx from 'classnames';
 import * as hub from './hub';
 
 import { BuoyIndex } from './components/buoy-index/BuoyIndex';
@@ -34,17 +33,15 @@ export class Dashboard extends Component<{}, State> {
   };
 
   public render() {
-    return (
-    <div id="main-container" className="container-fluid mh-100 d-flex flex-column h-100" style={{'height': '100vh'}}>
-        <div className="flex-shrink-0">
-          {(this.state.token === undefined) ? (<Login cbToken={this.setToken} />) : (<BuoyIndex />)}
-        </div>
+    if (this.state.token !== undefined) {
+      return <BuoyIndex onLogout={this.clearToken} />;
+    }
 
-        <footer className={cx('footer', 'mt-auto', 'py-1', 'bg-light', { 'd-none': this.state.token === undefined })}>
-          <div className="container-fluid d-flex flex-row px-2">
-            <button type="button" className="btn btn-outline-dark btn-sm" onClick={this.clearToken} >✕ Log out</button>
-            <button type="button" className="btn btn-link"><a href="https://github.com/gauteh/sfy">github.com/gauteh/sfy</a></button>
-          </div>
+    return (
+      <div className="d-flex flex-column align-items-center justify-content-center" style={{ minHeight: '100dvh' }}>
+        <Login cbToken={this.setToken} />
+        <footer className="mt-auto py-2 text-center">
+          <a href="https://github.com/gauteh/sfy" className="text-muted small">github.com/gauteh/sfy</a>
         </footer>
       </div>
     );
