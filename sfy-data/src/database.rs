@@ -457,7 +457,17 @@ impl Buoy {
                 .fetch_all(&self.db)
                 .await?;
 
+                // sfy3 sends _track.qo on every real GPS fix and also batches positions
+                // in axl.qo (which repeats the same stale fix many times). Mixing both
+                // produces a jagged track, so when _track.qo is present use only those.
+                // sfy4 uses axlb.qo / egpsb.qo and does not emit _track.qo or axl.qo,
+                // so for sfy4 the original logic (accept all types) applies unchanged.
+                let has_track_qo = rows.iter().any(|r| r.message_type == "_track.qo");
+
                 for row in rows {
+                    if has_track_qo && row.message_type != "_track.qo" {
+                        continue;
+                    }
                     if let Some(data) = row.data {
                         if let Ok(j) = json::from_slice::<json::Value>(&data) {
                             if let Some(pt) = extract_sfy_point(&j, &row.message_type) {
