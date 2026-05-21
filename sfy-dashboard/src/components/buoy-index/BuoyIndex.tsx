@@ -192,7 +192,7 @@ export class BuoyIndex
             {this.props.onLogout &&
               <button type="button" className="btn btn-outline-dark btn-sm" onClick={this.props.onLogout}>✕ Log out</button>
             }
-            <a href="https://github.com/gauteh/sfy" className="text-muted small">sfy</a>
+            <a href="https://github.com/gauteh/sfy" className="text-muted small">github.com/gauteh/sfy</a>
           </div>
         </div>
 
