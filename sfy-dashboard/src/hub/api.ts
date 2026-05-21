@@ -20,7 +20,12 @@ export class ApiConf {
   }
 }
 
-export const SFY_SERVER = process.env.SFY_SERVER;
+// In development the client always uses relative URLs so requests go through
+// the webpack dev server proxy (avoiding CORS). In production the full server
+// URL baked in at build time is used.
+export const SFY_SERVER = process.env.NODE_ENV === 'development'
+  ? ''
+  : process.env.SFY_SERVER;
 
 export let API_CONF: ApiConf = new ApiConf(SFY_SERVER, undefined);
 
