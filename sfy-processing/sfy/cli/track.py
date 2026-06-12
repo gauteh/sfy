@@ -191,7 +191,10 @@ def csv(dev, start, end, tower, axl, session):
     })
 
     if not tower:
-        df = df[df['Type'] == 'gps']
+        allowed_types = {'gps'}
+        if session:
+            allowed_types.add('tower')
+        df = df[df['Type'].isin(allowed_types)]
 
     if not axl:
         allowed = {'_track.qo'}
