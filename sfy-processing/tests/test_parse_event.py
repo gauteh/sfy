@@ -36,6 +36,37 @@ def test_position_range(sfyhub, tmpdir):
     assert any('axl.qo' in t for t in pos[:,4])
 
 @needs_hub
+def test_parse_session_qo_open(sfyhub):
+    """Parse real opening _session.qo (session.begin) events fetched from the hub."""
+    from datetime import timedelta
+    b = sfyhub.buoy('sfy4-01')
+    end = datetime.now(tz=timezone.utc)
+    start = end - timedelta(hours=24)
+
+    pcks = b.position_packages_range(start, end)
+    opening = [p for p in pcks if p.file == '_session.qo' and p.req == 'session.begin']
+
+    print(f'Found {len(opening)} opening _session.qo packages')
+    assert len(opening) > 0
+    assert all(p.voltage is not None for p in opening)
+    assert all(p.get_voltage() is not None for p in opening)
+
+@needs_hub
+def test_parse_session_qo_close(sfyhub):
+    """Parse closing _session.qo (session.end) events that carry hub_* fields."""
+    from datetime import timedelta
+    b = sfyhub.buoy('sfy4-01')
+    end = datetime.now(tz=timezone.utc)
+    start = end - timedelta(hours=24)
+
+    pcks = b.position_packages_range(start, end)
+    closing = [p for p in pcks if p.file == '_session.qo' and p.req == 'session.end']
+
+    print(f'Found {len(closing)} closing _session.qo packages')
+    assert len(closing) > 0
+    assert all(p.hub_last_work_done is not None for p in closing)
+
+@needs_hub
 def test_parse_session_qo(sfyhub):
     from datetime import timedelta
     b = sfyhub.buoy('sfy4-01')

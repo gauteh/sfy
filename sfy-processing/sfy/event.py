@@ -171,6 +171,16 @@ class Session(Event):
     moved: int = None
     orientation: str = None
 
+    # Hub statistics (present in closing session.end events)
+    hub_last_work_done: int = None
+    hub_duration_secs: int = None
+    hub_events_routed: int = None
+    hub_rcvd_bytes: int = None
+    hub_sent_bytes: int = None
+    hub_tls_sessions: int = None
+    hub_tcp_sessions: int = None
+    hub_sent_notes: int = None
+
     @staticmethod
     def parse(d) -> 'Session':
         """
