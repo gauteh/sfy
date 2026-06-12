@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 from .axl import Axl
 from .spec import Spec
 from .egps import Egps
-from .event import Event
+from .event import Event, Session
 from .timeutil import utcify
 
 
@@ -377,14 +377,19 @@ class SfyBuoy(Buoy):
         pcks = self.fetch_packages_range(start, end)
 
         pcks = (pck for pck in pcks
-                if 'axl.qo.json' in pck[1] or '_track.qo.json' in pck[1])
+                if 'axl.qo.json' in pck[1] or '_track.qo.json' in pck[1] or '_session.qo.json' in pck[1])
         if only_axl:
             pcks = (pck for pck in pcks if 'axl.qo.json' in pck[1])
 
         pcks = list(pcks)
         logger.debug(f"Found {len(pcks)} position packages")
 
-        pcks = [Event.try_parse(pck[2]) for pck in tqdm(pcks)]
+        def _parse(pck):
+            if '_session.qo.json' in pck[1]:
+                return Session.try_parse(pck[2])
+            return Event.try_parse(pck[2])
+
+        pcks = [_parse(pck) for pck in tqdm(pcks)]
         pcks = [pck for pck in pcks if pck is not None]
         logger.debug(f"Loaded {len(pcks)} packages.")
 

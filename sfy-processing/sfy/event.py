@@ -58,6 +58,9 @@ class Event:
     where_timezone: str = None
 
     fleets: str = None
+    platform: Any = None
+    tls: bool = None
+    firmware_notecard: str = None
 
     body: Any = None
     payload: Any = None
@@ -111,6 +114,12 @@ class Event:
         with open(path, 'w') as fd:
             fd.write(data)
 
+    def get_voltage(self):
+        return self.body.get('voltage', None) if self.body else None
+
+    def get_temp(self):
+        return self.body.get('temperature', None) if self.body else None
+
     @classmethod
     def try_parse(cls, d):
         try:
@@ -134,3 +143,52 @@ class Event:
         data = self.__dict__.copy()
 
         return json.dumps(data)
+
+
+@dataclass(frozen=True)
+class Session(Event):
+    """
+    Parsed _session.qo event from sfy4 buoys. These carry modem / radio
+    statistics and device state as top-level fields (not inside body).
+    """
+    # Modem / radio fields
+    sku: str = None
+    ordering_code: str = None
+    bearer: str = None
+    cellid: str = None
+    iccid: str = None
+    apn: str = None
+    rssi: float = None
+    sinr: float = None
+    rsrp: float = None
+    rsrq: float = None
+    rat: str = None
+    bars: int = None
+
+    # Device state
+    voltage: float = None
+    temp: float = None
+    moved: int = None
+    orientation: str = None
+
+    @staticmethod
+    def parse(d) -> 'Session':
+        """
+        Parse a _session.qo JSON string.
+        """
+        data = json.loads(d)
+        return Session(**data)
+
+    @classmethod
+    def try_parse(cls, d):
+        try:
+            return cls.parse(d)
+        except (KeyError, json.decoder.JSONDecodeError, ValueError, TypeError) as e:
+            logger.error(f"failed to parse session file: {e}")
+            return None
+
+    def get_voltage(self):
+        return self.voltage
+
+    def get_temp(self):
+        return self.temp

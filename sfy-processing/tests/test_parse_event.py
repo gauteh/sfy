@@ -35,3 +35,20 @@ def test_position_range(sfyhub, tmpdir):
     assert any('track' in t for t in pos[:,4])
     assert any('axl.qo' in t for t in pos[:,4])
 
+@needs_hub
+def test_parse_session_qo(sfyhub):
+    from datetime import timedelta
+    b = sfyhub.buoy('sfy4-01')
+    end = datetime.now(tz=timezone.utc)
+    start = end - timedelta(hours=24)
+
+    pcks = b.position_packages_range(start, end)
+    session_pcks = [p for p in pcks if p.file == '_session.qo']
+
+    print(f'Found {len(session_pcks)} _session.qo packages out of {len(pcks)} total')
+    for p in session_pcks:
+        print(p.file, p.best_position_time, p.longitude, p.latitude, p.get_voltage())
+
+    assert len(session_pcks) > 0
+    assert any(p.get_voltage() is not None for p in session_pcks)
+

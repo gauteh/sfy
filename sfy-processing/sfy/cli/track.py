@@ -150,7 +150,12 @@ def map(dev, fast, nib, start, end, margins, save):
               is_flag=True,
               help='Include positions from acceleration packages',
               type=bool)
-def csv(dev, start, end, tower, axl):
+@click.option('--session',
+              default=False,
+              is_flag=True,
+              help='Include positions from session packages (_session.qo)',
+              type=bool)
+def csv(dev, start, end, tower, axl, session):
     hub = Hub.from_env()
     buoy = hub.buoy(dev)
 
@@ -161,11 +166,11 @@ def csv(dev, start, end, tower, axl):
     lat = [pck.latitude for pck in pcks]
     typ = [pck.position_type for pck in pcks]
     file = [pck.file for pck in pcks]
-    bearing = [pck.body.get('bearing', None) for pck in pcks]
-    velocity = [pck.body.get('velocity', None) for pck in pcks]
-    distance = [pck.body.get('distance', None) for pck in pcks]
-    temperature = [pck.body.get('temperature', None) for pck in pcks]
-    voltage = [pck.body.get('voltage', None) for pck in pcks]
+    bearing = [pck.body.get('bearing', None) if pck.body else None for pck in pcks]
+    velocity = [pck.body.get('velocity', None) if pck.body else None for pck in pcks]
+    distance = [pck.body.get('distance', None) if pck.body else None for pck in pcks]
+    temperature = [pck.get_temp() for pck in pcks]
+    voltage = [pck.get_voltage() for pck in pcks]
     tower_lat = [ pck.tower_lat for pck in pcks ]
     tower_lon = [ pck.tower_lon for pck in pcks ]
 
@@ -189,7 +194,10 @@ def csv(dev, start, end, tower, axl):
         df = df[df['Type'] == 'gps']
 
     if not axl:
-        df = df[df['File'] == '_track.qo']
+        allowed = {'_track.qo'}
+        if session:
+            allowed.add('_session.qo')
+        df = df[df['File'].isin(allowed)]
 
     buf = io.StringIO()
     df.to_csv(buf, index=False)
@@ -206,7 +214,12 @@ def csv(dev, start, end, tower, axl):
               default=None,
               help='Filter packages before this time',
               type=click.DateTime())
-def stats(dev, start, end):
+@click.option('--session',
+              default=False,
+              is_flag=True,
+              help='Include positions from session packages (_session.qo)',
+              type=bool)
+def stats(dev, start, end, session):
     """
     Plot stats, voltage, temperature, etc
     """
@@ -214,18 +227,14 @@ def stats(dev, start, end):
     buoy = hub.buoy(dev)
 
     pcks = buoy.position_packages_range(start, end)
-    pcks = [pck for pck in pcks if pck.file == '_track.qo']
+    allowed = {'_track.qo'}
+    if session:
+        allowed.add('_session.qo')
+    pcks = [pck for pck in pcks if pck.file in allowed]
 
     tm = np.array([pck.best_position_time for pck in pcks], dtype='datetime64[s]')
-    lon = [pck.longitude for pck in pcks]
-    lat = [pck.latitude for pck in pcks]
-    typ = [pck.position_type for pck in pcks]
-    file = [pck.file for pck in pcks]
-    bearing = [pck.body.get('bearing', None) for pck in pcks]
-    velocity = [pck.body.get('velocity', None) for pck in pcks]
-    distance = [pck.body.get('distance', None) for pck in pcks]
-    temperature = [pck.body.get('temperature', None) for pck in pcks]
-    voltage = [pck.body.get('voltage', None) for pck in pcks]
+    temperature = [pck.get_temp() for pck in pcks]
+    voltage = [pck.get_voltage() for pck in pcks]
 
     f = plt.figure()
     ax = plt.gca()
