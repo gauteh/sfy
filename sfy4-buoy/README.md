@@ -38,6 +38,25 @@ rustup component add rust-src llvm-tools-preview rustc-dev
 cargo install cargo-binutils
 ```
 
+### Ubuntu 24
+
+Ubuntu 24 ships clang 18 by default, which is incompatible with the `bindgen`
+version used by `ambiq-hal-sys`. Install clang 14 and set two environment
+variables before building:
+
+```sh
+sudo apt install clang-14
+```
+
+```sh
+export LIBCLANG_PATH=/usr/lib/llvm-14/lib
+export BINDGEN_EXTRA_CLANG_ARGS="--target=thumbv7em-none-eabihf -I/usr/lib/gcc/arm-none-eabi/13.2.1/include"
+```
+
+- `LIBCLANG_PATH` forces bindgen to use clang 14 instead of clang 18.
+- `BINDGEN_EXTRA_CLANG_ARGS` points clang at the ARM cross-compiler headers
+  (Ubuntu 24 ships GCC ARM 13.x at a different path than earlier releases).
+
 ### Running host tests
 
 Host tests run on the development machine (no hardware required):
