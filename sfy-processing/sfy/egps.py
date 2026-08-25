@@ -396,7 +396,7 @@ class Egps(Event):
         data['lonlat_range'] = data['body']['lonlat_range']
         data['msl_range'] = data['body']['msl_range']
         data['vel_range'] = data['body'].get('vel_range',
-                                             200.0 * 1.0e6 / 60. / 60)
+                                             115.0 * 1.0e6 / 60. / 60)
         data['filled'] = data['body'].get('filled', 0)
         del data['body']
 

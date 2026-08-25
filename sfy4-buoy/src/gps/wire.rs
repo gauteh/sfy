@@ -27,7 +27,8 @@ pub const LON_RANGE: f32 = 2.0 * DEG_PER_M * 550.0 * 1e7;
 pub const MSL_RANGE: f32 = 2.0 * 120.0 * 1.0e3; // 60 m in both directions [mm]
 
 // Maximum speed
-pub const VEL_RANGE: f32 = 200.0 * 1.0e6 / 60.0 / 60.0;
+// 115 km/h range; u16 resolution ≈ 0.97 mm/s, below the chip's integer mm/s precision.
+pub const VEL_RANGE: f32 = 115.0 * 1.0e6 / 60.0 / 60.0;
 
 impl ScaledF32 for Lon16 {
     const MAX: f32 = LON_RANGE;
@@ -150,5 +151,14 @@ mod tests {
 
         assert!(max < 4.0);
         // panic!();
+    }
+
+    #[test]
+    fn vel_resolution_below_1mm_s() {
+        // VEL_RANGE must be small enough that the u16 step size is < 1 mm/s,
+        // matching the chip's native integer mm/s precision.
+        let resolution = 2.0 * VEL_RANGE / u16::MAX as f32;
+        println!("vel resolution: {} mm/s", resolution);
+        assert!(resolution < 1.0, "vel resolution {:.3} mm/s >= 1 mm/s", resolution);
     }
 }

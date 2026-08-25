@@ -13,7 +13,7 @@ use heapless::{
 
 pub use max_m10s::ubx::NavPvt;
 
-pub const GPS_PACKET_V: u8 = 4;
+pub const GPS_PACKET_V: u8 = 5;
 pub const GPS_PACKET_SZ: usize = 256;
 /// Nominal inter-sample interval in milliseconds (25 Hz).
 pub const GPS_NOMINAL_MS: i64 = 71; // 1000 / 14 Hz ≈ 71.4 ms, rounded
