@@ -1,5 +1,10 @@
 # Hardware
 
+### sfy-v4
+
+* Based on v3.
+* Has an onboard GPS: uBlox MAX-M10S or MAX-M10M.
+
 ### sfy-v3.1.5
 
 All components except modem assembled by factory. Has onboard antennas, but
