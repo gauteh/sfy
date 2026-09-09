@@ -64,6 +64,7 @@ ntn-test = [ "spectrum" ]
 surf = []
 ice = []
 testing = [ "defmt/unstable-test" ]
+egps-duty-cycle = []
 target-test = [ "storage" ]
 build-bin = [ "fir", "storage", "raw", "anyhow", "argh", "serde-json-core/std", "serde_json", "chrono/std" ]
 

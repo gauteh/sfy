@@ -49,6 +49,8 @@ use max_m10s::MaxM10S;
 use rtcc::DateTimeAccess;
 
 use sfy::gps::{EgpsTime, GpsCollector};
+#[cfg(feature = "egps-duty-cycle")]
+use sfy::gps::duty::{EgpsAction, EgpsDutyCycle, EgpsDutyCycleConfig};
 use sfy::log::log;
 use sfy::note::Notecarrier;
 use sfy::waves::Waves;
@@ -110,6 +112,20 @@ static mut I2C_GPS: Option<GpsI2C> = None;
 /// Written by the GPIO ISR, read by the main loop to associate PVT with the pulse.
 static PPS_TIME: Mutex<RefCell<i64>> = Mutex::new(RefCell::new(0));
 
+/// GPS power control GPIO (d8 / pad 38, LOW = on). Held here (rather than as
+/// a plain local) so the main loop can power-cycle the module for the
+/// duty-cycle state machine (feature `egps-duty-cycle`).
+#[cfg(feature = "egps-duty-cycle")]
+static GPS_PWR: Mutex<RefCell<Option<hal::gpio::pin::Pin<38, { Mode::Output }>>>> =
+    Mutex::new(RefCell::new(None));
+
+/// Whether the RTC ISR should feed drained PVT samples into `GPS_COLLECTOR`.
+/// Only set while a duty-cycled spectrum burst is in progress (feature
+/// `egps-duty-cycle`); outside of a burst, PVTs are still drained from the
+/// module's FIFO (to keep it from backing up) but not accumulated/sent.
+#[cfg(feature = "egps-duty-cycle")]
+static EGPS_STREAMING: core::sync::atomic::AtomicBool = core::sync::atomic::AtomicBool::new(false);
+
 // ---------------------------------------------------------------------------
 // Entry point
 // ---------------------------------------------------------------------------
@@ -169,6 +185,27 @@ fn main() -> ! {
     println!("GPS_HEARTBEAT: {}", sfy::note::GPS_HEARTBEAT);
     println!("SYNC_PERIOD .: {}", sfy::note::SYNC_PERIOD);
     println!("EXT_SIM_APN .: {}", sfy::note::EXT_APN);
+    #[cfg(feature = "egps-duty-cycle")]
+    {
+        println!("egps-duty-cycle enabled:");
+        println!(
+            "EGPS_POSITION_INTERVAL: {}",
+            sfy::note::EGPS_POSITION_INTERVAL
+        );
+        println!("EGPS_POSITION_DWELL .: {}", sfy::note::EGPS_POSITION_DWELL);
+        println!(
+            "EGPS_SPECTRUM_DURATION: {}",
+            sfy::note::EGPS_SPECTRUM_DURATION
+        );
+        println!(
+            "EGPS_SPECTRUM_PERIOD : {}",
+            sfy::note::EGPS_SPECTRUM_PERIOD
+        );
+        println!(
+            "EGPS_SLEEP_THRESHOLD : {}",
+            sfy::note::EGPS_SLEEP_THRESHOLD
+        );
+    }
 
     info!("Setting up IOM and RTC.");
     delay.delay_ms(1_000u32);
@@ -413,6 +450,8 @@ fn main() -> ! {
         if let Some(pin) = TS_PIN.borrow(cs).borrow_mut().as_mut() {
             pin.enable_interrupt();
         }
+        #[cfg(feature = "egps-duty-cycle")]
+        GPS_PWR.borrow(cs).replace(Some(gps_pwr));
     });
 
     defmt::info!("Enable interrupts");
@@ -428,6 +467,29 @@ fn main() -> ! {
     #[cfg(feature = "storage")]
     let mut sd_good: bool = true;
 
+    // Duty-cycle state machine (feature `egps-duty-cycle`): the cold-init
+    // sequence above already brought the GPS up at 1 Hz-equivalent full
+    // power, so the machine's own initial "wake" action is consumed here
+    // and discarded (hardware is already in the right state for it).
+    #[cfg(feature = "egps-duty-cycle")]
+    let mut egps_duty = {
+        let cfg = EgpsDutyCycleConfig::from_secs(
+            sfy::note::EGPS_POSITION_INTERVAL,
+            sfy::note::EGPS_POSITION_DWELL,
+            sfy::note::EGPS_SPECTRUM_DURATION,
+            sfy::note::EGPS_SPECTRUM_PERIOD,
+            sfy::note::EGPS_SLEEP_THRESHOLD,
+        );
+        let now0 = STATE
+            .now()
+            .map(|t| t.and_utc().timestamp_millis())
+            .unwrap_or(0);
+        let mut sm = EgpsDutyCycle::new(cfg, now0);
+        let _ = sm.poll(now0);
+        EGPS_STREAMING.store(sm.is_streaming(), core::sync::atomic::Ordering::Relaxed);
+        sm
+    };
+
     loop {
         let now = STATE.now().map(|t| t.and_utc().timestamp_millis());
         // When the RTC can't be read, fall back to FUTURE so that all time-gated
@@ -437,8 +499,20 @@ fn main() -> ! {
         // Always apply the latest GPS snapshot to the RTC and location — cheap critical section.
         // If the RTC was actually set, update PPS_TIME to the new domain so the staleness
         // check in set_from_egps doesn't see a stale pre-jump pps_time on the next call.
-        if let Some(new_rtc_ms) = location.set_from_egps(&STATE, &EGPS_TIME) {
+        let got_new_fix = location.set_from_egps(&STATE, &EGPS_TIME);
+        if let Some(new_rtc_ms) = got_new_fix {
             free(|cs| *PPS_TIME.borrow(cs).borrow_mut() = new_rtc_ms);
+        }
+
+        // --- Drive the egps duty-cycle state machine --------------------------
+        #[cfg(feature = "egps-duty-cycle")]
+        {
+            if got_new_fix.is_some() {
+                let action = egps_duty.fix_acquired(now_ms);
+                apply_egps_action(action, &mut delay);
+            }
+            let action = egps_duty.poll(now_ms);
+            apply_egps_action(action, &mut delay);
         }
 
         // GPS FIFO is drained in the RTC ISR (every 100 ms) so that samples are
@@ -565,6 +639,140 @@ fn main() -> ! {
                 }
             }
         };
+    }
+}
+
+// ---------------------------------------------------------------------------
+// egps duty-cycle: apply state-machine actions to the GPS hardware
+// ---------------------------------------------------------------------------
+
+/// Carry out the hardware side-effects requested by the duty-cycle state
+/// machine (feature `egps-duty-cycle`): power the GPS module on/off, put it
+/// into/out of UBX backup sleep, adjust its output rate, and gate whether
+/// the RTC ISR feeds drained samples into `GPS_COLLECTOR`.
+///
+/// `GNSS`/`I2C_GPS` are read under a critical section (`free`) to avoid
+/// racing with the RTC ISR, which also drains the GPS FIFO through them.
+#[cfg(feature = "egps-duty-cycle")]
+fn apply_egps_action(action: EgpsAction, delay: &mut impl DelayMs<u16>) {
+    use core::sync::atomic::Ordering;
+
+    match action {
+        EgpsAction::None => {}
+
+        EgpsAction::EnterIdleBackupSleep => {
+            free(|_cs| unsafe {
+                if let (Some(gnss), Some(i2c)) = (GNSS.as_mut(), I2C_GPS.as_mut()) {
+                    gnss.sleep(i2c)
+                        .inspect_err(|e| warn!("GPS sleep failed: {:?}", defmt::Debug2Format(e)))
+                        .ok();
+                }
+            });
+            info!("egps: idle (backup sleep)");
+        }
+
+        EgpsAction::EnterIdlePowerOff => {
+            free(|cs| {
+                if let Some(pin) = GPS_PWR.borrow(cs).borrow_mut().as_mut() {
+                    pin.set_high().ok(); // HIGH = off
+                }
+            });
+            info!("egps: idle (powered off)");
+        }
+
+        EgpsAction::WakeResume => {
+            free(|cs| {
+                if let Some(pin) = GPS_PWR.borrow(cs).borrow_mut().as_mut() {
+                    pin.set_low().ok(); // ensure d8 power stays on
+                }
+            });
+            free(|_cs| unsafe {
+                if let (Some(gnss), Some(i2c)) = (GNSS.as_mut(), I2C_GPS.as_mut()) {
+                    gnss.resume(i2c)
+                        .inspect_err(|e| warn!("GPS resume failed: {:?}", defmt::Debug2Format(e)))
+                        .ok();
+                    gnss.set_output_rate(i2c, 1)
+                        .inspect_err(|e| {
+                            warn!(
+                                "GPS set_output_rate (resume) failed: {:?}",
+                                defmt::Debug2Format(e)
+                            )
+                        })
+                        .ok();
+                }
+            });
+            info!("egps: waking (resume from backup sleep)");
+        }
+
+        EgpsAction::WakePowerOnReinit => {
+            free(|cs| {
+                if let Some(pin) = GPS_PWR.borrow(cs).borrow_mut().as_mut() {
+                    pin.set_low().ok(); // power on via d8
+                }
+            });
+            delay.delay_ms(200u16);
+            free(|_cs| unsafe {
+                if let Some(i2c) = I2C_GPS.as_mut() {
+                    match MaxM10S::new(i2c) {
+                        Ok(mut dev) => {
+                            let ready = loop {
+                                match dev.init(i2c) {
+                                    Ok(()) => break true,
+                                    Err(e) => {
+                                        warn!(
+                                            "GPS re-init failed: {:?}",
+                                            defmt::Debug2Format(&e)
+                                        );
+                                        break false;
+                                    }
+                                }
+                            };
+                            if ready {
+                                dev.set_output_rate(i2c, 1).ok();
+                                dev.set_pps_rate(i2c, 1_000_000, 10_000).ok();
+                                dev.enable_pvt(i2c).ok();
+                                GNSS = Some(dev);
+                            }
+                        }
+                        Err(_) => warn!("GPS device not found on power-on re-init"),
+                    }
+                }
+            });
+            info!("egps: waking (full power-on re-init)");
+        }
+
+        EgpsAction::StartSpectrumBurst => {
+            free(|_cs| unsafe {
+                if let (Some(gnss), Some(i2c)) = (GNSS.as_mut(), I2C_GPS.as_mut()) {
+                    gnss.set_output_rate(i2c, 14)
+                        .inspect_err(|e| {
+                            warn!(
+                                "GPS set_output_rate (burst) failed: {:?}",
+                                defmt::Debug2Format(e)
+                            )
+                        })
+                        .ok();
+                }
+            });
+            EGPS_STREAMING.store(true, Ordering::Relaxed);
+            info!("egps: spectrum burst started");
+        }
+
+        EgpsAction::EndSpectrumBurstIdleBackupSleep | EgpsAction::EndSpectrumBurstIdlePowerOff => {
+            EGPS_STREAMING.store(false, Ordering::Relaxed);
+            free(|_cs| unsafe {
+                if let Some(gc) = GPS_COLLECTOR.as_mut() {
+                    gc.flush_pending();
+                }
+            });
+            info!("egps: spectrum burst ended");
+            let idle_action = if matches!(action, EgpsAction::EndSpectrumBurstIdleBackupSleep) {
+                EgpsAction::EnterIdleBackupSleep
+            } else {
+                EgpsAction::EnterIdlePowerOff
+            };
+            apply_egps_action(idle_action, delay);
+        }
     }
 }
 
@@ -707,6 +915,13 @@ fn RTC() {
                     EGPS_TIME.borrow(cs).replace(Some(egps));
                 });
             }
+            #[cfg(feature = "egps-duty-cycle")]
+            {
+                if EGPS_STREAMING.load(Ordering::Relaxed) {
+                    gps_collector.add_sample(pvt);
+                }
+            }
+            #[cfg(not(feature = "egps-duty-cycle"))]
             gps_collector.add_sample(pvt);
         }) {
             Ok(_) => {}

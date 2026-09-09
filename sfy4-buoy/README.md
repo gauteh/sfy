@@ -111,6 +111,29 @@ AUXRX/AUXTX and pull AUXEN up](https://dev.blues.io/guides-and-tutorials/notecar
 * host-tests: used to disable code that doesn't compile on host, for running
     host unit tests. Best used through `make host-test`.
 
+* egps-duty-cycle: duty-cycle the external GPS (egps, MAX-M10S) instead of
+    running it continuously: wake only periodically for a position/time fix,
+    and optionally run a high-rate "egps spectrum" burst on its own duty
+    cycle (used to derive a wave spectrum from GPS displacement, sent as
+    `egpsb.qo`). Setting `EGPS_SPECTRUM_DURATION=0` disables bursts entirely
+    (position-only mode). See the env vars below.
+
+    **This feature is off by default.** To get the current/original
+    behavior -- egps running continuously at full rate, always streaming
+    `egpsb.qo` -- simply do not enable this feature (i.e. build without
+    `--features egps-duty-cycle`); nothing else needs to change.
+
+    Each spectrum burst always runs for exactly `EGPS_SPECTRUM_DURATION`
+    seconds (~20 minutes by default) once it starts -- this is enforced by
+    the state machine itself (measured from when a fix is acquired) and is
+    independent of `EGPS_SPECTRUM_PERIOD`. `EGPS_SPECTRUM_PERIOD` only
+    controls how often a *new* burst is started (start-to-start interval);
+    it does not affect a burst's length. If `EGPS_SPECTRUM_PERIOD` is set
+    shorter than `EGPS_SPECTRUM_DURATION + EGPS_POSITION_INTERVAL`, bursts
+    will not be spaced as configured (they can run back-to-back, or start
+    on every position wake) -- `build.rs` emits a `cargo:warning` at build
+    time if this is misconfigured.
+
 ### Environment variables
 
 * BUOYSN: the name of the buoy as it appears on the data server.
@@ -128,6 +151,31 @@ AUXRX/AUXTX and pull AUXEN up](https://dev.blues.io/guides-and-tutorials/notecar
 * SYNC_PERIOD: Maximum time between syncs (default 20 minutes).
 
 * DEFMT_LOG: defmt log levels, leave empty to compile out.
+
+* EGPS_POSITION_INTERVAL (feature `egps-duty-cycle`): how often to wake the
+    egps module for a position/time fix outside of a spectrum burst, in
+    seconds (default 600, 10 minutes).
+
+* EGPS_POSITION_DWELL (feature `egps-duty-cycle`): max time to wait for a
+    valid fix per wake before giving up and going back to idle, in seconds
+    (default 120, 2 minutes).
+
+* EGPS_SPECTRUM_DURATION (feature `egps-duty-cycle`): length of a high-rate
+    burst during which raw samples are collected and sent as `egpsb.qo`, in
+    seconds (default 1200, 20 minutes). Always honoured exactly (measured
+    from fix acquisition to burst end). `0` disables bursts entirely
+    (position-only mode).
+
+* EGPS_SPECTRUM_PERIOD (feature `egps-duty-cycle`): start-to-start interval
+    between spectrum bursts, in seconds (default 10800, 3 hours). Must be
+    >= `EGPS_SPECTRUM_DURATION + EGPS_POSITION_INTERVAL` or bursts won't be
+    spaced as configured (a build-time warning is emitted otherwise).
+
+* EGPS_SLEEP_THRESHOLD (feature `egps-duty-cycle`): idle gaps less than or
+    equal to this use UBX backup sleep (module stays powered, fast resume);
+    gaps above this fully power off the module via the `d8` GPIO
+    (near-zero standby current, needs re-init on wake), in seconds
+    (default 1800, 30 minutes).
 
 # Troubleshooting
 

@@ -28,6 +28,9 @@ pub const GPS_COBS_BUF_LEN: usize = GPS_RAW_LEN + GPS_RAW_LEN / 254 + 2;
 mod wire;
 pub use wire::*;
 
+#[cfg(feature = "egps-duty-cycle")]
+pub mod duty;
+
 use crate::waves::wire::ScaledF32;
 use crate::EPGS_SZ;
 
@@ -363,6 +366,13 @@ impl GpsCollector {
         pending.fix[fix_idx] += 1;
         let soln_idx = ((s.flags as usize >> 5) & 0x3).min(pending.soln.len() - 1);
         pending.soln[soln_idx] += 1;
+    }
+
+    /// Force-flush any in-progress packet. Used e.g. when ending a
+    /// duty-cycled spectrum burst (feature `egps-duty-cycle`), so a partial
+    /// packet is not lost/held across the following idle period.
+    pub fn flush_pending(&mut self) {
+        self.flush();
     }
 
     /// Finalise the in-progress packet and push it to the queue.
