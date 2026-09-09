@@ -74,7 +74,7 @@ def test_sfy4_01_egpsb_position(sfyhub, plot):
     on 2026-05-19 ~17:00-18:00 UTC (19:00-20:00 GMT+2). The buoy was mounted on
     a boat with speeds up to 16 knots, with some stationary periods.
     """
-    b = sfyhub.buoy('SFY4-01')
+    b = sfyhub.buoy('dev860264050364604')
     start = datetime(2026, 5, 19, 17, 0, tzinfo=timezone.utc)
     end   = datetime(2026, 5, 19, 18, 0, tzinfo=timezone.utc)
 
@@ -147,7 +147,7 @@ def test_sfy4_01_egpsb_spectrum(sfyhub, plot):
     Velocities (mm/s) are integrated once via Welch to yield elevation spectra (m^2/Hz).
     Horizontal (vn, ve) and vertical (vz) components are plotted separately.
     """
-    b = sfyhub.buoy('SFY4-01')
+    b = sfyhub.buoy('dev860264050364604')
     start = datetime(2026, 5, 19, 17, 0, tzinfo=timezone.utc)
     end   = datetime(2026, 5, 19, 18, 0, tzinfo=timezone.utc)
 
@@ -211,7 +211,7 @@ def test_sfy4_01_egpsb_stationary_spectrum(sfyhub, plot):
     stationary (2026-05-20 01:00-04:00 local / 2026-05-19 23:00 - 2026-05-20
     02:00 UTC). Uses egps_spec_stats (velocity integrated once, order=1).
     """
-    b = sfyhub.buoy('SFY4-01')
+    b = sfyhub.buoy('dev860264050364604')
     # 01:00-04:00 local (GMT+2) = 23:00-02:00 UTC
     start = datetime(2026, 5, 19, 23, 0, tzinfo=timezone.utc)
     end   = datetime(2026, 5, 20,  2, 0, tzinfo=timezone.utc)
@@ -275,7 +275,7 @@ def test_sfy4_01_egpsb_vs_axlb_spectrum(sfyhub, plot):
     from sfy.axl import AxlCollection
     from sfy import xr as sfyxr
 
-    b = sfyhub.buoy('SFY4-01')
+    b = sfyhub.buoy('dev860264050364604')
     start = datetime(2026, 5, 19, 23, 0, tzinfo=timezone.utc)
     end   = datetime(2026, 5, 20,  2, 0, tzinfo=timezone.utc)
 
