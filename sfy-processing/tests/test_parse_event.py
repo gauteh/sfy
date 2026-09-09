@@ -1,7 +1,12 @@
 import numpy as np
 from sfy import event
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from . import *
+
+# Reference time for the _session.qo hub-fetch tests below, pinned to the
+# commit that created/updated them so results are reproducible rather than
+# depending on `datetime.now()` at test-run time.
+SESSION_QO_TESTS_REFERENCE_TIME = datetime(2026, 8, 25, 9, 19, 0, tzinfo=timezone(timedelta(hours=2)))
 
 
 def test_parse_track():
@@ -38,9 +43,8 @@ def test_position_range(sfyhub, tmpdir):
 @needs_hub
 def test_parse_session_qo_open(sfyhub):
     """Parse real opening _session.qo (session.begin) events fetched from the hub."""
-    from datetime import timedelta
     b = sfyhub.buoy('dev860264050364604')
-    end = datetime.now(tz=timezone.utc)
+    end = SESSION_QO_TESTS_REFERENCE_TIME
     start = end - timedelta(hours=24)
 
     pcks = b.position_packages_range(start, end)
@@ -54,9 +58,8 @@ def test_parse_session_qo_open(sfyhub):
 @needs_hub
 def test_parse_session_qo_close(sfyhub):
     """Parse closing _session.qo (session.end) events that carry hub_* fields."""
-    from datetime import timedelta
     b = sfyhub.buoy('dev860264050364604')
-    end = datetime.now(tz=timezone.utc)
+    end = SESSION_QO_TESTS_REFERENCE_TIME
     start = end - timedelta(hours=24)
 
     pcks = b.position_packages_range(start, end)
@@ -68,9 +71,8 @@ def test_parse_session_qo_close(sfyhub):
 
 @needs_hub
 def test_parse_session_qo(sfyhub):
-    from datetime import timedelta
     b = sfyhub.buoy('dev860264050364604')
-    end = datetime.now(tz=timezone.utc)
+    end = SESSION_QO_TESTS_REFERENCE_TIME
     start = end - timedelta(hours=24)
 
     pcks = b.position_packages_range(start, end)
