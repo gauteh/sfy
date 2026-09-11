@@ -582,11 +582,30 @@ fn main() -> ! {
         .map(|t| t.and_utc().timestamp_millis())
         .unwrap_or(0);
 
+    // Last known-good RTC reading, used to bridge over transient RTC read
+    // failures (`STATE.now() == None`, e.g. an Apollo3 register-sync glitch
+    // right after `set_datetime`) without corrupting time-derived state.
+    // Previously this fell back to `sfy::FUTURE` (a fixed year-2050
+    // sentinel used elsewhere to mean "not yet time-synced") on any read
+    // failure; feeding that into `egps_duty`/`last_env_poll_ms` baked a
+    // ~80,000-years-in-the-future deadline into the duty-cycle state
+    // machine, permanently stalling all further egps wakes/batches for the
+    // rest of the deployment. Reusing the last known-good time instead just
+    // stalls for one iteration and retries.
+    let mut last_known_now_ms: i64 = last_env_poll_ms;
+
     loop {
         let now = STATE.now().map(|t| t.and_utc().timestamp_millis());
-        // When the RTC can't be read, fall back to FUTURE so that all time-gated
-        // conditions fire rather than silently stall.
-        let now_ms = now.unwrap_or(sfy::FUTURE.and_utc().timestamp_millis());
+        if let Some(now) = now {
+            last_known_now_ms = now;
+        } else {
+            warn!(
+                "RTC: read failed this iteration, reusing last known time ({} ms) instead of \
+                 advancing scheduled wake times.",
+                last_known_now_ms
+            );
+        }
+        let now_ms = last_known_now_ms;
 
         // Always apply the latest GPS snapshot to the RTC and location — cheap critical section.
         // If the RTC was actually set, update PPS_TIME to the new domain so the staleness
