@@ -16,9 +16,9 @@ export BINDGEN_EXTRA_CLANG_ARGS="--target=thumbv7em-none-eabihf -I/usr/lib/gcc/a
 ## Host tests
 
 Run with `make host-test` (in `sfy4-buoy/`), which loops `cargo test` across
-several feature combinations (`testing`, `raw`, `fir`, `spectrum`,
-`simulate-egps`, etc.) — always run this rather than a single `cargo test`
-invocation when validating changes.
+several feature combinations (`testing`, `raw`, `fir`, `spectrum`, etc.) —
+always run this rather than a single `cargo test` invocation when validating
+changes.
 
 ## Terminology: "batch" (egps) vs "spectrum" (axl)
 

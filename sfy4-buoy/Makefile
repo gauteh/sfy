@@ -70,4 +70,3 @@ host-test:
 	cargo test --features testing,fir
 	cargo test --features testing,fir,raw
 	cargo test --features testing,spectrum
-	cargo test --features testing,simulate-egps

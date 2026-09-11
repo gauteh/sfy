@@ -4,8 +4,6 @@
 //! This module collects those packets into `GpsPacket` bundles for
 //! transmission via the notecard, and provides `EgpsTime` for RTC time-sync.
 use chrono::{NaiveDate, NaiveDateTime};
-#[cfg(feature = "simulate-egps")]
-use chrono::{Datelike, Timelike};
 #[allow(unused_imports)]
 use defmt::{debug, error, info, println, trace, warn};
 use heapless::{
@@ -66,48 +64,6 @@ impl EgpsTime {
             lat: pvt.lat as f64 / 1.0e7,
         })
     }
-}
-
-/// Generate a synthetic `NavPvt` for the `simulate-egps` feature.
-///
-/// Produces a stable, fully-resolved 3D fix (a fixed demo position near
-/// Bergen, Norway, with a small deterministic jitter so consumers can see it
-/// "moving") with its date/time derived from `now_ms`. This lets the whole
-/// downstream pipeline — [`EgpsTime::from_pvt`], [`GpsCollector`], and the
-/// duty-cycle state machine — be exercised indoors, without a real GPS fix.
-///
-/// Returns `None` if `now_ms` cannot be represented as a valid date/time
-/// (e.g. far outside the supported range).
-#[cfg(feature = "simulate-egps")]
-pub fn simulated_pvt(now_ms: i64, seq: u32) -> Option<NavPvt> {
-    let ts = NaiveDateTime::from_timestamp_millis(now_ms)?;
-    let d = ts.date();
-    let t = ts.time();
-    // +/- 50 * 1e-7 deg (~5.5 mm) jitter so the position isn't perfectly static.
-    let jitter = (seq % 100) as i32 - 50;
-    Some(NavPvt {
-        year: d.year() as u16,
-        month: d.month() as u8,
-        day: d.day() as u8,
-        hour: t.hour() as u8,
-        min: t.minute() as u8,
-        sec: t.second() as u8,
-        valid: 0x07, // validDate | validTime | fullyResolved
-        t_acc_ns: 50,
-        nano: t.nanosecond() as i32,
-        fix_type: 3, // 3D fix
-        flags: 0b0100_0001, // gnssFixOK | carrSoln=fixed
-        num_sv: 12,
-        lon: 53_200_000 + jitter, // demo position: ~5.32°E, 60.39°N (Bergen, Norway)
-        lat: 603_900_000 + jitter,
-        height_msl_mm: 0,
-        h_acc_mm: 2000,
-        v_acc_mm: 3000,
-        vel_n_mm_s: 0,
-        vel_e_mm_s: 0,
-        vel_d_mm_s: 0,
-        s_acc_mm_s: 100,
-    })
 }
 
 /// Construct a `NaiveDateTime` from a `NavPvt`, handling negative `nano`.
@@ -549,26 +505,6 @@ mod tests {
 
         let b64 = p.base64();
         println!("{}", core::str::from_utf8(&b64).unwrap());
-    }
-
-    #[cfg(feature = "simulate-egps")]
-    #[test]
-    fn simulated_pvt_produces_valid_fix() {
-        use super::{simulated_pvt, EgpsTime, GPS_NOMINAL_MS};
-
-        let now_ms = 1_700_000_000_000; // 2023-11-14T22:13:20Z
-        let pvt = simulated_pvt(now_ms, 0).expect("simulated pvt");
-        assert_eq!(pvt.valid & 0x03, 0x03, "date+time must be valid");
-        assert_eq!(pvt.fix_type, 3, "must report a 3D fix");
-
-        let egps = EgpsTime::from_pvt(&pvt, now_ms).expect("simulated pvt must yield a fix");
-        // The synthetic time is only accurate to the millisecond it was derived from.
-        assert!((egps.time - now_ms).abs() < 1000);
-
-        // Jitter should keep successive samples close to the demo position.
-        let pvt2 = simulated_pvt(now_ms + GPS_NOMINAL_MS, 1).expect("simulated pvt");
-        assert!((pvt.lon - pvt2.lon).abs() <= 100);
-        assert!((pvt.lat - pvt2.lat).abs() <= 100);
     }
 }
 

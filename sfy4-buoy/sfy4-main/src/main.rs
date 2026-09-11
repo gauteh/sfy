@@ -456,7 +456,6 @@ fn main() -> ! {
         spec_p,
     );
 
-    #[cfg(not(feature = "simulate-egps"))]
     let (mut i2c_gps, mut gnss) = {
         info!("Setting up MAX-M10S GPS over I2C..");
         // IOM2: initialized here, right before first use, to ensure the peripheral
@@ -517,9 +516,6 @@ fn main() -> ! {
         (i2c_gps, gnss)
     };
 
-    #[cfg(feature = "simulate-egps")]
-    info!("simulate-egps: skipping real GPS hardware init, generating synthetic 14 Hz fixes");
-
     // Set up GPS packet collector — stored as a static to keep the large buf
     // in .bss instead of on the stack (prevents stack overflow when ISR fires during send).
     let (gps_p, mut gps_queue) = unsafe { sfy::gps::EGPSQ.split() };
@@ -531,11 +527,8 @@ fn main() -> ! {
     free(|cs| {
         unsafe {
             IMU = Some(imu);
-            #[cfg(not(feature = "simulate-egps"))]
-            {
-                GNSS = Some(gnss);
-                I2C_GPS = Some(i2c_gps);
-            }
+            GNSS = Some(gnss);
+            I2C_GPS = Some(i2c_gps);
         }
         if let Some(pin) = TS_PIN.borrow(cs).borrow_mut().as_mut() {
             pin.enable_interrupt();
@@ -1035,12 +1028,6 @@ fn RTC() {
     // Best estimate of the last successful RTC read (ms).  Used as a fallback
     // during the Apollo3 register-sync delay that follows set_datetime().
     static mut LAST_GOOD_NOW_MS: i64 = 0;
-    #[cfg(feature = "simulate-egps")]
-    static mut SIM_TIME_MS: i64 = 0;
-    #[cfg(feature = "simulate-egps")]
-    static mut SIM_ACC_MS: i64 = 0;
-    #[cfg(feature = "simulate-egps")]
-    static mut SIM_SEQ: u32 = 0;
 
     // Clear RTC interrupt
     unsafe {
@@ -1048,9 +1035,6 @@ fn RTC() {
             .intclr
             .write(|w| w.alm().set_bit());
     }
-
-    #[cfg(feature = "simulate-egps")]
-    let mut sim_now_ms: Option<i64> = None;
 
     if let Some(imu) = imu {
         let (now, position_time, lon, lat) = if let Some((now, position_time, lon, lat)) =
@@ -1088,11 +1072,6 @@ fn RTC() {
 
         COUNT.store((now / 1000) as i32, Ordering::Relaxed);
 
-        #[cfg(feature = "simulate-egps")]
-        {
-            sim_now_ms = Some(now);
-        }
-
         imu.set_streaming(IMU_STREAMING.load(Ordering::Relaxed));
 
         match imu.check_retrieve(now, position_time, lon, lat) {
@@ -1118,7 +1097,6 @@ fn RTC() {
     // and we drain up to 512 bytes, so we always keep up without looping.
     // Looping until empty was causing ~500 ms ISR stalls on startup (4 KB GPS backlog)
     // which filled the 512-sample IMU FIFO (208 Hz → full in 2.46 s) and caused resets.
-    #[cfg(not(feature = "simulate-egps"))]
     if let (Some(gnss), Some(i2c_gps), Some(gps_collector)) = unsafe {
         (GNSS.as_mut(), I2C_GPS.as_mut(), GPS_COLLECTOR.as_mut())
     } {
@@ -1136,37 +1114,6 @@ fn RTC() {
             Ok(_) => {}
             Err(e) => {
                 defmt::error!("RTC ISR: GPS read_all_pvts error: {:?}", defmt::Debug2Format(&e));
-            }
-        }
-    }
-
-    // `simulate-egps`: no real GPS hardware is present, so synthesize NAV-PVT
-    // samples at the nominal 14 Hz cadence instead of draining the I2C FIFO.
-    // Samples are fed through the same EgpsTime/GpsCollector pipeline as real
-    // hardware, so duty-cycle, batching, and RTC time-sync can be exercised
-    // indoors without a fix.
-    #[cfg(feature = "simulate-egps")]
-    if let Some(now) = sim_now_ms {
-        if *SIM_TIME_MS == 0 {
-            *SIM_TIME_MS = now;
-        }
-        *SIM_ACC_MS += 100; // one RTC tick
-
-        if let Some(gps_collector) = unsafe { GPS_COLLECTOR.as_mut() } {
-            while *SIM_ACC_MS >= sfy::gps::GPS_NOMINAL_MS {
-                *SIM_ACC_MS -= sfy::gps::GPS_NOMINAL_MS;
-                *SIM_TIME_MS += sfy::gps::GPS_NOMINAL_MS;
-                *SIM_SEQ = SIM_SEQ.wrapping_add(1);
-                if let Some(pvt) = sfy::gps::simulated_pvt(*SIM_TIME_MS, *SIM_SEQ) {
-                    if let Some(egps) = EgpsTime::from_pvt(&pvt, *SIM_TIME_MS) {
-                        free(|cs| {
-                            EGPS_TIME.borrow(cs).replace(Some(egps));
-                        });
-                    }
-                    if EGPS_STREAMING.load(Ordering::Relaxed) {
-                        gps_collector.add_sample(pvt);
-                    }
-                }
             }
         }
     }

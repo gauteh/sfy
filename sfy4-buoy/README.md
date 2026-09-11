@@ -108,12 +108,6 @@ AUXRX/AUXTX and pull AUXEN up](https://dev.blues.io/guides-and-tutorials/notecar
 
 * raw: store raw data on SD-card (experimental)
 
-* simulate-egps: bypass the real MAX-M10S GPS hardware/I2C entirely and
-    synthesize NAV-PVT fixes at the nominal 14 Hz sample rate instead. Useful
-    for indoor testing of the duty-cycle, batching, and RTC time-sync
-    machinery without a real GPS fix (which is otherwise impossible to get
-    indoors). See `sfy::gps::simulated_pvt`.
-
 * host-tests: used to disable code that doesn't compile on host, for running
     host unit tests. Best used through `make host-test`.
 
