@@ -156,11 +156,6 @@ already subject to the same duty-cycle-driven gating described above.
 
 * SFY_EXT_SIM_APN: Enable external SIM and specify APN.
 
-* GPS_PERIOD: Sample interval for GPS (default 60 seconds).
-
-* GPS_HEARTBEAT: Minimum GPS interval when no motion detected. Positive value is
-    hours, negative is minutes.
-
 * SYNC_PERIOD: Maximum time between syncs (default 20 minutes).
 
 * DEFMT_LOG: defmt log levels, leave empty to compile out.

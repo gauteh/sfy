@@ -216,8 +216,6 @@ fn main() -> ! {
     println!("IMUQ_SZ .....: {}", sfy::IMUQ_SZ);
     println!("STORAGEQ_SZ .: {}", sfy::STORAGEQ_SZ);
     println!("EPGS_SZ .....: {}", sfy::EPGS_SZ);
-    println!("GPS_PERIOD ..: {}", sfy::note::GPS_PERIOD);
-    println!("GPS_HEARTBEAT: {}", sfy::note::GPS_HEARTBEAT);
     println!("SYNC_PERIOD .: {}", sfy::note::SYNC_PERIOD);
     println!("EXT_SIM_APN .: {}", sfy::note::EXT_APN);
     {
