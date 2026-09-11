@@ -28,7 +28,9 @@ don't conflate them:
 - **egps batch**: a high-rate raw-sample burst from the external GPS
   (`sfy::gps::duty`), sent as `egpsb.qo`. Fixed 20 min duration
   (`EGPS_BATCH_DURATION_S`, not build-time configurable); period configured
-  via the `EGPS_BATCH_PERIOD` build-time env var.
+  via the `EGPS_BATCH_PERIOD` build-time env var. On a position-only wake
+  (no batch due), a brief post-fix sample (`EGPS_POSITION_SAMPLE_MS`) still
+  streams so something is queued for the next sync.
 - **axl/IMU spectrum** (`spectrum` Cargo feature, `sfy::waves::welch`): FFT/Welch
   spectrum of wave motion. Its length is **hardcoded to 20 minutes**
   (`src/waves/welch.rs`, `Welch::is_full`) — not configurable via env var,

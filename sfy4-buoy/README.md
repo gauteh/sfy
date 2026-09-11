@@ -178,6 +178,12 @@ honoured exactly (measured from fix acquisition to burst end), except while
 Batches are disabled entirely (position-only mode) at runtime via the
 `power_mode` env var (see below), not at build time.
 
+Position-only wakes (no batch due) still stream briefly right after the fix
+is acquired -- just long enough to capture one packet's worth of raw
+samples (`EGPS_POSITION_SAMPLE_MS` in `gps::duty`, not build-time
+configurable) -- so something is queued and sent on the next sync instead
+of the wake producing no data at all.
+
 * EGPS_BATCH_PERIOD: start-to-start interval between batches, in
     seconds (default 10800, 3 hours). Must be >= 20 min (the fixed batch
     duration) + `EGPS_POSITION_INTERVAL` or bursts won't be spaced as

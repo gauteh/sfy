@@ -14,8 +14,12 @@
 //! - [`EgpsState::AcquiringFix`]: GPS is powered/resumed and running at a
 //!   low output rate until a valid fix is obtained (or the dwell time
 //!   elapses).
-//! - [`EgpsState::Batch`]: a high-rate burst is in progress;
-//!   samples are fed to `GpsCollector`/`EGPSQ` for the configured duration.
+//! - [`EgpsState::Batch`]: a high-rate burst is in progress; samples are
+//!   fed to `GpsCollector`/`EGPSQ`. This covers two cases: a full scheduled
+//!   duty-cycle batch (`EGPS_BATCH_DURATION_S`), or -- on an otherwise
+//!   position-only wake -- a brief post-fix sample
+//!   (`EGPS_POSITION_SAMPLE_MS`) so something is still queued for the next
+//!   sync even when no full batch is due.
 //!
 //! `position_interval_ms == 0` ("0 gap") is a special case: the module is
 //! never idled or power-cycled and just runs continuously -- this is the
@@ -27,6 +31,17 @@
 /// there is no reason for it to differ from this (matches the axl/IMU
 /// `spectrum` feature's fixed 20-minute window, see `waves::welch::Welch`).
 pub const EGPS_BATCH_DURATION_S: u32 = 1200; // 20 min
+
+/// Minimum duration (milliseconds) to stream at full output rate right
+/// after acquiring a fix on a *position-only* wake (`is_batch == false`,
+/// i.e. one that isn't a scheduled duty-cycle batch) -- long enough to
+/// reliably capture at least one full `GPS_PACKET_SZ`-sample packet at the
+/// nominal sample rate, plus margin for the GPS module's rate-switch delay.
+/// Without this, position-only wakes would only ever update the RTC
+/// time-sync/last-known-position and never queue anything into
+/// `GpsCollector`/`EGPSQ`, so nothing new would go out on the next sync.
+pub const EGPS_POSITION_SAMPLE_MS: i64 =
+    super::GPS_PACKET_SZ as i64 * super::GPS_NOMINAL_MS + 5_000;
 
 /// Configuration for the duty-cycle state machine, all values in
 /// milliseconds. Build with [`EgpsDutyCycleConfig::from_secs`] from the
@@ -107,9 +122,17 @@ pub enum EgpsState {
     Idle { next_wake_at: i64, mode: IdleMode },
     /// GPS powered/resumed, waiting for a valid fix (or dwell timeout).
     AcquiringFix { started_at: i64, is_batch: bool },
-    /// High-rate batch in progress, started at `started_at`,
-    /// scheduled to end at `ends_at`.
-    Batch { started_at: i64, ends_at: i64 },
+    /// High-rate streaming in progress, started at `started_at`, scheduled
+    /// to end at `ends_at`. `is_batch` is `true` for a full scheduled
+    /// duty-cycle batch (`EGPS_BATCH_DURATION_S`/`is_continuous`), or
+    /// `false` for the brief post-fix sample taken on an otherwise
+    /// position-only wake (`EGPS_POSITION_SAMPLE_MS`) -- only real batches
+    /// reschedule `next_batch_start` when they end.
+    Batch {
+        started_at: i64,
+        ends_at: i64,
+        is_batch: bool,
+    },
 }
 
 /// Action the caller should take in response to a `poll`/`fix_acquired` call.
@@ -126,8 +149,10 @@ pub enum EgpsAction {
     /// Wake from a full power-off: re-run cold-init sequence, set output
     /// rate low (1 Hz).
     WakePowerOnReinit,
-    /// Valid fix obtained and this wake starts a batch: restore
-    /// full output rate and start feeding `GpsCollector`.
+    /// Valid fix obtained: restore full output rate and start feeding
+    /// `GpsCollector`. Either a full scheduled batch, or -- on an
+    /// otherwise position-only wake -- a brief post-fix sample so
+    /// something is still queued for the next sync.
     StartBatch,
     /// Batch ended: flush any partial packet, stop feeding
     /// samples, then enter backup sleep.
@@ -217,9 +242,15 @@ impl EgpsDutyCycle {
                     EgpsAction::None
                 }
             }
-            EgpsState::Batch { started_at, ends_at } => {
+            EgpsState::Batch {
+                started_at,
+                ends_at,
+                is_batch,
+            } => {
                 if now >= ends_at {
-                    self.next_batch_start = started_at + self.config.batch_period_ms;
+                    if is_batch {
+                        self.next_batch_start = started_at + self.config.batch_period_ms;
+                    }
                     match self.enter_idle(now) {
                         EgpsAction::EnterIdleBackupSleep => {
                             EgpsAction::EndBatchIdleBackupSleep
@@ -251,10 +282,27 @@ impl EgpsDutyCycle {
                         } else {
                             now + self.config.batch_duration_ms
                         },
+                        is_batch: true,
                     };
                     EgpsAction::StartBatch
-                } else {
+                } else if self.config.is_continuous() {
+                    // "0 gap" position-only: there's no natural wake
+                    // boundary to hang a short sample on -- it would just
+                    // degenerate back into continuous streaming, so leave
+                    // this (unused in practice) combination as always-idle
+                    // (no batch, no idling, just re-acquire the fix).
                     self.enter_idle(now)
+                } else {
+                    // Position-only wake with a real gap between wakes:
+                    // still stream briefly right after the fix so at least
+                    // one packet's worth of raw samples is queued for the
+                    // next sync, instead of this wake producing no data.
+                    self.state = EgpsState::Batch {
+                        started_at: now,
+                        ends_at: now + EGPS_POSITION_SAMPLE_MS,
+                        is_batch: false,
+                    };
+                    EgpsAction::StartBatch
                 }
             }
             _ => EgpsAction::None,
@@ -301,7 +349,7 @@ mod tests {
     }
 
     #[test]
-    fn position_only_never_starts_burst() {
+    fn position_only_never_starts_a_full_burst_but_still_samples_briefly() {
         let cfg = position_only_config();
         assert!(cfg.is_position_only());
         let mut sm = EgpsDutyCycle::new(cfg, 0);
@@ -313,24 +361,44 @@ mod tests {
             EgpsState::AcquiringFix { is_batch: false, .. }
         ));
 
-        // Fix acquired -> straight back to idle, no burst.
-        let action = sm.fix_acquired(1_000);
+        // Fix acquired -> a brief sample starts (not a full burst), so
+        // there's still something queued for the next sync.
+        let fix_at = 1_000;
+        assert_eq!(sm.fix_acquired(fix_at), EgpsAction::StartBatch);
+        assert!(sm.is_streaming());
+        assert!(matches!(
+            sm.state(),
+            EgpsState::Batch { is_batch: false, .. }
+        ));
+
+        // The sample ends well before a full batch_duration_ms would.
+        let ends_at = fix_at + EGPS_POSITION_SAMPLE_MS;
+        assert!(EGPS_POSITION_SAMPLE_MS < cfg.batch_duration_ms.max(1_200_000));
+        assert_eq!(sm.poll(ends_at - 1), EgpsAction::None);
+        assert!(sm.is_streaming());
+        let action = sm.poll(ends_at);
         assert!(matches!(
             action,
-            EgpsAction::EnterIdleBackupSleep | EgpsAction::EnterIdlePowerOff
+            EgpsAction::EndBatchIdleBackupSleep | EgpsAction::EndBatchIdlePowerOff
         ));
         assert!(!sm.is_streaming());
 
-        // Run for many cycles: never see a StartBatch action.
-        let mut now = 1_000i64;
+        // Run for many cycles: never see a *full* burst (i.e. one lasting
+        // batch_duration_ms), only the brief post-fix sample each time.
+        let mut now = ends_at;
         for _ in 0..50 {
             now += 60_000;
             let action = sm.poll(now);
-            assert_ne!(action, EgpsAction::StartBatch);
             if let EgpsAction::WakeResume | EgpsAction::WakePowerOnReinit = action {
-                let action = sm.fix_acquired(now + 1_000);
-                assert_ne!(action, EgpsAction::StartBatch);
-                now += 1_000;
+                let fix_at = now + 1_000;
+                assert_eq!(sm.fix_acquired(fix_at), EgpsAction::StartBatch);
+                assert!(matches!(
+                    sm.state(),
+                    EgpsState::Batch { is_batch: false, .. }
+                ));
+                now = fix_at + EGPS_POSITION_SAMPLE_MS;
+                sm.poll(now);
+                assert!(!sm.is_streaming());
             }
         }
     }
@@ -384,9 +452,18 @@ mod tests {
         let burst_start = fix_at;
         let mut now = next_wake_at;
         // fast-forward through position-only wakes until batch_period has
-        // elapsed since burst_start.
+        // elapsed since burst_start. Each position-only wake now streams
+        // briefly (EGPS_POSITION_SAMPLE_MS) before idling again, rather
+        // than idling immediately.
         loop {
-            sm.fix_acquired(now + 1_000);
+            let this_fix_at = now + 1_000;
+            sm.fix_acquired(this_fix_at);
+            assert!(matches!(
+                sm.state(),
+                EgpsState::Batch { is_batch: false, .. }
+            ));
+            let sample_ends = this_fix_at + EGPS_POSITION_SAMPLE_MS;
+            sm.poll(sample_ends);
             if let EgpsState::Idle { next_wake_at, .. } = sm.state() {
                 now = next_wake_at;
             } else {
@@ -471,13 +548,20 @@ mod tests {
         sm.set_config(new_cfg);
         assert_eq!(sm.config(), &new_cfg);
 
-        // Fix acquired -> enter_idle now uses the *new* config's position
-        // interval (1 h), not the original (10 min).
+        // Fix acquired -> a brief sample starts, then enter_idle (once the
+        // sample ends) uses the *new* config's position interval (1 h),
+        // not the original (10 min).
         let fix_at = 1_000;
         sm.fix_acquired(fix_at);
+        assert!(matches!(
+            sm.state(),
+            EgpsState::Batch { is_batch: false, .. }
+        ));
+        let sample_ends = fix_at + EGPS_POSITION_SAMPLE_MS;
+        sm.poll(sample_ends);
         match sm.state() {
             EgpsState::Idle { next_wake_at, .. } => {
-                assert_eq!(next_wake_at, fix_at + new_cfg.position_interval_ms);
+                assert_eq!(next_wake_at, sample_ends + new_cfg.position_interval_ms);
             }
             other => panic!("expected Idle, got {:?}", other),
         }
