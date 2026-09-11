@@ -63,35 +63,35 @@ jobs:
           SYNC_PERIOD=20 CARGO_FLAGS="--features storage" make T=r bin
           mv target/sfy4-main.bin target/bins/sfy4-continuous-gps-with-storage.bin
 
-      - name: Build firmware (egps duty-cycle, 1h GPS / 3h egps spectrum)
+      - name: Build firmware (egps duty-cycle, 1h position / 3h batch)
         working-directory: sfy4-buoy/
         run: |
           mkdir -p target/bins
-          SYNC_PERIOD=20 EGPS_POSITION_INTERVAL=3600 EGPS_SPECTRUM_PERIOD=10800 CARGO_FLAGS="--features egps-duty-cycle" make T=r bin
-          mv target/sfy4-main.bin target/bins/sfy4-egps-duty-1h-gps-3h-spectrum-no-storage.bin
+          SYNC_PERIOD=20 EGPS_POSITION_INTERVAL=3600 EGPS_BATCH_PERIOD=10800 make T=r bin
+          mv target/sfy4-main.bin target/bins/sfy4-egps-duty-1h-position-3h-batch-no-storage.bin
 
-          SYNC_PERIOD=20 EGPS_POSITION_INTERVAL=3600 EGPS_SPECTRUM_PERIOD=10800 CARGO_FLAGS="--features egps-duty-cycle,storage" make T=r bin
-          mv target/sfy4-main.bin target/bins/sfy4-egps-duty-1h-gps-3h-spectrum-with-storage.bin
+          SYNC_PERIOD=20 EGPS_POSITION_INTERVAL=3600 EGPS_BATCH_PERIOD=10800 CARGO_FLAGS="--features storage" make T=r bin
+          mv target/sfy4-main.bin target/bins/sfy4-egps-duty-1h-position-3h-batch-with-storage.bin
 
-      - name: Build firmware (egps duty-cycle, 5min GPS / 1h egps spectrum)
+      - name: Build firmware (egps duty-cycle, 5min position / 1h batch)
         working-directory: sfy4-buoy/
         run: |
           mkdir -p target/bins
-          SYNC_PERIOD=20 EGPS_POSITION_INTERVAL=300 EGPS_SPECTRUM_PERIOD=3600 CARGO_FLAGS="--features egps-duty-cycle" make T=r bin
-          mv target/sfy4-main.bin target/bins/sfy4-egps-duty-5min-gps-1h-spectrum-no-storage.bin
+          SYNC_PERIOD=20 EGPS_POSITION_INTERVAL=300 EGPS_BATCH_PERIOD=3600 make T=r bin
+          mv target/sfy4-main.bin target/bins/sfy4-egps-duty-5min-position-1h-batch-no-storage.bin
 
-          SYNC_PERIOD=20 EGPS_POSITION_INTERVAL=300 EGPS_SPECTRUM_PERIOD=3600 CARGO_FLAGS="--features egps-duty-cycle,storage" make T=r bin
-          mv target/sfy4-main.bin target/bins/sfy4-egps-duty-5min-gps-1h-spectrum-with-storage.bin
+          SYNC_PERIOD=20 EGPS_POSITION_INTERVAL=300 EGPS_BATCH_PERIOD=3600 CARGO_FLAGS="--features storage" make T=r bin
+          mv target/sfy4-main.bin target/bins/sfy4-egps-duty-5min-position-1h-batch-with-storage.bin
 
-      - name: Build firmware (egps duty-cycle, position-only, 10min GPS, no spectrum)
+      - name: Build firmware (egps position-only, power mode 3, 10min position, no batch)
         working-directory: sfy4-buoy/
         run: |
           mkdir -p target/bins
-          SYNC_PERIOD=20 EGPS_POSITION_INTERVAL=600 EGPS_SPECTRUM_DURATION=0 CARGO_FLAGS="--features egps-duty-cycle" make T=r bin
-          mv target/sfy4-main.bin target/bins/sfy4-egps-duty-10min-gps-no-spectrum-no-storage.bin
+          SYNC_PERIOD=20 POWER_MODE=3 EGPS_L3_POSITION_INTERVAL=600 make T=r bin
+          mv target/sfy4-main.bin target/bins/sfy4-egps-position-only-10min-no-batch-no-storage.bin
 
-          SYNC_PERIOD=20 EGPS_POSITION_INTERVAL=600 EGPS_SPECTRUM_DURATION=0 CARGO_FLAGS="--features egps-duty-cycle,storage" make T=r bin
-          mv target/sfy4-main.bin target/bins/sfy4-egps-duty-10min-gps-no-spectrum-with-storage.bin
+          SYNC_PERIOD=20 POWER_MODE=3 EGPS_L3_POSITION_INTERVAL=600 CARGO_FLAGS="--features storage" make T=r bin
+          mv target/sfy4-main.bin target/bins/sfy4-egps-position-only-10min-no-batch-with-storage.bin
 
       - uses: actions/upload-artifact@v4
         with:
