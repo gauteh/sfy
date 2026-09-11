@@ -175,17 +175,18 @@ already subject to the same duty-cycle-driven gating described above.
     giving up and going back to idle, in seconds (default 120, 2 minutes).
     Not used while `EGPS_POSITION_INTERVAL` is `0`.
 
-* EGPS_BATCH_DURATION: length of a high-rate burst during which raw
-    samples are collected and sent as `egpsb.qo`, in seconds (default 1200,
-    20 minutes). Always honoured exactly (measured from fix acquisition to
-    burst end), except while `EGPS_POSITION_INTERVAL` is `0`, in which case
-    the burst just runs forever. `0` disables bursts entirely
-    (position-only mode).
+Batches (raw samples collected and sent as `egpsb.qo`) always run for a
+fixed 20 minutes once started -- not build-time configurable (matches the
+axl/IMU `spectrum` feature's fixed 20-minute window). This is always
+honoured exactly (measured from fix acquisition to burst end), except while
+`EGPS_POSITION_INTERVAL` is `0`, in which case the burst just runs forever.
+Batches are disabled entirely (position-only mode) at runtime via the
+`power_mode` env var (see below), not at build time.
 
 * EGPS_BATCH_PERIOD: start-to-start interval between batches, in
-    seconds (default 10800, 3 hours). Must be >= `EGPS_BATCH_DURATION +
-    EGPS_POSITION_INTERVAL` or bursts won't be spaced as configured (a
-    build-time warning is emitted otherwise). Not used while
+    seconds (default 10800, 3 hours). Must be >= 20 min (the fixed batch
+    duration) + `EGPS_POSITION_INTERVAL` or bursts won't be spaced as
+    configured (a build-time warning is emitted otherwise). Not used while
     `EGPS_POSITION_INTERVAL` is `0`.
 
 * EGPS_SLEEP_THRESHOLD: idle gaps less than or equal to this use UBX backup

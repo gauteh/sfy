@@ -26,8 +26,8 @@ fn main() {
     // cycled and just runs continuously (matching the historical
     // always-on default). Set it to a non-zero number of seconds to start
     // duty-cycling: the module wakes for a position/time fix every
-    // `EGPS_POSITION_INTERVAL`, and if `EGPS_BATCH_DURATION` is non-zero,
-    // separately runs a high-rate batch (IMU/GPS) every
+    // `EGPS_POSITION_INTERVAL`, and separately runs a fixed 20-minute
+    // high-rate batch (IMU/GPS, see `EGPS_BATCH_DURATION_S`) every
     // `EGPS_BATCH_PERIOD` (start-to-start).
     let egps_position_interval: u32 = option_env!("EGPS_POSITION_INTERVAL")
         .map(|p| p.parse::<u32>().unwrap())
@@ -36,10 +36,6 @@ fn main() {
     let egps_position_dwell: u32 = option_env!("EGPS_POSITION_DWELL")
         .map(|p| p.parse::<u32>().unwrap())
         .unwrap_or(120);
-
-    let egps_batch_duration: u32 = option_env!("EGPS_BATCH_DURATION")
-        .map(|p| p.parse::<u32>().unwrap())
-        .unwrap_or(1200); // 20 min, fixed length whenever a batch is captured
 
     let egps_batch_period: u32 = option_env!("EGPS_BATCH_PERIOD")
         .map(|p| p.parse::<u32>().unwrap())
@@ -57,14 +53,16 @@ fn main() {
         );
     }
 
-    if egps_batch_duration > 0
-        && egps_batch_period < egps_batch_duration + egps_position_interval
-    {
+    // Batch duration is fixed at 20 min (`sfy::gps::duty::EGPS_BATCH_DURATION_S`),
+    // not build-time configurable -- kept in sync with that constant here for
+    // the sanity check below.
+    const EGPS_BATCH_DURATION_S: u32 = 1200;
+    if egps_batch_period < EGPS_BATCH_DURATION_S + egps_position_interval {
         println!(
             "cargo:warning=EGPS_BATCH_PERIOD ({egps_batch_period}s) is shorter than \
-             EGPS_BATCH_DURATION + EGPS_POSITION_INTERVAL ({}s); batches will not be \
+             EGPS_BATCH_DURATION_S + EGPS_POSITION_INTERVAL ({}s); batches will not be \
              spaced as configured (they may run back-to-back or start on every position wake).",
-            egps_batch_duration + egps_position_interval
+            EGPS_BATCH_DURATION_S + egps_position_interval
         );
     }
 
@@ -77,7 +75,7 @@ fn main() {
     //
     // Levels 0 (Normal), 1 (NoBatch) and 2 (DutyImu) all reuse the egps duty-cycle
     // knobs above -- level 2 differs only in that IMU/AXL streaming is confined to the
-    // egps batch window (always `EGPS_BATCH_DURATION`) instead of running
+    // egps batch window (always `EGPS_BATCH_DURATION_S`) instead of running
     // continuously, so there is much less data to sync.
 
     // Default power mode to start in before the first successful env.get (0 = Normal).
@@ -124,11 +122,6 @@ fn main() {
     writeln!(
         &fd,
         "pub const EGPS_POSITION_DWELL: u32 = {egps_position_dwell};"
-    )
-    .unwrap();
-    writeln!(
-        &fd,
-        "pub const EGPS_BATCH_DURATION: u32 = {egps_batch_duration};"
     )
     .unwrap();
     writeln!(

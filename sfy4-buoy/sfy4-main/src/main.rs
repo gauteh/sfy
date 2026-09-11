@@ -229,7 +229,7 @@ fn main() -> ! {
         println!("EGPS_POSITION_DWELL .: {}", sfy::note::EGPS_POSITION_DWELL);
         println!(
             "EGPS_BATCH_DURATION: {}",
-            sfy::note::EGPS_BATCH_DURATION
+            sfy::gps::duty::EGPS_BATCH_DURATION_S
         );
         println!(
             "EGPS_BATCH_PERIOD : {}",
@@ -379,7 +379,7 @@ fn main() -> ! {
             normal_egps: EgpsDutyCycleConfig::from_secs(
                 sfy::note::EGPS_POSITION_INTERVAL,
                 sfy::note::EGPS_POSITION_DWELL,
-                sfy::note::EGPS_BATCH_DURATION,
+                sfy::gps::duty::EGPS_BATCH_DURATION_S,
                 sfy::note::EGPS_BATCH_PERIOD,
                 sfy::note::EGPS_SLEEP_THRESHOLD,
             ),
@@ -624,7 +624,7 @@ fn main() -> ! {
                 normal_egps: EgpsDutyCycleConfig::from_secs(
                     sfy::note::EGPS_POSITION_INTERVAL,
                     sfy::note::EGPS_POSITION_DWELL,
-                    sfy::note::EGPS_BATCH_DURATION,
+                    sfy::gps::duty::EGPS_BATCH_DURATION_S,
                     sfy::note::EGPS_BATCH_PERIOD,
                     sfy::note::EGPS_SLEEP_THRESHOLD,
                 ),

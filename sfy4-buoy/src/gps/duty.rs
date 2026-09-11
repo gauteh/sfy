@@ -22,6 +22,12 @@
 //! default, and reproduces the historical always-on behavior. See
 //! [`EgpsDutyCycleConfig::is_continuous`].
 
+/// Fixed duration (seconds) of an egps batch burst whenever batches are
+/// enabled (`batch_duration_ms > 0`) -- not build-time configurable, since
+/// there is no reason for it to differ from this (matches the axl/IMU
+/// `spectrum` feature's fixed 20-minute window, see `waves::welch::Welch`).
+pub const EGPS_BATCH_DURATION_S: u32 = 1200; // 20 min
+
 /// Configuration for the duty-cycle state machine, all values in
 /// milliseconds. Build with [`EgpsDutyCycleConfig::from_secs`] from the
 /// (seconds-based) build-time env vars.

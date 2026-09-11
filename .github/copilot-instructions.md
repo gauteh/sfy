@@ -26,8 +26,9 @@ These are two unrelated concepts that both used to be called "spectrum" —
 don't conflate them:
 
 - **egps batch**: a high-rate raw-sample burst from the external GPS
-  (`sfy::gps::duty`), sent as `egpsb.qo`. Duration/period configured via the
-  `EGPS_BATCH_DURATION`/`EGPS_BATCH_PERIOD` build-time env vars.
+  (`sfy::gps::duty`), sent as `egpsb.qo`. Fixed 20 min duration
+  (`EGPS_BATCH_DURATION_S`, not build-time configurable); period configured
+  via the `EGPS_BATCH_PERIOD` build-time env var.
 - **axl/IMU spectrum** (`spectrum` Cargo feature, `sfy::waves::welch`): FFT/Welch
   spectrum of wave motion. Its length is **hardcoded to 20 minutes**
   (`src/waves/welch.rs`, `Welch::is_full`) — not configurable via env var,
