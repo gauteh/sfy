@@ -35,9 +35,8 @@ don't conflate them:
 
 ## Local dev patches
 
-`sfy4-buoy/Cargo.toml` has an active `[patch]` entry pointing
-`blues-notecard` at a local checkout (`../../../../dev/embedded/notecard-rs`).
-This is currently **required**, not just a convenience: `src/note.rs` uses a
-`Notecard::env()` API that isn't in the pinned git rev of `notecard-rs` yet.
-Leave it active until the upstream branch is updated and `Cargo.lock` is
-re-pinned to a rev that includes `env()`.
+`sfy4-buoy/Cargo.toml` depends on `blues-notecard` from the `env` branch of
+`github.com/gauteh/notecard-rs` (has the `Notecard::env()` API used by
+`src/note.rs`). There's a commented-out `[patch]` entry pointing it at a
+local checkout (`../../../../dev/embedded/notecard-rs`) for local dev use —
+leave it commented out in commits so CI/remote builds fetch from git.

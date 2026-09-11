@@ -43,7 +43,7 @@ git = "https://github.com/gauteh/ahrs-fusion"
 
 [dependencies.blues-notecard]
 git = "https://github.com/gauteh/notecard-rs"
-branch = "eh0"
+branch = "env"
 
 [dev-dependencies]
 half = { version = "2.4", features = [ "use-intrinsics", "bytemuck", "serde" ] }
@@ -80,8 +80,8 @@ embedded-sdmmc = { git = "https://github.com/rust-embedded-community/embedded-sd
 # [patch.'https://github.com/gauteh/ahrs-fusion']
 # ahrs-fusion = { path = "../../../../dev/embedded/imu/ahrs-fusion" }
 
-[patch.'https://github.com/gauteh/notecard-rs']
-blues-notecard = { path = "../../../../dev/embedded/notecard-rs" }
+# [patch.'https://github.com/gauteh/notecard-rs']
+# blues-notecard = { path = "../../../../dev/embedded/notecard-rs" }
 
 # [patch.'https://github.com/gauteh/ambiq-rs']
 # ambiq-hal = { path = "../../../../dev/embedded/ambiq-rs/ambiq-hal" }
