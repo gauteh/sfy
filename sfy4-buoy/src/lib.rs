@@ -38,6 +38,7 @@ pub mod fir;
 pub mod gps;
 pub mod log;
 pub mod note;
+pub mod power;
 #[cfg(feature = "storage")]
 pub mod storage;
 pub mod waves;
@@ -364,6 +365,16 @@ pub struct Imu<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error =
     spec_queue: heapless::spsc::Producer<'static, waves::welch::WelchPacket, SPECQ_SZ>,
 
     last_read: i64,
+
+    /// Whether completed packets should be enqueued for sending. `true` by
+    /// default (matches the historical always-on/continuous behavior). In
+    /// power level `DutyImu` this mirrors the egps spectrum-burst window
+    /// 1:1 (both use the same window, see `sfy::power`); in `PositionOnly`
+    /// it is always `false`. The sensor keeps being read/filtered
+    /// regardless of this flag -- only enqueuing of finished packets is
+    /// gated -- so FIR/buffer timing stays continuous and no read-gap
+    /// errors are triggered.
+    streaming: bool,
 }
 
 impl<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> Imu<E, I> {
@@ -382,7 +393,14 @@ impl<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> Imu<E
             spec_queue,
             waves,
             last_read: 0,
+            streaming: true,
         }
+    }
+
+    /// Set whether completed packets should be enqueued for sending. See
+    /// [`Self::streaming`] field docs.
+    pub fn set_streaming(&mut self, streaming: bool) {
+        self.streaming = streaming;
     }
 
     /// Read samples and check for full buffers. Return number of sample pairs consumed from IMU.
@@ -407,14 +425,16 @@ impl<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> Imu<E
             trace!("collect remaining samples, to avoid overrun.");
             samples += self.waves.read_and_filter()?;
 
-            self.queue
-                .enqueue(pck)
-                .inspect_err(|_| {
-                    error!("queue is full, discarding data.");
+            if self.streaming {
+                self.queue
+                    .enqueue(pck)
+                    .inspect_err(|_| {
+                        error!("queue is full, discarding data.");
 
-                    // log::log("Queue is full: discarding package.");
-                })
-                .ok();
+                        // log::log("Queue is full: discarding package.");
+                    })
+                    .ok();
+            }
         }
 
         #[cfg(feature = "spectrum")]
@@ -425,12 +445,14 @@ impl<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> Imu<E
             trace!("collect remaining samples, to avoid overrun.");
             samples += self.waves.read_and_filter()?;
 
-            self.spec_queue
-                .enqueue(pck)
-                .inspect_err(|_| {
-                    error!("spectrum queue is full, discarding data.");
-                })
-                .ok();
+            if self.streaming {
+                self.spec_queue
+                    .enqueue(pck)
+                    .inspect_err(|_| {
+                        error!("spectrum queue is full, discarding data.");
+                    })
+                    .ok();
+            }
         }
 
         if samples == 0 {

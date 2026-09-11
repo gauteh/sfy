@@ -49,7 +49,6 @@ use max_m10s::MaxM10S;
 use rtcc::DateTimeAccess;
 
 use sfy::gps::{EgpsTime, GpsCollector};
-#[cfg(feature = "egps-duty-cycle")]
 use sfy::gps::duty::{EgpsAction, EgpsDutyCycle, EgpsDutyCycleConfig};
 use sfy::log::log;
 use sfy::note::Notecarrier;
@@ -114,17 +113,53 @@ static PPS_TIME: Mutex<RefCell<i64>> = Mutex::new(RefCell::new(0));
 
 /// GPS power control GPIO (d8 / pad 38, LOW = on). Held here (rather than as
 /// a plain local) so the main loop can power-cycle the module for the
-/// duty-cycle state machine (feature `egps-duty-cycle`).
-#[cfg(feature = "egps-duty-cycle")]
+/// duty-cycle state machine.
 static GPS_PWR: Mutex<RefCell<Option<hal::gpio::pin::Pin<38, { Mode::Output }>>>> =
     Mutex::new(RefCell::new(None));
 
 /// Whether the RTC ISR should feed drained PVT samples into `GPS_COLLECTOR`.
-/// Only set while a duty-cycled spectrum burst is in progress (feature
-/// `egps-duty-cycle`); outside of a burst, PVTs are still drained from the
-/// module's FIFO (to keep it from backing up) but not accumulated/sent.
-#[cfg(feature = "egps-duty-cycle")]
+/// Only set while a duty-cycled egps batch is in progress; outside of a
+/// batch, PVTs are still drained from the module's FIFO (to keep it from
+/// backing up) but not accumulated/sent.
 static EGPS_STREAMING: core::sync::atomic::AtomicBool = core::sync::atomic::AtomicBool::new(false);
+
+/// Whether the RTC ISR should enqueue IMU/AXL packets for sending. Driven by
+/// the currently-applied `power::ImuMode`: always true for `Continuous`,
+/// always false for `Off`, and mirrored to `EGPS_STREAMING` for
+/// `FollowEgpsBatch` (level 2 — IMU streaming follows the egps batch
+/// window 1:1). Default `true` matches level 0 (Normal) behavior.
+static IMU_STREAMING: core::sync::atomic::AtomicBool = core::sync::atomic::AtomicBool::new(true);
+
+/// Currently-applied `power::ImuMode`, encoded as u8 (0=Continuous,
+/// 1=FollowEgpsBatch, 2=Off) so it can be read from `apply_egps_action`
+/// without needing a critical section. Updated whenever the main loop
+/// applies a new `PowerConfig` (at startup or after a live env-var change).
+static IMU_MODE: core::sync::atomic::AtomicU8 = core::sync::atomic::AtomicU8::new(0);
+
+/// Whether the currently-applied power mode wants a forced sync right after
+/// every egps wake attempt (regardless of fix success) — set for
+/// `PowerMode::PositionOnly` (level 3), where the passive `sync_period`
+/// timer alone would otherwise leave data stranded for up to 12 h.
+static FORCE_SYNC_ON_WAKE: core::sync::atomic::AtomicBool =
+    core::sync::atomic::AtomicBool::new(false);
+
+/// Set by `apply_egps_action` when an idle-entry transition occurs while
+/// `FORCE_SYNC_ON_WAKE` is set; consumed (and cleared) by the main loop,
+/// which triggers an actual `hub.sync()` there (where `note` is available).
+static FORCE_SYNC_REQUESTED: core::sync::atomic::AtomicBool =
+    core::sync::atomic::AtomicBool::new(false);
+
+fn imu_mode_to_u8(m: sfy::power::ImuMode) -> u8 {
+    match m {
+        sfy::power::ImuMode::Continuous => 0,
+        sfy::power::ImuMode::FollowEgpsBatch => 1,
+        sfy::power::ImuMode::Off => 2,
+    }
+}
+
+fn imu_mode_is_follow_egps(v: u8) -> bool {
+    v == 1
+}
 
 // ---------------------------------------------------------------------------
 // Entry point
@@ -185,21 +220,20 @@ fn main() -> ! {
     println!("GPS_HEARTBEAT: {}", sfy::note::GPS_HEARTBEAT);
     println!("SYNC_PERIOD .: {}", sfy::note::SYNC_PERIOD);
     println!("EXT_SIM_APN .: {}", sfy::note::EXT_APN);
-    #[cfg(feature = "egps-duty-cycle")]
     {
-        println!("egps-duty-cycle enabled:");
+        println!("egps duty-cycle config:");
         println!(
             "EGPS_POSITION_INTERVAL: {}",
             sfy::note::EGPS_POSITION_INTERVAL
         );
         println!("EGPS_POSITION_DWELL .: {}", sfy::note::EGPS_POSITION_DWELL);
         println!(
-            "EGPS_SPECTRUM_DURATION: {}",
-            sfy::note::EGPS_SPECTRUM_DURATION
+            "EGPS_BATCH_DURATION: {}",
+            sfy::note::EGPS_BATCH_DURATION
         );
         println!(
-            "EGPS_SPECTRUM_PERIOD : {}",
-            sfy::note::EGPS_SPECTRUM_PERIOD
+            "EGPS_BATCH_PERIOD : {}",
+            sfy::note::EGPS_BATCH_PERIOD
         );
         println!(
             "EGPS_SLEEP_THRESHOLD : {}",
@@ -321,6 +355,54 @@ fn main() -> ! {
         .and_then(|r| r.wait(&mut delay))
         .ok();
 
+    // --- Resolve the live power mode (restart-safe) ------------------------
+    // Fetch `power_mode`/`sync_period` from Notehub env vars *before*
+    // constructing the egps duty-cycle state machine (below) or applying
+    // any hardware behavior, so a firmware restart re-derives the live
+    // config rather than silently falling back to the build-time default.
+    // If the env fetch fails (no connectivity yet), `PowerMode::parse`
+    // returns `None` and we fall back to the build-time default just for
+    // this boot — `Notecarrier::new` above has already taken care not to
+    // clobber any existing Notecard-side `outbound` config in that case.
+    let mut power_cfg: sfy::power::PowerConfig = {
+        let mode = note
+            .get_env_var(&mut delay, "power_mode")
+            .as_deref()
+            .and_then(sfy::power::PowerMode::parse)
+            .unwrap_or_else(|| sfy::power::PowerMode::from_build_default(sfy::note::POWER_MODE));
+        let sync_override = note
+            .get_env_var(&mut delay, "sync_period")
+            .as_deref()
+            .and_then(|s| s.trim().parse::<u32>().ok())
+            .filter(|v| *v > 0);
+        let defaults = sfy::power::PowerBuildDefaults {
+            normal_egps: EgpsDutyCycleConfig::from_secs(
+                sfy::note::EGPS_POSITION_INTERVAL,
+                sfy::note::EGPS_POSITION_DWELL,
+                sfy::note::EGPS_BATCH_DURATION,
+                sfy::note::EGPS_BATCH_PERIOD,
+                sfy::note::EGPS_SLEEP_THRESHOLD,
+            ),
+            l3_position_interval_s: sfy::note::EGPS_L3_POSITION_INTERVAL,
+            l3_position_dwell_s: sfy::note::EGPS_L3_POSITION_DWELL,
+            sync_period_min: sfy::note::SYNC_PERIOD,
+        };
+        let cfg = sfy::power::resolve(mode, sync_override, &defaults);
+        info!(
+            "power: baseline mode={} sync_period={}min imu_streaming={}",
+            mode as u8,
+            cfg.sync_period_min,
+            matches!(
+                cfg.imu,
+                sfy::power::ImuMode::Continuous | sfy::power::ImuMode::FollowEgpsBatch
+            )
+        );
+        IMU_MODE.store(imu_mode_to_u8(cfg.imu), Ordering::Relaxed);
+        FORCE_SYNC_ON_WAKE.store(cfg.force_sync_on_egps_wake, Ordering::Relaxed);
+        IMU_STREAMING.store(!matches!(cfg.imu, sfy::power::ImuMode::Off), Ordering::Relaxed);
+        cfg
+    };
+
     free(|cs| unsafe {
         log::NOTE = Some(&mut note as *mut _);
 
@@ -376,62 +458,69 @@ fn main() -> ! {
         spec_p,
     );
 
-    info!("Setting up MAX-M10S GPS over I2C..");
-    // IOM2: initialized here, right before first use, to ensure the peripheral
-    // is in a fresh idle state (IOM can be non-idle if initialized long before use).
-    // Note: GPS was powered on early in startup; by this point several seconds have
-    // elapsed (well above the ≥200 ms boot requirement).
-    let mut i2c_gps = i2c::Iom2::new(dp.IOM2, pins.d17, pins.d18, i2c::Freq::F100kHz);
-    let mut gnss = loop {
-        match MaxM10S::new(&mut i2c_gps) {
-            Ok(dev) => break dev,
-            Err(_) => {
-                warn!("GPS device not found — retrying");
-                delay.delay_ms(500u32);
+    #[cfg(not(feature = "simulate-egps"))]
+    let (mut i2c_gps, mut gnss) = {
+        info!("Setting up MAX-M10S GPS over I2C..");
+        // IOM2: initialized here, right before first use, to ensure the peripheral
+        // is in a fresh idle state (IOM can be non-idle if initialized long before use).
+        // Note: GPS was powered on early in startup; by this point several seconds have
+        // elapsed (well above the ≥200 ms boot requirement).
+        let mut i2c_gps = i2c::Iom2::new(dp.IOM2, pins.d17, pins.d18, i2c::Freq::F100kHz);
+        let mut gnss = loop {
+            match MaxM10S::new(&mut i2c_gps) {
+                Ok(dev) => break dev,
+                Err(_) => {
+                    warn!("GPS device not found — retrying");
+                    delay.delay_ms(500u32);
+                }
+            }
+        };
+
+        loop {
+            match gnss.init(&mut i2c_gps) {
+                Ok(()) => break,
+                Err(e) => {
+                    warn!("GPS init failed: {:?} — retrying", defmt::Debug2Format(&e));
+                    delay.delay_ms(1000u32);
+                }
             }
         }
+        gnss.set_output_rate(&mut i2c_gps, 14)
+            .inspect_err(|e| warn!("GPS set_output_rate failed: {:?}", defmt::Debug2Format(e)))
+            .ok();
+        loop {
+            match gnss.set_pps_rate(&mut i2c_gps, 1_000_000, 10_000) {
+                Ok(()) => {
+                    info!("GPS PPS configured: 1 Hz, 10 ms pulse");
+                    break;
+                }
+                Err(e) => {
+                    warn!(
+                        "GPS set_pps_rate failed: {:?} — retrying",
+                        defmt::Debug2Format(&e)
+                    );
+                    delay.delay_ms(500u32);
+                }
+            }
+        }
+        loop {
+            match gnss.enable_pvt(&mut i2c_gps) {
+                Ok(()) => break,
+                Err(e) => {
+                    warn!(
+                        "GPS enable_pvt failed: {:?} — retrying",
+                        defmt::Debug2Format(&e)
+                    );
+                    delay.delay_ms(500u32);
+                }
+            }
+        }
+        info!("GPS initialised.");
+        (i2c_gps, gnss)
     };
 
-    loop {
-        match gnss.init(&mut i2c_gps) {
-            Ok(()) => break,
-            Err(e) => {
-                warn!("GPS init failed: {:?} — retrying", defmt::Debug2Format(&e));
-                delay.delay_ms(1000u32);
-            }
-        }
-    }
-    gnss.set_output_rate(&mut i2c_gps, 14)
-        .inspect_err(|e| warn!("GPS set_output_rate failed: {:?}", defmt::Debug2Format(e)))
-        .ok();
-    loop {
-        match gnss.set_pps_rate(&mut i2c_gps, 1_000_000, 10_000) {
-            Ok(()) => {
-                info!("GPS PPS configured: 1 Hz, 10 ms pulse");
-                break;
-            }
-            Err(e) => {
-                warn!(
-                    "GPS set_pps_rate failed: {:?} — retrying",
-                    defmt::Debug2Format(&e)
-                );
-                delay.delay_ms(500u32);
-            }
-        }
-    }
-    loop {
-        match gnss.enable_pvt(&mut i2c_gps) {
-            Ok(()) => break,
-            Err(e) => {
-                warn!(
-                    "GPS enable_pvt failed: {:?} — retrying",
-                    defmt::Debug2Format(&e)
-                );
-                delay.delay_ms(500u32);
-            }
-        }
-    }
-    info!("GPS initialised.");
+    #[cfg(feature = "simulate-egps")]
+    info!("simulate-egps: skipping real GPS hardware init, generating synthetic 14 Hz fixes");
 
     // Set up GPS packet collector — stored as a static to keep the large buf
     // in .bss instead of on the stack (prevents stack overflow when ISR fires during send).
@@ -444,13 +533,15 @@ fn main() -> ! {
     free(|cs| {
         unsafe {
             IMU = Some(imu);
-            GNSS = Some(gnss);
-            I2C_GPS = Some(i2c_gps);
+            #[cfg(not(feature = "simulate-egps"))]
+            {
+                GNSS = Some(gnss);
+                I2C_GPS = Some(i2c_gps);
+            }
         }
         if let Some(pin) = TS_PIN.borrow(cs).borrow_mut().as_mut() {
             pin.enable_interrupt();
         }
-        #[cfg(feature = "egps-duty-cycle")]
         GPS_PWR.borrow(cs).replace(Some(gps_pwr));
     });
 
@@ -467,28 +558,31 @@ fn main() -> ! {
     #[cfg(feature = "storage")]
     let mut sd_good: bool = true;
 
-    // Duty-cycle state machine (feature `egps-duty-cycle`): the cold-init
+    // Duty-cycle state machine: the cold-init
     // sequence above already brought the GPS up at 1 Hz-equivalent full
     // power, so the machine's own initial "wake" action is consumed here
     // and discarded (hardware is already in the right state for it).
-    #[cfg(feature = "egps-duty-cycle")]
     let mut egps_duty = {
-        let cfg = EgpsDutyCycleConfig::from_secs(
-            sfy::note::EGPS_POSITION_INTERVAL,
-            sfy::note::EGPS_POSITION_DWELL,
-            sfy::note::EGPS_SPECTRUM_DURATION,
-            sfy::note::EGPS_SPECTRUM_PERIOD,
-            sfy::note::EGPS_SLEEP_THRESHOLD,
-        );
         let now0 = STATE
             .now()
             .map(|t| t.and_utc().timestamp_millis())
             .unwrap_or(0);
-        let mut sm = EgpsDutyCycle::new(cfg, now0);
+        let mut sm = EgpsDutyCycle::new(power_cfg.egps, now0);
         let _ = sm.poll(now0);
         EGPS_STREAMING.store(sm.is_streaming(), core::sync::atomic::Ordering::Relaxed);
+        // Baseline IMU streaming state: for `FollowEgpsBatch` this must
+        // mirror the just-resolved egps state, not the placeholder `true`
+        // set above (before `egps_duty` existed).
+        if matches!(power_cfg.imu, sfy::power::ImuMode::FollowEgpsBatch) {
+            IMU_STREAMING.store(sm.is_streaming(), core::sync::atomic::Ordering::Relaxed);
+        }
         sm
     };
+
+    let mut last_env_poll_ms: i64 = STATE
+        .now()
+        .map(|t| t.and_utc().timestamp_millis())
+        .unwrap_or(0);
 
     loop {
         let now = STATE.now().map(|t| t.and_utc().timestamp_millis());
@@ -504,8 +598,70 @@ fn main() -> ! {
             free(|cs| *PPS_TIME.borrow(cs).borrow_mut() = new_rtc_ms);
         }
 
+        // --- Periodically re-poll `power_mode`/`sync_period` env vars ---------
+        // Low-frequency control-plane check (`ENV_POLL_INTERVAL`, default
+        // 20 min) — cheap relative to GPS/IMU/sync traffic. On a genuine
+        // change, updates the running `egps_duty` config in place (its
+        // Idle/AcquiringFix timers are left untouched), the IMU streaming
+        // mode, and re-issues `hub.set` if `sync_period` changed.
+        if now_ms.saturating_sub(last_env_poll_ms)
+            >= sfy::note::ENV_POLL_INTERVAL as i64 * 1000
+        {
+            last_env_poll_ms = now_ms;
+            let mode = note
+                .get_env_var(&mut delay, "power_mode")
+                .as_deref()
+                .and_then(sfy::power::PowerMode::parse)
+                .unwrap_or_else(|| {
+                    sfy::power::PowerMode::from_build_default(sfy::note::POWER_MODE)
+                });
+            let sync_override = note
+                .get_env_var(&mut delay, "sync_period")
+                .as_deref()
+                .and_then(|s| s.trim().parse::<u32>().ok())
+                .filter(|v| *v > 0);
+            let defaults = sfy::power::PowerBuildDefaults {
+                normal_egps: EgpsDutyCycleConfig::from_secs(
+                    sfy::note::EGPS_POSITION_INTERVAL,
+                    sfy::note::EGPS_POSITION_DWELL,
+                    sfy::note::EGPS_BATCH_DURATION,
+                    sfy::note::EGPS_BATCH_PERIOD,
+                    sfy::note::EGPS_SLEEP_THRESHOLD,
+                ),
+                l3_position_interval_s: sfy::note::EGPS_L3_POSITION_INTERVAL,
+                l3_position_dwell_s: sfy::note::EGPS_L3_POSITION_DWELL,
+                sync_period_min: sfy::note::SYNC_PERIOD,
+            };
+            let new_cfg = sfy::power::resolve(mode, sync_override, &defaults);
+            if new_cfg != power_cfg {
+                info!(
+                    "power: mode changed -> {} sync_period={}min",
+                    mode as u8, new_cfg.sync_period_min
+                );
+                egps_duty.set_config(new_cfg.egps);
+                IMU_MODE.store(imu_mode_to_u8(new_cfg.imu), Ordering::Relaxed);
+                FORCE_SYNC_ON_WAKE.store(new_cfg.force_sync_on_egps_wake, Ordering::Relaxed);
+                if !matches!(new_cfg.imu, sfy::power::ImuMode::FollowEgpsBatch) {
+                    // Continuous/Off take effect immediately; FollowEgpsBatch
+                    // is left to the next StartBatch/EndBatch
+                    // transition so it doesn't fight an in-progress burst.
+                    IMU_STREAMING.store(
+                        matches!(new_cfg.imu, sfy::power::ImuMode::Continuous),
+                        Ordering::Relaxed,
+                    );
+                }
+                if new_cfg.sync_period_min != power_cfg.sync_period_min {
+                    note.set_sync_period(&mut delay, new_cfg.sync_period_min)
+                        .inspect_err(|e| {
+                            error!("power: failed to update sync_period: {:?}", e)
+                        })
+                        .ok();
+                }
+                power_cfg = new_cfg;
+            }
+        }
+
         // --- Drive the egps duty-cycle state machine --------------------------
-        #[cfg(feature = "egps-duty-cycle")]
         {
             if got_new_fix.is_some() {
                 let action = egps_duty.fix_acquired(now_ms);
@@ -513,6 +669,19 @@ fn main() -> ! {
             }
             let action = egps_duty.poll(now_ms);
             apply_egps_action(action, &mut delay);
+        }
+
+        // Level 3: a forced sync is requested by `apply_egps_action` right
+        // after every egps wake attempt (fix or not) when
+        // `force_sync_on_egps_wake` is set — trigger it here where `note`
+        // is available, independent of the passive `sync_period` timer.
+        if FORCE_SYNC_REQUESTED.swap(false, Ordering::Relaxed) {
+            info!("power: forcing sync after egps wake attempt (level 3)");
+            note.hub()
+                .sync(&mut delay, true, None, None)
+                .and_then(|r| r.wait(&mut delay))
+                .inspect_err(|e| error!("power: forced sync failed: {:?}", e))
+                .ok();
         }
 
         // GPS FIFO is drained in the RTC ISR (every 100 ms) so that samples are
@@ -647,13 +816,12 @@ fn main() -> ! {
 // ---------------------------------------------------------------------------
 
 /// Carry out the hardware side-effects requested by the duty-cycle state
-/// machine (feature `egps-duty-cycle`): power the GPS module on/off, put it
+/// machine: power the GPS module on/off, put it
 /// into/out of UBX backup sleep, adjust its output rate, and gate whether
 /// the RTC ISR feeds drained samples into `GPS_COLLECTOR`.
 ///
 /// `GNSS`/`I2C_GPS` are read under a critical section (`free`) to avoid
 /// racing with the RTC ISR, which also drains the GPS FIFO through them.
-#[cfg(feature = "egps-duty-cycle")]
 fn apply_egps_action(action: EgpsAction, delay: &mut impl DelayMs<u16>) {
     use core::sync::atomic::Ordering;
 
@@ -668,6 +836,9 @@ fn apply_egps_action(action: EgpsAction, delay: &mut impl DelayMs<u16>) {
                         .ok();
                 }
             });
+            if FORCE_SYNC_ON_WAKE.load(Ordering::Relaxed) {
+                FORCE_SYNC_REQUESTED.store(true, Ordering::Relaxed);
+            }
             info!("egps: idle (backup sleep)");
         }
 
@@ -677,6 +848,9 @@ fn apply_egps_action(action: EgpsAction, delay: &mut impl DelayMs<u16>) {
                     pin.set_high().ok(); // HIGH = off
                 }
             });
+            if FORCE_SYNC_ON_WAKE.load(Ordering::Relaxed) {
+                FORCE_SYNC_REQUESTED.store(true, Ordering::Relaxed);
+            }
             info!("egps: idle (powered off)");
         }
 
@@ -741,7 +915,7 @@ fn apply_egps_action(action: EgpsAction, delay: &mut impl DelayMs<u16>) {
             info!("egps: waking (full power-on re-init)");
         }
 
-        EgpsAction::StartSpectrumBurst => {
+        EgpsAction::StartBatch => {
             free(|_cs| unsafe {
                 if let (Some(gnss), Some(i2c)) = (GNSS.as_mut(), I2C_GPS.as_mut()) {
                     gnss.set_output_rate(i2c, 14)
@@ -755,18 +929,24 @@ fn apply_egps_action(action: EgpsAction, delay: &mut impl DelayMs<u16>) {
                 }
             });
             EGPS_STREAMING.store(true, Ordering::Relaxed);
-            info!("egps: spectrum burst started");
+            if imu_mode_is_follow_egps(IMU_MODE.load(Ordering::Relaxed)) {
+                IMU_STREAMING.store(true, Ordering::Relaxed);
+            }
+            info!("egps: batch started");
         }
 
-        EgpsAction::EndSpectrumBurstIdleBackupSleep | EgpsAction::EndSpectrumBurstIdlePowerOff => {
+        EgpsAction::EndBatchIdleBackupSleep | EgpsAction::EndBatchIdlePowerOff => {
             EGPS_STREAMING.store(false, Ordering::Relaxed);
+            if imu_mode_is_follow_egps(IMU_MODE.load(Ordering::Relaxed)) {
+                IMU_STREAMING.store(false, Ordering::Relaxed);
+            }
             free(|_cs| unsafe {
                 if let Some(gc) = GPS_COLLECTOR.as_mut() {
                     gc.flush_pending();
                 }
             });
-            info!("egps: spectrum burst ended");
-            let idle_action = if matches!(action, EgpsAction::EndSpectrumBurstIdleBackupSleep) {
+            info!("egps: batch ended");
+            let idle_action = if matches!(action, EgpsAction::EndBatchIdleBackupSleep) {
                 EgpsAction::EnterIdleBackupSleep
             } else {
                 EgpsAction::EnterIdlePowerOff
@@ -838,6 +1018,12 @@ fn RTC() {
     // Best estimate of the last successful RTC read (ms).  Used as a fallback
     // during the Apollo3 register-sync delay that follows set_datetime().
     static mut LAST_GOOD_NOW_MS: i64 = 0;
+    #[cfg(feature = "simulate-egps")]
+    static mut SIM_TIME_MS: i64 = 0;
+    #[cfg(feature = "simulate-egps")]
+    static mut SIM_ACC_MS: i64 = 0;
+    #[cfg(feature = "simulate-egps")]
+    static mut SIM_SEQ: u32 = 0;
 
     // Clear RTC interrupt
     unsafe {
@@ -845,6 +1031,9 @@ fn RTC() {
             .intclr
             .write(|w| w.alm().set_bit());
     }
+
+    #[cfg(feature = "simulate-egps")]
+    let mut sim_now_ms: Option<i64> = None;
 
     if let Some(imu) = imu {
         let (now, position_time, lon, lat) = if let Some((now, position_time, lon, lat)) =
@@ -882,6 +1071,13 @@ fn RTC() {
 
         COUNT.store((now / 1000) as i32, Ordering::Relaxed);
 
+        #[cfg(feature = "simulate-egps")]
+        {
+            sim_now_ms = Some(now);
+        }
+
+        imu.set_streaming(IMU_STREAMING.load(Ordering::Relaxed));
+
         match imu.check_retrieve(now, position_time, lon, lat) {
             Ok(_) => {
                 *GOOD_TRIES = 5;
@@ -905,6 +1101,7 @@ fn RTC() {
     // and we drain up to 512 bytes, so we always keep up without looping.
     // Looping until empty was causing ~500 ms ISR stalls on startup (4 KB GPS backlog)
     // which filled the 512-sample IMU FIFO (208 Hz → full in 2.46 s) and caused resets.
+    #[cfg(not(feature = "simulate-egps"))]
     if let (Some(gnss), Some(i2c_gps), Some(gps_collector)) = unsafe {
         (GNSS.as_mut(), I2C_GPS.as_mut(), GPS_COLLECTOR.as_mut())
     } {
@@ -915,18 +1112,44 @@ fn RTC() {
                     EGPS_TIME.borrow(cs).replace(Some(egps));
                 });
             }
-            #[cfg(feature = "egps-duty-cycle")]
-            {
-                if EGPS_STREAMING.load(Ordering::Relaxed) {
-                    gps_collector.add_sample(pvt);
-                }
+            if EGPS_STREAMING.load(Ordering::Relaxed) {
+                gps_collector.add_sample(pvt);
             }
-            #[cfg(not(feature = "egps-duty-cycle"))]
-            gps_collector.add_sample(pvt);
         }) {
             Ok(_) => {}
             Err(e) => {
                 defmt::error!("RTC ISR: GPS read_all_pvts error: {:?}", defmt::Debug2Format(&e));
+            }
+        }
+    }
+
+    // `simulate-egps`: no real GPS hardware is present, so synthesize NAV-PVT
+    // samples at the nominal 14 Hz cadence instead of draining the I2C FIFO.
+    // Samples are fed through the same EgpsTime/GpsCollector pipeline as real
+    // hardware, so duty-cycle, batching, and RTC time-sync can be exercised
+    // indoors without a fix.
+    #[cfg(feature = "simulate-egps")]
+    if let Some(now) = sim_now_ms {
+        if *SIM_TIME_MS == 0 {
+            *SIM_TIME_MS = now;
+        }
+        *SIM_ACC_MS += 100; // one RTC tick
+
+        if let Some(gps_collector) = unsafe { GPS_COLLECTOR.as_mut() } {
+            while *SIM_ACC_MS >= sfy::gps::GPS_NOMINAL_MS {
+                *SIM_ACC_MS -= sfy::gps::GPS_NOMINAL_MS;
+                *SIM_TIME_MS += sfy::gps::GPS_NOMINAL_MS;
+                *SIM_SEQ = SIM_SEQ.wrapping_add(1);
+                if let Some(pvt) = sfy::gps::simulated_pvt(*SIM_TIME_MS, *SIM_SEQ) {
+                    if let Some(egps) = EgpsTime::from_pvt(&pvt, *SIM_TIME_MS) {
+                        free(|cs| {
+                            EGPS_TIME.borrow(cs).replace(Some(egps));
+                        });
+                    }
+                    if EGPS_STREAMING.load(Ordering::Relaxed) {
+                        gps_collector.add_sample(pvt);
+                    }
+                }
             }
         }
     }

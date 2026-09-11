@@ -158,6 +158,38 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             )?
             .wait(delay)?;
 
+        // Restart-safe sync-period resolution: the Notecard's `hub.set` config is
+        // persistent and can be changed remotely (Notehub) or locally, independent of
+        // this firmware, and the firmware may restart at any time (e.g. on error). We
+        // must not blindly stomp a live-configured `sync_period` back to the build-time
+        // default on every boot -- that would defeat remote power control for the
+        // ~ENV_POLL_INTERVAL until the next periodic poll picks it up again.
+        //
+        // Query the current hub config first, then prefer (in order):
+        //   1. a live `sync_period` env var (minutes), if reachable now;
+        //   2. the Notecard's already-configured `outbound` value, if any (preserves a
+        //      prior remote/local configuration through a connectivity gap after a crash);
+        //   3. the build-time `SYNC_PERIOD` default (fresh/never-configured Notecard).
+        let current_hub = note.hub().get(delay)?.wait(delay).ok();
+
+        let env_sync_period = note
+            .env()
+            .get(delay, "sync_period")
+            .ok()
+            .and_then(|f| f.wait(delay).ok())
+            .and_then(|r| r.text)
+            .and_then(|t| t.parse::<u32>().ok())
+            .filter(|&v| v > 0);
+
+        let outbound = match (
+            env_sync_period,
+            current_hub.as_ref().and_then(|h| h.outbound),
+        ) {
+            (Some(v), _) => v,
+            (None, Some(existing)) => existing,
+            (None, None) => SYNC_PERIOD,
+        };
+
         note.hub()
             .set(
                 delay,
@@ -172,7 +204,7 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
                     Some(notecard::hub::req::HubMode::Periodic)
                 },
                 BUOYSN,
-                Some(SYNC_PERIOD), // max time between out-going sync in minutes.
+                Some(outbound), // max time between out-going sync in minutes.
                 None,
                 None,
                 None,
@@ -202,6 +234,44 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
         n.note.hub().sync(delay, false, None, None)?.wait(delay)?;
 
         Ok(n)
+    }
+
+    /// Fetch a single named Notehub environment variable (`env.get`). Returns `None` on
+    /// any error (no connectivity, unset variable, malformed response, etc.) -- callers
+    /// should treat that as "keep the last-known-good value", not "reset to default".
+    pub fn get_env_var(
+        &mut self,
+        delay: &mut impl DelayMs<u16>,
+        name: &str,
+    ) -> Option<heapless::String<64>> {
+        self.note
+            .env()
+            .get(delay, name)
+            .ok()?
+            .wait(delay)
+            .ok()?
+            .text
+    }
+
+    /// Re-set `hub.set`'s `outbound` (max minutes between out-going syncs), e.g. in
+    /// response to a live `sync_period` env var change. Only touches `outbound` --
+    /// all other hub-config values are left as previously configured. Note: `product`
+    /// (unlike the other fields here) is *not* `skip_serializing_if`-optional in the
+    /// underlying `hub.set` request, so it must always be re-supplied (`BUOYPR`) to
+    /// avoid accidentally clearing it.
+    pub fn set_sync_period(
+        &mut self,
+        delay: &mut impl DelayMs<u16>,
+        minutes: u32,
+    ) -> Result<(), NoteError> {
+        self.note
+            .hub()
+            .set(
+                delay, BUOYPR, None, None, None, Some(minutes), None, None, None, None, None,
+                None,
+            )?
+            .wait(delay)?;
+        Ok(())
     }
 
     /// Initiate sync and wait for it to complete (or time out).

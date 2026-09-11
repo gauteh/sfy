@@ -64,7 +64,7 @@ ntn-test = [ "spectrum" ]
 surf = []
 ice = []
 testing = [ "defmt/unstable-test" ]
-egps-duty-cycle = []
+simulate-egps = []
 target-test = [ "storage" ]
 build-bin = [ "fir", "storage", "raw", "anyhow", "argh", "serde-json-core/std", "serde_json", "chrono/std" ]
 
@@ -80,8 +80,8 @@ embedded-sdmmc = { git = "https://github.com/rust-embedded-community/embedded-sd
 # [patch.'https://github.com/gauteh/ahrs-fusion']
 # ahrs-fusion = { path = "../../../../dev/embedded/imu/ahrs-fusion" }
 
-# [patch.'https://github.com/gauteh/notecard-rs']
-# blues-notecard = { path = "../../../../dev/embedded/notecard-rs" }
+[patch.'https://github.com/gauteh/notecard-rs']
+blues-notecard = { path = "../../../../dev/embedded/notecard-rs" }
 
 # [patch.'https://github.com/gauteh/ambiq-rs']
 # ambiq-hal = { path = "../../../../dev/embedded/ambiq-rs/ambiq-hal" }

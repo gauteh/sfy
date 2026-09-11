@@ -1,4 +1,4 @@
-//! Duty-cycled EGPS state machine (feature `egps-duty-cycle`).
+//! Duty-cycled EGPS state machine.
 //!
 //! This is pure, host-testable logic: it takes the current RTC time (in
 //! milliseconds) as input and returns what the caller should do with the
@@ -14,8 +14,13 @@
 //! - [`EgpsState::AcquiringFix`]: GPS is powered/resumed and running at a
 //!   low output rate until a valid fix is obtained (or the dwell time
 //!   elapses).
-//! - [`EgpsState::SpectrumBurst`]: a high-rate burst is in progress;
+//! - [`EgpsState::Batch`]: a high-rate burst is in progress;
 //!   samples are fed to `GpsCollector`/`EGPSQ` for the configured duration.
+//!
+//! `position_interval_ms == 0` ("0 gap") is a special case: the module is
+//! never idled or power-cycled and just runs continuously -- this is the
+//! default, and reproduces the historical always-on behavior. See
+//! [`EgpsDutyCycleConfig::is_continuous`].
 
 /// Configuration for the duty-cycle state machine, all values in
 /// milliseconds. Build with [`EgpsDutyCycleConfig::from_secs`] from the
@@ -28,9 +33,9 @@ pub struct EgpsDutyCycleConfig {
     pub position_dwell_ms: i64,
     /// Length of a high-rate burst. `0` disables bursts entirely
     /// (position-only mode).
-    pub spectrum_duration_ms: i64,
-    /// Start-to-start interval between spectrum bursts.
-    pub spectrum_period_ms: i64,
+    pub batch_duration_ms: i64,
+    /// Start-to-start interval between batches.
+    pub batch_period_ms: i64,
     /// Idle gaps <= this use UBX backup sleep; gaps above this fully power
     /// off via the `d8` GPIO.
     pub sleep_threshold_ms: i64,
@@ -40,22 +45,30 @@ impl EgpsDutyCycleConfig {
     pub const fn from_secs(
         position_interval_s: u32,
         position_dwell_s: u32,
-        spectrum_duration_s: u32,
-        spectrum_period_s: u32,
+        batch_duration_s: u32,
+        batch_period_s: u32,
         sleep_threshold_s: u32,
     ) -> Self {
         EgpsDutyCycleConfig {
             position_interval_ms: position_interval_s as i64 * 1000,
             position_dwell_ms: position_dwell_s as i64 * 1000,
-            spectrum_duration_ms: spectrum_duration_s as i64 * 1000,
-            spectrum_period_ms: spectrum_period_s as i64 * 1000,
+            batch_duration_ms: batch_duration_s as i64 * 1000,
+            batch_period_ms: batch_period_s as i64 * 1000,
             sleep_threshold_ms: sleep_threshold_s as i64 * 1000,
         }
     }
 
     /// `true` if bursts are disabled entirely (position-only mode).
     pub const fn is_position_only(&self) -> bool {
-        self.spectrum_duration_ms <= 0
+        self.batch_duration_ms <= 0
+    }
+
+    /// `true` if there is "no gap" between wakes -- the module is never
+    /// idled or power-cycled and just runs continuously. This is the
+    /// default (`position_interval_ms == 0`) and reproduces the historical
+    /// always-on behavior.
+    pub const fn is_continuous(&self) -> bool {
+        self.position_interval_ms <= 0
     }
 }
 
@@ -87,10 +100,10 @@ pub enum EgpsState {
     /// `next_wake_at` using `mode` idling strategy.
     Idle { next_wake_at: i64, mode: IdleMode },
     /// GPS powered/resumed, waiting for a valid fix (or dwell timeout).
-    AcquiringFix { started_at: i64, is_spectrum_burst: bool },
-    /// High-rate spectrum burst in progress, started at `started_at`,
+    AcquiringFix { started_at: i64, is_batch: bool },
+    /// High-rate batch in progress, started at `started_at`,
     /// scheduled to end at `ends_at`.
-    SpectrumBurst { started_at: i64, ends_at: i64 },
+    Batch { started_at: i64, ends_at: i64 },
 }
 
 /// Action the caller should take in response to a `poll`/`fix_acquired` call.
@@ -107,15 +120,15 @@ pub enum EgpsAction {
     /// Wake from a full power-off: re-run cold-init sequence, set output
     /// rate low (1 Hz).
     WakePowerOnReinit,
-    /// Valid fix obtained and this wake starts a spectrum burst: restore
+    /// Valid fix obtained and this wake starts a batch: restore
     /// full output rate and start feeding `GpsCollector`.
-    StartSpectrumBurst,
-    /// Spectrum burst ended: flush any partial packet, stop feeding
+    StartBatch,
+    /// Batch ended: flush any partial packet, stop feeding
     /// samples, then enter backup sleep.
-    EndSpectrumBurstIdleBackupSleep,
-    /// Spectrum burst ended: flush any partial packet, stop feeding
+    EndBatchIdleBackupSleep,
+    /// Batch ended: flush any partial packet, stop feeding
     /// samples, then fully power off.
-    EndSpectrumBurstIdlePowerOff,
+    EndBatchIdlePowerOff,
 }
 
 /// Duty-cycled EGPS state machine.
@@ -123,8 +136,8 @@ pub enum EgpsAction {
 pub struct EgpsDutyCycle {
     config: EgpsDutyCycleConfig,
     state: EgpsState,
-    /// Time (RTC ms) at which the next spectrum burst is allowed to start.
-    next_spectrum_start: i64,
+    /// Time (RTC ms) at which the next batch is allowed to start.
+    next_batch_start: i64,
 }
 
 impl EgpsDutyCycle {
@@ -139,8 +152,19 @@ impl EgpsDutyCycle {
                 next_wake_at: now,
                 mode: IdleMode::PowerOff,
             },
-            next_spectrum_start: now,
+            next_batch_start: now,
         }
+    }
+
+    /// Replace the configuration in place — e.g. in response to a live
+    /// power-mode change from Notehub environment variables (see
+    /// `sfy::power`). Does not reset or otherwise touch the current runtime
+    /// state (`state`, `next_batch_start`): any wake/burst already
+    /// scheduled under the old config completes as scheduled. The new
+    /// config takes effect starting with the next transition computed by
+    /// `enter_idle` (i.e. the next time the state machine goes idle).
+    pub fn set_config(&mut self, config: EgpsDutyCycleConfig) {
+        self.config = config;
     }
 
     pub fn state(&self) -> EgpsState {
@@ -154,7 +178,7 @@ impl EgpsDutyCycle {
     /// Whether the caller should currently be feeding samples into
     /// `GpsCollector`/`EGPSQ`.
     pub fn is_streaming(&self) -> bool {
-        matches!(self.state, EgpsState::SpectrumBurst { .. })
+        matches!(self.state, EgpsState::Batch { .. })
     }
 
     /// Drive the state machine forward in time. Call regularly (e.g. from
@@ -165,11 +189,11 @@ impl EgpsDutyCycle {
         match self.state {
             EgpsState::Idle { next_wake_at, mode } => {
                 if now >= next_wake_at {
-                    let is_burst =
-                        !self.config.is_position_only() && now >= self.next_spectrum_start;
+                    let is_burst = !self.config.is_position_only()
+                        && (self.config.is_continuous() || now >= self.next_batch_start);
                     self.state = EgpsState::AcquiringFix {
                         started_at: now,
-                        is_spectrum_burst: is_burst,
+                        is_batch: is_burst,
                     };
                     match mode {
                         IdleMode::BackupSleep => EgpsAction::WakeResume,
@@ -187,14 +211,14 @@ impl EgpsDutyCycle {
                     EgpsAction::None
                 }
             }
-            EgpsState::SpectrumBurst { started_at, ends_at } => {
+            EgpsState::Batch { started_at, ends_at } => {
                 if now >= ends_at {
-                    self.next_spectrum_start = started_at + self.config.spectrum_period_ms;
+                    self.next_batch_start = started_at + self.config.batch_period_ms;
                     match self.enter_idle(now) {
                         EgpsAction::EnterIdleBackupSleep => {
-                            EgpsAction::EndSpectrumBurstIdleBackupSleep
+                            EgpsAction::EndBatchIdleBackupSleep
                         }
-                        EgpsAction::EnterIdlePowerOff => EgpsAction::EndSpectrumBurstIdlePowerOff,
+                        EgpsAction::EnterIdlePowerOff => EgpsAction::EndBatchIdlePowerOff,
                         _ => unreachable!("enter_idle only returns idle-entry actions"),
                     }
                 } else {
@@ -209,13 +233,20 @@ impl EgpsDutyCycle {
     /// state.
     pub fn fix_acquired(&mut self, now: i64) -> EgpsAction {
         match self.state {
-            EgpsState::AcquiringFix { is_spectrum_burst, .. } => {
-                if is_spectrum_burst {
-                    self.state = EgpsState::SpectrumBurst {
+            EgpsState::AcquiringFix { is_batch, .. } => {
+                if is_batch {
+                    self.state = EgpsState::Batch {
                         started_at: now,
-                        ends_at: now + self.config.spectrum_duration_ms,
+                        // "0 gap" (continuous): the burst never ends -- the
+                        // module just runs continuously, matching the
+                        // historical always-on default.
+                        ends_at: if self.config.is_continuous() {
+                            i64::MAX
+                        } else {
+                            now + self.config.batch_duration_ms
+                        },
                     };
-                    EgpsAction::StartSpectrumBurst
+                    EgpsAction::StartBatch
                 } else {
                     self.enter_idle(now)
                 }
@@ -226,7 +257,18 @@ impl EgpsDutyCycle {
 
     /// Transition to `Idle`, scheduling the next position wake and picking
     /// the idle strategy based on the gap length vs. `sleep_threshold_ms`.
+    /// In continuous mode (`is_continuous`, "0 gap") this never actually
+    /// idles or power-cycles the module -- it goes straight back to
+    /// `AcquiringFix` and returns `EgpsAction::None`.
     fn enter_idle(&mut self, now: i64) -> EgpsAction {
+        if self.config.is_continuous() {
+            let is_burst = !self.config.is_position_only();
+            self.state = EgpsState::AcquiringFix {
+                started_at: now,
+                is_batch: is_burst,
+            };
+            return EgpsAction::None;
+        }
         let next_wake_at = now + self.config.position_interval_ms;
         let gap = next_wake_at - now;
         let mode = idle_mode_for_gap(gap, self.config.sleep_threshold_ms);
@@ -262,7 +304,7 @@ mod tests {
         assert_eq!(sm.poll(0), EgpsAction::WakePowerOnReinit);
         assert!(matches!(
             sm.state(),
-            EgpsState::AcquiringFix { is_spectrum_burst: false, .. }
+            EgpsState::AcquiringFix { is_batch: false, .. }
         ));
 
         // Fix acquired -> straight back to idle, no burst.
@@ -273,15 +315,15 @@ mod tests {
         ));
         assert!(!sm.is_streaming());
 
-        // Run for many cycles: never see a StartSpectrumBurst action.
+        // Run for many cycles: never see a StartBatch action.
         let mut now = 1_000i64;
         for _ in 0..50 {
             now += 60_000;
             let action = sm.poll(now);
-            assert_ne!(action, EgpsAction::StartSpectrumBurst);
+            assert_ne!(action, EgpsAction::StartBatch);
             if let EgpsAction::WakeResume | EgpsAction::WakePowerOnReinit = action {
                 let action = sm.fix_acquired(now + 1_000);
-                assert_ne!(action, EgpsAction::StartSpectrumBurst);
+                assert_ne!(action, EgpsAction::StartBatch);
                 now += 1_000;
             }
         }
@@ -292,32 +334,32 @@ mod tests {
         let cfg = duty_config();
         let mut sm = EgpsDutyCycle::new(cfg, 0);
 
-        // Immediate wake, burst allowed immediately (next_spectrum_start == 0).
+        // Immediate wake, burst allowed immediately (next_batch_start == 0).
         assert_eq!(sm.poll(0), EgpsAction::WakePowerOnReinit);
         assert!(matches!(
             sm.state(),
-            EgpsState::AcquiringFix { is_spectrum_burst: true, .. }
+            EgpsState::AcquiringFix { is_batch: true, .. }
         ));
 
         // Fix acquired quickly -> burst starts.
         let fix_at = 5_000;
-        assert_eq!(sm.fix_acquired(fix_at), EgpsAction::StartSpectrumBurst);
+        assert_eq!(sm.fix_acquired(fix_at), EgpsAction::StartBatch);
         assert!(sm.is_streaming());
 
-        // Burst should last spectrum_duration_ms from fix_at.
-        let ends_at = fix_at + cfg.spectrum_duration_ms;
+        // Burst should last batch_duration_ms from fix_at.
+        let ends_at = fix_at + cfg.batch_duration_ms;
         assert_eq!(sm.poll(ends_at - 1), EgpsAction::None);
         assert!(sm.is_streaming());
 
         let action = sm.poll(ends_at);
         assert!(matches!(
             action,
-            EgpsAction::EndSpectrumBurstIdleBackupSleep | EgpsAction::EndSpectrumBurstIdlePowerOff
+            EgpsAction::EndBatchIdleBackupSleep | EgpsAction::EndBatchIdlePowerOff
         ));
         assert!(!sm.is_streaming());
 
         // Next position wake happens after position_interval_ms, and does
-        // NOT immediately request another burst (since spectrum_period is
+        // NOT immediately request another burst (since batch_period is
         // much longer than position_interval).
         let (next_wake_at, _) = match sm.state() {
             EgpsState::Idle { next_wake_at, mode } => (next_wake_at, mode),
@@ -328,14 +370,14 @@ mod tests {
         sm.poll(next_wake_at);
         assert!(matches!(
             sm.state(),
-            EgpsState::AcquiringFix { is_spectrum_burst: false, .. }
+            EgpsState::AcquiringFix { is_batch: false, .. }
         ));
 
-        // ... but once spectrum_period has elapsed since the last burst
+        // ... but once batch_period has elapsed since the last burst
         // start, the next position wake starts a new burst.
         let burst_start = fix_at;
         let mut now = next_wake_at;
-        // fast-forward through position-only wakes until spectrum_period has
+        // fast-forward through position-only wakes until batch_period has
         // elapsed since burst_start.
         loop {
             sm.fix_acquired(now + 1_000);
@@ -344,7 +386,7 @@ mod tests {
             } else {
                 panic!("expected Idle");
             }
-            if now >= burst_start + cfg.spectrum_period_ms {
+            if now >= burst_start + cfg.batch_period_ms {
                 break;
             }
             sm.poll(now);
@@ -355,7 +397,7 @@ mod tests {
         assert_eq!(action, EgpsAction::WakeResume);
         assert!(matches!(
             sm.state(),
-            EgpsState::AcquiringFix { is_spectrum_burst: true, .. }
+            EgpsState::AcquiringFix { is_batch: true, .. }
         ));
     }
 
@@ -401,5 +443,89 @@ mod tests {
             IdleMode::PowerOff
         );
         assert_eq!(idle_mode_for_gap(0, threshold_ms), IdleMode::BackupSleep);
+    }
+
+    #[test]
+    fn set_config_takes_effect_on_next_transition_only() {
+        // Start in position-only mode so `is_batch` is never
+        // latched true, keeping this test focused on the position-interval
+        // config swap (a burst already latched-in under the old config runs
+        // to completion under the old config's duration -- that's covered
+        // implicitly by `enter_idle` always reading the *current* config).
+        let cfg = position_only_config();
+        let mut sm = EgpsDutyCycle::new(cfg, 0);
+
+        // Immediate wake under the original config.
+        sm.poll(0);
+        assert!(matches!(sm.state(), EgpsState::AcquiringFix { .. }));
+
+        // Swap in a much longer position interval mid-flight -- the wake
+        // already in progress is unaffected.
+        let new_cfg = EgpsDutyCycleConfig::from_secs(3600, 120, 0, 10800, 1800);
+        sm.set_config(new_cfg);
+        assert_eq!(sm.config(), &new_cfg);
+
+        // Fix acquired -> enter_idle now uses the *new* config's position
+        // interval (1 h), not the original (10 min).
+        let fix_at = 1_000;
+        sm.fix_acquired(fix_at);
+        match sm.state() {
+            EgpsState::Idle { next_wake_at, .. } => {
+                assert_eq!(next_wake_at, fix_at + new_cfg.position_interval_ms);
+            }
+            other => panic!("expected Idle, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn continuous_config_never_idles_or_power_cycles() {
+        // "0 gap": position_interval_ms == 0.
+        let cfg = EgpsDutyCycleConfig::from_secs(0, 120, 1200, 10800, 1800);
+        assert!(cfg.is_continuous());
+        let mut sm = EgpsDutyCycle::new(cfg, 0);
+
+        // Only the very first wake actually powers the module on.
+        assert_eq!(sm.poll(0), EgpsAction::WakePowerOnReinit);
+        assert!(matches!(
+            sm.state(),
+            EgpsState::AcquiringFix { is_batch: true, .. }
+        ));
+
+        // Fix acquired -> burst starts and never ends (runs continuously).
+        assert_eq!(sm.fix_acquired(1_000), EgpsAction::StartBatch);
+        assert!(sm.is_streaming());
+
+        // Streaming continues indefinitely -- well past the configured
+        // batch_duration_ms/batch_period_ms, no idle/power actions at all.
+        let mut now = 1_000i64;
+        for _ in 0..20 {
+            now += 3_600_000; // +1 h
+            assert_eq!(sm.poll(now), EgpsAction::None);
+            assert!(sm.is_streaming());
+        }
+    }
+
+    #[test]
+    fn continuous_position_only_never_bursts_or_idles() {
+        // "0 gap" combined with batches disabled (position-only, always on).
+        let cfg = EgpsDutyCycleConfig::from_secs(0, 120, 0, 10800, 1800);
+        assert!(cfg.is_continuous());
+        assert!(cfg.is_position_only());
+        let mut sm = EgpsDutyCycle::new(cfg, 0);
+
+        assert_eq!(sm.poll(0), EgpsAction::WakePowerOnReinit);
+        assert!(matches!(
+            sm.state(),
+            EgpsState::AcquiringFix { is_batch: false, .. }
+        ));
+
+        // Fix acquired -> straight back to acquiring the next fix, no idle
+        // action and never a burst.
+        assert_eq!(sm.fix_acquired(1_000), EgpsAction::None);
+        assert!(!sm.is_streaming());
+        assert!(matches!(
+            sm.state(),
+            EgpsState::AcquiringFix { is_batch: false, .. }
+        ));
     }
 }

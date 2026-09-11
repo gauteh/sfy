@@ -108,31 +108,44 @@ AUXRX/AUXTX and pull AUXEN up](https://dev.blues.io/guides-and-tutorials/notecar
 
 * raw: store raw data on SD-card (experimental)
 
+* simulate-egps: bypass the real MAX-M10S GPS hardware/I2C entirely and
+    synthesize NAV-PVT fixes at the nominal 14 Hz sample rate instead. Useful
+    for indoor testing of the duty-cycle, batching, and RTC time-sync
+    machinery without a real GPS fix (which is otherwise impossible to get
+    indoors). See `sfy::gps::simulated_pvt`.
+
 * host-tests: used to disable code that doesn't compile on host, for running
     host unit tests. Best used through `make host-test`.
 
-* egps-duty-cycle: duty-cycle the external GPS (egps, MAX-M10S) instead of
-    running it continuously: wake only periodically for a position/time fix,
-    and optionally run a high-rate "egps spectrum" burst on its own duty
-    cycle (used to derive a wave spectrum from GPS displacement, sent as
-    `egpsb.qo`). Setting `EGPS_SPECTRUM_DURATION=0` disables bursts entirely
-    (position-only mode). See the env vars below.
+### GPS duty-cycle and power modes (WIP)
 
-    **This feature is off by default.** To get the current/original
-    behavior -- egps running continuously at full rate, always streaming
-    `egpsb.qo` -- simply do not enable this feature (i.e. build without
-    `--features egps-duty-cycle`); nothing else needs to change.
+The external GPS (egps, MAX-M10S) is managed by a state machine
+(`sfy::gps::duty::EgpsDutyCycle`) that is always compiled in (no feature
+flag): it cycles the module between idle, fix-acquisition, and (optionally) a
+high-rate "batch" burst during which raw samples are collected and sent as
+`egpsb.qo`. This is separate from and unrelated to the axl/IMU `spectrum`
+feature (FFT/Welch spectra of wave motion) -- the "batch" naming was chosen
+specifically to avoid confusion with that feature.
 
-    Each spectrum burst always runs for exactly `EGPS_SPECTRUM_DURATION`
-    seconds (~20 minutes by default) once it starts -- this is enforced by
-    the state machine itself (measured from when a fix is acquired) and is
-    independent of `EGPS_SPECTRUM_PERIOD`. `EGPS_SPECTRUM_PERIOD` only
-    controls how often a *new* burst is started (start-to-start interval);
-    it does not affect a burst's length. If `EGPS_SPECTRUM_PERIOD` is set
-    shorter than `EGPS_SPECTRUM_DURATION + EGPS_POSITION_INTERVAL`, bursts
-    will not be spaced as configured (they can run back-to-back, or start
-    on every position wake) -- `build.rs` emits a `cargo:warning` at build
-    time if this is misconfigured.
+By default `EGPS_POSITION_INTERVAL` is `0` ("no gap"), which reproduces the
+historical always-on behavior: the module is never idled or power-cycled.
+Set it to a non-zero value (seconds) to actually duty-cycle the module
+between fixes, trading GPS availability/latency for power. See the
+`EGPS_*` environment variables below for the individual knobs.
+
+A remote `power_mode` Notehub env var additionally selects one of four power
+levels (`sfy::power::PowerMode`), polled every `ENV_POLL_INTERVAL` seconds:
+
+| Level | Name | Effect |
+|-------|------|--------|
+| 0 | Normal | Full `EGPS_*`-configured duty-cycle (position wake + periodic batch), IMU/AXL sampled and sent continuously. |
+| 1 | NoBatch | Egps switches to position-only (no batches at all). IMU/AXL unchanged (continuous). |
+| 2 | DutyImu | Same egps config as Normal (batches still happen), but IMU/AXL streaming is confined to exactly those batch windows instead of running continuously (`ImuMode::FollowEgpsBatch`) -- much less data, so `sync_period` can be relaxed. |
+| 3 | PositionOnly | Egps wakes only for a position fix (`EGPS_L3_POSITION_INTERVAL`/`_DWELL`, ~12h), no batch, no continuous IMU streaming; a sync is forced after each wake attempt regardless of `sync_period`. |
+
+The axl `spectrum` feature (Welch/FFT spectra of the IMU data) uses the same
+`streaming` gate as the main IMU queue (see `Imu::check_retrieve`), so it is
+already subject to the same duty-cycle-driven gating described above.
 
 ### Environment variables
 
@@ -152,30 +165,48 @@ AUXRX/AUXTX and pull AUXEN up](https://dev.blues.io/guides-and-tutorials/notecar
 
 * DEFMT_LOG: defmt log levels, leave empty to compile out.
 
-* EGPS_POSITION_INTERVAL (feature `egps-duty-cycle`): how often to wake the
-    egps module for a position/time fix outside of a spectrum burst, in
-    seconds (default 600, 10 minutes).
+* EGPS_POSITION_INTERVAL: how often to wake the egps module for a
+    position/time fix outside of a batch, in seconds. **Default `0`
+    ("no gap"): the module is never idled or power-cycled and just runs
+    continuously** -- this reproduces the historical always-on behavior.
+    Set to a non-zero value to duty-cycle the module instead.
 
-* EGPS_POSITION_DWELL (feature `egps-duty-cycle`): max time to wait for a
-    valid fix per wake before giving up and going back to idle, in seconds
-    (default 120, 2 minutes).
+* EGPS_POSITION_DWELL: max time to wait for a valid fix per wake before
+    giving up and going back to idle, in seconds (default 120, 2 minutes).
+    Not used while `EGPS_POSITION_INTERVAL` is `0`.
 
-* EGPS_SPECTRUM_DURATION (feature `egps-duty-cycle`): length of a high-rate
-    burst during which raw samples are collected and sent as `egpsb.qo`, in
-    seconds (default 1200, 20 minutes). Always honoured exactly (measured
-    from fix acquisition to burst end). `0` disables bursts entirely
+* EGPS_BATCH_DURATION: length of a high-rate burst during which raw
+    samples are collected and sent as `egpsb.qo`, in seconds (default 1200,
+    20 minutes). Always honoured exactly (measured from fix acquisition to
+    burst end), except while `EGPS_POSITION_INTERVAL` is `0`, in which case
+    the burst just runs forever. `0` disables bursts entirely
     (position-only mode).
 
-* EGPS_SPECTRUM_PERIOD (feature `egps-duty-cycle`): start-to-start interval
-    between spectrum bursts, in seconds (default 10800, 3 hours). Must be
-    >= `EGPS_SPECTRUM_DURATION + EGPS_POSITION_INTERVAL` or bursts won't be
-    spaced as configured (a build-time warning is emitted otherwise).
+* EGPS_BATCH_PERIOD: start-to-start interval between batches, in
+    seconds (default 10800, 3 hours). Must be >= `EGPS_BATCH_DURATION +
+    EGPS_POSITION_INTERVAL` or bursts won't be spaced as configured (a
+    build-time warning is emitted otherwise). Not used while
+    `EGPS_POSITION_INTERVAL` is `0`.
 
-* EGPS_SLEEP_THRESHOLD (feature `egps-duty-cycle`): idle gaps less than or
-    equal to this use UBX backup sleep (module stays powered, fast resume);
-    gaps above this fully power off the module via the `d8` GPIO
-    (near-zero standby current, needs re-init on wake), in seconds
-    (default 1800, 30 minutes).
+* EGPS_SLEEP_THRESHOLD: idle gaps less than or equal to this use UBX backup
+    sleep (module stays powered, fast resume); gaps above this fully power
+    off the module via the `d8` GPIO (near-zero standby current, needs
+    re-init on wake), in seconds (default 1800, 30 minutes). Not used while
+    `EGPS_POSITION_INTERVAL` is `0`.
+
+* POWER_MODE: default remote power-mode level (0-3) to start in before the
+    first successful `power_mode` Notehub env-var fetch (default 0,
+    Normal). See `sfy::power`.
+
+* ENV_POLL_INTERVAL: how often (seconds) the main loop polls the
+    `power_mode`/`sync_period` Notehub env vars for live changes (default
+    1200, 20 minutes).
+
+* EGPS_L3_POSITION_INTERVAL: position-fix interval (seconds) used by power
+    level 3 (`PositionOnly`) (default 43200, 12 hours).
+
+* EGPS_L3_POSITION_DWELL: max time to wait for a fix (seconds) used by
+    power level 3 (`PositionOnly`) (default 120, 2 minutes).
 
 # Troubleshooting
 
