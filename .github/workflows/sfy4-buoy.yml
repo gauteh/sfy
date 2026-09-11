@@ -63,7 +63,7 @@ jobs:
           SYNC_PERIOD=20 CARGO_FLAGS="--features storage" make T=r bin
           mv target/sfy4-main.bin target/bins/sfy4-continuous-gps-with-storage.bin
 
-      - name: Build firmware (mooring: egps duty-cycle, 1h position / 3h batch, 40min sync)
+      - name: "Build firmware (mooring: egps duty-cycle, 1h position / 3h batch, 40min sync)"
         working-directory: sfy4-buoy/
         run: |
           mkdir -p target/bins
