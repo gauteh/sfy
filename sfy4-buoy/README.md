@@ -184,11 +184,15 @@ of the wake producing no data at all.
     configured (a build-time warning is emitted otherwise). Not used while
     `EGPS_POSITION_INTERVAL` is `0`.
 
-* EGPS_SLEEP_THRESHOLD: idle gaps less than or equal to this use UBX backup
-    sleep (module stays powered, fast resume); gaps above this fully power
-    off the module via the `d8` GPIO (near-zero standby current, needs
-    re-init on wake), in seconds (default 1800, 30 minutes). Not used while
-    `EGPS_POSITION_INTERVAL` is `0`.
+Every idle gap fully powers the GPS module off via the `d8` GPIO
+(near-zero standby current) and re-initializes it from scratch on the next
+wake. There is no UBX backup-sleep idle mode: the MAX-M10S's
+`UBX-RXM-PMREQ` backup sleep can only be woken by a hardware EXTINT pulse
+or a full power cycle, and this board has no EXTINT pin wired up -- an
+earlier attempt to use backup sleep (with a threshold-based choice between
+backup sleep and power-off) left the module permanently unresponsive after
+its first idle transition in the field, since nothing could ever wake it
+back up.
 
 * POWER_MODE: default remote power-mode level (0-3) to start in before the
     first successful `power_mode` Notehub env-var fetch (default 0,

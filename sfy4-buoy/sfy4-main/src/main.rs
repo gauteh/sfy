@@ -233,10 +233,6 @@ fn main() -> ! {
             "EGPS_BATCH_PERIOD : {}",
             sfy::note::EGPS_BATCH_PERIOD
         );
-        println!(
-            "EGPS_SLEEP_THRESHOLD : {}",
-            sfy::note::EGPS_SLEEP_THRESHOLD
-        );
     }
 
     info!("Setting up IOM and RTC.");
@@ -379,7 +375,6 @@ fn main() -> ! {
                 sfy::note::EGPS_POSITION_DWELL,
                 sfy::gps::duty::EGPS_BATCH_DURATION_S,
                 sfy::note::EGPS_BATCH_PERIOD,
-                sfy::note::EGPS_SLEEP_THRESHOLD,
             ),
             l3_position_interval_s: sfy::note::EGPS_L3_POSITION_INTERVAL,
             l3_position_dwell_s: sfy::note::EGPS_L3_POSITION_DWELL,
@@ -636,7 +631,6 @@ fn main() -> ! {
                     sfy::note::EGPS_POSITION_DWELL,
                     sfy::gps::duty::EGPS_BATCH_DURATION_S,
                     sfy::note::EGPS_BATCH_PERIOD,
-                    sfy::note::EGPS_SLEEP_THRESHOLD,
                 ),
                 l3_position_interval_s: sfy::note::EGPS_L3_POSITION_INTERVAL,
                 l3_position_dwell_s: sfy::note::EGPS_L3_POSITION_DWELL,
@@ -826,9 +820,13 @@ fn main() -> ! {
 // ---------------------------------------------------------------------------
 
 /// Carry out the hardware side-effects requested by the duty-cycle state
-/// machine: power the GPS module on/off, put it
-/// into/out of UBX backup sleep, adjust its output rate, and gate whether
-/// the RTC ISR feeds drained samples into `GPS_COLLECTOR`.
+/// machine: power the GPS module on/off, adjust its output rate, and gate
+/// whether the RTC ISR feeds drained samples into `GPS_COLLECTOR`.
+///
+/// There is no backup-sleep idle mode: the MAX-M10S's UBX backup sleep can
+/// only be woken via a hardware EXTINT pulse or a full power cycle, and this
+/// board has no EXTINT wired up, so every idle transition fully powers the
+/// module off and re-initializes it from scratch on the next wake.
 ///
 /// `GNSS`/`I2C_GPS` are read under a critical section (`free`) to avoid
 /// racing with the RTC ISR, which also drains the GPS FIFO through them.
@@ -837,20 +835,6 @@ fn apply_egps_action(action: EgpsAction, delay: &mut impl DelayMs<u16>) {
 
     match action {
         EgpsAction::None => {}
-
-        EgpsAction::EnterIdleBackupSleep => {
-            free(|_cs| unsafe {
-                if let (Some(gnss), Some(i2c)) = (GNSS.as_mut(), I2C_GPS.as_mut()) {
-                    gnss.sleep(i2c)
-                        .inspect_err(|e| warn!("GPS sleep failed: {:?}", defmt::Debug2Format(e)))
-                        .ok();
-                }
-            });
-            if FORCE_SYNC_ON_WAKE.load(Ordering::Relaxed) {
-                FORCE_SYNC_REQUESTED.store(true, Ordering::Relaxed);
-            }
-            info!("egps: idle (backup sleep)");
-        }
 
         EgpsAction::EnterIdlePowerOff => {
             free(|cs| {
@@ -862,30 +846,6 @@ fn apply_egps_action(action: EgpsAction, delay: &mut impl DelayMs<u16>) {
                 FORCE_SYNC_REQUESTED.store(true, Ordering::Relaxed);
             }
             info!("egps: idle (powered off)");
-        }
-
-        EgpsAction::WakeResume => {
-            free(|cs| {
-                if let Some(pin) = GPS_PWR.borrow(cs).borrow_mut().as_mut() {
-                    pin.set_low().ok(); // ensure d8 power stays on
-                }
-            });
-            free(|_cs| unsafe {
-                if let (Some(gnss), Some(i2c)) = (GNSS.as_mut(), I2C_GPS.as_mut()) {
-                    gnss.resume(i2c)
-                        .inspect_err(|e| warn!("GPS resume failed: {:?}", defmt::Debug2Format(e)))
-                        .ok();
-                    gnss.set_output_rate(i2c, 1)
-                        .inspect_err(|e| {
-                            warn!(
-                                "GPS set_output_rate (resume) failed: {:?}",
-                                defmt::Debug2Format(e)
-                            )
-                        })
-                        .ok();
-                }
-            });
-            info!("egps: waking (resume from backup sleep)");
         }
 
         EgpsAction::WakePowerOnReinit => {
@@ -945,7 +905,7 @@ fn apply_egps_action(action: EgpsAction, delay: &mut impl DelayMs<u16>) {
             info!("egps: batch started");
         }
 
-        EgpsAction::EndBatchIdleBackupSleep | EgpsAction::EndBatchIdlePowerOff => {
+        EgpsAction::EndBatchIdlePowerOff => {
             EGPS_STREAMING.store(false, Ordering::Relaxed);
             if imu_mode_is_follow_egps(IMU_MODE.load(Ordering::Relaxed)) {
                 IMU_STREAMING.store(false, Ordering::Relaxed);
@@ -956,12 +916,7 @@ fn apply_egps_action(action: EgpsAction, delay: &mut impl DelayMs<u16>) {
                 }
             });
             info!("egps: batch ended");
-            let idle_action = if matches!(action, EgpsAction::EndBatchIdleBackupSleep) {
-                EgpsAction::EnterIdleBackupSleep
-            } else {
-                EgpsAction::EnterIdlePowerOff
-            };
-            apply_egps_action(idle_action, delay);
+            apply_egps_action(EgpsAction::EnterIdlePowerOff, delay);
         }
     }
 }

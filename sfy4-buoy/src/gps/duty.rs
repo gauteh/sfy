@@ -2,17 +2,18 @@
 //!
 //! This is pure, host-testable logic: it takes the current RTC time (in
 //! milliseconds) as input and returns what the caller should do with the
-//! GPS module (power it on/off, resume from backup sleep, set output rate,
-//! start/stop feeding samples into `GpsCollector`). It does not touch any
-//! hardware itself.
+//! GPS module (power it on/off, set output rate, start/stop feeding
+//! samples into `GpsCollector`). It does not touch any hardware itself.
 //!
 //! Three states:
 //!
-//! - [`EgpsState::Idle`]: GPS is powered down or in UBX backup sleep
-//!   (depending on the idle gap length vs. `sleep_threshold_ms`). No
-//!   samples are collected.
-//! - [`EgpsState::AcquiringFix`]: GPS is powered/resumed and running at a
-//!   low output rate until a valid fix is obtained (or the dwell time
+//! - [`EgpsState::Idle`]: GPS is fully powered off (`d8` GPIO). No samples
+//!   are collected. There is no "backup sleep" idle mode: the MAX-M10S's
+//!   `UBX-RXM-PMREQ` backup sleep can only be woken by a hardware EXTINT
+//!   pulse or a power cycle, and this board does not wire up EXTINT, so a
+//!   full power-off/re-init is used for every idle gap.
+//! - [`EgpsState::AcquiringFix`]: GPS is powered/re-initialised and running
+//!   at a low output rate until a valid fix is obtained (or the dwell time
 //!   elapses).
 //! - [`EgpsState::Batch`]: a high-rate burst is in progress; samples are
 //!   fed to `GpsCollector`/`EGPSQ`. This covers two cases: a full scheduled
@@ -57,9 +58,6 @@ pub struct EgpsDutyCycleConfig {
     pub batch_duration_ms: i64,
     /// Start-to-start interval between batches.
     pub batch_period_ms: i64,
-    /// Idle gaps <= this use UBX backup sleep; gaps above this fully power
-    /// off via the `d8` GPIO.
-    pub sleep_threshold_ms: i64,
 }
 
 impl EgpsDutyCycleConfig {
@@ -68,14 +66,12 @@ impl EgpsDutyCycleConfig {
         position_dwell_s: u32,
         batch_duration_s: u32,
         batch_period_s: u32,
-        sleep_threshold_s: u32,
     ) -> Self {
         EgpsDutyCycleConfig {
             position_interval_ms: position_interval_s as i64 * 1000,
             position_dwell_ms: position_dwell_s as i64 * 1000,
             batch_duration_ms: batch_duration_s as i64 * 1000,
             batch_period_ms: batch_period_s as i64 * 1000,
-            sleep_threshold_ms: sleep_threshold_s as i64 * 1000,
         }
     }
 
@@ -93,33 +89,11 @@ impl EgpsDutyCycleConfig {
     }
 }
 
-/// How the GPS module should idle between wakes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum IdleMode {
-    /// Keep `d8` power on, use UBX backup `sleep()`. Fast resume, some
-    /// standby current.
-    BackupSleep,
-    /// Cut `d8` power entirely. Near-zero standby current, needs a cold
-    /// re-init on next wake.
-    PowerOff,
-}
-
-/// Decide which idle strategy to use for an idle gap of `gap_ms`, given the
-/// configured `threshold_ms`.
-pub const fn idle_mode_for_gap(gap_ms: i64, threshold_ms: i64) -> IdleMode {
-    if gap_ms <= threshold_ms {
-        IdleMode::BackupSleep
-    } else {
-        IdleMode::PowerOff
-    }
-}
-
 /// State of the duty-cycle state machine.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum EgpsState {
-    /// GPS idle (powered down or in backup sleep). Will wake at
-    /// `next_wake_at` using `mode` idling strategy.
-    Idle { next_wake_at: i64, mode: IdleMode },
+    /// GPS idle, fully powered off via `d8`. Will wake at `next_wake_at`.
+    Idle { next_wake_at: i64 },
     /// GPS powered/resumed, waiting for a valid fix (or dwell timeout).
     AcquiringFix { started_at: i64, is_batch: bool },
     /// High-rate streaming in progress, started at `started_at`, scheduled
@@ -140,12 +114,8 @@ pub enum EgpsState {
 pub enum EgpsAction {
     /// Nothing to do.
     None,
-    /// Enter backup sleep (keep `d8` powered).
-    EnterIdleBackupSleep,
     /// Fully power off via `d8`.
     EnterIdlePowerOff,
-    /// Wake from backup sleep: call `resume()`, set output rate low (1 Hz).
-    WakeResume,
     /// Wake from a full power-off: re-run cold-init sequence, set output
     /// rate low (1 Hz).
     WakePowerOnReinit,
@@ -154,9 +124,6 @@ pub enum EgpsAction {
     /// otherwise position-only wake -- a brief post-fix sample so
     /// something is still queued for the next sync.
     StartBatch,
-    /// Batch ended: flush any partial packet, stop feeding
-    /// samples, then enter backup sleep.
-    EndBatchIdleBackupSleep,
     /// Batch ended: flush any partial packet, stop feeding
     /// samples, then fully power off.
     EndBatchIdlePowerOff,
@@ -179,10 +146,7 @@ impl EgpsDutyCycle {
     pub fn new(config: EgpsDutyCycleConfig, now: i64) -> Self {
         EgpsDutyCycle {
             config,
-            state: EgpsState::Idle {
-                next_wake_at: now,
-                mode: IdleMode::PowerOff,
-            },
+            state: EgpsState::Idle { next_wake_at: now },
             next_batch_start: now,
         }
     }
@@ -218,7 +182,7 @@ impl EgpsDutyCycle {
     /// for that.
     pub fn poll(&mut self, now: i64) -> EgpsAction {
         match self.state {
-            EgpsState::Idle { next_wake_at, mode } => {
+            EgpsState::Idle { next_wake_at } => {
                 if now >= next_wake_at {
                     let is_burst = !self.config.is_position_only()
                         && (self.config.is_continuous() || now >= self.next_batch_start);
@@ -226,10 +190,7 @@ impl EgpsDutyCycle {
                         started_at: now,
                         is_batch: is_burst,
                     };
-                    match mode {
-                        IdleMode::BackupSleep => EgpsAction::WakeResume,
-                        IdleMode::PowerOff => EgpsAction::WakePowerOnReinit,
-                    }
+                    EgpsAction::WakePowerOnReinit
                 } else {
                     EgpsAction::None
                 }
@@ -251,13 +212,8 @@ impl EgpsDutyCycle {
                     if is_batch {
                         self.next_batch_start = started_at + self.config.batch_period_ms;
                     }
-                    match self.enter_idle(now) {
-                        EgpsAction::EnterIdleBackupSleep => {
-                            EgpsAction::EndBatchIdleBackupSleep
-                        }
-                        EgpsAction::EnterIdlePowerOff => EgpsAction::EndBatchIdlePowerOff,
-                        _ => unreachable!("enter_idle only returns idle-entry actions"),
-                    }
+                    self.enter_idle(now);
+                    EgpsAction::EndBatchIdlePowerOff
                 } else {
                     EgpsAction::None
                 }
@@ -309,9 +265,8 @@ impl EgpsDutyCycle {
         }
     }
 
-    /// Transition to `Idle`, scheduling the next position wake and picking
-    /// the idle strategy based on the gap length vs. `sleep_threshold_ms`.
-    /// In continuous mode (`is_continuous`, "0 gap") this never actually
+    /// Transition to `Idle`, scheduling the next position wake. In
+    /// continuous mode (`is_continuous`, "0 gap") this never actually
     /// idles or power-cycles the module -- it goes straight back to
     /// `AcquiringFix` and returns `EgpsAction::None`.
     fn enter_idle(&mut self, now: i64) -> EgpsAction {
@@ -324,13 +279,8 @@ impl EgpsDutyCycle {
             return EgpsAction::None;
         }
         let next_wake_at = now + self.config.position_interval_ms;
-        let gap = next_wake_at - now;
-        let mode = idle_mode_for_gap(gap, self.config.sleep_threshold_ms);
-        self.state = EgpsState::Idle { next_wake_at, mode };
-        match mode {
-            IdleMode::BackupSleep => EgpsAction::EnterIdleBackupSleep,
-            IdleMode::PowerOff => EgpsAction::EnterIdlePowerOff,
-        }
+        self.state = EgpsState::Idle { next_wake_at };
+        EgpsAction::EnterIdlePowerOff
     }
 }
 
@@ -339,13 +289,13 @@ mod tests {
     use super::*;
 
     fn duty_config() -> EgpsDutyCycleConfig {
-        // 10 min position interval, 2 min dwell, 20 min burst, 3 h period, 30
-        // min sleep threshold -- same as the plan's defaults.
-        EgpsDutyCycleConfig::from_secs(600, 120, 1200, 10800, 1800)
+        // 10 min position interval, 2 min dwell, 20 min burst, 3 h period --
+        // same as the plan's defaults.
+        EgpsDutyCycleConfig::from_secs(600, 120, 1200, 10800)
     }
 
     fn position_only_config() -> EgpsDutyCycleConfig {
-        EgpsDutyCycleConfig::from_secs(600, 120, 0, 10800, 1800)
+        EgpsDutyCycleConfig::from_secs(600, 120, 0, 10800)
     }
 
     #[test]
@@ -377,10 +327,7 @@ mod tests {
         assert_eq!(sm.poll(ends_at - 1), EgpsAction::None);
         assert!(sm.is_streaming());
         let action = sm.poll(ends_at);
-        assert!(matches!(
-            action,
-            EgpsAction::EndBatchIdleBackupSleep | EgpsAction::EndBatchIdlePowerOff
-        ));
+        assert_eq!(action, EgpsAction::EndBatchIdlePowerOff);
         assert!(!sm.is_streaming());
 
         // Run for many cycles: never see a *full* burst (i.e. one lasting
@@ -389,7 +336,7 @@ mod tests {
         for _ in 0..50 {
             now += 60_000;
             let action = sm.poll(now);
-            if let EgpsAction::WakeResume | EgpsAction::WakePowerOnReinit = action {
+            if action == EgpsAction::WakePowerOnReinit {
                 let fix_at = now + 1_000;
                 assert_eq!(sm.fix_acquired(fix_at), EgpsAction::StartBatch);
                 assert!(matches!(
@@ -426,17 +373,14 @@ mod tests {
         assert!(sm.is_streaming());
 
         let action = sm.poll(ends_at);
-        assert!(matches!(
-            action,
-            EgpsAction::EndBatchIdleBackupSleep | EgpsAction::EndBatchIdlePowerOff
-        ));
+        assert_eq!(action, EgpsAction::EndBatchIdlePowerOff);
         assert!(!sm.is_streaming());
 
         // Next position wake happens after position_interval_ms, and does
         // NOT immediately request another burst (since batch_period is
         // much longer than position_interval).
-        let (next_wake_at, _) = match sm.state() {
-            EgpsState::Idle { next_wake_at, mode } => (next_wake_at, mode),
+        let next_wake_at = match sm.state() {
+            EgpsState::Idle { next_wake_at } => next_wake_at,
             other => panic!("expected Idle, got {:?}", other),
         };
         assert_eq!(next_wake_at, ends_at + cfg.position_interval_ms);
@@ -464,7 +408,7 @@ mod tests {
             ));
             let sample_ends = this_fix_at + EGPS_POSITION_SAMPLE_MS;
             sm.poll(sample_ends);
-            if let EgpsState::Idle { next_wake_at, .. } = sm.state() {
+            if let EgpsState::Idle { next_wake_at } = sm.state() {
                 now = next_wake_at;
             } else {
                 panic!("expected Idle");
@@ -474,10 +418,10 @@ mod tests {
             }
             sm.poll(now);
         }
-        // position_interval_ms (10 min) <= sleep_threshold_ms (30 min), so
-        // every idle gap after the first uses backup sleep, not power-off.
+        // Every idle wake -- including this one -- fully powers off and
+        // re-inits the module (no backup-sleep idle mode).
         let action = sm.poll(now);
-        assert_eq!(action, EgpsAction::WakeResume);
+        assert_eq!(action, EgpsAction::WakePowerOnReinit);
         assert!(matches!(
             sm.state(),
             EgpsState::AcquiringFix { is_batch: true, .. }
@@ -497,35 +441,14 @@ mod tests {
         assert_eq!(sm.poll(timeout_at - 1), EgpsAction::None);
 
         let action = sm.poll(timeout_at);
-        assert!(matches!(
-            action,
-            EgpsAction::EnterIdleBackupSleep | EgpsAction::EnterIdlePowerOff
-        ));
+        assert_eq!(action, EgpsAction::EnterIdlePowerOff);
         match sm.state() {
-            EgpsState::Idle { next_wake_at, .. } => {
+            EgpsState::Idle { next_wake_at } => {
                 assert_eq!(next_wake_at, timeout_at + cfg.position_interval_ms);
             }
             other => panic!("expected Idle, got {:?}", other),
         }
         assert!(!sm.is_streaming());
-    }
-
-    #[test]
-    fn idle_mode_threshold_decision() {
-        let threshold_ms = 30 * 60 * 1000;
-        assert_eq!(
-            idle_mode_for_gap(threshold_ms, threshold_ms),
-            IdleMode::BackupSleep
-        );
-        assert_eq!(
-            idle_mode_for_gap(threshold_ms - 1, threshold_ms),
-            IdleMode::BackupSleep
-        );
-        assert_eq!(
-            idle_mode_for_gap(threshold_ms + 1, threshold_ms),
-            IdleMode::PowerOff
-        );
-        assert_eq!(idle_mode_for_gap(0, threshold_ms), IdleMode::BackupSleep);
     }
 
     #[test]
@@ -544,7 +467,7 @@ mod tests {
 
         // Swap in a much longer position interval mid-flight -- the wake
         // already in progress is unaffected.
-        let new_cfg = EgpsDutyCycleConfig::from_secs(3600, 120, 0, 10800, 1800);
+        let new_cfg = EgpsDutyCycleConfig::from_secs(3600, 120, 0, 10800);
         sm.set_config(new_cfg);
         assert_eq!(sm.config(), &new_cfg);
 
@@ -570,7 +493,7 @@ mod tests {
     #[test]
     fn continuous_config_never_idles_or_power_cycles() {
         // "0 gap": position_interval_ms == 0.
-        let cfg = EgpsDutyCycleConfig::from_secs(0, 120, 1200, 10800, 1800);
+        let cfg = EgpsDutyCycleConfig::from_secs(0, 120, 1200, 10800);
         assert!(cfg.is_continuous());
         let mut sm = EgpsDutyCycle::new(cfg, 0);
 
@@ -598,7 +521,7 @@ mod tests {
     #[test]
     fn continuous_position_only_never_bursts_or_idles() {
         // "0 gap" combined with batches disabled (position-only, always on).
-        let cfg = EgpsDutyCycleConfig::from_secs(0, 120, 0, 10800, 1800);
+        let cfg = EgpsDutyCycleConfig::from_secs(0, 120, 0, 10800);
         assert!(cfg.is_continuous());
         assert!(cfg.is_position_only());
         let mut sm = EgpsDutyCycle::new(cfg, 0);

@@ -181,7 +181,6 @@ pub fn resolve(
                 defaults.l3_position_dwell_s,
                 0, // no batch
                 defaults.l3_position_interval_s, // period is moot (duration 0 => never bursts)
-                0, // always fully power off between the (long) wakes
             ),
             imu: ImuMode::Off,
             sync_period_min,
@@ -196,7 +195,7 @@ mod tests {
 
     fn defaults() -> PowerBuildDefaults {
         PowerBuildDefaults {
-            normal_egps: EgpsDutyCycleConfig::from_secs(600, 120, 1200, 10800, 1800),
+            normal_egps: EgpsDutyCycleConfig::from_secs(600, 120, 1200, 10800),
             l3_position_interval_s: 43200,
             l3_position_dwell_s: 300,
             sync_period_min: 20,

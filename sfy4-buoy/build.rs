@@ -33,10 +33,6 @@ fn main() {
         .map(|p| p.parse::<u32>().unwrap())
         .unwrap_or(10800); // 3 h
 
-    let egps_sleep_threshold: u32 = option_env!("EGPS_SLEEP_THRESHOLD")
-        .map(|p| p.parse::<u32>().unwrap())
-        .unwrap_or(1800);
-
     if egps_position_interval > 0 && egps_position_dwell > egps_position_interval {
         println!(
             "cargo:warning=EGPS_POSITION_DWELL ({egps_position_dwell}s) is greater than \
@@ -117,11 +113,6 @@ fn main() {
     writeln!(
         &fd,
         "pub const EGPS_BATCH_PERIOD: u32 = {egps_batch_period};"
-    )
-    .unwrap();
-    writeln!(
-        &fd,
-        "pub const EGPS_SLEEP_THRESHOLD: u32 = {egps_sleep_threshold};"
     )
     .unwrap();
 
