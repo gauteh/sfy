@@ -117,6 +117,14 @@ static PPS_TIME: Mutex<RefCell<i64>> = Mutex::new(RefCell::new(0));
 static GPS_PWR: Mutex<RefCell<Option<hal::gpio::pin::Pin<38, { Mode::Output }>>>> =
     Mutex::new(RefCell::new(None));
 
+/// Whether the GPS module is currently powered on (`d8` pulled low). The RTC
+/// ISR must not touch I2C_GPS/GNSS while this is false: the module has no
+/// power and any I2C access will NAK repeatedly (spamming errors and
+/// resetting the IOM2 module every 100 ms) until the next `WakePowerOnReinit`.
+/// Set false in `EnterIdlePowerOff`, true (once the module is up and
+/// reinitialised) in `WakePowerOnReinit`.
+static GPS_POWERED: core::sync::atomic::AtomicBool = core::sync::atomic::AtomicBool::new(false);
+
 /// Whether the RTC ISR should feed drained PVT samples into `GPS_COLLECTOR`.
 /// Only set while a duty-cycled egps batch is in progress; outside of a
 /// batch, PVTs are still drained from the module's FIFO (to keep it from
@@ -530,6 +538,7 @@ fn main() -> ! {
         }
         GPS_PWR.borrow(cs).replace(Some(gps_pwr));
     });
+    GPS_POWERED.store(true, core::sync::atomic::Ordering::Relaxed);
 
     defmt::info!("Enable interrupts");
     free(|_cs| unsafe {
@@ -828,6 +837,12 @@ fn main() -> ! {
 /// board has no EXTINT wired up, so every idle transition fully powers the
 /// module off and re-initializes it from scratch on the next wake.
 ///
+/// `EnterIdlePowerOff`/`WakePowerOnReinit` also toggle `GPS_POWERED`, which
+/// the RTC ISR checks before touching `I2C_GPS`/`GNSS` at all -- without it,
+/// the ISR kept polling I2C every 100 ms against an unpowered module,
+/// producing a stream of NAK errors and IOM2 resets for the entire idle
+/// period.
+///
 /// `GNSS`/`I2C_GPS` are read under a critical section (`free`) to avoid
 /// racing with the RTC ISR, which also drains the GPS FIFO through them.
 fn apply_egps_action(action: EgpsAction, delay: &mut impl DelayMs<u16>) {
@@ -837,6 +852,10 @@ fn apply_egps_action(action: EgpsAction, delay: &mut impl DelayMs<u16>) {
         EgpsAction::None => {}
 
         EgpsAction::EnterIdlePowerOff => {
+            // Tell the RTC ISR to stop touching I2C_GPS/GNSS *before* cutting
+            // power, so it can't race a power-off with an in-flight I2C
+            // transaction and NAK against a now-unpowered module.
+            GPS_POWERED.store(false, Ordering::Relaxed);
             free(|cs| {
                 if let Some(pin) = GPS_PWR.borrow(cs).borrow_mut().as_mut() {
                     pin.set_high().ok(); // HIGH = off
@@ -876,6 +895,9 @@ fn apply_egps_action(action: EgpsAction, delay: &mut impl DelayMs<u16>) {
                                 dev.set_pps_rate(i2c, 1_000_000, 10_000).ok();
                                 dev.enable_pvt(i2c).ok();
                                 GNSS = Some(dev);
+                                // Only now is it safe for the RTC ISR to
+                                // resume draining the GPS FIFO.
+                                GPS_POWERED.store(true, Ordering::Relaxed);
                             }
                         }
                         Err(_) => warn!("GPS device not found on power-on re-init"),
@@ -1052,23 +1074,32 @@ fn RTC() {
     // and we drain up to 512 bytes, so we always keep up without looping.
     // Looping until empty was causing ~500 ms ISR stalls on startup (4 KB GPS backlog)
     // which filled the 512-sample IMU FIFO (208 Hz → full in 2.46 s) and caused resets.
-    if let (Some(gnss), Some(i2c_gps), Some(gps_collector)) = unsafe {
-        (GNSS.as_mut(), I2C_GPS.as_mut(), GPS_COLLECTOR.as_mut())
-    } {
-        let latest_pps = free(|cs| *PPS_TIME.borrow(cs).borrow());
-        match gnss.read_all_pvts(i2c_gps, &mut |pvt| {
-            if let Some(egps) = EgpsTime::from_pvt(&pvt, latest_pps) {
-                free(|cs| {
-                    EGPS_TIME.borrow(cs).replace(Some(egps));
-                });
-            }
-            if EGPS_STREAMING.load(Ordering::Relaxed) {
-                gps_collector.add_sample(pvt);
-            }
-        }) {
-            Ok(_) => {}
-            Err(e) => {
-                defmt::error!("RTC ISR: GPS read_all_pvts error: {:?}", defmt::Debug2Format(&e));
+    //
+    // Skip entirely while the module is powered off (`GPS_POWERED` false):
+    // touching I2C_GPS/GNSS with no power on the module just NAKs repeatedly
+    // and resets IOM2 every tick until the next wake.
+    if GPS_POWERED.load(Ordering::Relaxed) {
+        if let (Some(gnss), Some(i2c_gps), Some(gps_collector)) = unsafe {
+            (GNSS.as_mut(), I2C_GPS.as_mut(), GPS_COLLECTOR.as_mut())
+        } {
+            let latest_pps = free(|cs| *PPS_TIME.borrow(cs).borrow());
+            match gnss.read_all_pvts(i2c_gps, &mut |pvt| {
+                if let Some(egps) = EgpsTime::from_pvt(&pvt, latest_pps) {
+                    free(|cs| {
+                        EGPS_TIME.borrow(cs).replace(Some(egps));
+                    });
+                }
+                if EGPS_STREAMING.load(Ordering::Relaxed) {
+                    gps_collector.add_sample(pvt);
+                }
+            }) {
+                Ok(_) => {}
+                Err(e) => {
+                    defmt::error!(
+                        "RTC ISR: GPS read_all_pvts error: {:?}",
+                        defmt::Debug2Format(&e)
+                    );
+                }
             }
         }
     }
