@@ -20,6 +20,28 @@ several feature combinations (`testing`, `raw`, `fir`, `spectrum`, etc.) —
 always run this rather than a single `cargo test` invocation when validating
 changes.
 
+## Building a test binary for egps duty-cycle field tests
+
+Default params used for live duty-cycle field tests (40 min between egps
+batches, 10 min position fix interval, 20 min sync period), release mode,
+from `sfy4-buoy/` (with the cross-compile env vars above set):
+
+```
+make T=r bin SYNC_PERIOD=20 EGPS_BATCH_PERIOD=2400 EGPS_POSITION_INTERVAL=600
+```
+
+Produces `target/sfy4-main.bin`.
+
+## Analyzing device data with `sfy-processing`
+
+`sfy-processing`'s Python tooling (`Hub`/`SfyBuoy`, `SFY_READ_TOKEN`/
+`SFY_SERVER` env vars) requires the `sfy` mamba/conda environment (numpy
+etc. aren't in the base env) — run it via:
+
+```
+mamba run -n sfy python3 ...
+```
+
 ## Terminology: "batch" (egps) vs "spectrum" (axl)
 
 These are two unrelated concepts that both used to be called "spectrum" —
