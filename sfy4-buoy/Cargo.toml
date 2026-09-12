@@ -64,6 +64,9 @@ ntn-test = [ "spectrum" ]
 surf = []
 ice = []
 testing = [ "defmt/unstable-test" ]
+# Debug/dev-only: relax egps fix acquisition so batches start without a real
+# satellite fix (e.g. no antenna/indoor testing). NOT for field/deploy builds.
+accept-no-egps-fix = []
 target-test = [ "storage" ]
 build-bin = [ "fir", "storage", "raw", "anyhow", "argh", "serde-json-core/std", "serde_json", "chrono/std" ]
 

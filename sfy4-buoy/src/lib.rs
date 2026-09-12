@@ -240,6 +240,12 @@ impl Location {
                             egps.time
                         } else if diff >= 0 && diff <= 5_000 {
                             egps.time + diff
+                        } else if cfg!(feature = "accept-no-egps-fix") {
+                            debug!(
+                                "egps time is old (diff = {}), but accept-no-egps-fix is enabled -- using current RTC time instead.",
+                                diff
+                            );
+                            now
                         } else {
                             debug!("egps time is old (diff = {}), not using.", diff);
                             // Rate-limit retries: update state so we don't spin until

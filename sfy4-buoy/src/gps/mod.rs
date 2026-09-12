@@ -51,12 +51,23 @@ impl EgpsTime {
     /// Build an `EgpsTime` from a freshly-read `NavPvt` and the RTC snapshot
     /// captured in the timepulse interrupt (`pps_time`).
     ///
-    /// Returns `None` when the PVT does not carry a valid date+time.
+    /// Returns `None` when the PVT does not carry a valid date+time --
+    /// unless the `accept-no-egps-fix` debug feature is enabled, in which
+    /// case any PVT is accepted (falling back to the RTC-domain PPS
+    /// timestamp if the PVT's own date/time can't be decoded), so the
+    /// batch/duty-cycle pipeline can be exercised indoors without a real
+    /// satellite fix. Not for field/deploy builds.
     pub fn from_pvt(pvt: &NavPvt, pps_time: i64) -> Option<Self> {
+        #[cfg(not(feature = "accept-no-egps-fix"))]
         if (pvt.valid & 0x03) != 0x03 {
             return None;
         }
-        let ts = pvt_timestamp(pvt)?;
+
+        let ts = pvt_timestamp(pvt);
+        #[cfg(feature = "accept-no-egps-fix")]
+        let ts = ts.or_else(|| NaiveDateTime::from_timestamp_millis(pps_time));
+        let ts = ts?;
+
         Some(EgpsTime {
             time: ts.and_utc().timestamp_millis(),
             pps_time,
