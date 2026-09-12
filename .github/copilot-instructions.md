@@ -32,6 +32,16 @@ make T=r bin SYNC_PERIOD=20 EGPS_BATCH_PERIOD=2400 EGPS_POSITION_INTERVAL=600
 
 Produces `target/sfy4-main.bin`.
 
+For indoor/bench testing where the MAX-M10S can't get a real satellite fix
+(e.g. no antenna, weak signal), add `accept-no-egps-fix` (via `CARGO_FLAGS`,
+since `make bin` doesn't take a `FEATURES=` var) to relax egps fix
+acquisition so batches start anyway -- exercises the batch/duty-cycle
+pipeline without a real fix. Not for field/deploy builds:
+
+```
+make T=r bin SYNC_PERIOD=20 EGPS_BATCH_PERIOD=2400 EGPS_POSITION_INTERVAL=600 CARGO_FLAGS="--features accept-no-egps-fix"
+```
+
 ## Analyzing device data with `sfy-processing`
 
 `sfy-processing`'s Python tooling (`Hub`/`SfyBuoy`, `SFY_READ_TOKEN`/
