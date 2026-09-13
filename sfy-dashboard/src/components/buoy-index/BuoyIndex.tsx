@@ -108,6 +108,11 @@ export class BuoyIndex
         </td>
         <td>
           {buoy.hasGps() ? 'GPS' : 'Cel/Ird'}
+          {buoy.position_time() &&
+            <span title={moment(buoy.position_time()).utc().format("YYYY-MM-DD hh:mm:ss") + " UTC"}>
+              {" ("}{moment(new Date(buoy.position_time())).fromNow()}{")"}
+            </span>
+          }
         </td>
         <td>
           <span title={moment(buoy.lastContact()).utc().format("YYYY-MM-DD hh:mm:ss") + " UTC"}>

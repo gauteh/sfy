@@ -43,6 +43,12 @@ export class OmbBuoy {
     }
   }
 
+  // OMB does not report a GPS fix time distinct from when the message was
+  // received, so fall back to lastContact().
+  public position_time(): Date | undefined {
+    return this.lastContact();
+  }
+
   public setPackage(p: any) {
     this.package = p;
 
