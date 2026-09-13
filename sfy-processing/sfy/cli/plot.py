@@ -57,10 +57,10 @@ logger = logging.getLogger(__name__)
         type=float,
         default=None,
         help='Upper cut-off frequency')
-@click.option('-b', '--binary', is_flag=True, default=False,
-              help='Use binary packages (axlb.qo) instead of axl.qo')
+@click.option('-v0', '--v0', is_flag=True, default=False,
+              help='Use old non-binary packages (axl.qo) instead of axlb.qo')
 @click.pass_context
-def plot(ctx, dev, tx_start, tx_end, start, end, gap, freq, f0, f1, binary):
+def plot(ctx, dev, tx_start, tx_end, start, end, gap, freq, f0, f1, v0):
     hub = Hub.from_env()
     buoy = hub.buoy(dev)
 
@@ -91,7 +91,7 @@ def plot(ctx, dev, tx_start, tx_end, start, end, gap, freq, f0, f1, binary):
         f"Scanning for packages tx: {tx_start} <-> {tx_end} and clipping between {start} <-> {end}"
     )
 
-    pcks = buoy.axl_packages_range(tx_start, tx_end, binary=binary)
+    pcks = buoy.axl_packages_range(tx_start, tx_end, binary=not v0)
     logger.info(f"{len(pcks)} packages in tx range")
 
     if freq:
@@ -145,7 +145,7 @@ def plot(ctx, dev, tx_start, tx_end, start, end, gap, freq, f0, f1, binary):
     ctx.ensure_object(dict)
     ctx.obj['pcks'] = pcks
     ctx.obj['buoy'] = buoy
-    ctx.obj['binary'] = binary
+    ctx.obj['binary'] = not v0
 
     freqs = pcks.default_bandpass_freqs()
     if f0 is not None:
@@ -275,7 +275,7 @@ def welch(ctx, loglog, acceleration, raw):
 @click.option('--ylim', help='Height of y-axis (m)', default=1.0, type=float)
 def monitor(ctx, loglog, sleep, window, delay, ylim):
     buoy = ctx.obj['buoy']
-    binary = ctx.obj.get('binary', False)
+    binary = ctx.obj.get('binary', True)
 
     # if sleep:
     #     plt.ion()

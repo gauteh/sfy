@@ -326,7 +326,7 @@ class SfyBuoy(Buoy):
         else:
             self.__last__ = None
 
-    def axl_packages_range(self, start=None, end=None, binary=False):
+    def axl_packages_range(self, start=None, end=None, binary=True):
         note = 'axlb.qo.json' if binary else 'axl.qo.json'
         logger.debug(f"fetching axl packages ({note}) between {start} and {end}")
 
@@ -353,7 +353,7 @@ class SfyBuoy(Buoy):
 
         return pcks
 
-    def egps_packages_range(self, start=None, end=None, binary=False):
+    def egps_packages_range(self, start=None, end=None, binary=True):
         note = 'egpsb.qo.json' if binary else 'egps.qo.json'
         logger.debug(f"fetching egps packages ({note}) between {start} and {end}")
 

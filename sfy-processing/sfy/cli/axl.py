@@ -33,13 +33,13 @@ def axl():
               default=None,
               help='Filter packages sent before this time',
               type=click.DateTime())
-@click.option('-b', '--binary', is_flag=True, default=False,
-              help='Use binary packages (axlb.qo) instead of axl.qo')
-def list_buoys(dev, tx_start, tx_end, binary):
+@click.option('-v0', '--v0', is_flag=True, default=False,
+              help='Use old non-binary packages (axl.qo) instead of axlb.qo')
+def list_buoys(dev, tx_start, tx_end, v0):
     hub = Hub.from_env()
     buoy = hub.buoy(dev)
     logger.info(f"Listing packages for {buoy}")
-    pcks = buoy.axl_packages_range(tx_start, tx_end, binary=binary)
+    pcks = buoy.axl_packages_range(tx_start, tx_end, binary=not v0)
 
     pcks = [[
         ax.start.strftime("%Y-%m-%d %H:%M:%S UTC"), ax.lon, ax.lat,
@@ -95,10 +95,10 @@ def list_buoys(dev, tx_start, tx_end, binary):
               is_flag=True,
               help='Do not retime based on estimated frequency.',
               type=bool)
-@click.option('-b', '--binary', is_flag=True, default=False,
-              help='Use binary packages (axlb.qo) instead of axl.qo')
+@click.option('-v0', '--v0', is_flag=True, default=False,
+              help='Use old non-binary packages (axl.qo) instead of axlb.qo')
 def ts(dev, tx_start, tx_end, start, end, file, gap, freq, displacement,
-       no_retime, binary):
+       no_retime, v0):
     hub = Hub.from_env()
     buoy = hub.buoy(dev)
 
@@ -132,7 +132,7 @@ def ts(dev, tx_start, tx_end, start, end, file, gap, freq, displacement,
         f"Scanning for packages tx: {tx_start} <-> {tx_end} and clipping between {start} <-> {end}"
     )
 
-    pcks = buoy.axl_packages_range(tx_start, tx_end, binary=binary)
+    pcks = buoy.axl_packages_range(tx_start, tx_end, binary=not v0)
     logger.info(f"{len(pcks)} packages in tx range")
 
     if freq:
@@ -243,9 +243,9 @@ def ts(dev, tx_start, tx_end, start, end, file, gap, freq, displacement,
               is_flag=True,
               help='Do not retime based on estimated frequency.',
               type=bool)
-@click.option('-b', '--binary', is_flag=True, default=False,
-              help='Use binary packages (axlb.qo) instead of axl.qo')
-def stats(dev, tx_start, tx_end, start, end, file, gap, freq, raw, no_retime, binary):
+@click.option('-v0', '--v0', is_flag=True, default=False,
+              help='Use old non-binary packages (axl.qo) instead of axlb.qo')
+def stats(dev, tx_start, tx_end, start, end, file, gap, freq, raw, no_retime, v0):
     hub = Hub.from_env()
     buoy = hub.buoy(dev)
 
@@ -279,7 +279,7 @@ def stats(dev, tx_start, tx_end, start, end, file, gap, freq, raw, no_retime, bi
         f"Scanning for packages tx: {tx_start} <-> {tx_end} and clipping between {start} <-> {end}"
     )
 
-    pcks = buoy.axl_packages_range(tx_start, tx_end, binary=binary)
+    pcks = buoy.axl_packages_range(tx_start, tx_end, binary=not v0)
     logger.info(f"{len(pcks)} packages in tx range")
 
     if freq:

@@ -33,13 +33,13 @@ def egps():
               default=None,
               help='Filter packages sent before this time',
               type=click.DateTime())
-@click.option('-b', '--binary', is_flag=True, default=False,
-              help='Use binary packages (egpsb.qo) instead of egps.qo')
-def list_buoys(dev, tx_start, tx_end, binary):
+@click.option('-v0', '--v0', is_flag=True, default=False,
+              help='Use old non-binary packages (egps.qo) instead of egpsb.qo')
+def list_buoys(dev, tx_start, tx_end, v0):
     hub = Hub.from_env()
     buoy = hub.buoy(dev)
     logger.info(f"Listing packages for {buoy}")
-    pcks = buoy.egps_packages_range(tx_start, tx_end, binary=binary)
+    pcks = buoy.egps_packages_range(tx_start, tx_end, binary=not v0)
 
     pcks = [[
         ax.start.strftime("%Y-%m-%d %H:%M:%S UTC"), ax.longitude, ax.latitude,
@@ -82,9 +82,9 @@ def list_buoys(dev, tx_start, tx_end, binary):
     help=
     'Only use packages with this frequency (usually 52 or 20.8, within 2 Hz)',
     type=float)
-@click.option('-b', '--binary', is_flag=True, default=False,
-              help='Use binary packages (egpsb.qo) instead of egps.qo')
-def ts(dev, tx_start, tx_end, start, end, file, gap, freq, binary):
+@click.option('-v0', '--v0', is_flag=True, default=False,
+              help='Use old non-binary packages (egps.qo) instead of egpsb.qo')
+def ts(dev, tx_start, tx_end, start, end, file, gap, freq, v0):
     hub = Hub.from_env()
     buoy = hub.buoy(dev)
 
@@ -118,7 +118,7 @@ def ts(dev, tx_start, tx_end, start, end, file, gap, freq, binary):
         f"Scanning for packages tx: {tx_start} <-> {tx_end} and clipping between {start} <-> {end}"
     )
 
-    pcks = buoy.egps_packages_range(tx_start, tx_end, binary=binary)
+    pcks = buoy.egps_packages_range(tx_start, tx_end, binary=not v0)
     logger.info(f"{len(pcks)} packages in tx range")
 
     if freq:
