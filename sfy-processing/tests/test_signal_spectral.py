@@ -50,7 +50,7 @@ def test_imu_cutoff_rabault2022(sfyhub, plot):
     b = sfyhub.buoy("wavebug26")
     pcks = b.axl_packages_range(
         datetime(2023, 1, 23, 5, 34, tzinfo=timezone.utc),
-        datetime(2023, 1, 23, 6, 35, tzinfo=timezone.utc))
+        datetime(2023, 1, 23, 6, 35, tzinfo=timezone.utc), binary=False)
     c = AxlCollection(pcks)
 
     f, P = signal.welch(c.frequency, c.z)

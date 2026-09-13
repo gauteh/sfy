@@ -20,7 +20,7 @@ def test_collection_nc(sfyhub, tmpdir):
     b = sfyhub.buoy("dev864475044204278")
     pcks = b.axl_packages_range(
         datetime(2022, 4, 26, 11, 34, tzinfo=timezone.utc),
-        datetime(2022, 4, 26, 11, 35, tzinfo=timezone.utc))
+        datetime(2022, 4, 26, 11, 35, tzinfo=timezone.utc), binary=False)
     c = AxlCollection(pcks)
     ds = c.to_dataset()
     print(ds)
@@ -32,7 +32,7 @@ def test_buggy_data(sfyhub, tmpdir):
     b = sfyhub.buoy('bug08')
     pcks = b.axl_packages_range(
         datetime(2022, 8, 14, 00, 00, tzinfo=timezone.utc),
-        datetime(2022, 8, 15, 23, 59, tzinfo=timezone.utc))
+        datetime(2022, 8, 15, 23, 59, tzinfo=timezone.utc), binary=False)
     print(pcks)
     c = AxlCollection(pcks)
     ds = c.to_dataset()
@@ -44,7 +44,7 @@ def test_with_displacement(sfyhub, tmpdir):
     b = sfyhub.buoy("dev864475044204278")
     pcks = b.axl_packages_range(
         datetime(2022, 4, 26, 11, 34, tzinfo=timezone.utc),
-        datetime(2022, 4, 26, 11, 35, tzinfo=timezone.utc))
+        datetime(2022, 4, 26, 11, 35, tzinfo=timezone.utc), binary=False)
     c = AxlCollection(pcks)
     ds = c.to_dataset(displacement=True)
     print(ds)

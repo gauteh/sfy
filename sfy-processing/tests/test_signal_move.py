@@ -17,7 +17,7 @@ def test_v6_16g_range_bali_1m(sfyhub, plot):
     b = sfyhub.buoy('bug32')
     pcks = b.axl_packages_range(
         datetime(2023, 11, 9, 15, 00, tzinfo=timezone.utc),
-        datetime(2023, 11, 9, 16, 50, tzinfo=timezone.utc))
+        datetime(2023, 11, 9, 16, 50, tzinfo=timezone.utc), binary=False)
 
     c = axl.AxlCollection(pcks)
     c = c.clip(datetime(2023, 11, 9, 15, 31, 55, tzinfo=timezone.utc),
@@ -63,7 +63,7 @@ def test_v6_16g_range_bali_161cm(sfyhub, plot):
     b = sfyhub.buoy('bug32')
     pcks = b.axl_packages_range(
         datetime(2023, 11, 9, 15, 00, tzinfo=timezone.utc),
-        datetime(2023, 11, 9, 16, 50, tzinfo=timezone.utc))
+        datetime(2023, 11, 9, 16, 50, tzinfo=timezone.utc), binary=False)
 
     c = axl.AxlCollection(pcks)
     # c = c.clip(datetime(2023, 11, 9, 15, 24, 50, tzinfo=timezone.utc),
@@ -111,7 +111,7 @@ def test_v6_16g_range_bali_161cm(sfyhub, plot):
 #     b = sfyhub.buoy('bug32')
 #     pcks = b.axl_packages_range(
 #         datetime(2023, 11, 10, 11 - 8, tzinfo=timezone.utc),
-#         datetime(2023, 11, 10, 13 - 8, tzinfo=timezone.utc))
+#         datetime(2023, 11, 10, 13 - 8, tzinfo=timezone.utc), binary=False)
 
 #     c = axl.AxlCollection(pcks)
 #     ds = c.to_dataset()
@@ -174,7 +174,7 @@ def test_v6_16g_range_window_20cm_1m_test(sfyhub, plot):
     b = sfyhub.buoy('bug30')
     pcks = b.axl_packages_range(
         datetime(2023, 11, 10, 11, tzinfo=timezone.utc),
-        datetime(2023, 11, 10, 13, tzinfo=timezone.utc))
+        datetime(2023, 11, 10, 13, tzinfo=timezone.utc), binary=False)
 
     c = axl.AxlCollection(pcks)
     ds = c.to_dataset()
@@ -223,7 +223,7 @@ def test_at_rest(sfyhub, plot):
     b = sfyhub.buoy('dev867648043600996')
     pcks = b.axl_packages_range(
         datetime(2024, 2, 19, 9, 0, tzinfo=timezone.utc),
-        datetime(2024, 2, 19, 10, 11, tzinfo=timezone.utc))
+        datetime(2024, 2, 19, 10, 11, tzinfo=timezone.utc), binary=False)
 
     c = axl.AxlCollection(pcks)
     ds = c.to_dataset()
@@ -246,7 +246,7 @@ def test_lift(sfyhub, plot):
     b = sfyhub.buoy('dev867648043600996')
     pcks = b.axl_packages_range(
         datetime(2024, 2, 19, 9, 5, tzinfo=timezone.utc),
-        datetime(2024, 2, 19, 10, 11, tzinfo=timezone.utc))
+        datetime(2024, 2, 19, 10, 11, tzinfo=timezone.utc), binary=False)
 
     c = axl.AxlCollection(pcks)
     ds = c.to_dataset()

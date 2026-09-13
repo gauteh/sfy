@@ -14,7 +14,7 @@ def test_time(sfyhub):
     b = sfyhub.buoy("dev867648043576717")
     pcks = b.axl_packages_range(
         datetime(2023, 4, 20, 9, 8, tzinfo=timezone.utc),
-        datetime(2023, 4, 20, 9, 38, tzinfo=timezone.utc))
+        datetime(2023, 4, 20, 9, 38, tzinfo=timezone.utc), binary=False)
     c = AxlCollection(pcks)
 
     ds = c.to_dataset()
@@ -33,7 +33,7 @@ def test_estimate_frequency(sfyhub):
     b = sfyhub.buoy("dev867648043576717")
     pcks = b.axl_packages_range(
         datetime(2023, 4, 20, 9, 8, tzinfo=timezone.utc),
-        datetime(2023, 4, 20, 9, 38, tzinfo=timezone.utc))
+        datetime(2023, 4, 20, 9, 38, tzinfo=timezone.utc), binary=False)
     c = AxlCollection(pcks)
 
     ds = c.to_dataset()
@@ -50,7 +50,7 @@ def test_retime(sfyhub, plot):
     b = sfyhub.buoy("dev867648043576717")
     pcks = b.axl_packages_range(
         datetime(2023, 4, 20, 9, 8, tzinfo=timezone.utc),
-        datetime(2023, 4, 20, 9, 38, tzinfo=timezone.utc))
+        datetime(2023, 4, 20, 9, 38, tzinfo=timezone.utc), binary=False)
     c = AxlCollection(pcks)
 
     ds = c.to_dataset(retime=False)
@@ -82,7 +82,7 @@ def test_retime_sintef(sfyhub, plot):
     b = sfyhub.buoy("dev867648043599644")
     pcks = b.axl_packages_range(
         datetime(2023, 4, 20, 9, 16, tzinfo=timezone.utc),
-        datetime(2023, 4, 20, 9, 40, tzinfo=timezone.utc))
+        datetime(2023, 4, 20, 9, 40, tzinfo=timezone.utc), binary=False)
     c = AxlCollection(pcks)
 
     ds = c.to_dataset(retime=False)
@@ -115,7 +115,7 @@ def test_retime_group_no_segment(sfyhub):
     b = sfyhub.buoy("dev867648043599644")
     pcks = b.axl_packages_range(
         datetime(2023, 4, 20, 9, 16, tzinfo=timezone.utc),
-        datetime(2023, 4, 20, 9, 40, tzinfo=timezone.utc))
+        datetime(2023, 4, 20, 9, 40, tzinfo=timezone.utc), binary=False)
     c = AxlCollection(pcks)
 
     ds = c.to_dataset(retime=False)
@@ -135,7 +135,7 @@ def test_retime_group_with_segment(sfyhub, plot):
     b = sfyhub.buoy("dev867648043599644")
     pcks = b.axl_packages_range(
         datetime(2023, 4, 20, 8, 25, tzinfo=timezone.utc),
-        datetime(2023, 4, 20, 8, 35, tzinfo=timezone.utc))
+        datetime(2023, 4, 20, 8, 35, tzinfo=timezone.utc), binary=False)
     c = AxlCollection(pcks)
 
     ds = c.to_dataset(retime=False)
@@ -186,7 +186,7 @@ def test_retime_group_with_segment_entire(sfyhub, plot):
     b = sfyhub.buoy("dev867648043599644")
     pcks = b.axl_packages_range(
         datetime(2023, 4, 20, 8, 25, tzinfo=timezone.utc),
-        datetime(2023, 4, 20, 8, 35, tzinfo=timezone.utc))
+        datetime(2023, 4, 20, 8, 35, tzinfo=timezone.utc), binary=False)
     c = AxlCollection(pcks)
 
     ds = c.to_dataset(retime=False)
@@ -207,7 +207,7 @@ def test_seltime(sfyhub, plot):
     b = sfyhub.buoy("dev867648043599644")
     pcks = b.axl_packages_range(
         datetime(2023, 4, 20, 8, 25, tzinfo=timezone.utc),
-        datetime(2023, 4, 20, 11, 35, tzinfo=timezone.utc))
+        datetime(2023, 4, 20, 11, 35, tzinfo=timezone.utc), binary=False)
     c = AxlCollection(pcks)
     dsr = c.to_dataset()
     assert dsr.dims['package'] > 0
@@ -231,7 +231,7 @@ def test_concat(sfyhub, plot):
     b = sfyhub.buoy("dev867648043599644")
     pcks = b.axl_packages_range(
         datetime(2023, 4, 20, 8, 25, tzinfo=timezone.utc),
-        datetime(2023, 4, 20, 11, 35, tzinfo=timezone.utc))
+        datetime(2023, 4, 20, 11, 35, tzinfo=timezone.utc), binary=False)
     c = AxlCollection(pcks)
     dsr = c.to_dataset()
     print(dsr)
@@ -253,7 +253,7 @@ def test_splitby_time(sfyhub):
     b = sfyhub.buoy("dev867648043599644")
     pcks = b.axl_packages_range(
         datetime(2023, 4, 20, 8, 25, tzinfo=timezone.utc),
-        datetime(2023, 4, 20, 11, 35, tzinfo=timezone.utc))
+        datetime(2023, 4, 20, 11, 35, tzinfo=timezone.utc), binary=False)
     c = AxlCollection(pcks)
     dsr = c.to_dataset()
     print(dsr)
@@ -285,7 +285,7 @@ def test_fill_gaps(sfyhub, plot):
     b = sfyhub.buoy("dev867648043599644")
     pcks = b.axl_packages_range(
         datetime(2023, 4, 20, 8, 25, tzinfo=timezone.utc),
-        datetime(2023, 4, 20, 11, 35, tzinfo=timezone.utc))
+        datetime(2023, 4, 20, 11, 35, tzinfo=timezone.utc), binary=False)
     c = AxlCollection(pcks)
     dsr = c.to_dataset()
     print(dsr)

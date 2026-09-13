@@ -52,7 +52,7 @@ def test_pca_xy(sfyhub, plot):
     b = sfyhub.buoy("wavebug25")
     pcks = b.axl_packages_range(
         datetime(2023, 4, 20, 9, 17, tzinfo=timezone.utc),
-        datetime(2023, 4, 20, 9, 19, tzinfo=timezone.utc))
+        datetime(2023, 4, 20, 9, 19, tzinfo=timezone.utc), binary=False)
     c = AxlCollection(pcks)
     ds = c.to_dataset()
 

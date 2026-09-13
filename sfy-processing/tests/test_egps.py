@@ -28,7 +28,7 @@ def test_collect(sfyhub):
     b = sfyhub.buoy("dev864593051335148")
     pcks = b.egps_packages_range(
         datetime(2024, 10, 28, 12, 40, tzinfo=timezone.utc),
-        datetime(2024, 10, 28, 13, 20, tzinfo=timezone.utc))
+        datetime(2024, 10, 28, 13, 20, tzinfo=timezone.utc), binary=False)
     assert len(pcks) > 2
 
     c = EgpsCollection(pcks)
@@ -43,7 +43,7 @@ def test_stationary(sfyhub, plot):
     b = sfyhub.buoy('dev864593051335148')
     pcks = b.egps_packages_range(
         datetime(2024, 10, 28, 12, 40, tzinfo=timezone.utc),
-        datetime(2024, 10, 28, 13, 20, tzinfo=timezone.utc))
+        datetime(2024, 10, 28, 13, 20, tzinfo=timezone.utc), binary=False)
 
     c = EgpsCollection(pcks)
     ds = c.to_dataset()

@@ -13,7 +13,7 @@ def test_axl_v5_quiet(sfyhub, plot):
     b = sfyhub.buoy("dev867648043595907")
     pcks = b.axl_packages_range(
         datetime(2022, 12, 11, 15, 00, tzinfo=timezone.utc),
-        datetime(2022, 12, 11, 15, 30, tzinfo=timezone.utc))
+        datetime(2022, 12, 11, 15, 30, tzinfo=timezone.utc), binary=False)
 
     c = axl.AxlCollection(pcks)
     ds = c.to_dataset()
@@ -40,7 +40,7 @@ def test_axl_v3_quiet(sfyhub):
     b = sfyhub.buoy("dev867648043598489")
     pcks = b.axl_packages_range(
         datetime(2022, 11, 30, 11, 0, tzinfo=timezone.utc),
-        datetime(2022, 11, 30, 11, 25, tzinfo=timezone.utc))
+        datetime(2022, 11, 30, 11, 25, tzinfo=timezone.utc), binary=False)
 
     c = axl.AxlCollection(pcks)
     ds = c.to_dataset()
@@ -60,7 +60,7 @@ def test_axl_v6_16g_range(sfyhub, plot):
     b = sfyhub.buoy('dev867648043600996')
     pcks = b.axl_packages_range(
         datetime(2023, 11, 6, 9, 40, tzinfo=timezone.utc),
-        datetime(2023, 11, 6, 11, 50, tzinfo=timezone.utc))
+        datetime(2023, 11, 6, 11, 50, tzinfo=timezone.utc), binary=False)
 
     c = axl.AxlCollection(pcks)
     c = c.clip(datetime(2023, 11, 6, 10, 40, tzinfo=timezone.utc),
@@ -110,7 +110,7 @@ def test_axl_v6_4g_range(sfyhub, plot):
     b = sfyhub.buoy('dev867648043600996')
     pcks = b.axl_packages_range(
         datetime(2023, 11, 6, 9, 40, tzinfo=timezone.utc),
-        datetime(2023, 11, 6, 12, 50, tzinfo=timezone.utc))
+        datetime(2023, 11, 6, 12, 50, tzinfo=timezone.utc), binary=False)
 
     c = axl.AxlCollection(pcks)
     c = c.clip(datetime(2023, 11, 6, 11, 45, tzinfo=timezone.utc),
@@ -160,7 +160,7 @@ def test_v6_16g_range_bali(sfyhub, plot):
     b = sfyhub.buoy('bug32')
     pcks = b.axl_packages_range(
         datetime(2023, 11, 9, 15, 00, tzinfo=timezone.utc),
-        datetime(2023, 11, 9, 16, 50, tzinfo=timezone.utc))
+        datetime(2023, 11, 9, 16, 50, tzinfo=timezone.utc), binary=False)
 
     c = axl.AxlCollection(pcks)
     c = c.clip(datetime(2023, 11, 9, 15, 35, 40, tzinfo=timezone.utc),

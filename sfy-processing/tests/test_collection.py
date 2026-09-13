@@ -12,7 +12,7 @@ def test_collect(sfyhub):
     b = sfyhub.buoy("dev864475044204278")
     pcks = b.axl_packages_range(
         datetime(2022, 4, 26, 11, 34, tzinfo=timezone.utc),
-        datetime(2022, 4, 26, 11, 35, tzinfo=timezone.utc))
+        datetime(2022, 4, 26, 11, 35, tzinfo=timezone.utc), binary=False)
     assert len(pcks) > 2
 
     c = AxlCollection(pcks)
@@ -29,7 +29,7 @@ def test_segment(sfyhub):
     b = sfyhub.buoy("dev864475044204278")
     pcks = b.axl_packages_range(
         datetime(2022, 4, 26, 11, 34, tzinfo=timezone.utc),
-        datetime(2022, 4, 26, 11, 35, tzinfo=timezone.utc))
+        datetime(2022, 4, 26, 11, 35, tzinfo=timezone.utc), binary=False)
     c = AxlCollection(pcks)
 
     segments = list(c.segments())
@@ -41,7 +41,7 @@ def test_join_collections(sfyhub):
     b = sfyhub.buoy("dev864475044204278")
     pcks = b.axl_packages_range(
         datetime(2022, 4, 26, 11, 34, tzinfo=timezone.utc),
-        datetime(2022, 4, 26, 11, 35, tzinfo=timezone.utc))
+        datetime(2022, 4, 26, 11, 35, tzinfo=timezone.utc), binary=False)
     c = AxlCollection(pcks)
 
     segments = list(c.segments())

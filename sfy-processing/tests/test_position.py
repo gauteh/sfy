@@ -12,7 +12,7 @@ def test_position_time_wrong(sfyhub):
     end = datetime(2022, 7, 7, 7, 55, tzinfo=timezone.utc)
 
     buoy = sfyhub.buoy('bug04')
-    pcks = buoy.axl_packages_range(tx_start, tx_end)
+    pcks = buoy.axl_packages_range(tx_start, tx_end, binary=False)
     pcks = axl.AxlCollection(pcks)
     pcks.clip(start, end)
 
