@@ -27,7 +27,7 @@ fn main() {
 
     let egps_position_dwell: u32 = option_env!("EGPS_POSITION_DWELL")
         .map(|p| p.parse::<u32>().unwrap())
-        .unwrap_or(120);
+        .unwrap_or(480);
 
     let egps_batch_period: u32 = option_env!("EGPS_BATCH_PERIOD")
         .map(|p| p.parse::<u32>().unwrap())

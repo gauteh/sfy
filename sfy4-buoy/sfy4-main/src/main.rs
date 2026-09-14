@@ -848,6 +848,37 @@ fn main() -> ! {
 fn apply_egps_action(action: EgpsAction, delay: &mut impl DelayMs<u16>) {
     use core::sync::atomic::Ordering;
 
+    /// Retry a fallible GPS init/config step up to `retries` times, with a
+    /// delay between attempts, logging a warning on each failure. Mirrors
+    /// the boot sequence's per-step persistence (see the `loop { match .. }`
+    /// blocks above), but bounded so a persistently unresponsive module
+    /// can't stall a duty-cycle wake indefinitely -- the caller just gives
+    /// up and lets the wake dwell-timeout back to idle instead.
+    fn retry_gps_step<T>(
+        mut f: impl FnMut() -> Result<T, max_m10s::Error<E>>,
+        retries: u8,
+        delay_ms: u16,
+        label: &str,
+        delay: &mut impl DelayMs<u16>,
+    ) -> Option<T> {
+        for attempt in 1..=retries {
+            match f() {
+                Ok(v) => return Some(v),
+                Err(e) => {
+                    warn!(
+                        "GPS {} failed (attempt {}/{}): {:?}",
+                        label,
+                        attempt,
+                        retries,
+                        defmt::Debug2Format(&e)
+                    );
+                    delay.delay_ms(delay_ms);
+                }
+            }
+        }
+        None
+    }
+
     match action {
         EgpsAction::None => {}
 
@@ -860,6 +891,23 @@ fn apply_egps_action(action: EgpsAction, delay: &mut impl DelayMs<u16>) {
                 if let Some(pin) = GPS_PWR.borrow(cs).borrow_mut().as_mut() {
                     pin.set_high().ok(); // HIGH = off
                 }
+                // The PPS timepulse GPIO interrupt is otherwise left
+                // enabled/self-re-arming across wakes -- while the module is
+                // unpowered its timepulse pin is floating/undefined, so
+                // disable the interrupt here to stop it from latching
+                // spurious or stale-looking edges into `PPS_TIME` during the
+                // idle gap. Re-enabled only once `WakePowerOnReinit`
+                // actually succeeds.
+                if let Some(pin) = TS_PIN.borrow(cs).borrow_mut().as_mut() {
+                    pin.disable_interrupt();
+                }
+                // Invalidate `PPS_TIME` (sentinel `0`) so a fix that arrives
+                // early next wake -- before a fresh, post-power-on PPS edge
+                // has actually been captured -- falls back to using the GPS
+                // time directly (see the `egps.pps_time == 0` case in
+                // `Location::set_from_egps`) instead of being diffed against
+                // an hour-old timestamp from this wake and rejected.
+                *PPS_TIME.borrow(cs).borrow_mut() = 0;
             });
             if FORCE_SYNC_ON_WAKE.load(Ordering::Relaxed) {
                 FORCE_SYNC_REQUESTED.store(true, Ordering::Relaxed);
@@ -875,68 +923,87 @@ fn apply_egps_action(action: EgpsAction, delay: &mut impl DelayMs<u16>) {
             });
             delay.delay_ms(200u16);
 
-            // Retry re-init like the boot path does -- a single missed I2C
-            // ACK or NAK right after power-on (module not fully up yet)
-            // shouldn't permanently strand this wake without ever
-            // streaming/starting a batch. Done *outside* a critical
-            // section (unlike boot) so the retry delays don't stall the
-            // RTC ISR's 100 ms IMU sampling; this is still race-free
-            // since GPS_POWERED stays false throughout, so the ISR leaves
-            // I2C_GPS/GNSS alone until re-init succeeds (or the retry
-            // budget below is exhausted).
-            const REINIT_RETRIES: u8 = 5;
-            let mut ready = false;
-            for attempt in 1..=REINIT_RETRIES {
-                let ok = unsafe {
-                    if let Some(i2c) = I2C_GPS.as_mut() {
-                        match MaxM10S::new(i2c) {
-                            Ok(mut dev) => match dev.init(i2c) {
-                                Ok(()) => {
-                                    dev.set_output_rate(i2c, 1).ok();
-                                    dev.set_pps_rate(i2c, 1_000_000, 10_000).ok();
-                                    dev.enable_pvt(i2c).ok();
-                                    GNSS = Some(dev);
-                                    true
-                                }
-                                Err(e) => {
-                                    warn!(
-                                        "GPS re-init failed (attempt {}/{}): {:?}",
-                                        attempt,
-                                        REINIT_RETRIES,
-                                        defmt::Debug2Format(&e)
-                                    );
-                                    false
-                                }
-                            },
-                            Err(_) => {
-                                warn!(
-                                    "GPS device not found on power-on re-init (attempt {}/{})",
-                                    attempt, REINIT_RETRIES
-                                );
-                                false
-                            }
-                        }
-                    } else {
-                        false
-                    }
-                };
-                if ok {
-                    ready = true;
-                    break;
+            // Retry each re-init step like the boot path does -- a single
+            // missed I2C ACK/NAK right after power-on (module not fully up
+            // yet) shouldn't permanently strand this wake without ever
+            // streaming/starting a batch -- but bounded per step (unlike
+            // boot's infinite loop) so a persistently unresponsive module
+            // still lets this wake give up and dwell-timeout back to idle,
+            // instead of hanging the main loop forever. Done *outside* a
+            // critical section (unlike boot) so the retry delays don't
+            // stall the RTC ISR's 100 ms IMU sampling; this is still
+            // race-free since GPS_POWERED stays false throughout, so the
+            // ISR leaves I2C_GPS/GNSS alone until re-init succeeds (or the
+            // retry budget below is exhausted).
+            const STEP_RETRIES: u8 = 5;
+            const STEP_DELAY_MS: u16 = 200;
+
+            let ready = unsafe {
+                if let Some(i2c) = I2C_GPS.as_mut() {
+                    retry_gps_step(
+                        || MaxM10S::new(i2c),
+                        STEP_RETRIES,
+                        STEP_DELAY_MS,
+                        "device not found",
+                        delay,
+                    )
+                    .and_then(|mut dev| {
+                        retry_gps_step(
+                            || dev.init(i2c),
+                            STEP_RETRIES,
+                            STEP_DELAY_MS,
+                            "init",
+                            delay,
+                        )?;
+                        retry_gps_step(
+                            || dev.set_output_rate(i2c, 1),
+                            STEP_RETRIES,
+                            STEP_DELAY_MS,
+                            "set_output_rate",
+                            delay,
+                        )?;
+                        retry_gps_step(
+                            || dev.set_pps_rate(i2c, 1_000_000, 10_000),
+                            STEP_RETRIES,
+                            STEP_DELAY_MS,
+                            "set_pps_rate",
+                            delay,
+                        )?;
+                        retry_gps_step(
+                            || dev.enable_pvt(i2c),
+                            STEP_RETRIES,
+                            STEP_DELAY_MS,
+                            "enable_pvt",
+                            delay,
+                        )?;
+                        Some(dev)
+                    })
+                    .map(|dev| GNSS = Some(dev))
+                    .is_some()
+                } else {
+                    false
                 }
-                delay.delay_ms(200u16);
-            }
+            };
+
             if ready {
                 // Only now is it safe for the RTC ISR to resume draining
-                // the GPS FIFO.
+                // the GPS FIFO, and for the PPS GPIO interrupt to be
+                // trusted again -- clear any edge latched while it was
+                // disabled before re-enabling it.
                 GPS_POWERED.store(true, Ordering::Relaxed);
+                free(|cs| {
+                    if let Some(pin) = TS_PIN.borrow(cs).borrow_mut().as_mut() {
+                        pin.clear_interrupt();
+                        pin.enable_interrupt();
+                    }
+                });
+                info!("egps: waking (full power-on re-init)");
             } else {
                 error!(
-                    "GPS: giving up on power-on re-init after {} attempts",
-                    REINIT_RETRIES
+                    "GPS: giving up on power-on re-init after {} attempts per step",
+                    STEP_RETRIES
                 );
             }
-            info!("egps: waking (full power-on re-init)");
         }
 
         EgpsAction::StartBatch => {
