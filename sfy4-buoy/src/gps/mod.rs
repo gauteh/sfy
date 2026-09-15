@@ -408,10 +408,12 @@ impl GpsCollector {
             self.total_pvts = 0;
             self.fill_count = 0;
 
-            let _ = self
-                .queue
-                .enqueue(pkt)
-                .inspect_err(|_| error!("GPS: could not enqueue GpsPacket"));
+            match self.queue.enqueue(pkt) {
+                Ok(()) => {
+                    crate::stats::EGPS_PACKETS.fetch_add(1, core::sync::atomic::Ordering::Relaxed);
+                }
+                Err(_) => error!("GPS: could not enqueue GpsPacket"),
+            }
         }
     }
 

@@ -578,6 +578,7 @@ fn main() -> ! {
         .now()
         .map(|t| t.and_utc().timestamp_millis())
         .unwrap_or(0);
+    let mut last_status_ms: i64 = last_env_poll_ms;
 
     // Last known-good RTC reading, used to bridge over transient RTC read
     // failures (`STATE.now() == None`, e.g. an Apollo3 register-sync glitch
@@ -671,6 +672,26 @@ fn main() -> ! {
                         .ok();
                 }
                 power_cfg = new_cfg;
+            }
+        }
+
+        // Cheap, non-resetting counters print every iteration for on-screen
+        // (RTT/defmt) visibility -- separate from the periodic reset-and-send
+        // report below.
+        info!("{}", sfy::stats::format_status().as_str());
+
+        // --- Periodic health/status summary (once per `sync_period`) ----------
+        // Minimal, best-effort visibility into duty-cycle health while
+        // field-testing: counts are plain atomics bumped at the relevant
+        // call sites (see `sfy::stats`) and reset every time a report is
+        // sent, so each message reflects only the period since the last
+        // one. Piggy-backs on the existing `sfy::log`/`hub.log` path (sent
+        // out on the next main-loop iteration, not gated on a `qo` sync),
+        // so no new Notefile/template is needed.
+        if now_ms.saturating_sub(last_status_ms) >= power_cfg.sync_period_min as i64 * 60_000 {
+            last_status_ms = now_ms;
+            if let Some(status) = sfy::stats::report_and_reset() {
+                log(&status);
             }
         }
 
@@ -1003,6 +1024,7 @@ fn apply_egps_action(action: EgpsAction, delay: &mut impl DelayMs<u16>) {
                     "GPS: giving up on power-on re-init after {} attempts per step",
                     STEP_RETRIES
                 );
+                sfy::stats::GPS_REINIT_FAILURES.fetch_add(1, Ordering::Relaxed);
             }
         }
 
@@ -1156,6 +1178,7 @@ fn RTC() {
             }
             Err(e) => {
                 error!("RTC: IMU check_retrieve failed: {:?}", e);
+                sfy::stats::IMU_FAILURES.fetch_add(1, Ordering::Relaxed);
                 if *GOOD_TRIES == 0 {
                     error!("RTC: too many IMU failures, resetting.");
                     cortex_m::peripheral::SCB::sys_reset();

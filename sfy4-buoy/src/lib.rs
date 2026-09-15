@@ -39,6 +39,7 @@ pub mod gps;
 pub mod log;
 pub mod note;
 pub mod power;
+pub mod stats;
 #[cfg(feature = "storage")]
 pub mod storage;
 pub mod waves;
@@ -248,6 +249,8 @@ impl Location {
                             now
                         } else {
                             debug!("egps time is old (diff = {}), not using.", diff);
+                            crate::stats::GPS_PPS_DIFF_REJECTED
+                                .fetch_add(1, core::sync::atomic::Ordering::Relaxed);
                             // Rate-limit retries: update state so we don't spin until
                             // the next LOCATION_DIFF interval.
                             self.state = LocationState::Trying(now);
@@ -432,14 +435,16 @@ impl<E: Debug + defmt::Format, I: Write<Error = E> + WriteRead<Error = E>> Imu<E
             samples += self.waves.read_and_filter()?;
 
             if self.streaming {
-                self.queue
-                    .enqueue(pck)
-                    .inspect_err(|_| {
+                match self.queue.enqueue(pck) {
+                    Ok(()) => {
+                        crate::stats::AXL_PACKETS
+                            .fetch_add(1, core::sync::atomic::Ordering::Relaxed);
+                    }
+                    Err(_) => {
                         error!("queue is full, discarding data.");
-
                         // log::log("Queue is full: discarding package.");
-                    })
-                    .ok();
+                    }
+                }
             }
         }
 
