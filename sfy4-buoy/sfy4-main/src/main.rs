@@ -675,11 +675,6 @@ fn main() -> ! {
             }
         }
 
-        // Cheap, non-resetting counters print every iteration for on-screen
-        // (RTT/defmt) visibility -- separate from the periodic reset-and-send
-        // report below.
-        info!("{}", sfy::stats::format_status().as_str());
-
         // --- Periodic health/status summary (once per `sync_period`) ----------
         // Minimal, best-effort visibility into duty-cycle health while
         // field-testing: counts are plain atomics bumped at the relevant
@@ -773,6 +768,12 @@ fn main() -> ! {
             imu_queue.len(),
             gps_queue.len(),
         );
+
+        // Cheap, non-resetting counters -- same cadence as the "notecard
+        // iteration" log above (i.e. only when there is queued work, not
+        // every idle busy/sleep loop) for on-screen (RTT/defmt) visibility.
+        // Separate from the periodic reset-and-send report above.
+        info!("{}", sfy::stats::format_status().as_str());
 
         #[cfg(not(feature = "deploy"))]
         led.toggle().unwrap();
