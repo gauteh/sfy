@@ -592,11 +592,21 @@ fn main() -> ! {
     // stalls for one iteration and retries.
     let mut last_known_now_ms: i64 = last_env_poll_ms;
 
+    // Last time the RTC was successfully (re-)synced from egps -- reset on
+    // every accepted egps fix (see `got_new_fix` below). If this goes
+    // stale for `EGPS_RTC_FALLBACK_TIMEOUT` (e.g. persistently poor GPS
+    // reception), the loop falls back to the Notecard's own location/time
+    // service (`Location::check_retrieve`) instead, so the RTC -- and the
+    // egps duty-cycle's own scheduling, which runs off RTC time -- doesn't
+    // drift indefinitely while egps stays stuck without a fix.
+    let mut last_rtc_sync_ms: i64 = last_env_poll_ms;
+
     loop {
         let now = STATE.now().map(|t| t.and_utc().timestamp_millis());
         if let Some(now) = now {
             last_known_now_ms = now;
         } else {
+            sfy::stats::RTC_READ_FAILURES.fetch_add(1, Ordering::Relaxed);
             warn!(
                 "RTC: read failed this iteration, reusing last known time ({} ms) instead of \
                  advancing scheduled wake times.",
@@ -611,6 +621,33 @@ fn main() -> ! {
         let got_new_fix = location.set_from_egps(&STATE, &EGPS_TIME);
         if let Some(new_rtc_ms) = got_new_fix {
             free(|cs| *PPS_TIME.borrow(cs).borrow_mut() = new_rtc_ms);
+            last_rtc_sync_ms = now_ms;
+        }
+
+        // --- Notecard RTC fallback ---------------------------------------------
+        // egps hasn't managed to (re-)sync the RTC in over
+        // `EGPS_RTC_FALLBACK_TIMEOUT` -- likely stuck without a fix (e.g. poor
+        // GPS reception). Fall back to the Notecard's own location/time
+        // service so the RTC (and the egps duty-cycle's own scheduling,
+        // which runs off RTC time) doesn't drift indefinitely in the
+        // meantime. Rate-limited to once per timeout by resetting
+        // `last_rtc_sync_ms` on every attempt, regardless of success --
+        // `check_retrieve` itself is a Notecard round-trip, so it shouldn't
+        // be retried faster than that even on failure.
+        if now_ms.saturating_sub(last_rtc_sync_ms)
+            >= sfy::note::EGPS_RTC_FALLBACK_TIMEOUT as i64 * 1000
+        {
+            last_rtc_sync_ms = now_ms;
+            sfy::stats::NOTECARD_RTC_FALLBACK.fetch_add(1, Ordering::Relaxed);
+            warn!(
+                "egps: no RTC sync from egps in over {} s, falling back to Notecard \
+                 location/time",
+                sfy::note::EGPS_RTC_FALLBACK_TIMEOUT
+            );
+            location
+                .check_retrieve(&STATE, &mut delay, &mut note)
+                .inspect_err(|e| error!("Notecard RTC fallback failed: {:?}", e))
+                .ok();
         }
 
         // --- Periodically re-poll `power_mode`/`sync_period` env vars ---------
@@ -696,7 +733,16 @@ fn main() -> ! {
                 let action = egps_duty.fix_acquired(now_ms);
                 apply_egps_action(action, &mut delay);
             }
+            let state_before = egps_duty.state();
             let action = egps_duty.poll(now_ms);
+            // A wake's fix-acquisition dwell timed out if we were waiting for
+            // a fix and are now back to idle -- distinguishes "module fine,
+            // no fix in time" from a `gps_reinit_fail` (module unresponsive).
+            if matches!(state_before, sfy::gps::duty::EgpsState::AcquiringFix { .. })
+                && matches!(egps_duty.state(), sfy::gps::duty::EgpsState::Idle { .. })
+            {
+                sfy::stats::EGPS_DWELL_TIMEOUT.fetch_add(1, Ordering::Relaxed);
+            }
             apply_egps_action(action, &mut delay);
         }
 
@@ -938,6 +984,7 @@ fn apply_egps_action(action: EgpsAction, delay: &mut impl DelayMs<u16>) {
         }
 
         EgpsAction::WakePowerOnReinit => {
+            sfy::stats::EGPS_WAKE_ATTEMPTS.fetch_add(1, Ordering::Relaxed);
             free(|cs| {
                 if let Some(pin) = GPS_PWR.borrow(cs).borrow_mut().as_mut() {
                     pin.set_low().ok(); // power on via d8
@@ -1218,6 +1265,7 @@ fn RTC() {
             }) {
                 Ok(_) => {}
                 Err(e) => {
+                    sfy::stats::GPS_I2C_ERRORS.fetch_add(1, Ordering::Relaxed);
                     defmt::error!(
                         "RTC ISR: GPS read_all_pvts error: {:?}",
                         defmt::Debug2Format(&e)

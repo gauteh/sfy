@@ -33,6 +33,16 @@ fn main() {
         .map(|p| p.parse::<u32>().unwrap())
         .unwrap_or(10800); // 3 h
 
+    // Fallback: if egps hasn't successfully (re-)synced the RTC in this many
+    // seconds (e.g. persistently poor GPS reception), the main loop falls
+    // back to asking the Notecard for its own location/time fix instead
+    // (see `Location::check_retrieve`) so the RTC -- and the egps
+    // duty-cycle's own scheduling, which is driven off RTC time -- doesn't
+    // drift indefinitely while egps is stuck.
+    let egps_rtc_fallback_timeout: u32 = option_env!("EGPS_RTC_FALLBACK_TIMEOUT")
+        .map(|p| p.parse::<u32>().unwrap())
+        .unwrap_or(3600); // 1 h
+
     if egps_position_interval > 0 && egps_position_dwell > egps_position_interval {
         println!(
             "cargo:warning=EGPS_POSITION_DWELL ({egps_position_dwell}s) is greater than \
@@ -113,6 +123,11 @@ fn main() {
     writeln!(
         &fd,
         "pub const EGPS_BATCH_PERIOD: u32 = {egps_batch_period};"
+    )
+    .unwrap();
+    writeln!(
+        &fd,
+        "pub const EGPS_RTC_FALLBACK_TIMEOUT: u32 = {egps_rtc_fallback_timeout};"
     )
     .unwrap();
 
