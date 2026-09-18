@@ -139,6 +139,14 @@ static EGPS_REINIT_CONSECUTIVE_FAILURES: core::sync::atomic::AtomicU8 =
 /// Threshold for `EGPS_REINIT_CONSECUTIVE_FAILURES` above.
 const EGPS_REINIT_MAX_CONSECUTIVE_FAILURES: u8 = 5;
 
+/// Whether the most recent `WakePowerOnReinit` succeeded (module responded
+/// and was re-initialised) -- set by `apply_egps_action`, read back in the
+/// main loop's dwell-timeout check so `sfy::stats::EGPS_DWELL_TIMEOUT` only
+/// counts "re-init fine, just no fix in time" and not "re-init itself
+/// failed" (already separately counted in `GPS_REINIT_FAILURES`).
+static EGPS_LAST_WAKE_REINIT_OK: core::sync::atomic::AtomicBool =
+    core::sync::atomic::AtomicBool::new(false);
+
 /// Whether the RTC ISR should feed drained PVT samples into `GPS_COLLECTOR`.
 /// Only set while a duty-cycled egps batch is in progress; outside of a
 /// batch, PVTs are still drained from the module's FIFO (to keep it from
@@ -792,15 +800,34 @@ fn main() -> ! {
         {
             if got_new_fix.is_some() {
                 let action = egps_duty.fix_acquired(now_ms);
+                defmt::info!(
+                    "egps duty: fix_acquired -> state = {}, action = {}",
+                    egps_duty.state(),
+                    action
+                );
                 apply_egps_action(action, &mut delay);
             }
             let state_before = egps_duty.state();
             let action = egps_duty.poll(now_ms);
+            if action != sfy::gps::duty::EgpsAction::None || state_before != egps_duty.state() {
+                defmt::info!(
+                    "egps duty: poll @ {} -- before = {}, after = {}, action = {}",
+                    now_ms,
+                    state_before,
+                    egps_duty.state(),
+                    action
+                );
+            }
             // A wake's fix-acquisition dwell timed out if we were waiting for
-            // a fix and are now back to idle -- distinguishes "module fine,
-            // no fix in time" from a `gps_reinit_fail` (module unresponsive).
+            // a fix and are now back to idle -- only counted when the wake's
+            // re-init actually succeeded (`EGPS_LAST_WAKE_REINIT_OK`), so
+            // this cleanly distinguishes "module fine, just no fix in time"
+            // from a re-init failure (already counted separately in
+            // `GPS_REINIT_FAILURES`) instead of conflating both under one
+            // counter.
             if matches!(state_before, sfy::gps::duty::EgpsState::AcquiringFix { .. })
                 && matches!(egps_duty.state(), sfy::gps::duty::EgpsState::Idle { .. })
+                && EGPS_LAST_WAKE_REINIT_OK.load(Ordering::Relaxed)
             {
                 sfy::stats::EGPS_DWELL_TIMEOUT.fetch_add(1, Ordering::Relaxed);
             }
@@ -1146,6 +1173,7 @@ fn apply_egps_action(action: EgpsAction, delay: &mut impl DelayMs<u16>) {
                     }
                 });
                 EGPS_REINIT_CONSECUTIVE_FAILURES.store(0, Ordering::Relaxed);
+                EGPS_LAST_WAKE_REINIT_OK.store(true, Ordering::Relaxed);
                 info!("egps: waking (full power-on re-init)");
             } else {
                 error!(
@@ -1153,6 +1181,7 @@ fn apply_egps_action(action: EgpsAction, delay: &mut impl DelayMs<u16>) {
                     STEP_RETRIES
                 );
                 sfy::stats::GPS_REINIT_FAILURES.fetch_add(1, Ordering::Relaxed);
+                EGPS_LAST_WAKE_REINIT_OK.store(false, Ordering::Relaxed);
 
                 // A single failed wake just falls back to idle and retries
                 // next wake (see the dwell-timeout logic in

@@ -90,7 +90,7 @@ impl EgpsDutyCycleConfig {
 }
 
 /// State of the duty-cycle state machine.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, defmt::Format)]
 pub enum EgpsState {
     /// GPS idle, fully powered off via `d8`. Will wake at `next_wake_at`.
     Idle { next_wake_at: i64 },
@@ -110,7 +110,7 @@ pub enum EgpsState {
 }
 
 /// Action the caller should take in response to a `poll`/`fix_acquired` call.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, defmt::Format)]
 pub enum EgpsAction {
     /// Nothing to do.
     None,

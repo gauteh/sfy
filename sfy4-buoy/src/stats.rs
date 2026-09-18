@@ -31,9 +31,12 @@ pub static GPS_REINIT_FAILURES: AtomicU32 = AtomicU32::new(0);
 /// Number of times a wake's fix acquisition dwell timed out (module
 /// re-init succeeded, but no valid date+time fix arrived within
 /// `position_dwell_ms`) -- see `EgpsState::AcquiringFix` in
-/// `sfy::gps::duty`. A high count with `gps_reinit_fail == 0` means the GPS
-/// module itself is responding fine but isn't achieving a fix in time
-/// (e.g. poor antenna/RF reception), rather than a hardware/I2C fault.
+/// `sfy::gps::duty`. Only counted when the wake's re-init actually
+/// succeeded (see `EGPS_LAST_WAKE_REINIT_OK` in `sfy4-main`); re-init
+/// failures are tracked separately in `gps_reinit_fail` instead, so this
+/// and `gps_reinit_fail` are mutually exclusive. A high count here means
+/// the GPS module itself is responding fine but isn't achieving a fix in
+/// time (e.g. poor antenna/RF reception), rather than a hardware/I2C fault.
 pub static EGPS_DWELL_TIMEOUT: AtomicU32 = AtomicU32::new(0);
 
 /// Number of times a fresh egps fix's PPS-vs-now `diff` was out of range and
