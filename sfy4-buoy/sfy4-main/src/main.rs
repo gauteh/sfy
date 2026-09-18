@@ -1067,11 +1067,19 @@ fn apply_egps_action(action: EgpsAction, delay: &mut impl DelayMs<u16>) {
             if ready {
                 // Only now is it safe for the RTC ISR to resume draining
                 // the GPS FIFO, and for the PPS GPIO interrupt to be
-                // trusted again -- clear any edge latched while it was
-                // disabled before re-enabling it.
+                // trusted again. Don't just flip INTEN back on: fully
+                // re-apply the same pin configuration boot does
+                // (`configure_interrupt` then `clear_interrupt` then
+                // `enable_interrupt`, matching lines ~281-283 above)
+                // rather than assuming the edge/pull config bits from boot
+                // are still intact after an idle period of a floating,
+                // externally-driven pin -- re-asserting them here removes
+                // any doubt about the pin config surviving idle instead of
+                // relying on it.
                 GPS_POWERED.store(true, Ordering::Relaxed);
                 free(|cs| {
                     if let Some(pin) = TS_PIN.borrow(cs).borrow_mut().as_mut() {
+                        pin.configure_interrupt(InterruptOpt::LowToHigh);
                         pin.clear_interrupt();
                         pin.enable_interrupt();
                     }
