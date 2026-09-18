@@ -125,6 +125,20 @@ static GPS_PWR: Mutex<RefCell<Option<hal::gpio::pin::Pin<38, { Mode::Output }>>>
 /// reinitialised) in `WakePowerOnReinit`.
 static GPS_POWERED: core::sync::atomic::AtomicBool = core::sync::atomic::AtomicBool::new(false);
 
+/// Consecutive `WakePowerOnReinit` failures (whole `reinit_gps` budget
+/// exhausted). Reset to 0 on any successful wake re-init; incremented on
+/// each complete failure. A single failure just means "try again next
+/// wake" (the duty-cycle already retries periodically on its own) -- but
+/// `EGPS_REINIT_MAX_CONSECUTIVE_FAILURES` in a row, with nothing about the
+/// module recovering on its own, likely means it's stuck in a state that
+/// only a full reset clears (see the reboot-only-recoverable stalls this
+/// was added for), so a reboot is triggered instead of retrying forever.
+static EGPS_REINIT_CONSECUTIVE_FAILURES: core::sync::atomic::AtomicU8 =
+    core::sync::atomic::AtomicU8::new(0);
+
+/// Threshold for `EGPS_REINIT_CONSECUTIVE_FAILURES` above.
+const EGPS_REINIT_MAX_CONSECUTIVE_FAILURES: u8 = 5;
+
 /// Whether the RTC ISR should feed drained PVT samples into `GPS_COLLECTOR`.
 /// Only set while a duty-cycled egps batch is in progress; outside of a
 /// batch, PVTs are still drained from the module's FIFO (to keep it from
@@ -459,63 +473,75 @@ fn main() -> ! {
         spec_p,
     );
 
-    let (mut i2c_gps, mut gnss) = {
+    let (mut i2c_gps, gnss) = {
         info!("Setting up MAX-M10S GPS over I2C..");
         // IOM2: initialized here, right before first use, to ensure the peripheral
         // is in a fresh idle state (IOM can be non-idle if initialized long before use).
         // Note: GPS was powered on early in startup; by this point several seconds have
         // elapsed (well above the ≥200 ms boot requirement).
         let mut i2c_gps = i2c::Iom2::new(dp.IOM2, pins.d17, pins.d18, i2c::Freq::F100kHz);
-        let mut gnss = loop {
-            match MaxM10S::new(&mut i2c_gps) {
-                Ok(dev) => break dev,
-                Err(_) => {
-                    warn!("GPS device not found — retrying");
-                    delay.delay_ms(500u32);
-                }
-            }
-        };
 
-        loop {
-            match gnss.init(&mut i2c_gps) {
-                Ok(()) => break,
-                Err(e) => {
-                    warn!("GPS init failed: {:?} — retrying", defmt::Debug2Format(&e));
-                    delay.delay_ms(1000u32);
-                }
-            }
+        // Bounded, unlike the unbounded `loop { match .. }` retries this
+        // used to have: a genuinely dead/unpopulated GPS module must not
+        // hang boot forever -- that would also block axl/IMU sampling,
+        // Notecard sync, and storage from ever starting. `BOOT_STEP_RETRIES`
+        // gives this far more patience than a duty-cycle wake's `reinit_gps`
+        // budget (boot only happens once, with nothing else competing for
+        // the delay), but still gives up eventually: if the module truly
+        // never responds, we continue booting without GPS -- the periodic
+        // `WakePowerOnReinit` duty-cycle wakes (see `apply_egps_action`)
+        // keep retrying afterwards regardless.
+        const BOOT_STEP_RETRIES: u16 = 500;
+        const BOOT_STEP_DELAY_MS: u16 = 500;
+
+        let gnss = retry_gps_step(
+            || MaxM10S::new(&mut i2c_gps),
+            BOOT_STEP_RETRIES,
+            BOOT_STEP_DELAY_MS,
+            "device not found",
+            &mut delay,
+        )
+        .and_then(|mut dev| {
+            retry_gps_step(
+                || dev.init(&mut i2c_gps),
+                BOOT_STEP_RETRIES,
+                BOOT_STEP_DELAY_MS,
+                "init",
+                &mut delay,
+            )?;
+            dev.set_output_rate(&mut i2c_gps, 14)
+                .inspect_err(|e| {
+                    warn!("GPS set_output_rate failed: {:?}", defmt::Debug2Format(e))
+                })
+                .ok();
+            retry_gps_step(
+                || dev.set_pps_rate(&mut i2c_gps, 1_000_000, 10_000),
+                BOOT_STEP_RETRIES,
+                BOOT_STEP_DELAY_MS,
+                "set_pps_rate",
+                &mut delay,
+            )?;
+            retry_gps_step(
+                || dev.enable_pvt(&mut i2c_gps),
+                BOOT_STEP_RETRIES,
+                BOOT_STEP_DELAY_MS,
+                "enable_pvt",
+                &mut delay,
+            )?;
+            Some(dev)
+        });
+
+        if gnss.is_some() {
+            info!("GPS initialised.");
+        } else {
+            error!(
+                "GPS: giving up on boot init after {} attempts per step -- \
+                 continuing without GPS, duty-cycle wakes will keep retrying.",
+                BOOT_STEP_RETRIES
+            );
+            sfy::stats::GPS_REINIT_FAILURES.fetch_add(1, Ordering::Relaxed);
         }
-        gnss.set_output_rate(&mut i2c_gps, 14)
-            .inspect_err(|e| warn!("GPS set_output_rate failed: {:?}", defmt::Debug2Format(e)))
-            .ok();
-        loop {
-            match gnss.set_pps_rate(&mut i2c_gps, 1_000_000, 10_000) {
-                Ok(()) => {
-                    info!("GPS PPS configured: 1 Hz, 10 ms pulse");
-                    break;
-                }
-                Err(e) => {
-                    warn!(
-                        "GPS set_pps_rate failed: {:?} — retrying",
-                        defmt::Debug2Format(&e)
-                    );
-                    delay.delay_ms(500u32);
-                }
-            }
-        }
-        loop {
-            match gnss.enable_pvt(&mut i2c_gps) {
-                Ok(()) => break,
-                Err(e) => {
-                    warn!(
-                        "GPS enable_pvt failed: {:?} — retrying",
-                        defmt::Debug2Format(&e)
-                    );
-                    delay.delay_ms(500u32);
-                }
-            }
-        }
-        info!("GPS initialised.");
+
         (i2c_gps, gnss)
     };
 
@@ -527,14 +553,22 @@ fn main() -> ! {
     // Move IMU, GNSS driver, and GPS I2C bus into interrupt-accessible statics.
     // The RTC ISR drains the GPS FIFO every 100 ms (IOM2) alongside IMU sampling
     // (IOM3) — both buses are independent of Notecard IOM4 used in the main loop.
+    // `gnss` may be `None` here if boot's bounded retries above gave up --
+    // `I2C_GPS`/`GPS_PWR`/`GPS_POWERED` are still set unconditionally (the
+    // bus and power rail are fine regardless), but the PPS GPIO interrupt is
+    // only armed once a `WakePowerOnReinit` duty-cycle wake actually
+    // succeeds (mirroring that same gating in `apply_egps_action`).
+    let gnss_ready = gnss.is_some();
     free(|cs| {
         unsafe {
             IMU = Some(imu);
-            GNSS = Some(gnss);
+            GNSS = gnss;
             I2C_GPS = Some(i2c_gps);
         }
-        if let Some(pin) = TS_PIN.borrow(cs).borrow_mut().as_mut() {
-            pin.enable_interrupt();
+        if gnss_ready {
+            if let Some(pin) = TS_PIN.borrow(cs).borrow_mut().as_mut() {
+                pin.enable_interrupt();
+            }
         }
         GPS_PWR.borrow(cs).replace(Some(gps_pwr));
     });
@@ -709,6 +743,33 @@ fn main() -> ! {
                         .ok();
                 }
                 power_cfg = new_cfg;
+            }
+
+            // --- `restart_sfy`: remote one-shot reboot trigger -----------------
+            // Set to any positive value (e.g. a Unix timestamp) via Notehub to
+            // request a reboot. To avoid rebooting on every single poll
+            // thereafter (Notehub env vars are otherwise sticky), the
+            // negated value is written straight back to the Notecard
+            // (`env.set`) *before* rebooting -- and only if that write-back
+            // actually succeeds, so a reboot never happens without the
+            // trigger having been cleared first (no connectivity here just
+            // means "try again next poll", not "reboot anyway").
+            if let Some(v) = note
+                .get_env_var(&mut delay, "restart_sfy")
+                .as_deref()
+                .and_then(|s| s.trim().parse::<i64>().ok())
+                .filter(|v| *v > 0)
+            {
+                warn!("restart_sfy: reboot requested ({=i64})", v);
+                let mut cleared = heapless::String::<32>::new();
+                if write!(cleared, "{}", -v).is_ok()
+                    && note.set_env_var(&mut delay, "restart_sfy", &cleared).is_ok()
+                {
+                    info!("restart_sfy: cleared, resetting device.");
+                    reset(&mut note, &mut delay);
+                } else {
+                    error!("restart_sfy: failed to clear trigger, not rebooting yet -- will retry next poll.");
+                }
             }
         }
 
@@ -904,7 +965,7 @@ fn main() -> ! {
 /// wake dwell-timeout back to idle instead.
 fn retry_gps_step<T>(
     mut f: impl FnMut() -> Result<T, max_m10s::Error<E>>,
-    retries: u8,
+    retries: u16,
     delay_ms: u16,
     label: &str,
     delay: &mut impl DelayMs<u16>,
@@ -937,7 +998,7 @@ fn retry_gps_step<T>(
 /// up and dwell-timeout back to idle instead of hanging the main loop.
 fn reinit_gps(
     i2c: &mut GpsI2C,
-    retries: u8,
+    retries: u16,
     delay_ms: u16,
     delay: &mut impl DelayMs<u16>,
 ) -> Option<MaxM10S> {
@@ -1052,7 +1113,7 @@ fn apply_egps_action(action: EgpsAction, delay: &mut impl DelayMs<u16>) {
             // IMU sampling -- this is still race-free since GPS_POWERED
             // stays false throughout, so the ISR leaves I2C_GPS/GNSS alone
             // until re-init succeeds (or the retry budget is exhausted).
-            const STEP_RETRIES: u8 = 15;
+            const STEP_RETRIES: u16 = 15;
             const STEP_DELAY_MS: u16 = 500;
 
             let ready = unsafe {
@@ -1084,6 +1145,7 @@ fn apply_egps_action(action: EgpsAction, delay: &mut impl DelayMs<u16>) {
                         pin.enable_interrupt();
                     }
                 });
+                EGPS_REINIT_CONSECUTIVE_FAILURES.store(0, Ordering::Relaxed);
                 info!("egps: waking (full power-on re-init)");
             } else {
                 error!(
@@ -1091,6 +1153,22 @@ fn apply_egps_action(action: EgpsAction, delay: &mut impl DelayMs<u16>) {
                     STEP_RETRIES
                 );
                 sfy::stats::GPS_REINIT_FAILURES.fetch_add(1, Ordering::Relaxed);
+
+                // A single failed wake just falls back to idle and retries
+                // next wake (see the dwell-timeout logic in
+                // `EgpsDutyCycle`) -- no reboot yet. Only after several in
+                // a row, with the module never once coming back up on its
+                // own across many `d8` power-cycles, do we give up on
+                // software retries and reboot -- see
+                // `EGPS_REINIT_CONSECUTIVE_FAILURES` above.
+                let failures = EGPS_REINIT_CONSECUTIVE_FAILURES.fetch_add(1, Ordering::Relaxed) + 1;
+                if failures >= EGPS_REINIT_MAX_CONSECUTIVE_FAILURES {
+                    error!(
+                        "GPS: {} consecutive wake re-init failures, resetting device.",
+                        failures
+                    );
+                    cortex_m::peripheral::SCB::sys_reset();
+                }
             }
         }
 

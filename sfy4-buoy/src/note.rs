@@ -253,6 +253,21 @@ impl<I2C: Read + Write> Notecarrier<I2C> {
             .text
     }
 
+    /// Set a local environment variable on the Notecard (`env.set`). Used to
+    /// write back/clear a one-shot command variable (e.g. `restart_sfy`)
+    /// after acting on it, so it doesn't keep re-triggering on every poll.
+    /// Returns `Err` on any failure (no connectivity, etc.) -- callers must
+    /// not proceed as if the variable was actually cleared when this fails.
+    pub fn set_env_var(
+        &mut self,
+        delay: &mut impl DelayMs<u16>,
+        name: &str,
+        text: &str,
+    ) -> Result<(), NoteError> {
+        self.note.env().set(delay, name, Some(text))?.wait(delay)?;
+        Ok(())
+    }
+
     /// Re-set `hub.set`'s `outbound` (max minutes between out-going syncs), e.g. in
     /// response to a live `sync_period` env var change. Only touches `outbound` --
     /// all other hub-config values are left as previously configured. Note: `product`
