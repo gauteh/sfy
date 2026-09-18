@@ -42,6 +42,20 @@ pipeline without a real fix. Not for field/deploy builds:
 make T=r bin SYNC_PERIOD=20 EGPS_BATCH_PERIOD=2400 EGPS_POSITION_INTERVAL=600 CARGO_FLAGS="--features accept-no-egps-fix"
 ```
 
+### Short-cycle debug build (reproducing duty-cycle bugs faster)
+
+For debugging duty-cycle state-machine issues (e.g. a wedge that only
+clears on reboot) it helps to shrink the whole cycle so failures show up in
+minutes instead of hours. `EGPS_BATCH_DURATION` (batch length, seconds) is
+build-time configurable just like the other `EGPS_*` knobs -- no source
+edits needed. Example: 5 min batches, 5 min breaks, 5 min position wakes,
+2 min dwell, with a 15 min status/sync period so you still get status logs
+somewhat promptly without spamming syncs:
+
+```
+make T=r bin SYNC_PERIOD=15 EGPS_BATCH_DURATION=300 EGPS_BATCH_PERIOD=600 EGPS_POSITION_INTERVAL=300 EGPS_POSITION_DWELL=120
+```
+
 ## Analyzing device data with `sfy-processing`
 
 `sfy-processing`'s Python tooling (`Hub`/`SfyBuoy`, `SFY_READ_TOKEN`/
@@ -58,9 +72,10 @@ These are two unrelated concepts that both used to be called "spectrum" —
 don't conflate them:
 
 - **egps batch**: a high-rate raw-sample burst from the external GPS
-  (`sfy::gps::duty`), sent as `egpsb.qo`. Fixed 20 min duration
-  (`EGPS_BATCH_DURATION_S`, not build-time configurable); period configured
-  via the `EGPS_BATCH_PERIOD` build-time env var. On a position-only wake
+  (`sfy::gps::duty`), sent as `egpsb.qo`. 20 min duration by default
+  (`EGPS_BATCH_DURATION_S`, build-time configurable via the
+  `EGPS_BATCH_DURATION` env var); period configured via the
+  `EGPS_BATCH_PERIOD` build-time env var. On a position-only wake
   (no batch due), a brief post-fix sample (`EGPS_POSITION_SAMPLE_MS`) still
   streams so something is queued for the next sync.
 - **axl/IMU spectrum** (`spectrum` Cargo feature, `sfy::waves::welch`): FFT/Welch

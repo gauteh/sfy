@@ -27,11 +27,13 @@
 //! default, and reproduces the historical always-on behavior. See
 //! [`EgpsDutyCycleConfig::is_continuous`].
 
-/// Fixed duration (seconds) of an egps batch burst whenever batches are
-/// enabled (`batch_duration_ms > 0`) -- not build-time configurable, since
-/// there is no reason for it to differ from this (matches the axl/IMU
-/// `spectrum` feature's fixed 20-minute window, see `waves::welch::Welch`).
-pub const EGPS_BATCH_DURATION_S: u32 = 1200; // 20 min
+/// Duration (seconds) of an egps batch burst whenever batches are enabled
+/// (`batch_duration_ms > 0`). Build-time configurable via the
+/// `EGPS_BATCH_DURATION` env var (see `build.rs`/`crate::note`), defaults
+/// to 20 min -- matching the axl/IMU `spectrum` feature's fixed 20-minute
+/// window (see `waves::welch::Welch`) -- but can be shortened e.g. for a
+/// debug binary that duty-cycles much faster than a real deployment.
+pub const EGPS_BATCH_DURATION_S: u32 = crate::note::EGPS_BATCH_DURATION;
 
 /// Minimum duration (milliseconds) to stream at full output rate right
 /// after acquiring a fix on a *position-only* wake (`is_batch == false`,
