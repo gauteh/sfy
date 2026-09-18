@@ -541,6 +541,7 @@ fn main() -> ! {
 
         if gnss.is_some() {
             info!("GPS initialised.");
+            EGPS_LAST_WAKE_REINIT_OK.store(true, Ordering::Relaxed);
         } else {
             error!(
                 "GPS: giving up on boot init after {} attempts per step -- \
@@ -548,6 +549,7 @@ fn main() -> ! {
                 BOOT_STEP_RETRIES
             );
             sfy::stats::GPS_REINIT_FAILURES.fetch_add(1, Ordering::Relaxed);
+            EGPS_LAST_WAKE_REINIT_OK.store(false, Ordering::Relaxed);
         }
 
         (i2c_gps, gnss)
