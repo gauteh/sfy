@@ -896,6 +896,71 @@ fn main() -> ! {
 // egps duty-cycle: apply state-machine actions to the GPS hardware
 // ---------------------------------------------------------------------------
 
+/// Retry a fallible GPS init/config step up to `retries` times, with a delay
+/// between attempts, logging a warning on each failure. Mirrors the boot
+/// sequence's per-step persistence (see the `loop { match .. }` blocks in
+/// `main`), but bounded so a persistently unresponsive module can't stall a
+/// duty-cycle wake indefinitely -- the caller just gives up and lets the
+/// wake dwell-timeout back to idle instead.
+fn retry_gps_step<T>(
+    mut f: impl FnMut() -> Result<T, max_m10s::Error<E>>,
+    retries: u8,
+    delay_ms: u16,
+    label: &str,
+    delay: &mut impl DelayMs<u16>,
+) -> Option<T> {
+    for attempt in 1..=retries {
+        match f() {
+            Ok(v) => return Some(v),
+            Err(e) => {
+                warn!(
+                    "GPS {} failed (attempt {}/{}): {:?}",
+                    label,
+                    attempt,
+                    retries,
+                    defmt::Debug2Format(&e)
+                );
+                delay.delay_ms(delay_ms);
+            }
+        }
+    }
+    None
+}
+
+/// Re-initialise the MAX-M10S on a duty-cycle wake, step by step, exactly
+/// like the boot sequence does (probe, then init/set_output_rate/
+/// set_pps_rate/enable_pvt in order) -- written the same straightforward,
+/// sequential way (no combinators/closures over shared state) so it reads
+/// the same as the boot path above. The only difference from boot is that
+/// each step here is *bounded* (`retry_gps_step`) rather than looping
+/// forever, so a persistently unresponsive module still lets the wake give
+/// up and dwell-timeout back to idle instead of hanging the main loop.
+fn reinit_gps(
+    i2c: &mut GpsI2C,
+    retries: u8,
+    delay_ms: u16,
+    delay: &mut impl DelayMs<u16>,
+) -> Option<MaxM10S> {
+    let mut dev = retry_gps_step(|| MaxM10S::new(i2c), retries, delay_ms, "device not found", delay)?;
+    retry_gps_step(|| dev.init(i2c), retries, delay_ms, "init", delay)?;
+    retry_gps_step(
+        || dev.set_output_rate(i2c, 1),
+        retries,
+        delay_ms,
+        "set_output_rate",
+        delay,
+    )?;
+    retry_gps_step(
+        || dev.set_pps_rate(i2c, 1_000_000, 10_000),
+        retries,
+        delay_ms,
+        "set_pps_rate",
+        delay,
+    )?;
+    retry_gps_step(|| dev.enable_pvt(i2c), retries, delay_ms, "enable_pvt", delay)?;
+    Some(dev)
+}
+
 /// Carry out the hardware side-effects requested by the duty-cycle state
 /// machine: power the GPS module on/off, adjust its output rate, and gate
 /// whether the RTC ISR feeds drained samples into `GPS_COLLECTOR`.
@@ -915,37 +980,6 @@ fn main() -> ! {
 /// racing with the RTC ISR, which also drains the GPS FIFO through them.
 fn apply_egps_action(action: EgpsAction, delay: &mut impl DelayMs<u16>) {
     use core::sync::atomic::Ordering;
-
-    /// Retry a fallible GPS init/config step up to `retries` times, with a
-    /// delay between attempts, logging a warning on each failure. Mirrors
-    /// the boot sequence's per-step persistence (see the `loop { match .. }`
-    /// blocks above), but bounded so a persistently unresponsive module
-    /// can't stall a duty-cycle wake indefinitely -- the caller just gives
-    /// up and lets the wake dwell-timeout back to idle instead.
-    fn retry_gps_step<T>(
-        mut f: impl FnMut() -> Result<T, max_m10s::Error<E>>,
-        retries: u8,
-        delay_ms: u16,
-        label: &str,
-        delay: &mut impl DelayMs<u16>,
-    ) -> Option<T> {
-        for attempt in 1..=retries {
-            match f() {
-                Ok(v) => return Some(v),
-                Err(e) => {
-                    warn!(
-                        "GPS {} failed (attempt {}/{}): {:?}",
-                        label,
-                        attempt,
-                        retries,
-                        defmt::Debug2Format(&e)
-                    );
-                    delay.delay_ms(delay_ms);
-                }
-            }
-        }
-        None
-    }
 
     match action {
         EgpsAction::None => {}
@@ -990,67 +1024,43 @@ fn apply_egps_action(action: EgpsAction, delay: &mut impl DelayMs<u16>) {
                     pin.set_low().ok(); // power on via d8
                 }
             });
-            delay.delay_ms(200u16);
+            // Boot gives the module several *unbounded* seconds to settle
+            // (~200 ms here, then a full notecard/RTC/storage setup, then
+            // an explicit 5000 ms "give subsystems a couple of seconds to
+            // boot" delay) before ever sending it a command, and each boot
+            // step then retries forever if needed. A wake previously only
+            // waited 200 ms total. The module's I2C/DDC interface can come
+            // up and start ACK'ing commands well before its internal
+            // GNSS/RF engine has actually stabilised, so a config command
+            // succeeding at the transport level (which is all
+            // `gps_reinit_fail` can see) doesn't guarantee it lands on a
+            // settled receiver -- a plausible way to end up with a module
+            // that never produces a valid fix for the rest of the wake, or
+            // the rest of the session. Give it comparable patience here.
+            delay.delay_ms(1_000u16);
 
-            // Retry each re-init step like the boot path does -- a single
-            // missed I2C ACK/NAK right after power-on (module not fully up
-            // yet) shouldn't permanently strand this wake without ever
-            // streaming/starting a batch -- but bounded per step (unlike
-            // boot's infinite loop) so a persistently unresponsive module
-            // still lets this wake give up and dwell-timeout back to idle,
-            // instead of hanging the main loop forever. Done *outside* a
-            // critical section (unlike boot) so the retry delays don't
-            // stall the RTC ISR's 100 ms IMU sampling; this is still
-            // race-free since GPS_POWERED stays false throughout, so the
-            // ISR leaves I2C_GPS/GNSS alone until re-init succeeds (or the
-            // retry budget below is exhausted).
-            const STEP_RETRIES: u8 = 5;
-            const STEP_DELAY_MS: u16 = 200;
+            // Re-init exactly like the boot sequence above (probe, then
+            // init/set_output_rate/set_pps_rate/enable_pvt in order,
+            // retrying each step) via `reinit_gps` -- bounded (unlike
+            // boot's infinite loops) so a persistently unresponsive module
+            // still lets this wake give up and dwell-timeout back to idle
+            // instead of hanging the main loop forever. The budget
+            // (`STEP_RETRIES * STEP_DELAY_MS` per step, ~7.5 s) is far more
+            // generous than before (~1 s per step) to match the patience
+            // boot relies on. Done *outside* a critical section (unlike
+            // boot) so the retry delays don't stall the RTC ISR's 100 ms
+            // IMU sampling -- this is still race-free since GPS_POWERED
+            // stays false throughout, so the ISR leaves I2C_GPS/GNSS alone
+            // until re-init succeeds (or the retry budget is exhausted).
+            const STEP_RETRIES: u8 = 15;
+            const STEP_DELAY_MS: u16 = 500;
 
             let ready = unsafe {
-                if let Some(i2c) = I2C_GPS.as_mut() {
-                    retry_gps_step(
-                        || MaxM10S::new(i2c),
-                        STEP_RETRIES,
-                        STEP_DELAY_MS,
-                        "device not found",
-                        delay,
-                    )
-                    .and_then(|mut dev| {
-                        retry_gps_step(
-                            || dev.init(i2c),
-                            STEP_RETRIES,
-                            STEP_DELAY_MS,
-                            "init",
-                            delay,
-                        )?;
-                        retry_gps_step(
-                            || dev.set_output_rate(i2c, 1),
-                            STEP_RETRIES,
-                            STEP_DELAY_MS,
-                            "set_output_rate",
-                            delay,
-                        )?;
-                        retry_gps_step(
-                            || dev.set_pps_rate(i2c, 1_000_000, 10_000),
-                            STEP_RETRIES,
-                            STEP_DELAY_MS,
-                            "set_pps_rate",
-                            delay,
-                        )?;
-                        retry_gps_step(
-                            || dev.enable_pvt(i2c),
-                            STEP_RETRIES,
-                            STEP_DELAY_MS,
-                            "enable_pvt",
-                            delay,
-                        )?;
-                        Some(dev)
-                    })
-                    .map(|dev| GNSS = Some(dev))
-                    .is_some()
-                } else {
-                    false
+                match I2C_GPS.as_mut() {
+                    Some(i2c) => reinit_gps(i2c, STEP_RETRIES, STEP_DELAY_MS, delay)
+                        .map(|dev| GNSS = Some(dev))
+                        .is_some(),
+                    None => false,
                 }
             };
 
