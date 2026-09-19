@@ -484,30 +484,6 @@ fn main() -> ! {
         lon
     );
 
-    info!("Setting up IMU..");
-    let mut waves = Waves::new(i2c3).unwrap();
-    waves
-        .take_buf(
-            now.map(|t| t.and_utc().timestamp_millis()).unwrap_or(0),
-            position_time,
-            lon,
-            lat,
-        )
-        .unwrap();
-
-    info!("Enable IMU.");
-    waves.enable_fifo(&mut delay).unwrap();
-
-    #[cfg(feature = "spectrum")]
-    let (spec_p, mut spec_queue) = unsafe { SPECQ.split() };
-
-    let imu = sfy::Imu::new(
-        waves,
-        imu_p,
-        #[cfg(feature = "spectrum")]
-        spec_p,
-    );
-
     let (mut i2c_gps, gnss) = {
         info!("Setting up MAX-M10S GPS over I2C..");
         // IOM2: initialized here, right before first use, to ensure the peripheral
@@ -533,6 +509,13 @@ fn main() -> ! {
         // at boot but not on a later wake, that rules out the sequence
         // itself and points at something wake-specific instead (stale
         // pin/interrupt state, timing, etc).
+        //
+        // Done *before* IMU setup below (rather than after, as it used to
+        // be) so the GPS reinit's reset/retry delays -- which can add up
+        // to several seconds if the module is slow to come back after the
+        // reset -- don't run while nothing is draining the IMU FIFO yet;
+        // enabling IMU streaming first and then blocking here on GPS
+        // could overrun the FIFO before the main loop even starts.
         const BOOT_STEP_RETRIES: u16 = 500;
         const BOOT_STEP_DELAY_MS: u16 = 500;
 
@@ -553,6 +536,30 @@ fn main() -> ! {
 
         (i2c_gps, gnss)
     };
+
+    info!("Setting up IMU..");
+    let mut waves = Waves::new(i2c3).unwrap();
+    waves
+        .take_buf(
+            now.map(|t| t.and_utc().timestamp_millis()).unwrap_or(0),
+            position_time,
+            lon,
+            lat,
+        )
+        .unwrap();
+
+    info!("Enable IMU.");
+    waves.enable_fifo(&mut delay).unwrap();
+
+    #[cfg(feature = "spectrum")]
+    let (spec_p, mut spec_queue) = unsafe { SPECQ.split() };
+
+    let imu = sfy::Imu::new(
+        waves,
+        imu_p,
+        #[cfg(feature = "spectrum")]
+        spec_p,
+    );
 
     // Set up GPS packet collector — stored as a static to keep the large buf
     // in .bss instead of on the stack (prevents stack overflow when ISR fires during send).
