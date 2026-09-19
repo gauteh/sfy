@@ -1094,11 +1094,15 @@ fn retry_gps_step<T>(
 /// differences from boot are that each step here is *bounded*
 /// (`retry_gps_step`) rather than looping forever, so a persistently
 /// unresponsive module still lets the wake give up and dwell-timeout back
-/// to idle instead of hanging the main loop, and that the PPS GPIO
-/// interrupt is always fully re-armed (`configure_interrupt` +
-/// `clear_interrupt` + `enable_interrupt`, see `apply_egps_action`) rather
-/// than just enabled, since the pin has been floating/unpowered since the
-/// last idle transition (unlike boot, where it's freshly configured).
+/// to idle instead of hanging the main loop, that the PPS GPIO interrupt
+/// is always fully re-armed (`configure_interrupt` + `clear_interrupt` +
+/// `enable_interrupt`, see `apply_egps_action`) rather than just enabled,
+/// since the pin has been floating/unpowered since the last idle
+/// transition (unlike boot, where it's freshly configured), and that a
+/// `UBX-CFG-RST` GNSS-only hot-start reset is issued right after probing
+/// the device and before `init`, to force the nav engine to restart
+/// cleanly in case the module came up in a wedged state after the power
+/// cycle (boot doesn't need this: it's always coming from a genuine POR).
 fn reinit_gps(
     i2c: &mut GpsI2C,
     retries: u16,
@@ -1106,6 +1110,18 @@ fn reinit_gps(
     delay: &mut impl DelayMs<u16>,
 ) -> Option<MaxM10S> {
     let mut dev = retry_gps_step(|| MaxM10S::new(i2c), retries, delay_ms, "device not found", delay)?;
+    // Force the navigation engine to restart cleanly (GNSS-only hot start,
+    // backup data kept intact) before doing anything else. The receiver
+    // can keep ACKing config commands after a power cycle (so it isn't
+    // dead) yet never produce a fix -- this addresses the case where its
+    // nav engine came up in a wedged state rather than there being a
+    // genuine reception problem. No ACK/NAK exists for this command, so
+    // it's applied best-effort; `init` right after confirms the receiver
+    // is still there and responsive.
+    dev.reset(i2c)
+        .inspect_err(|e| warn!("GPS reset failed: {:?}", defmt::Debug2Format(e)))
+        .ok();
+    delay.delay_ms(200u16);
     retry_gps_step(|| dev.init(i2c), retries, delay_ms, "init", delay)?;
     dev.set_output_rate(i2c, 14)
         .inspect_err(|e| warn!("GPS set_output_rate failed: {:?}", defmt::Debug2Format(e)))
