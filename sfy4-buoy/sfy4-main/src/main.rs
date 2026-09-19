@@ -526,45 +526,17 @@ fn main() -> ! {
         // never responds, we continue booting without GPS -- the periodic
         // `WakePowerOnReinit` duty-cycle wakes (see `apply_egps_action`)
         // keep retrying afterwards regardless.
+        //
+        // Calls the exact same `reinit_gps` routine a duty-cycle wake
+        // uses (just with a much larger retry budget) rather than
+        // duplicating the step sequence here -- if GPS acquisition works
+        // at boot but not on a later wake, that rules out the sequence
+        // itself and points at something wake-specific instead (stale
+        // pin/interrupt state, timing, etc).
         const BOOT_STEP_RETRIES: u16 = 500;
         const BOOT_STEP_DELAY_MS: u16 = 500;
 
-        let gnss = retry_gps_step(
-            || MaxM10S::new(&mut i2c_gps),
-            BOOT_STEP_RETRIES,
-            BOOT_STEP_DELAY_MS,
-            "device not found",
-            &mut delay,
-        )
-        .and_then(|mut dev| {
-            retry_gps_step(
-                || dev.init(&mut i2c_gps),
-                BOOT_STEP_RETRIES,
-                BOOT_STEP_DELAY_MS,
-                "init",
-                &mut delay,
-            )?;
-            dev.set_output_rate(&mut i2c_gps, 14)
-                .inspect_err(|e| {
-                    warn!("GPS set_output_rate failed: {:?}", defmt::Debug2Format(e))
-                })
-                .ok();
-            retry_gps_step(
-                || dev.set_pps_rate(&mut i2c_gps, 1_000_000, 10_000),
-                BOOT_STEP_RETRIES,
-                BOOT_STEP_DELAY_MS,
-                "set_pps_rate",
-                &mut delay,
-            )?;
-            retry_gps_step(
-                || dev.enable_pvt(&mut i2c_gps),
-                BOOT_STEP_RETRIES,
-                BOOT_STEP_DELAY_MS,
-                "enable_pvt",
-                &mut delay,
-            )?;
-            Some(dev)
-        });
+        let gnss = reinit_gps(&mut i2c_gps, BOOT_STEP_RETRIES, BOOT_STEP_DELAY_MS, &mut delay);
 
         if gnss.is_some() {
             info!("GPS initialised.");
@@ -604,6 +576,8 @@ fn main() -> ! {
         }
         if gnss_ready {
             if let Some(pin) = TS_PIN.borrow(cs).borrow_mut().as_mut() {
+                pin.configure_interrupt(InterruptOpt::LowToHigh);
+                pin.clear_interrupt();
                 pin.enable_interrupt();
             }
         }
@@ -1085,24 +1059,30 @@ fn retry_gps_step<T>(
     None
 }
 
-/// Re-initialise the MAX-M10S on a duty-cycle wake, step by step, exactly
-/// like the boot sequence does (probe, then init/set_output_rate/
-/// set_pps_rate/enable_pvt in order, always at 14 Hz, with a non-fatal
-/// `set_output_rate` failure just like boot) -- written the same
-/// straightforward, sequential way (no combinators/closures over shared
-/// state) so it reads the same as the boot path above. The only
-/// differences from boot are that each step here is *bounded*
-/// (`retry_gps_step`) rather than looping forever, so a persistently
-/// unresponsive module still lets the wake give up and dwell-timeout back
-/// to idle instead of hanging the main loop, that the PPS GPIO interrupt
-/// is always fully re-armed (`configure_interrupt` + `clear_interrupt` +
-/// `enable_interrupt`, see `apply_egps_action`) rather than just enabled,
-/// since the pin has been floating/unpowered since the last idle
-/// transition (unlike boot, where it's freshly configured), and that a
-/// `UBX-CFG-RST` GNSS-only hot-start reset is issued right after probing
-/// the device and before `init`, to force the nav engine to restart
-/// cleanly in case the module came up in a wedged state after the power
-/// cycle (boot doesn't need this: it's always coming from a genuine POR).
+/// Re-initialise the MAX-M10S: probe, reset (GNSS-only hot start, see
+/// below), then init/set_output_rate/set_pps_rate/enable_pvt in order,
+/// always at 14 Hz with a non-fatal `set_output_rate` failure. Used both
+/// at boot and on every duty-cycle wake (`apply_egps_action`'s
+/// `WakePowerOnReinit`) -- deliberately the *same* function rather than
+/// two separately-maintained copies, so if acquisition works at boot but
+/// not on a later wake, that rules out the init sequence itself and
+/// points at something wake-specific instead (e.g. stale PPS/TS_PIN
+/// interrupt state -- boot configures that pin once early on, while a
+/// wake has to fully re-arm it after the pin sat floating/unpowered
+/// during the idle gap, see `apply_egps_action`).
+///
+/// Callers choose their own retry budget: boot passes a much larger one
+/// (`BOOT_STEP_RETRIES`/`BOOT_STEP_DELAY_MS`, since boot only happens
+/// once with nothing else competing for the delay) than a wake does
+/// (`STEP_RETRIES`/`STEP_DELAY_MS`, bounded so a persistently
+/// unresponsive module still lets the wake give up and dwell-timeout
+/// back to idle instead of hanging the main loop).
+///
+/// The `UBX-CFG-RST` GNSS-only hot-start reset (issued right after
+/// probing the device and before `init`) forces the nav engine to
+/// restart cleanly in case the module came up in a wedged state after a
+/// power cycle, without clearing backup data (ephemeris/almanac/
+/// position/time) or dropping the I2C session.
 fn reinit_gps(
     i2c: &mut GpsI2C,
     retries: u16,
