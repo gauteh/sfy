@@ -1101,7 +1101,7 @@ fn reinit_gps(
     dev.reset(i2c)
         .inspect_err(|e| warn!("GPS reset failed: {:?}", defmt::Debug2Format(e)))
         .ok();
-    delay.delay_ms(200u16);
+    delay.delay_ms(1000u16);
     retry_gps_step(|| dev.init(i2c), retries, delay_ms, "init", delay)?;
     dev.set_output_rate(i2c, 14)
         .inspect_err(|e| warn!("GPS set_output_rate failed: {:?}", defmt::Debug2Format(e)))
@@ -1193,7 +1193,7 @@ fn apply_egps_action(action: EgpsAction, delay: &mut impl DelayMs<u16>) {
             // settled receiver -- a plausible way to end up with a module
             // that never produces a valid fix for the rest of the wake, or
             // the rest of the session. Give it comparable patience here.
-            delay.delay_ms(1_000u16);
+            delay.delay_ms(2_000u16);
 
             // Re-init exactly like the boot sequence above (probe, then
             // init/set_output_rate/set_pps_rate/enable_pvt in order,
