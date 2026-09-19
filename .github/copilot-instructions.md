@@ -65,11 +65,16 @@ clears on reboot) it helps to shrink the whole cycle so failures show up in
 minutes instead of hours. `EGPS_BATCH_DURATION` (batch length, seconds) is
 build-time configurable just like the other `EGPS_*` knobs -- no source
 edits needed. Example: 5 min batches, 5 min breaks, 5 min position wakes,
-2 min dwell, with a 15 min status/sync period so you still get status logs
-somewhat promptly without spamming syncs:
+full 10 min dwell timeout (matches the production default, so acquisition
+behaves the same as a real deployment even though the surrounding cycle is
+shrunk), with a 15 min status/sync period so you still get status logs
+somewhat promptly without spamming syncs. Note `EGPS_POSITION_DWELL` (600)
+exceeds `EGPS_POSITION_INTERVAL` (300) here -- expect (and ignore) the
+build-time warning about a stuck fix potentially overrunning into the next
+scheduled wake, since that's the point of testing the full dwell:
 
 ```
-make T=r bin SYNC_PERIOD=15 EGPS_BATCH_DURATION=300 EGPS_BATCH_PERIOD=600 EGPS_POSITION_INTERVAL=300 EGPS_POSITION_DWELL=120
+make T=r bin SYNC_PERIOD=15 EGPS_BATCH_DURATION=300 EGPS_BATCH_PERIOD=600 EGPS_POSITION_INTERVAL=300 EGPS_POSITION_DWELL=600
 ```
 
 ## Analyzing device data with `sfy-processing`

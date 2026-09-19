@@ -161,7 +161,7 @@ already subject to the same duty-cycle-driven gating described above.
     Set to a non-zero value to duty-cycle the module instead.
 
 * EGPS_POSITION_DWELL: max time to wait for a valid fix per wake before
-    giving up and going back to idle, in seconds (default 120, 2 minutes).
+    giving up and going back to idle, in seconds (default 600, 10 minutes).
     Not used while `EGPS_POSITION_INTERVAL` is `0`.
 
 Batches (raw samples collected and sent as `egpsb.qo`) always run for a
