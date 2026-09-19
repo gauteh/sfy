@@ -162,6 +162,18 @@ const EGPS_DWELL_MAX_CONSECUTIVE_FAILURES: u8 = 5;
 static EGPS_LAST_WAKE_REINIT_OK: core::sync::atomic::AtomicBool =
     core::sync::atomic::AtomicBool::new(false);
 
+/// Highest `NAV-PVT` `numSV` (satellites used in the navigation solution)
+/// seen so far during the *current* fix-acquisition attempt. Updated from
+/// the RTC ISR on every `NAV-PVT` message (regardless of fix validity, so
+/// it reflects what the receiver can actually see, not just accepted
+/// fixes), reset to 0 in `WakePowerOnReinit` at the start of each wake.
+/// Logged alongside a dwell timeout so a run of "re-init fine, no fix"
+/// wakes (see `EGPS_DWELL_CONSECUTIVE_FAILURES`) can be told apart from an
+/// antenna/RF/reception problem (0 satellites ever seen) versus a
+/// marginal-signal or backup-data problem (some satellites seen, still no
+/// fix) -- previously there was no visibility into this at all.
+static EGPS_MAX_NUM_SV_SEEN: core::sync::atomic::AtomicU8 = core::sync::atomic::AtomicU8::new(0);
+
 /// Whether the RTC ISR should feed drained PVT samples into `GPS_COLLECTOR`.
 /// Only set while a duty-cycled egps batch is in progress; outside of a
 /// batch, PVTs are still drained from the module's FIFO (to keep it from
@@ -862,6 +874,17 @@ fn main() -> ! {
             {
                 sfy::stats::EGPS_DWELL_TIMEOUT.fetch_add(1, Ordering::Relaxed);
 
+                // Diagnostic: was any satellite ever seen during this
+                // attempt at all? Distinguishes "0 satellites the whole
+                // dwell" (antenna/RF/reception problem) from "some
+                // satellites seen, still no fix" (weak/marginal signal or a
+                // GNSS-side problem) -- previously indistinguishable from
+                // the outside.
+                warn!(
+                    "egps: dwell timeout, max satellites seen during this attempt: {}",
+                    EGPS_MAX_NUM_SV_SEEN.load(Ordering::Relaxed)
+                );
+
                 // Unlike a re-init failure, the module claims to be fine on
                 // every one of these wakes -- so `EGPS_REINIT_CONSECUTIVE_FAILURES`
                 // never trips. If it never once produces a fix for
@@ -1221,6 +1244,7 @@ fn apply_egps_action(action: EgpsAction, delay: &mut impl DelayMs<u16>) {
                 });
                 EGPS_REINIT_CONSECUTIVE_FAILURES.store(0, Ordering::Relaxed);
                 EGPS_LAST_WAKE_REINIT_OK.store(true, Ordering::Relaxed);
+                EGPS_MAX_NUM_SV_SEEN.store(0, Ordering::Relaxed);
                 info!("egps: waking (full power-on re-init)");
             } else {
                 error!(
@@ -1426,6 +1450,7 @@ fn RTC() {
         } {
             let latest_pps = free(|cs| *PPS_TIME.borrow(cs).borrow());
             match gnss.read_all_pvts(i2c_gps, &mut |pvt| {
+                EGPS_MAX_NUM_SV_SEEN.fetch_max(pvt.num_sv, Ordering::Relaxed);
                 if let Some(egps) = EgpsTime::from_pvt(&pvt, latest_pps) {
                     free(|cs| {
                         EGPS_TIME.borrow(cs).replace(Some(egps));
