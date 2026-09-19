@@ -1087,12 +1087,18 @@ fn retry_gps_step<T>(
 
 /// Re-initialise the MAX-M10S on a duty-cycle wake, step by step, exactly
 /// like the boot sequence does (probe, then init/set_output_rate/
-/// set_pps_rate/enable_pvt in order) -- written the same straightforward,
-/// sequential way (no combinators/closures over shared state) so it reads
-/// the same as the boot path above. The only difference from boot is that
-/// each step here is *bounded* (`retry_gps_step`) rather than looping
-/// forever, so a persistently unresponsive module still lets the wake give
-/// up and dwell-timeout back to idle instead of hanging the main loop.
+/// set_pps_rate/enable_pvt in order, always at 14 Hz, with a non-fatal
+/// `set_output_rate` failure just like boot) -- written the same
+/// straightforward, sequential way (no combinators/closures over shared
+/// state) so it reads the same as the boot path above. The only
+/// differences from boot are that each step here is *bounded*
+/// (`retry_gps_step`) rather than looping forever, so a persistently
+/// unresponsive module still lets the wake give up and dwell-timeout back
+/// to idle instead of hanging the main loop, and that the PPS GPIO
+/// interrupt is always fully re-armed (`configure_interrupt` +
+/// `clear_interrupt` + `enable_interrupt`, see `apply_egps_action`) rather
+/// than just enabled, since the pin has been floating/unpowered since the
+/// last idle transition (unlike boot, where it's freshly configured).
 fn reinit_gps(
     i2c: &mut GpsI2C,
     retries: u16,
@@ -1101,13 +1107,9 @@ fn reinit_gps(
 ) -> Option<MaxM10S> {
     let mut dev = retry_gps_step(|| MaxM10S::new(i2c), retries, delay_ms, "device not found", delay)?;
     retry_gps_step(|| dev.init(i2c), retries, delay_ms, "init", delay)?;
-    retry_gps_step(
-        || dev.set_output_rate(i2c, 1),
-        retries,
-        delay_ms,
-        "set_output_rate",
-        delay,
-    )?;
+    dev.set_output_rate(i2c, 14)
+        .inspect_err(|e| warn!("GPS set_output_rate failed: {:?}", defmt::Debug2Format(e)))
+        .ok();
     retry_gps_step(
         || dev.set_pps_rate(i2c, 1_000_000, 10_000),
         retries,
