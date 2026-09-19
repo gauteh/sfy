@@ -139,6 +139,21 @@ static EGPS_REINIT_CONSECUTIVE_FAILURES: core::sync::atomic::AtomicU8 =
 /// Threshold for `EGPS_REINIT_CONSECUTIVE_FAILURES` above.
 const EGPS_REINIT_MAX_CONSECUTIVE_FAILURES: u8 = 5;
 
+/// Consecutive dwell timeouts (re-init succeeded, but no fix arrived within
+/// the dwell window -- the same event `sfy::stats::EGPS_DWELL_TIMEOUT`
+/// counts). Reset to 0 whenever a fix is actually acquired; incremented on
+/// each dwell timeout. `EGPS_REINIT_CONSECUTIVE_FAILURES` alone doesn't
+/// catch the case where the module keeps reporting a fine re-init every
+/// single wake but never once produces a valid fix for many hours straight
+/// (observed in the field: re-init "succeeds", yet zero fixes for 16+
+/// hours) -- that pattern is just as reboot-only-recoverable as a run of
+/// re-init failures, so it gets its own counter and threshold here.
+static EGPS_DWELL_CONSECUTIVE_FAILURES: core::sync::atomic::AtomicU8 =
+    core::sync::atomic::AtomicU8::new(0);
+
+/// Threshold for `EGPS_DWELL_CONSECUTIVE_FAILURES` above.
+const EGPS_DWELL_MAX_CONSECUTIVE_FAILURES: u8 = 5;
+
 /// Whether the most recent `WakePowerOnReinit` succeeded (module responded
 /// and was re-initialised) -- set by `apply_egps_action`, read back in the
 /// main loop's dwell-timeout check so `sfy::stats::EGPS_DWELL_TIMEOUT` only
@@ -801,6 +816,7 @@ fn main() -> ! {
         // --- Drive the egps duty-cycle state machine --------------------------
         {
             if got_new_fix.is_some() {
+                EGPS_DWELL_CONSECUTIVE_FAILURES.store(0, Ordering::Relaxed);
                 let action = egps_duty.fix_acquired(now_ms);
                 defmt::info!(
                     "egps duty: fix_acquired -> state = {}, action = {}",
@@ -832,6 +848,22 @@ fn main() -> ! {
                 && EGPS_LAST_WAKE_REINIT_OK.load(Ordering::Relaxed)
             {
                 sfy::stats::EGPS_DWELL_TIMEOUT.fetch_add(1, Ordering::Relaxed);
+
+                // Unlike a re-init failure, the module claims to be fine on
+                // every one of these wakes -- so `EGPS_REINIT_CONSECUTIVE_FAILURES`
+                // never trips. If it never once produces a fix for
+                // `EGPS_DWELL_MAX_CONSECUTIVE_FAILURES` wakes in a row
+                // regardless, treat it the same way: give up on software
+                // retries and reboot.
+                let failures =
+                    EGPS_DWELL_CONSECUTIVE_FAILURES.fetch_add(1, Ordering::Relaxed) + 1;
+                if failures >= EGPS_DWELL_MAX_CONSECUTIVE_FAILURES {
+                    error!(
+                        "GPS: {} consecutive dwell timeouts (no fix, re-init otherwise fine), resetting device.",
+                        failures
+                    );
+                    cortex_m::peripheral::SCB::sys_reset();
+                }
             }
             apply_egps_action(action, &mut delay);
         }
