@@ -42,6 +42,22 @@ pipeline without a real fix. Not for field/deploy builds:
 make T=r bin SYNC_PERIOD=20 EGPS_BATCH_PERIOD=2400 EGPS_POSITION_INTERVAL=600 CARGO_FLAGS="--features accept-no-egps-fix"
 ```
 
+### Production mooring build config
+
+Matches the "mooring" build in `.github/workflows/sfy4-buoy.yml`: 3h
+between egps batches, 1h position fix interval, 1h sync period, 20Hz axl,
+default batch duration, release mode, from `sfy4-buoy/` (with the
+cross-compile env vars above set):
+
+```
+make T=r bin SYNC_PERIOD=60 EGPS_POSITION_INTERVAL=3600 EGPS_BATCH_PERIOD=10800 CARGO_FLAGS="--features 20Hz"
+```
+
+Produces `target/sfy4-main.bin`. CI builds both a no-storage and a
+`--features 20Hz,storage` variant of this same config (see the workflow's
+`sfy4-mooring-1h-position-3h-batch-*.bin` artifacts) -- add `,storage` to
+`CARGO_FLAGS` locally to match the storage variant.
+
 ### Short-cycle debug build (reproducing duty-cycle bugs faster)
 
 For debugging duty-cycle state-machine issues (e.g. a wedge that only
