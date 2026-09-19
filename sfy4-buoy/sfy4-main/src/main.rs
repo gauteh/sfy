@@ -1108,7 +1108,7 @@ fn reinit_gps(
     dev.reset(i2c)
         .inspect_err(|e| warn!("GPS reset failed: {:?}", defmt::Debug2Format(e)))
         .ok();
-    delay.delay_ms(1000u16);
+    delay.delay_ms(2000u16);
     retry_gps_step(|| dev.init(i2c), retries, delay_ms, "init", delay)?;
     dev.set_output_rate(i2c, 14)
         .inspect_err(|e| warn!("GPS set_output_rate failed: {:?}", defmt::Debug2Format(e)))
