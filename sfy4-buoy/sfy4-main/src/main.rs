@@ -772,28 +772,41 @@ fn main() -> ! {
 
             // --- `restart_sfy`: remote one-shot reboot trigger -----------------
             // Set to any positive value (e.g. a Unix timestamp) via Notehub to
-            // request a reboot. To avoid rebooting on every single poll
-            // thereafter (Notehub env vars are otherwise sticky), the
-            // negated value is written straight back to the Notecard
-            // (`env.set`) *before* rebooting -- and only if that write-back
-            // actually succeeds, so a reboot never happens without the
-            // trigger having been cleared first (no connectivity here just
-            // means "try again next poll", not "reboot anyway").
+            // request a reboot. Env vars set locally on the Notecard
+            // (`env.set`) take local priority over the Notehub-synced value
+            // and are never pushed back up -- so writing a negated/cleared
+            // value straight back to `restart_sfy` itself would only ever
+            // be visible to this device, permanently masking whatever
+            // value Notehub has, and no further reboot could ever be
+            // requested again. Instead, track what's already been acted on
+            // in a separate device-local `restart_sfy_performed` var: a
+            // reboot only fires once per *distinct* value of `restart_sfy`,
+            // so requesting another reboot just means setting `restart_sfy`
+            // to a new (different) value on Notehub.
             if let Some(v) = note
                 .get_env_var(&mut delay, "restart_sfy")
                 .as_deref()
                 .and_then(|s| s.trim().parse::<i64>().ok())
                 .filter(|v| *v > 0)
             {
-                warn!("restart_sfy: reboot requested ({=i64})", v);
-                let mut cleared = heapless::String::<32>::new();
-                if write!(cleared, "{}", -v).is_ok()
-                    && note.set_env_var(&mut delay, "restart_sfy", &cleared).is_ok()
-                {
-                    info!("restart_sfy: cleared, resetting device.");
-                    reset(&mut note, &mut delay);
-                } else {
-                    error!("restart_sfy: failed to clear trigger, not rebooting yet -- will retry next poll.");
+                let performed = note
+                    .get_env_var(&mut delay, "restart_sfy_performed")
+                    .as_deref()
+                    .and_then(|s| s.trim().parse::<i64>().ok());
+
+                if performed != Some(v) {
+                    warn!("restart_sfy: reboot requested ({=i64})", v);
+                    let mut performed_str = heapless::String::<32>::new();
+                    if write!(performed_str, "{}", v).is_ok()
+                        && note
+                            .set_env_var(&mut delay, "restart_sfy_performed", &performed_str)
+                            .is_ok()
+                    {
+                        info!("restart_sfy: recorded as performed, resetting device.");
+                        reset(&mut note, &mut delay);
+                    } else {
+                        error!("restart_sfy: failed to record as performed, not rebooting yet -- will retry next poll.");
+                    }
                 }
             }
         }
