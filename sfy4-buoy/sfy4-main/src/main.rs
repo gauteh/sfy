@@ -1190,17 +1190,20 @@ fn apply_egps_action(action: EgpsAction, delay: &mut impl DelayMs<u16>) {
             // Boot gives the module several *unbounded* seconds to settle
             // (~200 ms here, then a full notecard/RTC/storage setup, then
             // an explicit 5000 ms "give subsystems a couple of seconds to
-            // boot" delay) before ever sending it a command, and each boot
-            // step then retries forever if needed. A wake previously only
-            // waited 200 ms total. The module's I2C/DDC interface can come
+            // boot" delay -- on the order of 8-10s total) before ever
+            // sending it a command, and each boot step then retries
+            // forever if needed. The module's I2C/DDC interface can come
             // up and start ACK'ing commands well before its internal
             // GNSS/RF engine has actually stabilised, so a config command
             // succeeding at the transport level (which is all
             // `gps_reinit_fail` can see) doesn't guarantee it lands on a
             // settled receiver -- a plausible way to end up with a module
             // that never produces a valid fix for the rest of the wake, or
-            // the rest of the session. Give it comparable patience here.
-            delay.delay_ms(2_000u16);
+            // the rest of the session. Match boot's explicit 5000 ms
+            // settle delay here (this is the closest wake gets to boot's
+            // much longer total settle time, without going as far as
+            // reproducing boot's entire Notecard/RTC/storage setup path).
+            delay.delay_ms(5_000u16);
 
             // Re-init exactly like the boot sequence above (probe, then
             // init/set_output_rate/set_pps_rate/enable_pvt in order,
