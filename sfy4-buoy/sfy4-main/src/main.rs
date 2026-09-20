@@ -48,8 +48,8 @@ use hal::{
 use max_m10s::MaxM10S;
 use rtcc::DateTimeAccess;
 
-use sfy::gps::{EgpsTime, GpsCollector};
 use sfy::gps::duty::{EgpsAction, EgpsDutyCycle, EgpsDutyCycleConfig};
+use sfy::gps::{EgpsTime, GpsCollector};
 use sfy::log::log;
 use sfy::note::Notecarrier;
 use sfy::waves::Waves;
@@ -286,10 +286,7 @@ fn main() -> ! {
             "EGPS_BATCH_DURATION: {}",
             sfy::gps::duty::EGPS_BATCH_DURATION_S
         );
-        println!(
-            "EGPS_BATCH_PERIOD : {}",
-            sfy::note::EGPS_BATCH_PERIOD
-        );
+        println!("EGPS_BATCH_PERIOD : {}", sfy::note::EGPS_BATCH_PERIOD);
     }
 
     info!("Setting up IOM and RTC.");
@@ -449,7 +446,10 @@ fn main() -> ! {
         );
         IMU_MODE.store(imu_mode_to_u8(cfg.imu), Ordering::Relaxed);
         FORCE_SYNC_ON_WAKE.store(cfg.force_sync_on_egps_wake, Ordering::Relaxed);
-        IMU_STREAMING.store(!matches!(cfg.imu, sfy::power::ImuMode::Off), Ordering::Relaxed);
+        IMU_STREAMING.store(
+            !matches!(cfg.imu, sfy::power::ImuMode::Off),
+            Ordering::Relaxed,
+        );
         cfg
     };
 
@@ -519,7 +519,12 @@ fn main() -> ! {
         const BOOT_STEP_RETRIES: u16 = 500;
         const BOOT_STEP_DELAY_MS: u16 = 500;
 
-        let gnss = reinit_gps(&mut i2c_gps, BOOT_STEP_RETRIES, BOOT_STEP_DELAY_MS, &mut delay);
+        let gnss = reinit_gps(
+            &mut i2c_gps,
+            BOOT_STEP_RETRIES,
+            BOOT_STEP_DELAY_MS,
+            &mut delay,
+        );
 
         if gnss.is_some() {
             info!("GPS initialised.");
@@ -708,9 +713,7 @@ fn main() -> ! {
         // change, updates the running `egps_duty` config in place (its
         // Idle/AcquiringFix timers are left untouched), the IMU streaming
         // mode, and re-issues `hub.set` if `sync_period` changed.
-        if now_ms.saturating_sub(last_env_poll_ms)
-            >= sfy::note::ENV_POLL_INTERVAL as i64 * 1000
-        {
+        if now_ms.saturating_sub(last_env_poll_ms) >= sfy::note::ENV_POLL_INTERVAL as i64 * 1000 {
             last_env_poll_ms = now_ms;
             let mode = note
                 .get_env_var(&mut delay, "power_mode")
@@ -755,9 +758,7 @@ fn main() -> ! {
                 }
                 if new_cfg.sync_period_min != power_cfg.sync_period_min {
                     note.set_sync_period(&mut delay, new_cfg.sync_period_min)
-                        .inspect_err(|e| {
-                            error!("power: failed to update sync_period: {:?}", e)
-                        })
+                        .inspect_err(|e| error!("power: failed to update sync_period: {:?}", e))
                         .ok();
                 }
                 power_cfg = new_cfg;
@@ -872,14 +873,14 @@ fn main() -> ! {
                 // `EGPS_DWELL_MAX_CONSECUTIVE_FAILURES` wakes in a row
                 // regardless, treat it the same way: give up on software
                 // retries and reboot.
-                let failures =
-                    EGPS_DWELL_CONSECUTIVE_FAILURES.fetch_add(1, Ordering::Relaxed) + 1;
+                let failures = EGPS_DWELL_CONSECUTIVE_FAILURES.fetch_add(1, Ordering::Relaxed) + 1;
                 if failures >= EGPS_DWELL_MAX_CONSECUTIVE_FAILURES {
                     error!(
                         "GPS: {} consecutive dwell timeouts (no fix, re-init otherwise fine), resetting device.",
                         failures
                     );
-                    cortex_m::peripheral::SCB::sys_reset();
+                    log("gps: max consecutive fix (dwell) timeouts, resetting.");
+                    reset(&mut note, &mut delay);
                 }
             }
             apply_egps_action(action, &mut delay);
@@ -1096,7 +1097,13 @@ fn reinit_gps(
     delay_ms: u16,
     delay: &mut impl DelayMs<u16>,
 ) -> Option<MaxM10S> {
-    let mut dev = retry_gps_step(|| MaxM10S::new(i2c), retries, delay_ms, "device not found", delay)?;
+    let mut dev = retry_gps_step(
+        || MaxM10S::new(i2c),
+        retries,
+        delay_ms,
+        "device not found",
+        delay,
+    )?;
     // Force the navigation engine to restart cleanly (GNSS-only hot start,
     // backup data kept intact) before doing anything else. The receiver
     // can keep ACKing config commands after a power cycle (so it isn't
@@ -1120,7 +1127,13 @@ fn reinit_gps(
         "set_pps_rate",
         delay,
     )?;
-    retry_gps_step(|| dev.enable_pvt(i2c), retries, delay_ms, "enable_pvt", delay)?;
+    retry_gps_step(
+        || dev.enable_pvt(i2c),
+        retries,
+        delay_ms,
+        "enable_pvt",
+        delay,
+    )?;
     Some(dev)
 }
 
@@ -1453,9 +1466,9 @@ fn RTC() {
     // touching I2C_GPS/GNSS with no power on the module just NAKs repeatedly
     // and resets IOM2 every tick until the next wake.
     if GPS_POWERED.load(Ordering::Relaxed) {
-        if let (Some(gnss), Some(i2c_gps), Some(gps_collector)) = unsafe {
-            (GNSS.as_mut(), I2C_GPS.as_mut(), GPS_COLLECTOR.as_mut())
-        } {
+        if let (Some(gnss), Some(i2c_gps), Some(gps_collector)) =
+            unsafe { (GNSS.as_mut(), I2C_GPS.as_mut(), GPS_COLLECTOR.as_mut()) }
+        {
             let latest_pps = free(|cs| *PPS_TIME.borrow(cs).borrow());
             match gnss.read_all_pvts(i2c_gps, &mut |pvt| {
                 EGPS_MAX_NUM_SV_SEEN.fetch_max(pvt.num_sv, Ordering::Relaxed);
