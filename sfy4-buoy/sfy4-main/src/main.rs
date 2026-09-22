@@ -1186,6 +1186,15 @@ fn apply_egps_action(action: EgpsAction, delay: &mut impl DelayMs<u16>) {
                 // `Location::set_from_egps`) instead of being diffed against
                 // an hour-old timestamp from this wake and rejected.
                 *PPS_TIME.borrow(cs).borrow_mut() = 0;
+                // Drop the last fix: its `pps_time` was frozen at the moment
+                // it was built, and with the module now powered off nothing
+                // will ever refresh it. Left in place, `Location::set_from_egps`
+                // would keep re-evaluating it every `LOCATION_DIFF` against a
+                // constantly growing `now`, permanently exceeding the 5s
+                // staleness window and spuriously incrementing
+                // `GPS_PPS_DIFF_REJECTED` (`pps_rej`) until the next real fix
+                // arrives after wake.
+                EGPS_TIME.borrow(cs).replace(None);
             });
             if FORCE_SYNC_ON_WAKE.load(Ordering::Relaxed) {
                 FORCE_SYNC_REQUESTED.store(true, Ordering::Relaxed);
@@ -1366,9 +1375,9 @@ fn GPIO() {
 
         if let Some(pps_time) = pps_time {
             *PPS_TIME.borrow(cs).borrow_mut() = pps_time;
-            // defmt::debug!("GPS timepulse: pps_time = {}", pps_time);
+            defmt::debug!("GPS timepulse: pps_time = {}", pps_time);
         } else {
-            // defmt::warn!("GPS timepulse: RTC unavailable, keeping last pps_time");
+            defmt::warn!("GPS timepulse: RTC unavailable, keeping last pps_time");
         }
 
         if let Some(pin) = TS_PIN.borrow(cs).borrow_mut().as_mut() {
