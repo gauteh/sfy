@@ -20,28 +20,6 @@ several feature combinations (`testing`, `raw`, `fir`, `spectrum`, etc.) —
 always run this rather than a single `cargo test` invocation when validating
 changes.
 
-## Building a test binary for egps duty-cycle field tests
-
-Default params used for live duty-cycle field tests (40 min between egps
-batches, 10 min position fix interval, 20 min sync period), release mode,
-from `sfy4-buoy/` (with the cross-compile env vars above set):
-
-```
-make T=r bin SYNC_PERIOD=20 EGPS_BATCH_PERIOD=2400 EGPS_POSITION_INTERVAL=600
-```
-
-Produces `target/sfy4-main.bin`.
-
-For indoor/bench testing where the MAX-M10S can't get a real satellite fix
-(e.g. no antenna, weak signal), add `accept-no-egps-fix` (via `CARGO_FLAGS`,
-since `make bin` doesn't take a `FEATURES=` var) to relax egps fix
-acquisition so batches start anyway -- exercises the batch/duty-cycle
-pipeline without a real fix. Not for field/deploy builds:
-
-```
-make T=r bin SYNC_PERIOD=20 EGPS_BATCH_PERIOD=2400 EGPS_POSITION_INTERVAL=600 CARGO_FLAGS="--features accept-no-egps-fix"
-```
-
 ### Production mooring build config
 
 Matches the "mooring" build in `.github/workflows/sfy4-buoy.yml`: 3h
