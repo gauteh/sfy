@@ -51,7 +51,7 @@ fn main() {
     // drift indefinitely while egps is stuck.
     let egps_rtc_fallback_timeout: u32 = option_env!("EGPS_RTC_FALLBACK_TIMEOUT")
         .map(|p| p.parse::<u32>().unwrap())
-        .unwrap_or(3600); // 1 h
+        .unwrap_or(4200); // 70 min -- comfortably longer than a 1h egps batch period
 
     if egps_position_interval > 0 && egps_position_dwell > egps_position_interval {
         println!(
