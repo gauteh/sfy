@@ -69,6 +69,7 @@ class Event:
     batch_received: Any = None
     batch_number: Any = None
     batch_total: Any = None
+    wire_length: Any = None
 
     @property
     def longitude(self):
