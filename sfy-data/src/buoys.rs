@@ -139,13 +139,22 @@ fn with_state(state: State) -> impl Filter<Extract = (State,), Error = Infallibl
     warp::any().map(move || Arc::clone(&state))
 }
 
+/// Constant-time (per token) membership check, to avoid leaking token contents through timing.
+fn token_in(tokens: &[String], v: &str) -> bool {
+    tokens.iter().fold(false, |acc, t| {
+        let (a, b) = (t.as_bytes(), v.as_bytes());
+        let eq = a.len() == b.len() && a.iter().zip(b).fold(0u8, |d, (x, y)| d | (x ^ y)) == 0;
+        acc | eq
+    })
+}
+
 fn check_token(state: State) -> impl Filter<Extract = (), Error = Rejection> + Clone {
     warp::header::<String>("SFY_AUTH_TOKEN")
         .and_then(move |v: String| {
-            if state.config.tokens.contains(&v) {
+            if token_in(&state.config.tokens, &v) {
                 future::ok(())
             } else {
-                warn!("rejected token: {}", v);
+                warn!("rejected request with invalid token");
                 future::err(reject::not_found())
             }
         })
@@ -155,10 +164,10 @@ fn check_token(state: State) -> impl Filter<Extract = (), Error = Rejection> + C
 fn check_read_token(state: State) -> impl Filter<Extract = (), Error = Rejection> + Clone {
     warp::header::<String>("SFY_AUTH_TOKEN")
         .and_then(move |v: String| {
-            if state.config.read_tokens.contains(&v) {
+            if token_in(&state.config.read_tokens, &v) {
                 future::ok(())
             } else {
-                warn!("rejected token: {}", v);
+                warn!("rejected request with invalid token");
                 future::err(reject::not_found())
             }
         })

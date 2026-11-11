@@ -39,7 +39,31 @@ impl Config {
         let p = p.as_ref();
 
         let f = fs::read_to_string(p).expect("could not read config file");
-        toml::from_str(&f).expect("could not parse config file")
+        let c: Config = toml::from_str(&f).expect("could not parse config file");
+
+        #[cfg(not(debug_assertions))]
+        c.reject_default_tokens();
+
+        c
+    }
+
+    /// Panic if any token is one of the example tokens shipped in `sfy-data.toml`.
+    #[allow(dead_code)]
+    fn reject_default_tokens(&self) {
+        let defaults: Config =
+            toml::from_str(include_str!("../sfy-data.toml")).expect("bad bundled config");
+
+        let is_default =
+            |t: &String| defaults.tokens.contains(t) || defaults.read_tokens.contains(t);
+
+        if self
+            .tokens
+            .iter()
+            .chain(self.read_tokens.iter())
+            .any(is_default)
+        {
+            panic!("config uses the default tokens from sfy-data.toml, refusing to start: set your own tokens");
+        }
     }
 }
 
@@ -52,6 +76,19 @@ mod tests {
         let c = fs::read_to_string("sfy-data.toml").unwrap();
         let c: Config = toml::from_str(&c).unwrap();
         println!("{:#?}", c);
+    }
+
+    #[test]
+    #[should_panic(expected = "default tokens")]
+    fn reject_default_tokens() {
+        let c = fs::read_to_string("sfy-data.toml").unwrap();
+        let c: Config = toml::from_str(&c).unwrap();
+        c.reject_default_tokens();
+    }
+
+    #[test]
+    fn test_conf_not_default() {
+        Config::test_config().reject_default_tokens();
     }
 
     #[test]
